@@ -120,11 +120,20 @@ class QuestionRepository:
                 from sqlalchemy import String, cast
                 id_stmt = id_stmt.where(cast(Question.difficulty, String).ilike(diff_clean))
 
-        # Hierarchy Filters with cross-level taxonomy matching (supports comma-separated multi-select)
+        # Hierarchy Filters with cross-level taxonomy matching (supports comma and ';;' / '||' separated multi-select)
         if subject_id:
             id_stmt = id_stmt.where(or_(QuestionHierarchyLink.subject_id == subject_id, Subject.id == subject_id))
         if subject_name and subject_name.strip():
-            s_list = [s.strip().lower() for s in subject_name.split(",") if s.strip() and s.strip().lower() not in ("all subjects", "all", "all topics", "all topics/subjects", "all topics and subjects")]
+            raw_s_items = subject_name.replace("||", ";;").split(";;") if (";;" in subject_name or "||" in subject_name) else [subject_name]
+            s_list = []
+            for item in raw_s_items:
+                for sub_item in item.split(","):
+                    c = sub_item.strip().lower()
+                    if c and c not in ("all subjects", "all", "all topics", "all topics/subjects", "all topics and subjects") and c not in s_list:
+                        s_list.append(c)
+                c_full = item.strip().lower()
+                if c_full and "," in c_full and c_full not in s_list and c_full not in ("all subjects", "all"):
+                    s_list.append(c_full)
             if s_list:
                 s_clauses = [
                     or_(
@@ -143,7 +152,16 @@ class QuestionRepository:
         if topic_id:
             id_stmt = id_stmt.where(or_(QuestionHierarchyLink.topic_id == topic_id, Topic.id == topic_id))
         if topic_name and topic_name.strip():
-            t_list = [t.strip().lower() for t in topic_name.split(",") if t.strip() and t.strip().lower() not in ("all topics", "all", "all subjects", "all topics/subjects", "all topics and subjects")]
+            raw_t_items = topic_name.replace("||", ";;").split(";;") if (";;" in topic_name or "||" in topic_name) else [topic_name]
+            t_list = []
+            for item in raw_t_items:
+                for sub_item in item.split(","):
+                    c = sub_item.strip().lower()
+                    if c and c not in ("all topics", "all", "all subjects", "all topics/subjects", "all topics and subjects") and c not in t_list:
+                        t_list.append(c)
+                c_full = item.strip().lower()
+                if c_full and "," in c_full and c_full not in t_list and c_full not in ("all topics", "all"):
+                    t_list.append(c_full)
             if t_list:
                 t_clauses = [
                     or_(
@@ -162,7 +180,16 @@ class QuestionRepository:
         if subtopic_id:
             id_stmt = id_stmt.where(or_(Question.subtopic_id == subtopic_id, QuestionHierarchyLink.subtopic_id == subtopic_id))
         if subtopic_name and subtopic_name.strip():
-            st_list = [st.strip().lower() for st in subtopic_name.split(",") if st.strip() and st.strip().lower() not in ("all subtopics", "all")]
+            raw_st_items = subtopic_name.replace("||", ";;").split(";;") if (";;" in subtopic_name or "||" in subtopic_name) else [subtopic_name]
+            st_list = []
+            for item in raw_st_items:
+                for sub_item in item.split(","):
+                    c = sub_item.strip().lower()
+                    if c and c not in ("all subtopics", "all") and c not in st_list:
+                        st_list.append(c)
+                c_full = item.strip().lower()
+                if c_full and "," in c_full and c_full not in st_list and c_full not in ("all subtopics", "all"):
+                    st_list.append(c_full)
             if st_list:
                 st_clauses = []
                 st_stop_words = ("and", "the", "for", "all", "of", "in", "to")

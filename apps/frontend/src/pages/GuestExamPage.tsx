@@ -30,6 +30,7 @@ import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode, listExams } 
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
 import { guardedFetch } from '../utils/apiGuard';
+import { parseTaxonomyParam, formatTaxonomyParam } from '../utils/taxonomyParam';
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -67,21 +68,10 @@ export function GuestExamPage() {
     return [];
   }, [subjectsList, threeLevelHierarchy]);
 
-  // Selected Multi-Select Arrays derived from URL parameters
+  // Selected Multi-Select Arrays derived from URL parameters and validated against available taxonomy
   const selectedSubjectsList = useMemo(() => {
-    if (!gSubject || gSubject.startsWith('All Subjects')) return [];
-    return gSubject.split(',').map((s) => s.trim()).filter(Boolean);
-  }, [gSubject]);
-
-  const selectedTopicsList = useMemo(() => {
-    if (!gTopic || gTopic.startsWith('All Topics')) return [];
-    return gTopic.split(',').map((t) => t.trim()).filter(Boolean);
-  }, [gTopic]);
-
-  const selectedSubtopicsList = useMemo(() => {
-    if (!gSubtopic || gSubtopic.startsWith('All Subtopics')) return [];
-    return gSubtopic.split(',').map((st) => st.trim()).filter(Boolean);
-  }, [gSubtopic]);
+    return parseTaxonomyParam(gSubject, availableSubjectsList);
+  }, [gSubject, availableSubjectsList]);
 
   // Computed dynamic list of topics based on selected subjects
   const availableTopicsList = useMemo(() => {
@@ -89,19 +79,27 @@ export function GuestExamPage() {
     if (selectedSubjectsList.length === 0) {
       Object.values(threeLevelHierarchy).forEach((topicsMap) => {
         if (topicsMap && typeof topicsMap === 'object') {
-          Object.keys(topicsMap).forEach((t) => topicsSet.add(t));
+          Object.keys(topicsMap).forEach((t) => {
+            if (t && !t.startsWith('All Topics')) topicsSet.add(t);
+          });
         }
       });
     } else {
       selectedSubjectsList.forEach((subj) => {
         const topicsMap = threeLevelHierarchy[subj];
         if (topicsMap && typeof topicsMap === 'object') {
-          Object.keys(topicsMap).forEach((t) => topicsSet.add(t));
+          Object.keys(topicsMap).forEach((t) => {
+            if (t && !t.startsWith('All Topics')) topicsSet.add(t);
+          });
         }
       });
     }
     return Array.from(topicsSet).sort();
   }, [selectedSubjectsList, threeLevelHierarchy]);
+
+  const selectedTopicsList = useMemo(() => {
+    return parseTaxonomyParam(gTopic, availableTopicsList);
+  }, [gTopic, availableTopicsList]);
 
   // Computed dynamic list of subtopics based on selected subjects and topics
   const availableSubtopicsList = useMemo(() => {
@@ -114,7 +112,7 @@ export function GuestExamPage() {
             const list = topicsMap[top];
             if (Array.isArray(list)) {
               list.forEach((st) => {
-                if (!st.startsWith('All Subtopics')) subSet.add(st);
+                if (st && !st.startsWith('All Subtopics')) subSet.add(st);
               });
             }
           });
@@ -126,7 +124,7 @@ export function GuestExamPage() {
               const list = topicsMap[top];
               if (Array.isArray(list)) {
                 list.forEach((st) => {
-                  if (!st.startsWith('All Subtopics')) subSet.add(st);
+                  if (st && !st.startsWith('All Subtopics')) subSet.add(st);
                 });
               }
             });
@@ -139,7 +137,7 @@ export function GuestExamPage() {
         Object.values(topicsMap).forEach((subList) => {
           if (Array.isArray(subList)) {
             subList.forEach((st) => {
-              if (!st.startsWith('All Subtopics')) subSet.add(st);
+              if (st && !st.startsWith('All Subtopics')) subSet.add(st);
             });
           }
         });
@@ -150,7 +148,7 @@ export function GuestExamPage() {
           Object.values(topicsMap).forEach((subList) => {
             if (Array.isArray(subList)) {
               subList.forEach((st) => {
-                if (!st.startsWith('All Subtopics')) subSet.add(st);
+                if (st && !st.startsWith('All Subtopics')) subSet.add(st);
               });
             }
           });
@@ -160,7 +158,11 @@ export function GuestExamPage() {
     return Array.from(subSet).sort();
   }, [selectedSubjectsList, selectedTopicsList, threeLevelHierarchy]);
 
-  // Multi-Select Toggle & Select All Helpers
+  const selectedSubtopicsList = useMemo(() => {
+    return parseTaxonomyParam(gSubtopic, availableSubtopicsList);
+  }, [gSubtopic, availableSubtopicsList]);
+
+  // Multi-Select Toggle & Select All Helpers with cascading child pruning
   const toggleSubjectFilter = (subjectName: string) => {
     const current = new URLSearchParams(searchParams);
     if (subjectName === 'All Subjects') {
@@ -176,11 +178,42 @@ export function GuestExamPage() {
       }
       if (updated.length === 0) {
         current.delete('subject');
+        current.delete('topic');
+        current.delete('subtopic');
       } else {
-        current.set('subject', updated.join(','));
+        current.set('subject', formatTaxonomyParam(updated));
+        // Prune topics that no longer belong to surviving subjects
+        if (Object.keys(threeLevelHierarchy).length > 0) {
+          const validTopics = new Set<string>();
+          updated.forEach((s) => {
+            const tMap = threeLevelHierarchy[s] || {};
+            Object.keys(tMap).forEach((t) => validTopics.add(t));
+          });
+          const survivingTopics = selectedTopicsList.filter((t) => validTopics.has(t));
+          if (survivingTopics.length > 0) {
+            current.set('topic', formatTaxonomyParam(survivingTopics));
+            const validSubtopics = new Set<string>();
+            updated.forEach((s) => {
+              const tMap = threeLevelHierarchy[s] || {};
+              survivingTopics.forEach((top) => {
+                (tMap[top] || []).forEach((st) => validSubtopics.add(st));
+              });
+            });
+            const survivingSubtopics = selectedSubtopicsList.filter((st) => validSubtopics.has(st));
+            if (survivingSubtopics.length > 0) {
+              current.set('subtopic', formatTaxonomyParam(survivingSubtopics));
+            } else {
+              current.delete('subtopic');
+            }
+          } else {
+            current.delete('topic');
+            current.delete('subtopic');
+          }
+        } else {
+          current.delete('topic');
+          current.delete('subtopic');
+        }
       }
-      current.delete('topic');
-      current.delete('subtopic');
     }
     navigate(`/guest-exam?${current.toString()}`);
   };
@@ -188,7 +221,7 @@ export function GuestExamPage() {
   const selectAllSubjects = () => {
     const current = new URLSearchParams(searchParams);
     if (availableSubjectsList.length > 0) {
-      current.set('subject', availableSubjectsList.join(','));
+      current.set('subject', formatTaxonomyParam(availableSubjectsList));
     } else {
       current.delete('subject');
     }
@@ -211,10 +244,32 @@ export function GuestExamPage() {
       }
       if (updated.length === 0) {
         current.delete('topic');
+        current.delete('subtopic');
       } else {
-        current.set('topic', updated.join(','));
+        current.set('topic', formatTaxonomyParam(updated));
+        // Prune subtopics that belonged to the deselected topic
+        if (Object.keys(threeLevelHierarchy).length > 0) {
+          const validSubtopics = new Set<string>();
+          const subjectsToScan =
+            selectedSubjectsList.length > 0
+              ? selectedSubjectsList
+              : Object.keys(threeLevelHierarchy);
+          subjectsToScan.forEach((s) => {
+            const tMap = threeLevelHierarchy[s] || {};
+            updated.forEach((top) => {
+              (tMap[top] || []).forEach((st) => validSubtopics.add(st));
+            });
+          });
+          const survivingSubtopics = selectedSubtopicsList.filter((st) => validSubtopics.has(st));
+          if (survivingSubtopics.length > 0) {
+            current.set('subtopic', formatTaxonomyParam(survivingSubtopics));
+          } else {
+            current.delete('subtopic');
+          }
+        } else {
+          current.delete('subtopic');
+        }
       }
-      current.delete('subtopic');
     }
     navigate(`/guest-exam?${current.toString()}`);
   };
@@ -222,7 +277,7 @@ export function GuestExamPage() {
   const selectAllTopics = () => {
     const current = new URLSearchParams(searchParams);
     if (availableTopicsList.length > 0) {
-      current.set('topic', availableTopicsList.join(','));
+      current.set('topic', formatTaxonomyParam(availableTopicsList));
     } else {
       current.delete('topic');
     }
@@ -244,7 +299,7 @@ export function GuestExamPage() {
       if (updated.length === 0) {
         current.delete('subtopic');
       } else {
-        current.set('subtopic', updated.join(','));
+        current.set('subtopic', formatTaxonomyParam(updated));
       }
     }
     navigate(`/guest-exam?${current.toString()}`);
@@ -253,7 +308,7 @@ export function GuestExamPage() {
   const selectAllSubtopics = () => {
     const current = new URLSearchParams(searchParams);
     if (availableSubtopicsList.length > 0) {
-      current.set('subtopic', availableSubtopicsList.join(','));
+      current.set('subtopic', formatTaxonomyParam(availableSubtopicsList));
     } else {
       current.delete('subtopic');
     }
@@ -307,6 +362,43 @@ export function GuestExamPage() {
     }
     loadTaxonomyAndYears();
   }, []);
+
+  // Auto-heal URL when hierarchy loads to prune any orphaned topic or subtopic query params
+  useEffect(() => {
+    if (Object.keys(threeLevelHierarchy).length === 0) return;
+    const current = new URLSearchParams(searchParams);
+    let changed = false;
+
+    if (gTopic && !gTopic.startsWith('All Topics') && availableTopicsList.length > 0) {
+      const parsedTopics = parseTaxonomyParam(gTopic, availableTopicsList);
+      const valid = parsedTopics.filter((t) => availableTopicsList.includes(t));
+      if (valid.length !== parsedTopics.length) {
+        if (valid.length === 0) {
+          current.delete('topic');
+        } else {
+          current.set('topic', formatTaxonomyParam(valid));
+        }
+        changed = true;
+      }
+    }
+
+    if (gSubtopic && !gSubtopic.startsWith('All Subtopics') && availableSubtopicsList.length > 0) {
+      const parsedSubtopics = parseTaxonomyParam(gSubtopic, availableSubtopicsList);
+      const valid = parsedSubtopics.filter((st) => availableSubtopicsList.includes(st));
+      if (valid.length !== parsedSubtopics.length) {
+        if (valid.length === 0) {
+          current.delete('subtopic');
+        } else {
+          current.set('subtopic', formatTaxonomyParam(valid));
+        }
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      navigate(`/guest-exam?${current.toString()}`, { replace: true });
+    }
+  }, [threeLevelHierarchy, availableTopicsList, availableSubtopicsList, gTopic, gSubtopic, searchParams, navigate]);
 
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -551,9 +643,9 @@ export function GuestExamPage() {
 
         const excludeIdsParam = Array.from(existingIds).join(',');
 
-        const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
-        const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
-        const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
+        const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? formatTaxonomyParam(selectedSubjectsList) : '';
+        const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? formatTaxonomyParam(selectedTopicsList) : '';
+        const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? formatTaxonomyParam(selectedSubtopicsList) : '';
         const rawDiff = gDifficulty && !gDifficulty.startsWith('All') ? gDifficulty.trim() : '';
         const targetExam = gExam
           ? gExam.toLowerCase().includes('upsc')
@@ -812,9 +904,9 @@ export function GuestExamPage() {
         });
       };
 
-      const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
-      const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
-      const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
+      const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? formatTaxonomyParam(selectedSubjectsList) : '';
+      const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? formatTaxonomyParam(selectedTopicsList) : '';
+      const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? formatTaxonomyParam(selectedSubtopicsList) : '';
       const reqSubject = rawSubject;
       const reqTopic = rawTopic;
       const reqSubtopic = rawSubtopic;
@@ -922,12 +1014,18 @@ export function GuestExamPage() {
       let restoredResponses: Record<string, any> = {};
       let restoredRevealed: Record<string, any> = {};
       let restoredMarked: Record<string, boolean> = {};
+      const allottedSeconds = Math.max(1, questionsList.length) * 120;
+      let restoredTimeLeft: number | null = null;
 
       if (questionsList.length > 0) {
         try {
           const savedRaw = sessionStorage.getItem(SESSION_KEY);
           if (savedRaw) {
             const savedData = JSON.parse(savedRaw);
+            if (typeof savedData.timeLeft === 'number' && savedData.timeLeft >= 0) {
+              restoredTimeLeft = savedData.timeLeft;
+              setTimeLeft(savedData.timeLeft);
+            }
             if (savedData.userResponses) {
               restoredResponses = savedData.userResponses;
               setUserResponses(savedData.userResponses);
@@ -951,6 +1049,10 @@ export function GuestExamPage() {
           }
         } catch (err) {
           console.warn('Failed to restore guest sessionStorage:', err);
+        }
+
+        if (restoredTimeLeft === null) {
+          setTimeLeft(allottedSeconds);
         }
 
         const initialPalette: QuestionPaletteItem[] = questionsList.map((q, i) => {
@@ -995,6 +1097,7 @@ export function GuestExamPage() {
         markedForReview,
         bookmarkedQs,
         currentQIndex,
+        timeLeft,
       };
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
     } catch (err) {
@@ -1006,6 +1109,7 @@ export function GuestExamPage() {
     markedForReview,
     bookmarkedQs,
     currentQIndex,
+    timeLeft,
     isLoading,
     allQuestions,
   ]);
@@ -1324,6 +1428,8 @@ export function GuestExamPage() {
     const totalMarksPossible = numQuestions;
     const unattemptedCount = Math.max(0, numQuestions - attemptedCount);
     const accuracy = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
+    const totalAllotted = Math.max(1, numQuestions) * 120;
+    const elapsedSeconds = Math.max(10, totalAllotted - timeLeft);
 
     const scorePayload = {
       score: correctCount,
@@ -1333,12 +1439,21 @@ export function GuestExamPage() {
       unattemptedCount,
       accuracy,
       totalQuestions: numQuestions,
-      topicName: gSubject,
-      subjectName: gSubject,
-      subtopicName: '',
+      topicName:
+        selectedTopicsList.length > 0
+          ? selectedTopicsList.join(', ')
+          : gTopic || gSubject || 'General Studies',
+      subjectName:
+        selectedSubjectsList.length > 0
+          ? selectedSubjectsList.join(', ')
+          : gSubject || 'General Studies',
+      subtopicName:
+        selectedSubtopicsList.length > 0
+          ? selectedSubtopicsList.join(', ')
+          : gSubtopic || '',
       targetExam: gExam,
       targetYear: gYear,
-      timeSpentSeconds: Math.max(30, gCount * 120 - timeLeft),
+      timeSpentSeconds: elapsedSeconds,
       responses: responsesPayload,
     };
 
@@ -1545,7 +1660,8 @@ export function GuestExamPage() {
 
   const answeredCount = Object.keys(revealedMap).length;
   const markedCount = Object.values(markedForReview).filter(Boolean).length;
-  const unattemptedCount = Math.max(0, totalQuestions - answeredCount);
+  const currentTotalQuestions = allQuestions.length > 0 ? allQuestions.length : totalQuestions;
+  const unattemptedCount = Math.max(0, currentTotalQuestions - answeredCount);
 
   return (
     <div
@@ -2508,9 +2624,13 @@ export function GuestExamPage() {
                             key={opt}
                             onClick={() => {
                               const val = opt === 'All Levels' ? '' : opt;
-                              navigate(
-                                `/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&difficulty=${encodeURIComponent(val)}&count=${gCount}`,
-                              );
+                              const current = new URLSearchParams(searchParams);
+                              if (val) {
+                                current.set('difficulty', val);
+                              } else {
+                                current.delete('difficulty');
+                              }
+                              navigate(`/guest-exam?${current.toString()}`);
                               setActiveDropdown(null);
                             }}
                             style={{
@@ -3256,9 +3376,13 @@ export function GuestExamPage() {
                           key={opt}
                           onClick={() => {
                             const val = opt === 'All Levels' ? '' : opt;
-                            navigate(
-                              `/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&difficulty=${encodeURIComponent(val)}&count=${gCount}`,
-                            );
+                            const current = new URLSearchParams(searchParams);
+                            if (val) {
+                              current.set('difficulty', val);
+                            } else {
+                              current.delete('difficulty');
+                            }
+                            navigate(`/guest-exam?${current.toString()}`);
                             setActiveDropdown(null);
                           }}
                           style={{

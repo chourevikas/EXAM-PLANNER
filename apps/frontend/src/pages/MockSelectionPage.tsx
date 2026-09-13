@@ -11,6 +11,7 @@ import {
 } from '../services/examService';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
+import { formatTaxonomyParam } from '../utils/taxonomyParam';
 import {
   CheckCircle2,
   PlayCircle,
@@ -355,13 +356,13 @@ export function MockSelectionPage() {
       queryParams.set('year', selectedYear);
     }
     if (selectedSubjectsList.length > 0) {
-      queryParams.set('subject', selectedSubjectsList.join(','));
+      queryParams.set('subject', formatTaxonomyParam(selectedSubjectsList));
     }
     if (selectedTopicsList.length > 0) {
-      queryParams.set('topic', selectedTopicsList.join(','));
+      queryParams.set('topic', formatTaxonomyParam(selectedTopicsList));
     }
     if (selectedSubtopicsList.length > 0) {
-      queryParams.set('subtopic', selectedSubtopicsList.join(','));
+      queryParams.set('subtopic', formatTaxonomyParam(selectedSubtopicsList));
     }
     if (selectedDifficulty && selectedDifficulty !== 'All Levels') {
       queryParams.set('difficulty', selectedDifficulty);

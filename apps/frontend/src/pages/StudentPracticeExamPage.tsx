@@ -23,6 +23,7 @@ import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmark
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
 import { guardedFetch } from '../utils/apiGuard';
+import { parseTaxonomyParam, formatTaxonomyParam } from '../utils/taxonomyParam';
 
 export function StudentPracticeExamPage() {
   const navigate = useNavigate();
@@ -49,19 +50,8 @@ export function StudentPracticeExamPage() {
   // Computed dynamic list of topics based on selected subject
   // Selected Multi-Select Arrays derived from URL parameters
   const selectedSubjectsList = useMemo(() => {
-    if (!gSubject || gSubject.startsWith('All Subjects')) return [];
-    return gSubject.split(',').map((s) => s.trim()).filter(Boolean);
+    return parseTaxonomyParam(gSubject);
   }, [gSubject]);
-
-  const selectedTopicsList = useMemo(() => {
-    if (!gTopic || gTopic.startsWith('All Topics')) return [];
-    return gTopic.split(',').map((t) => t.trim()).filter(Boolean);
-  }, [gTopic]);
-
-  const selectedSubtopicsList = useMemo(() => {
-    if (!gSubtopic || gSubtopic.startsWith('All Subtopics')) return [];
-    return gSubtopic.split(',').map((st) => st.trim()).filter(Boolean);
-  }, [gSubtopic]);
 
   // Computed dynamic list of topics based on selected subjects
   const availableTopicsList = useMemo(() => {
@@ -83,6 +73,10 @@ export function StudentPracticeExamPage() {
     }
     return Array.from(topicsSet).sort();
   }, [selectedSubjectsList, masterSyllabus]);
+
+  const selectedTopicsList = useMemo(() => {
+    return parseTaxonomyParam(gTopic, availableTopicsList);
+  }, [gTopic, availableTopicsList]);
 
   // Computed dynamic list of subtopics based on selected subjects and topics
   const availableSubtopicsList = useMemo(() => {
@@ -142,6 +136,10 @@ export function StudentPracticeExamPage() {
     return Array.from(subSet).sort();
   }, [selectedSubjectsList, selectedTopicsList, masterSyllabus]);
 
+  const selectedSubtopicsList = useMemo(() => {
+    return parseTaxonomyParam(gSubtopic, availableSubtopicsList);
+  }, [gSubtopic, availableSubtopicsList]);
+
   // Multi-Select Toggle & Select All Helpers
   const toggleSubjectFilter = (subjectName: string) => {
     const current = new URLSearchParams(searchParams);
@@ -159,7 +157,7 @@ export function StudentPracticeExamPage() {
       if (updated.length === 0) {
         current.delete('subject');
       } else {
-        current.set('subject', updated.join(','));
+        current.set('subject', formatTaxonomyParam(updated));
       }
       current.delete('topic');
       current.delete('subtopic');
@@ -171,7 +169,7 @@ export function StudentPracticeExamPage() {
     const current = new URLSearchParams(searchParams);
     const hierarchySubjects = Object.keys(masterSyllabus?.hierarchy || {});
     if (hierarchySubjects.length > 0) {
-      current.set('subject', hierarchySubjects.join(','));
+      current.set('subject', formatTaxonomyParam(hierarchySubjects));
     } else {
       current.delete('subject');
     }
@@ -195,7 +193,7 @@ export function StudentPracticeExamPage() {
       if (updated.length === 0) {
         current.delete('topic');
       } else {
-        current.set('topic', updated.join(','));
+        current.set('topic', formatTaxonomyParam(updated));
       }
       current.delete('subtopic');
     }
@@ -205,7 +203,7 @@ export function StudentPracticeExamPage() {
   const selectAllTopics = () => {
     const current = new URLSearchParams(searchParams);
     if (availableTopicsList.length > 0) {
-      current.set('topic', availableTopicsList.join(','));
+      current.set('topic', formatTaxonomyParam(availableTopicsList));
     } else {
       current.delete('topic');
     }
@@ -227,7 +225,7 @@ export function StudentPracticeExamPage() {
       if (updated.length === 0) {
         current.delete('subtopic');
       } else {
-        current.set('subtopic', updated.join(','));
+        current.set('subtopic', formatTaxonomyParam(updated));
       }
     }
     navigate(`/practice-exam?${current.toString()}`);
@@ -236,7 +234,7 @@ export function StudentPracticeExamPage() {
   const selectAllSubtopics = () => {
     const current = new URLSearchParams(searchParams);
     if (availableSubtopicsList.length > 0) {
-      current.set('subtopic', availableSubtopicsList.join(','));
+      current.set('subtopic', formatTaxonomyParam(availableSubtopicsList));
     } else {
       current.delete('subtopic');
     }
@@ -507,9 +505,9 @@ export function StudentPracticeExamPage() {
 
         const excludeIdsParam = Array.from(existingIds).join(',');
 
-        const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
-        const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
-        const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
+        const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? formatTaxonomyParam(selectedSubjectsList) : '';
+        const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? formatTaxonomyParam(selectedTopicsList) : '';
+        const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? formatTaxonomyParam(selectedSubtopicsList) : '';
         const rawDiff = gDifficulty && !gDifficulty.startsWith('All') ? gDifficulty.trim() : '';
 
         const activeExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]);
@@ -891,9 +889,9 @@ export function StudentPracticeExamPage() {
         } as any;
       };
 
-      const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
-      const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
-      const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
+      const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? formatTaxonomyParam(selectedSubjectsList) : '';
+      const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? formatTaxonomyParam(selectedTopicsList) : '';
+      const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? formatTaxonomyParam(selectedSubtopicsList) : '';
       const reqSubject = rawSubject;
       const reqTopic = rawTopic;
       const reqSubtopic = rawSubtopic;
