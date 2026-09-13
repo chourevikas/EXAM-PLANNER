@@ -407,6 +407,11 @@ async def update_current_user(
 
     if user_update.full_name is not None:
         db_user.full_name = user_update.full_name
+    if user_update.email is not None:
+        # Check if email is already taken by another user
+        existing_with_email = (await session.exec(select(User).where(User.email == user_update.email, User.id != db_user.id))).first()
+        if not existing_with_email:
+            db_user.email = user_update.email
     if user_update.profile_image is not None:
         db_user.profile_image = user_update.profile_image
     if user_update.preferred_language is not None:

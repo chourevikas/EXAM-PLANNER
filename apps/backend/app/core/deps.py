@@ -81,12 +81,29 @@ async def get_or_create_user_from_clerk(
     result = await session.exec(query)
     user = result.one_or_none()
 
+    if user:
+        updated = False
+        if name and (not user.full_name or user.full_name == "Clerk Sync User"):
+            user.full_name = name
+            updated = True
+        if clerk_email and (not user.email or user.email.endswith("@clerk.local")):
+            collision = (await session.exec(select(User).where(User.email == clerk_email, User.id != user.id))).first()
+            if not collision:
+                user.email = clerk_email
+                updated = True
+        if updated:
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+
     if not user and clerk_email:
         query_email = select(User).where(User.email == clerk_email)
         res_email = await session.exec(query_email)
         user = res_email.one_or_none()
         if user:
             user.clerk_id = clerk_id
+            if name and (not user.full_name or user.full_name == "Clerk Sync User"):
+                user.full_name = name
             session.add(user)
             await session.commit()
             await session.refresh(user)
@@ -181,6 +198,7 @@ async def get_current_user(
                 user = User.model_validate(cached_user)
                 if user.status == UserStatus.ACTIVE:
                     return user
+
 
             try:
                 user_id_val = int(user_id_str) if str(user_id_str).isdigit() else user_id_str

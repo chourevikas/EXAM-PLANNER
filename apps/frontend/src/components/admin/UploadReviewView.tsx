@@ -42,6 +42,7 @@ import { formatEnum } from '../../utils/formatEnum';
 
 interface UploadReviewViewProps {
   onNavigate?: (view: string, extraData?: any) => void;
+  initialTab?: 'UPLOAD_ONLY' | 'PIPELINE_ONLY';
 }
 
 // ----------------------------------------------------------------------
@@ -624,7 +625,7 @@ function TableRowItem({
 // ----------------------------------------------------------------------
 // Main UploadReviewView Component
 // ----------------------------------------------------------------------
-export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
+export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: UploadReviewViewProps = {}) {
   const {
     uploadMode,
     setUploadMode,
@@ -663,8 +664,15 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [stageFilter, setStageFilter] = useState<string>('ALL');
 
-  // UI Mode ('UPLOAD_ONLY' | 'PIPELINE_ONLY') - Default to PIPELINE_ONLY to show only Pipeline and Artifacts
-  const [activeTab, setActiveTab] = useState<'UPLOAD_ONLY' | 'PIPELINE_ONLY'>('PIPELINE_ONLY');
+  // UI Mode ('UPLOAD_ONLY' | 'PIPELINE_ONLY') - Default to UPLOAD_ONLY for direct paper upload
+  const [activeTab, setActiveTab] = useState<'UPLOAD_ONLY' | 'PIPELINE_ONLY'>(initialTab);
+
+  // Sync activeTab when initialTab prop changes from external navigation
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Table Pagination State
   const [currentPage, setCurrentPage] = useState<number>(1);

@@ -552,7 +552,10 @@ async def get_weekly_schedule(
     if cached_val is not None:
         return cached_val
 
-    # Run tasks and activities queries concurrently
+    # Run tasks, activities, and exam attempts queries concurrently
+    start_dt = datetime.combine(base_date, datetime.min.time(), tzinfo=timezone.utc)
+    end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
+
     async def get_tasks():
         async with async_session_factory() as s:
             stmt = select(StudyTask).where(
@@ -571,7 +574,16 @@ async def get_weekly_schedule(
             )
             return (await s.exec(stmt)).all()
 
-    tasks, activities = await asyncio.gather(get_tasks(), get_activities())
+    async def get_attempts():
+        async with async_session_factory() as s:
+            stmt = select(ExamAttempt).where(
+                ExamAttempt.user_id == current_user.id,
+                ExamAttempt.started_at >= start_dt,
+                ExamAttempt.started_at <= end_dt
+            )
+            return (await s.exec(stmt)).all()
+
+    tasks, activities, attempts = await asyncio.gather(get_tasks(), get_activities(), get_attempts())
 
     # Group by date
     days_data = []
@@ -592,9 +604,15 @@ async def get_weekly_schedule(
             seen_titles.add(title_key)
             day_tasks.append(t)
         day_activities = [a for a in activities if str(a.date) == date_str]
+        day_attempts = [
+            att for att in attempts
+            if (att.started_at.date() if hasattr(att.started_at, 'date') else str(att.started_at)[:10]) == date_str
+        ]
 
         allocated_mins = sum(t.allocated_time_minutes or 30 for t in day_tasks)
-        logged_mins = sum(a.duration_minutes or 0 for a in day_activities)
+        activity_mins = sum(a.duration_minutes or 0 for a in day_activities)
+        attempt_mins = sum(round((att.time_spent_seconds or 0) / 60) for att in day_attempts)
+        logged_mins = activity_mins + attempt_mins
         completed_tasks = sum(1 for t in day_tasks if t.is_completed)
 
         days_data.append({
@@ -900,7 +918,14 @@ async def log_study_activity(
     )
     session.add(new_activity)
     await session.commit()
-    await session.refresh(new_activity)
+    # Invalidate weekly schedule and user activity cache
+    try:
+        from app.cache import get_cache
+        cache = get_cache()
+        await cache.delete_pattern(f"*weekly_schedule*{current_user.id}*")
+        await cache.delete_pattern(f"*weekly_insights*{current_user.id}*")
+    except Exception:
+        pass
 
     # Trigger Gamification Updates
     gamification_service = GamificationService(session)

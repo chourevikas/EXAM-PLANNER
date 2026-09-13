@@ -304,7 +304,7 @@ export async function fetchCurrentUser(customToken?: string): Promise<any> {
   return data;
 }
 
-export async function updateUserProfile(updateData: { full_name?: string; profile_image?: string }, customToken?: string): Promise<any> {
+export async function updateUserProfile(updateData: { full_name?: string; profile_image?: string; email?: string }, customToken?: string): Promise<any> {
   const token = customToken || localStorage.getItem('access_token');
   if (!token) throw new Error('No access token found');
 

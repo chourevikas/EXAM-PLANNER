@@ -103,8 +103,11 @@ class UserService:
         await self.session.commit()
         await self.session.refresh(user)
 
-        from app.cache import invalidate_user_cache
+        from app.cache import invalidate_user_cache, get_cache
         await invalidate_user_cache(str(user_id))
+        cache = get_cache()
+        await cache.delete_pattern("ep:users:list*")
+        await cache.delete_pattern("users:list*")
         return user
 
     async def delete_user(self, user_id: int | str) -> None:

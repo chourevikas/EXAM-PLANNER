@@ -87,8 +87,14 @@ export function AdminPage() {
       case 'pipeline-status':
         return <ExamPipelineStatusView onNavigate={handleNavigate} />;
       case 'ai-queue':
+        return <UploadReviewView initialTab="PIPELINE_ONLY" onNavigate={handleNavigate} />;
       case 'upload':
-        return <UploadReviewView onNavigate={handleNavigate} />;
+        return (
+          <UploadReviewView
+            initialTab={selectedExamForReview === 'PIPELINE_ONLY' ? 'PIPELINE_ONLY' : 'UPLOAD_ONLY'}
+            onNavigate={handleNavigate}
+          />
+        );
       case 'questions':
         return <QuestionBankManager />;
       case 'exam-types':
