@@ -1326,32 +1326,13 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
               <h2 style={{ fontSize: 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
                 Upload Question Paper PDF
               </h2>
             </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab('PIPELINE_ONLY')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 14px',
-                fontSize: 13,
-                fontWeight: 600,
-                color: '#475569',
-                backgroundColor: '#F8FAFC',
-                border: '1px solid #CBD5E1',
-                borderRadius: 0,
-                cursor: 'pointer',
-              }}
-            >
-              <ArrowLeft size={14} /> Back to Pipeline & Artifacts
-            </button>
           </div>
 
           <form onSubmit={handleFormSubmit}>
