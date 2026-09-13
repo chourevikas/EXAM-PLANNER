@@ -250,6 +250,17 @@ async def async_init_db():
             except Exception as e:
                 logger.debug(f"Postgres table ensure user_notification_reads: {e}")
 
+            # Ensure PostgreSQL ENUM types for challenges exist
+            try:
+                await conn.execute(text("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'difficultylevel') THEN CREATE TYPE difficultylevel AS ENUM ('EASY', 'MEDIUM', 'HARD'); END IF; END $$;"))
+                await conn.execute(text("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'challengevisibility') THEN CREATE TYPE challengevisibility AS ENUM ('INVITE_ONLY', 'PUBLIC'); END IF; END $$;"))
+                await conn.execute(text("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'challengestatus') THEN CREATE TYPE challengestatus AS ENUM ('ACTIVE', 'ARCHIVED'); END IF; END $$;"))
+                await conn.execute(text("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'challengeinvitestatus') THEN CREATE TYPE challengeinvitestatus AS ENUM ('PENDING', 'VIEWED'); END IF; END $$;"))
+                await conn.execute(text("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'challengeattemptstatus') THEN CREATE TYPE challengeattemptstatus AS ENUM ('IN_PROGRESS', 'SUBMITTED'); END IF; END $$;"))
+                logger.info("Successfully verified/created challenge enum types in PostgreSQL.")
+            except Exception as e:
+                logger.debug(f"Postgres enum ensure challenge enums: {e}")
+
 
         # Ensure critical unique indices exist for translation tables, FSRS memory state and concept retention upserts
         try:
