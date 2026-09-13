@@ -5,6 +5,7 @@ import {
   ExamPipelineStatusItem,
 } from '../../../services/adminService';
 import { createAdaptivePoller, AdaptivePollerController } from '../../../utils/adaptivePolling';
+import { cleanExamTitle } from '../../../utils/formatEnum';
 import {
   RefreshCw,
   Search,
@@ -570,7 +571,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
               <thead>
                 <tr style={{ borderBottom: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>EXAM PAPER</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>CODE</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>STAGE</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, width: 140 }}>PROGRESS</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>QUESTIONS</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>STATUS</th>
@@ -600,14 +601,14 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
                       <td style={{ padding: '14px 16px', fontWeight: 600, color: '#172033', maxWidth: 260 }}>
-                        <div>{exam.name}</div>
+                        <div>{cleanExamTitle(exam.name)}</div>
                         <div style={{ fontSize: 11, color: '#667085', fontWeight: 400, marginTop: 2 }}>
-                          {exam.source_year} • {exam.stage} • {exam.paper_set_code}
+                          {exam.source_year ? `Year ${exam.source_year}` : ''}
                         </div>
                       </td>
 
-                      <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontSize: 12, color: '#667085' }}>
-                        {exam.code}
+                      <td style={{ padding: '14px 16px', fontSize: 12, color: '#667085' }}>
+                        {exam.stage ? exam.stage.toUpperCase() : 'PRELIMS'}
                       </td>
 
                       <td style={{ padding: '14px 16px' }}>
@@ -715,10 +716,10 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   EXAM DETAILS
                 </div>
                 <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: '4px 0 0 0' }}>
-                  {selectedExam.name}
+                  {cleanExamTitle(selectedExam.name)}
                 </h2>
-                <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#667085', marginTop: 2 }}>
-                  {selectedExam.code}
+                <div style={{ fontSize: 12, color: '#667085', marginTop: 2 }}>
+                  {selectedExam.source_year ? `Year ${selectedExam.source_year}` : ''}
                 </div>
               </div>
               <button
@@ -789,8 +790,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.subject_code}</div>
                   </div>
                   <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
-                    <div style={{ fontSize: 11, color: '#667085' }}>Paper Set Code</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.paper_set_code}</div>
+                    <div style={{ fontSize: 11, color: '#667085' }}>Year</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.source_year}</div>
                   </div>
                 </div>
               </div>

@@ -199,3 +199,16 @@ export function extractCanonicalExamName(raw?: string | null): string {
 
   return stripped.toUpperCase();
 }
+
+/**
+ * Strips Set designations (e.g. "- Set A", "Set SET_A", "(Set B)", "_set_a")
+ * and trailing punctuation from exam names for clean user-facing frontend display.
+ */
+export function cleanExamTitle(raw?: string | null): string {
+  if (!raw) return '';
+  return raw
+    .replace(/\s*[-–—:]?\s*\(?Set\s+[A-Za-z0-9_]+\)?/gi, '')
+    .replace(/[-_]set[-_][a-z0-9]+/gi, '')
+    .replace(/\s*[-–—]\s*$/g, '')
+    .trim();
+}

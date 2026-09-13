@@ -22,6 +22,7 @@ import {
 } from '../../../services/adminService';
 import { createAdaptivePoller } from '../../../utils/adaptivePolling';
 import { AddMissingQuestionModal } from '../modals/AddMissingQuestionModal';
+import { cleanExamTitle } from '../../../utils/formatEnum';
 
 interface MissingQuestionsViewProps {
   onSelectExam: (exam: any) => void;
@@ -558,27 +559,12 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>
-                        {exam.name || 'Exam Paper'}
+                        {cleanExamTitle(exam.name || 'Exam Paper')}
                       </h3>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 600,
-                          padding: '2px 8px',
-                          borderRadius: 4,
-                          backgroundColor: '#F1F5F9',
-                          color: '#475569',
-                          fontFamily: 'monospace',
-                        }}
-                      >
-                        {exam.code || exam.id}
-                      </span>
                     </div>
 
-                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 4, display: 'flex', gap: 12 }}>
-                      <span>Year: <strong>{exam.source_year || 'N/A'}</strong></span>
-                      <span>•</span>
-                      <span>Set: <strong>{exam.paper_set_code || 'A'}</strong></span>
+                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+                      Year: <strong>{exam.source_year || 'N/A'}</strong>
                     </div>
                   </div>
 

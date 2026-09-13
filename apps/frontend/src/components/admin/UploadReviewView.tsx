@@ -38,7 +38,7 @@ import {
   StuckPipelineItem,
 } from '../../services/adminService';
 import { createAdaptivePoller, AdaptivePollerController } from '../../utils/adaptivePolling';
-import { formatEnum } from '../../utils/formatEnum';
+import { formatEnum, cleanExamTitle } from '../../utils/formatEnum';
 
 interface UploadReviewViewProps {
   onNavigate?: (view: string, extraData?: any) => void;
@@ -148,103 +148,7 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false }
 }
 
 // ----------------------------------------------------------------------
-// 2. Horizontal 5-Stage Pipeline Visualizer Preview Banner
-// ----------------------------------------------------------------------
-function FiveStagePipelinePreview() {
-  const stages = [
-    { num: '01', title: 'Extraction', desc: 'AI PDF to JSON parsing', icon: FileText, color: 'var(--primary-red)', bg: '#F8FAFC', border: '#E2E8F0' },
-    { num: '02', title: 'Answer Mapping', desc: 'Linking official SET key', icon: Key, color: 'var(--primary-red)', bg: '#F8FAFC', border: '#E2E8F0' },
-    { num: '03', title: 'Explanations', desc: 'Detailed solution AI engine', icon: FileText, color: 'var(--primary-red)', bg: '#F8FAFC', border: '#E2E8F0' },
-    { num: '04', title: 'Human Review', desc: 'QA verification & audit', icon: ClipboardCheck, color: '#F2B623', bg: '#FEF3C7', border: '#FDE68A' },
-    { num: '05', title: 'Publish', desc: 'Live catalog deployment', icon: Database, color: '#16A34A', bg: '#ECFDF5', border: '#A7F3D0' },
-  ];
-
-  return (
-    <div
-      style={{
-        background: '#FFFFFF',
-        border: '1px solid #E2E8F0',
-        borderRadius: 0,
-        padding: '18px 22px',
-        marginBottom: 24,
-        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        <div style={{ width: 4, height: 18, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
-        <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
-          Examination Content Processing Flow
-        </h3>
-        <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500, marginLeft: 4 }}>
-          (5-Stage Pipeline Standard)
-        </span>
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-          gap: 12,
-          alignItems: 'stretch',
-        }}
-      >
-        {stages.map((stg) => {
-          const StageIcon = stg.icon;
-          return (
-            <div
-              key={stg.num}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '12px 14px',
-                borderRadius: 0,
-                backgroundColor: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                boxSizing: 'border-box',
-                minHeight: 64,
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 0,
-                  backgroundColor: stg.bg,
-                  color: stg.color,
-                  border: `1px solid ${stg.border}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <StageIcon size={16} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.04em', fontFamily: 'monospace' }}>
-                    {stg.num}
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#172033', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {stg.title}
-                  </span>
-                </div>
-                <div style={{ fontSize: 11, color: '#64748B', marginTop: 2, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {stg.desc}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------------
-// 3. Table Row with Stage Checkpoint Hover & Dimming Behavior
+// 2. Table Row with Stage Checkpoint Hover & Dimming Behavior
 // ----------------------------------------------------------------------
 function TableRowItem({
   exam,
@@ -308,6 +212,7 @@ function TableRowItem({
 
   return (
     <tr
+      className="pipeline-table-row"
       onClick={() => onSelect(exam)}
       onMouseEnter={() => setRowHovered(true)}
       onMouseLeave={() => {
@@ -322,8 +227,9 @@ function TableRowItem({
         position: 'relative',
       }}
     >
-      {/* EXAM PAPER (Two-line title hierarchy) */}
+      {/* EXAM PAPER (Clean title & year) */}
       <td
+        className="pipeline-cell cell-exam-paper"
         style={{
           padding: '14px 16px',
           maxWidth: 280,
@@ -332,21 +238,21 @@ function TableRowItem({
         }}
       >
         <div style={{ fontWeight: 700, fontSize: 13.5, color: '#172033', lineHeight: 1.3 }}>
-          {exam.name}
+          {cleanExamTitle(exam.name)}
         </div>
-        <div style={{ fontSize: 12, color: '#64748B', fontFamily: 'monospace', marginTop: 2 }}>
-          {exam.code} • {exam.source_year} • Set {exam.paper_set_code || 'A'}
+        <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+          {exam.source_year ? `Year ${exam.source_year}` : ''}
         </div>
       </td>
 
       {/* STATUS */}
-      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+      <td className="pipeline-cell cell-status" style={{ padding: '14px 16px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
         {renderStatusBadge(exam.status)}
       </td>
 
       {/* SINGLE EXTRACTION STATUS */}
-      <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160, maxWidth: 220 }}>
+      <td className="pipeline-cell cell-extraction" style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140, maxWidth: 240, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <span
               style={{
@@ -401,13 +307,13 @@ function TableRowItem({
       </td>
 
       {/* OVERALL STATUS */}
-      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+      <td className="pipeline-cell cell-overall" style={{ padding: '14px 16px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
         {renderOverallStatusBadge(exam)}
       </td>
 
       {/* ACTIONS */}
-      <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-        <div style={{ display: 'inline-flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+      <td className="pipeline-cell cell-actions" style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+        <div style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => onSelect(exam)}
             style={{
@@ -1430,10 +1336,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
         </div>
       )}
 
-      {/* 5. 5-Stage Pipeline Flow Preview Banner */}
-      {activeTab === 'UPLOAD_ONLY' && <FiveStagePipelinePreview />}
-
-      {/* 6. Pipeline Table View (Pipeline & Artifacts Repository) */}
+      {/* Pipeline Table View (Pipeline & Artifacts Repository) */}
       {activeTab === 'PIPELINE_ONLY' && (
         <div
           style={{
@@ -1552,8 +1455,80 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
               <div>No examination papers found matching filter criteria.</div>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
+            <div className="pipeline-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <style>{`
+                .pipeline-table {
+                  width: 100%;
+                  min-width: 0;
+                }
+                @media (max-width: 960px) {
+                  .pipeline-table thead {
+                    display: none;
+                  }
+                  .pipeline-table,
+                  .pipeline-table tbody {
+                    display: block;
+                    width: 100%;
+                  }
+                  .pipeline-table tr.pipeline-table-row {
+                    display: flex !important;
+                    flex-wrap: wrap !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    padding: 16px !important;
+                    gap: 12px 16px !important;
+                    border-bottom: 1px solid #E2E8F0 !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.pipeline-cell {
+                    padding: 0 !important;
+                    border: none !important;
+                    white-space: normal !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.cell-exam-paper {
+                    flex: 1 1 220px !important;
+                    max-width: 100% !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.cell-status {
+                    flex: 0 0 auto !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.cell-extraction {
+                    flex: 1 1 190px !important;
+                    max-width: 320px !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.cell-overall {
+                    flex: 0 0 auto !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.cell-actions {
+                    flex: 0 0 auto !important;
+                    margin-left: auto !important;
+                  }
+                }
+                @media (max-width: 580px) {
+                  .pipeline-table tr.pipeline-table-row {
+                    flex-direction: column !important;
+                    align-items: stretch !important;
+                    gap: 12px !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.cell-exam-paper,
+                  .pipeline-table tr.pipeline-table-row td.cell-extraction {
+                    max-width: 100% !important;
+                    width: 100% !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.cell-actions {
+                    margin-left: 0 !important;
+                    width: 100% !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.cell-actions > div {
+                    width: 100% !important;
+                    display: flex !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.cell-actions button {
+                    flex: 1 !important;
+                    justify-content: center !important;
+                  }
+                }
+              `}</style>
+              <table className="pipeline-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFAFA' }}>
                     <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
@@ -1832,10 +1807,10 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                   PIPELINE AUDIT & INSPECTION
                 </div>
                 <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: '4px 0 0 0' }}>
-                  {selectedExam.name}
+                  {cleanExamTitle(selectedExam.name)}
                 </h2>
-                <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#64748B', marginTop: 2 }}>
-                  {selectedExam.code} • Year {selectedExam.source_year} • Set {selectedExam.paper_set_code || 'A'}
+                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                  {selectedExam.source_year ? `Year ${selectedExam.source_year}` : ''}
                 </div>
               </div>
               <button
@@ -1896,7 +1871,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                       {selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '✓ Answer Key Mapped' : '✕ Missing Answer Key'}
                     </div>
                     <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
-                      Set Code: {selectedExam.paper_set_code || 'SET_A'}
+                      {selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? 'Official Key Verified' : 'Awaiting Answer Key'}
                     </div>
                   </div>
                 </div>
@@ -1942,8 +1917,8 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                   ARTIFACT PATHS & DEPLOYMENT
                 </div>
                 <div style={{ background: '#FAFAFA', padding: 12, borderRadius: 0, border: '1px solid #E2E8F0', fontFamily: 'monospace', fontSize: 11.5, color: '#334155', wordBreak: 'break-all' }}>
-                  <div>Questions JSON: {selectedExam.questions_json_path || 'artifacts/' + selectedExam.code + '/json/questions.json'}</div>
-                  <div style={{ marginTop: 6 }}>Solutions JSON: {selectedExam.solutions_json_path || 'artifacts/' + selectedExam.code + '/json/solutions.json'}</div>
+                  <div>Questions JSON: {selectedExam.questions_json_path || 'artifacts/json/questions.json'}</div>
+                  <div style={{ marginTop: 6 }}>Solutions JSON: {selectedExam.solutions_json_path || 'artifacts/json/solutions.json'}</div>
                 </div>
               </div>
             </div>

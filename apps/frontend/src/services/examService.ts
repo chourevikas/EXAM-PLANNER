@@ -15,6 +15,7 @@ import {
   PsychometricReport,
 } from '../types/exam';
 import { guardedFetch } from '../utils/apiGuard';
+import { cleanExamTitle } from '../utils/formatEnum';
 
 const API_BASE_URL = '/api/v1';
 
@@ -292,8 +293,8 @@ export async function listExams(
 }
 
 export function formatCanonicalExamTitle(exam: ExamItem): string {
-  if (exam.name) return exam.name;
-  return `${exam.exam_type} ${exam.source_year || ''}`.trim();
+  if (exam.name) return cleanExamTitle(exam.name);
+  return cleanExamTitle(`${exam.exam_type} ${exam.source_year || ''}`.trim());
 }
 export interface AttemptHistoryItem {
   attempt_id: number | string;

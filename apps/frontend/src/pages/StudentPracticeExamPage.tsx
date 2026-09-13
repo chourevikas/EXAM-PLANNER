@@ -21,7 +21,7 @@ import { fetchMasterSyllabus, verifySyllabusNode, listExams } from '../services/
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
-import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
+import { formatEnum, extractCanonicalExamName, cleanExamTitle } from '../utils/formatEnum';
 import { guardedFetch } from '../utils/apiGuard';
 import { parseTaxonomyParam, formatTaxonomyParam } from '../utils/taxonomyParam';
 
@@ -1603,8 +1603,8 @@ export function StudentPracticeExamPage() {
     >
       {/* Top Header Bar */}
       <ExamHeader
-        examTitle={gExam}
-        paperSubtitle={`${gExam} · ${gYear}${gSubject ? ' · ' + gSubject : ''}`}
+        examTitle={cleanExamTitle(gExam)}
+        paperSubtitle={`${cleanExamTitle(gExam)} · ${gYear}${gSubject ? ' · ' + gSubject : ''}`}
         timeLeft={timeLeft}
         language={language}
         showSubmitButton={true}

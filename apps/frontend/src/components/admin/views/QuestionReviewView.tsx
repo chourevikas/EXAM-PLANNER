@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   ArrowLeft,
@@ -39,6 +39,7 @@ import {
 import { MissingQuestionsView } from './MissingQuestionsView';
 import { AddMissingQuestionModal } from '../modals/AddMissingQuestionModal';
 import { QuestionReviewCard, QuestionReviewSavePayload } from '../QuestionReviewCard';
+import { cleanExamTitle } from '../../../utils/formatEnum';
 
 
 interface QuestionOptionItem {
@@ -977,9 +978,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ backgroundColor: '#FAFAFA', borderBottom: '1px solid #E2E8F0' }}>
-                  <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: '0.04em' }}>EXAM TITLE & CODE</th>
+                  <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: '0.04em' }}>EXAM TITLE</th>
                   <th style={{ padding: '12px 16px', fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: '0.04em' }}>STAGE / YEAR</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: '0.04em' }}>SET / EXTRACTED QS</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: '0.04em' }}>EXTRACTED QS</th>
                   <th style={{ padding: '12px 16px', fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: '0.04em' }}>STATUS</th>
                   <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: '0.04em', textAlign: 'right' }}>ACTIONS</th>
                 </tr>
@@ -1008,23 +1009,23 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     >
                       <td style={{ padding: '16px 20px' }}>
                         <div style={{ fontWeight: 700, fontSize: 14, color: isExtracting ? '#64748B' : '#172033', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {exam.name}
+                          {cleanExamTitle(exam.name)}
                           {isExtracting && (
                             <span style={{ fontSize: 11, padding: '2px 7px', backgroundColor: '#FEF3C7', color: '#B45309', fontWeight: 600, border: '1px solid #FDE68A', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                               <Loader2 size={11} className="animate-spin" /> In Extraction
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: 12, color: '#64748B', fontFamily: 'monospace', marginTop: 2 }}>{exam.code}</div>
+                        <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{exam.source_year ? `Year ${exam.source_year}` : ''}</div>
                       </td>
                       <td style={{ padding: '16px 16px', fontSize: 13, color: '#334155' }}>
                         <div style={{ textTransform: 'capitalize', fontWeight: 600 }}>{exam.stage || 'Prelims'}</div>
                         <div style={{ fontSize: 12, color: '#64748B' }}>{exam.source_year || '2024'}</div>
                       </td>
                       <td style={{ padding: '16px 16px', fontSize: 13 }}>
-                        <span style={{ fontWeight: 600, color: '#172033' }}>Set {exam.paper_set_code || 'A'}</span>
+                        <span style={{ fontWeight: 600, color: '#172033' }}>{exam.extracted_questions_count || 0} / {exam.total_questions || 100}</span>
                         <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                          {exam.extracted_questions_count || 0} / {exam.total_questions || 100} extracted
+                          Questions Extracted
                         </div>
                       </td>
                       <td style={{ padding: '16px 16px' }}>
@@ -1225,21 +1226,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <h1 style={{ fontSize: 22, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.015em' }}>
-                  {selectedExam.name}
+                  {cleanExamTitle(selectedExam.name)}
                 </h1>
-                <span
-                  style={{
-                    padding: '3px 9px',
-                    borderRadius: 0,
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    backgroundColor: '#F8FAFC',
-                    color: 'var(--primary-red)',
-                    border: '1px solid #BFDBFE',
-                  }}
-                >
-                  Set {selectedExam.paper_set_code || 'A'}
-                </span>
                 <span
                   style={{
                     padding: '3px 9px',
@@ -1262,11 +1250,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     color: '#475569',
                   }}
                 >
-                  {selectedExam.source_year || '2024'}
+                  {selectedExam.source_year ? `Year ${selectedExam.source_year}` : '2024'}
                 </span>
-              </div>
-              <div style={{ fontSize: 12, color: '#64748B', marginTop: 4, fontFamily: 'monospace' }}>
-                Code: {selectedExam.code}
               </div>
             </div>
           </div>

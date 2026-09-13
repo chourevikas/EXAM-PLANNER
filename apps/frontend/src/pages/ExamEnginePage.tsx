@@ -28,7 +28,7 @@ import {
 import { addBookmark, removeBookmark } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { AuthModal, AuthMode } from '../components/auth/AuthModal';
-import { formatEnum } from '../utils/formatEnum';
+import { formatEnum, cleanExamTitle } from '../utils/formatEnum';
 
 import {
   AttemptMode,
@@ -1210,7 +1210,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     >
       {/* Top Header */}
       <ExamHeader
-        examTitle={searchParams.get('exam') || "UPSC CSE"}
+        examTitle={cleanExamTitle(searchParams.get('exam') || "UPSC CSE")}
         paperSubtitle="UPSC CSE Prelims 2023 • GS Paper I"
         timeLeft={timeLeft}
         language={language}
