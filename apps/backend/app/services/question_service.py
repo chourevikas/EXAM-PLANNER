@@ -1,6 +1,6 @@
 import math
 import asyncio
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Union
 from fastapi import HTTPException
 from sqlalchemy import func, update
 from sqlmodel import select, or_, col
@@ -398,6 +398,8 @@ class QuestionService:
         limit: int = 10,
         language: LanguageCode = LanguageCode.ENGLISH,
         status: Optional[QuestionStatus] = None,
+        target_question_number: Optional[int] = None,
+        target_question_id: Optional[Union[int, str]] = None,
     ) -> ExamReviewQuestionsResponse:
         """
         Dedicated Admin/Reviewer endpoint returning complete questions, options,
@@ -429,9 +431,39 @@ class QuestionService:
         rejected_count = row[4] or 0
         can_publish = (pending_count == 0 and rejected_count == 0 and total_questions > 0)
 
-        # 2. Database-level pagination
-        page = max(1, page)
+        # 2. Database-level pagination & targeting
         limit = max(1, min(100, limit))
+        target_index: Optional[int] = None
+        matched_target_id: Optional[Union[str, int]] = None
+        matched_target_num: Optional[int] = None
+
+        if target_question_id or target_question_number:
+            t_stmt = select(Question.id, Question.question_number_in_paper).where(Question.exam_id == exam_id)
+            if target_question_id:
+                try:
+                    t_stmt = t_stmt.where(Question.id == int(target_question_id))
+                except (ValueError, TypeError):
+                    t_stmt = t_stmt.where(Question.id == target_question_id)
+            elif target_question_number:
+                t_stmt = t_stmt.where(Question.question_number_in_paper == target_question_number)
+
+            t_res = await self.session.exec(t_stmt)
+            target_row = t_res.first()
+            if target_row:
+                matched_target_id = target_row[0]
+                matched_target_num = target_row[1]
+                count_stmt = select(func.count(Question.id)).where(
+                    Question.exam_id == exam_id,
+                    Question.question_number_in_paper < matched_target_num,
+                )
+                if status is not None:
+                    count_stmt = count_stmt.where(Question.status == status)
+                c_res = await self.session.exec(count_stmt)
+                count_before = c_res.one() or 0
+                page = (count_before // limit) + 1
+                target_index = count_before % limit
+
+        page = max(1, page)
         start_idx = (page - 1) * limit
 
         page_stmt = select(Question).where(Question.exam_id == exam_id)
@@ -518,6 +550,9 @@ class QuestionService:
             page=page,
             limit=limit,
             pages=pages,
+            target_index=target_index,
+            target_question_id=str(matched_target_id) if matched_target_id is not None else None,
+            target_question_number=matched_target_num,
         )
 
     async def get_question_detail(

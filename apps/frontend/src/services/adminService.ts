@@ -416,6 +416,9 @@ export interface ExamReviewQuestionsResponse {
   page: number;
   limit: number;
   pages: number;
+  target_index?: number;
+  target_question_id?: string | number;
+  target_question_number?: number;
 }
 
 const _examReviewCache = new Map<string, { data: ExamReviewQuestionsResponse; timestamp: number }>();
@@ -451,17 +454,28 @@ export async function fetchExamQuestionsForReview(
   examId: number | string,
   page: number = 1,
   limit: number = 10,
-  status?: string
+  status?: string,
+  targetQuestionNumber?: number,
+  targetQuestionId?: string | number
 ): Promise<ExamReviewQuestionsResponse> {
+  const isTargeted = Boolean(targetQuestionNumber || targetQuestionId);
   const cacheKey = `exam_${examId}_p${page}_l${limit}_s${status || 'ALL'}`;
-  const cached = _examReviewCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < EXAM_REVIEW_CACHE_TTL) {
-    return cached.data;
+  if (!isTargeted) {
+    const cached = _examReviewCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < EXAM_REVIEW_CACHE_TTL) {
+      return cached.data;
+    }
   }
 
   let url = `${API_BASE_URL}/exams/${examId}/review-questions?page=${page}&limit=${limit}`;
   if (status && status !== 'ALL') {
     url += `&status=${status}`;
+  }
+  if (targetQuestionNumber) {
+    url += `&target_question_number=${targetQuestionNumber}`;
+  }
+  if (targetQuestionId) {
+    url += `&target_question_id=${encodeURIComponent(String(targetQuestionId))}`;
   }
   const res = await fetch(url, { headers: getAuthHeader() });
   if (!res.ok) {
@@ -469,7 +483,9 @@ export async function fetchExamQuestionsForReview(
     throw new Error(errorData.detail || 'Could not fetch exam review questions.');
   }
   const data: ExamReviewQuestionsResponse = await res.json();
-  _examReviewCache.set(cacheKey, { data, timestamp: Date.now() });
+  if (!isTargeted) {
+    _examReviewCache.set(cacheKey, { data, timestamp: Date.now() });
+  }
   return data;
 }
 

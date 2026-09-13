@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from fastapi import (
     APIRouter,
     Depends,
@@ -1017,6 +1017,8 @@ async def get_exam_review_questions_admin(
     ),
     page: int = Query(default=1, ge=1, description="Page number"),
     limit: int = Query(default=10, ge=1, le=100, description="Items per page"),
+    target_question_number: Optional[int] = Query(default=None, description="Jump to question number"),
+    target_question_id: Optional[Union[str, int]] = Query(default=None, description="Jump to question ID"),
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
@@ -1026,19 +1028,22 @@ async def get_exam_review_questions_admin(
 
     lang_code = parse_language(language)
     cache = get_cache()
-    cache_key = build_cache_key(
-        "admin:review",
-        str(exam_id),
-        page=page,
-        limit=limit,
-        lang=lang_code.value,
-        status=str(status.value if hasattr(status, "value") else status)
-        if status
-        else None,
-    )
-    cached_data = await cache.get(cache_key)
-    if cached_data is not None:
-        return JSONResponse(content=jsonable_encoder(cached_data))
+    is_targeted = bool(target_question_number or target_question_id)
+    cache_key = None
+    if not is_targeted:
+        cache_key = build_cache_key(
+            "admin:review",
+            str(exam_id),
+            page=page,
+            limit=limit,
+            lang=lang_code.value,
+            status=str(status.value if hasattr(status, "value") else status)
+            if status
+            else None,
+        )
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return JSONResponse(content=jsonable_encoder(cached_data))
 
     q_service = QuestionService(session)
     review_res = await q_service.get_exam_questions_for_review(
@@ -1047,10 +1052,13 @@ async def get_exam_review_questions_admin(
         limit=limit,
         language=lang_code,
         status=status,
+        target_question_number=target_question_number,
+        target_question_id=target_question_id,
     )
     if review_res is not None:
         serialized = jsonable_encoder(review_res)
-        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        if not is_targeted and cache_key:
+            await cache.set(cache_key, serialized, ttl_seconds=1800)
         return JSONResponse(content=serialized)
     return JSONResponse(content={})
 

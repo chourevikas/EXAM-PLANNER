@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field
 from app.db.models.enums import (
     DifficultyLevel,
@@ -213,6 +213,9 @@ class ExamReviewQuestionsResponse(BaseModel):
     page: int
     limit: int
     pages: int
+    target_index: Optional[int] = None
+    target_question_id: Optional[Union[str, int]] = None
+    target_question_number: Optional[int] = None
 
 
 class QuestionCatalogSubjectItemOut(BaseModel):

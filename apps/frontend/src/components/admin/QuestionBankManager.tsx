@@ -379,8 +379,16 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
   // Inspect in Reviewer Handler
   const handleOpenInReviewer = (q: QuestionCatalogItem) => {
     if (onNavigate && q.exam_id) {
-      setToastMsg(`Opening ${q.exam_name || 'Exam Paper'} in Exam Reviewer...`);
-      onNavigate('review', { id: q.exam_id, name: q.exam_name });
+      setToastMsg(`Opening Question #${q.question_number_in_paper} in Exam Reviewer...`);
+      onNavigate('review', {
+        id: q.exam_id,
+        name: q.exam_name,
+        code: q.exam_code,
+        source_year: q.source_year,
+        targetQuestionNumber: q.question_number_in_paper,
+        targetQuestionId: q.id,
+        _navTimestamp: Date.now(),
+      });
     } else {
       handleCopyQuestionId(q.id);
       setToastMsg(`Question ID #${q.id} copied to clipboard. Open the Exam Review tab to inspect.`);

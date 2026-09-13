@@ -145,10 +145,30 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
   // Selected Exam for Review
   const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | any | null>(initialExam || null);
+  const lastHandledNavRef = useRef<any>(null);
+  const lastSelectedExamIdRef = useRef<any>(null);
 
   useEffect(() => {
-    if (initialExam) {
-      setSelectedExam(initialExam);
+    if (!initialExam) return;
+    if (initialExam === lastHandledNavRef.current) return;
+    lastHandledNavRef.current = initialExam;
+    lastSelectedExamIdRef.current = initialExam.id;
+
+    setSelectedExam(initialExam);
+
+    const targetQNum = initialExam.targetQuestionNumber;
+    const targetQId = initialExam.targetQuestionId;
+
+    if (targetQNum || targetQId) {
+      setQuestionStatusFilter('ALL');
+      setQuestionSearchQuery('');
+      const estPage = targetQNum ? Math.floor((targetQNum - 1) / 10) + 1 : 1;
+      const estIdx = targetQNum ? (targetQNum - 1) % 10 : 0;
+      setCurrentPage(estPage);
+      setSelectedQuestionIndex(estIdx);
+      loadExamQuestions(initialExam.id, 'ALL', estPage, estIdx, targetQNum, targetQId);
+    } else {
+      loadExamQuestions(initialExam.id, questionStatusFilter, 1);
     }
   }, [initialExam]);
 
@@ -342,10 +362,17 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
 
   useEffect(() => {
-    if (selectedExam?.id) {
-      loadExamQuestions(selectedExam.id, questionStatusFilter, 1);
+    if (!selectedExam?.id) {
+      lastSelectedExamIdRef.current = null;
+      return;
     }
-  }, [selectedExam?.id, questionStatusFilter]);
+    // Skip if already handled by initialExam navigation
+    if (lastSelectedExamIdRef.current === selectedExam.id) {
+      return;
+    }
+    lastSelectedExamIdRef.current = selectedExam.id;
+    loadExamQuestions(selectedExam.id, questionStatusFilter, 1);
+  }, [selectedExam?.id]);
 
   const showToast = (type: 'success' | 'error' | 'warning', text: string) => {
     setToastMessage({ type, text });
@@ -367,10 +394,12 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   };
 
   const loadExamQuestions = async (
-    examId: string,
+    examId: string | number,
     statusFilterVal?: string,
     pageNum: number = 1,
-    targetSelectIdx: number = 0
+    targetSelectIdx: number = 0,
+    targetQuestionNumber?: number,
+    targetQuestionId?: string | number
   ) => {
     setLoadingQuestions(true);
     try {
@@ -383,7 +412,14 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           ? 'REJECTED'
           : undefined;
 
-      const data = await fetchExamQuestionsForReview(examId, pageNum, 10, backendStatus);
+      const data = await fetchExamQuestionsForReview(
+        examId,
+        pageNum,
+        10,
+        backendStatus,
+        targetQuestionNumber,
+        targetQuestionId
+      );
 
       const items: QuestionDetailItem[] = (data.items || []).map((q: any) => {
         const primaryH = q.hierarchy && q.hierarchy.length > 0 ? q.hierarchy[0] : null;
@@ -486,7 +522,32 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         updated_at: data.updated_at || null,
       });
 
-      const safeIdx = Math.max(0, Math.min(items.length - 1, targetSelectIdx));
+      // Update selectedExam metadata from response
+      setSelectedExam((prev: any) => ({
+        ...prev,
+        id: data.exam_id,
+        name: data.exam_name || prev?.name,
+        code: data.exam_code || prev?.code,
+        stage: data.stage || prev?.stage,
+        source_year: data.source_year || prev?.source_year,
+        paper_set_code: data.paper_set_code || prev?.paper_set_code,
+        total_questions: data.total_questions,
+        status: data.publish_status || (isExamPublished ? 'PUBLISHED' : prev?.status),
+      }));
+
+      let safeIdx = Math.max(0, Math.min(items.length - 1, targetSelectIdx));
+      if (data.target_index !== undefined && data.target_index !== null && data.target_index >= 0 && data.target_index < items.length) {
+        safeIdx = data.target_index;
+      } else if (targetQuestionId || targetQuestionNumber) {
+        const found = items.findIndex(
+          (item) =>
+            (targetQuestionId && (String(item.id) === String(targetQuestionId) || String(item.question_id) === String(targetQuestionId))) ||
+            (targetQuestionNumber && item.question_number_in_paper === targetQuestionNumber)
+        );
+        if (found !== -1) {
+          safeIdx = found;
+        }
+      }
       setSelectedQuestionIndex(safeIdx);
       setHasUnsavedChanges(false);
     } catch (err: any) {
@@ -512,6 +573,17 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     });
   };
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`review-q-item-${selectedQuestionIndex}`);
+      if (el) {
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [selectedQuestionIndex, currentPage]);
+
   const handlePageChange = (newPage: number, targetSelectIdx: number = 0) => {
     if (newPage < 1 || newPage > totalPages || (newPage === currentPage && !loadingQuestions)) return;
     safeNavigate(() => {
@@ -525,12 +597,18 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     safeNavigate(() => {
       setQuestionStatusFilter(newFilter);
       setCurrentPage(1);
+      setSelectedQuestionIndex(0);
+      if (selectedExam?.id) {
+        loadExamQuestions(selectedExam.id, newFilter, 1, 0);
+      }
     });
   };
 
   const handleBackToExamsList = () => {
     safeNavigate(() => {
       setSelectedExam(null);
+      lastSelectedExamIdRef.current = null;
+      lastHandledNavRef.current = null;
       setQuestionsList([]);
       setCurrentPage(1);
       setTotalPages(1);
@@ -1993,6 +2071,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 return (
                   <div
                     key={q.id}
+                    id={`review-q-item-${idx}`}
                     onClick={() => handleSelectQuestion(idx)}
                     style={{
                       padding: '12px 14px',
