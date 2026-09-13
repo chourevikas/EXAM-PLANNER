@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict
 
 from fastapi import HTTPException
-from sqlalchemy import func
+from sqlalchemy import func, case
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -191,21 +191,36 @@ class ChallengeService:
                 combined.append(c)
 
         summaries: List[ChallengeSummary] = []
+        c_ids = [c.id for c in combined if c.id is not None]
+
+        # 1. Bulk aggregate attempt counts and user best scores
+        stats_map: Dict[int, tuple] = {}
+        if c_ids:
+            stats_stmt = (
+                select(
+                    ChallengeAttempt.challenge_id,
+                    func.count().label("attempt_count"),
+                    func.max(case((ChallengeAttempt.user_id == user.id, ChallengeAttempt.total_score), else_=None)).label("my_best"),
+                )
+                .where(
+                    ChallengeAttempt.challenge_id.in_(c_ids),
+                    ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
+                )
+                .group_by(ChallengeAttempt.challenge_id)
+            )
+            for row in (await self.session.exec(stats_stmt)).all():
+                stats_map[row[0]] = (row[1] or 0, row[2])
+
+        # 2. Bulk load external creators in 1 query
+        other_creator_ids = list({c.creator_id for c in combined if c.creator_id and c.creator_id != user.id})
+        creators_map: Dict[int, User] = {}
+        if other_creator_ids:
+            users_res = await self.session.exec(select(User).where(User.id.in_(other_creator_ids)))
+            creators_map = {u.id: u for u in users_res.all()}
+
         for c in combined:
-            attempt_count = (await self.session.exec(
-                select(func.count()).select_from(ChallengeAttempt).where(
-                    ChallengeAttempt.challenge_id == c.id,
-                    ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
-                )
-            )).one()
-            my_best = (await self.session.exec(
-                select(func.max(ChallengeAttempt.total_score)).where(
-                    ChallengeAttempt.challenge_id == c.id,
-                    ChallengeAttempt.user_id == user.id,
-                    ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
-                )
-            )).one()
-            creator = user if c.creator_id == user.id else await self.session.get(User, c.creator_id)
+            attempt_count, my_best = stats_map.get(c.id, (0, None))
+            creator = user if c.creator_id == user.id else creators_map.get(c.creator_id)
             summaries.append(
                 ChallengeSummary(
                     id=c.id,
@@ -220,7 +235,7 @@ class ChallengeService:
                     creator_name=creator.full_name if creator else None,
                     created_at=c.created_at,
                     expires_at=c.expires_at,
-                    attempt_count=attempt_count or 0,
+                    attempt_count=attempt_count,
                     my_best_score=my_best,
                 )
             )

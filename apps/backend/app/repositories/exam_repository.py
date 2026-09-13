@@ -55,9 +55,9 @@ class ExamRepository:
             elif clean_code.startswith("upse-"):
                 alt_codes.append("upsc-" + clean_code[5:])
 
-            for alt_code in alt_codes:
+            if alt_codes:
                 res_alt = await self.session.exec(
-                    select(Exam).where(func.lower(Exam.code) == alt_code)
+                    select(Exam).where(func.lower(Exam.code).in_(alt_codes))
                 )
                 for e in res_alt.all():
                     if e.id is not None:

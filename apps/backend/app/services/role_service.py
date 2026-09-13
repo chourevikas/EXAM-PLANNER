@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import HTTPException
-from sqlmodel import select, col
+from sqlmodel import select, col, delete
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models.user import User, UserRole
@@ -135,11 +135,9 @@ class RoleService:
         return await self._to_dict(role)
 
     async def _set_permissions(self, role_id: int, permission_keys: List[str]) -> None:
-        existing_res = await self.session.exec(
-            select(RolePermission).where(RolePermission.role_id == role_id)
+        await self.session.exec(
+            delete(RolePermission).where(RolePermission.role_id == role_id)
         )
-        for link in existing_res.all():
-            await self.session.delete(link)
         await self.session.flush()
 
         if not permission_keys:

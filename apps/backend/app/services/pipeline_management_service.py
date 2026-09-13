@@ -134,6 +134,8 @@ class PipelineManagementService:
         incomplete_count = sum(1 for q in questions if not q.is_complete)
         published_count = sum(1 for q in questions if q.status == QuestionStatus.PUBLISHED)
 
+        p1 = run_dict.get("DOCUMENT_EXTRACTION") or run_dict.get("QUESTION_EXTRACTION")
+
         return {
             "exam_id": str(exam_id),
             "total_questions_extracted": len(questions),
@@ -141,18 +143,10 @@ class PipelineManagementService:
             "flagged_incomplete_count": incomplete_count,
             "pipelines": {
                 "question_extraction": {
-                    "status": run_dict["QUESTION_EXTRACTION"].status
-                    if "QUESTION_EXTRACTION" in run_dict
-                    else "PENDING",
-                    "current_step": run_dict["QUESTION_EXTRACTION"].current_step
-                    if "QUESTION_EXTRACTION" in run_dict
-                    else "NOT_STARTED",
-                    "progress_percent": run_dict["QUESTION_EXTRACTION"].progress_percent
-                    if "QUESTION_EXTRACTION" in run_dict
-                    else 0.0,
-                    "error_log": run_dict["QUESTION_EXTRACTION"].error_log
-                    if "QUESTION_EXTRACTION" in run_dict
-                    else None,
+                    "status": p1.status if p1 else "PENDING",
+                    "current_step": p1.current_step if p1 else "NOT_STARTED",
+                    "progress_percent": p1.progress_percent if p1 else 0.0,
+                    "error_log": p1.error_log if p1 else None,
                 },
                 "answer_key": {
                     "status": run_dict["ANSWER_KEY"].status

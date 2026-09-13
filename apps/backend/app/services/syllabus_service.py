@@ -86,8 +86,10 @@ class SyllabusService:
             select(Topic.subject_id)
             .join(Subtopic, Subtopic.topic_id == Topic.id)
             .join(Question, Question.subtopic_id == Subtopic.id)
-            .distinct()
         )
+        if exam_id:
+            active_subject_ids_stmt = active_subject_ids_stmt.where(Question.exam_id == exam_id)
+        active_subject_ids_stmt = active_subject_ids_stmt.distinct()
 
         if syl_ver:
             subj_stmt = (

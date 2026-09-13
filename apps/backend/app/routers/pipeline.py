@@ -192,6 +192,7 @@ async def upload_question_paper(
 
     from app.repositories.exam_repository import ExamRepository
     from app.services.exam_service import ExamService
+
     exam_repo = ExamRepository(db)
     existing_matches = await exam_repo.get_all_matching_canonical_exams(
         code=canonical_exam_code,
@@ -213,7 +214,7 @@ async def upload_question_paper(
                 pm_service = PipelineManagementService(db)
                 await pm_service.update_pipeline_status(
                     exam_id=exam.id,
-                    pipeline_type="QUESTION_EXTRACTION",
+                    pipeline_type="DOCUMENT_EXTRACTION",
                     status="CANCELLED",
                     current_step="CANCELLED_BY_USER_RESTART",
                     progress_percent=0.0,
@@ -224,7 +225,7 @@ async def upload_question_paper(
                     content={
                         "status": "TASK_ALREADY_RUNNING_CONFIRM_OVERWRITE",
                         "requires_confirmation": True,
-                        "pipeline_type": "QUESTION_EXTRACTION",
+                        "pipeline_type": "DOCUMENT_EXTRACTION",
                         "exam_id": str(exam.id),
                         "canonical_exam_code": canonical_exam_code,
                         "filename": file.filename,
@@ -262,12 +263,14 @@ async def upload_question_paper(
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
 
     from app.utils.pdf_utils import seed_pdf_cache
+
     seed_pdf_cache(persistent_path, temp_path)
 
     cleanup_file(temp_path)
 
     # Resolve ExamType metadata
     from app.repositories.exam_type_repository import ExamTypeRepository
+
     et_repo = ExamTypeRepository(db)
     resolved_et = None
     if exam_type_id:
@@ -277,7 +280,7 @@ async def upload_question_paper(
     if not resolved_et and exam_name:
         resolved_et = await et_repo.get_by_type(exam_name)
     if not resolved_et:
-        resolved_et = (await et_repo.get_by_type("upsc")) or (await et_repo.get_by_type("upse"))
+        resolved_et = await et_repo.get_by_type("upsc")
 
     et_id = resolved_et.id if resolved_et else None
     dur_mins = resolved_et.total_duration if resolved_et else 120
@@ -355,7 +358,7 @@ async def upload_question_paper(
     pm_service = PipelineManagementService(db)
     await pm_service.update_pipeline_status(
         exam_id=target_exam_id,
-        pipeline_type="QUESTION_EXTRACTION",
+        pipeline_type="DOCUMENT_EXTRACTION",
         status="RUNNING",
         current_step="PDF_UPLOADED_STARTING_QUESTION_EXTRACTION",
         progress_percent=5.0,
@@ -388,6 +391,8 @@ async def upload_question_paper(
         "filename": file.filename,
         "message": "Question paper extraction pipeline has started.",
     }
+
+
 @router.get("/questions-status/{exam_identifier}")
 async def get_exam_questions_extraction_status(
     exam_identifier: str,
@@ -440,6 +445,24 @@ async def get_exam_questions_extraction_status(
     published_count = 0
     questions_checklist = []
 
+    q_ids = [q.id for q in questions]
+    exp_qids = set()
+    opt_qids = set()
+    if q_ids:
+        exp_res = await db.exec(
+            select(QuestionExplanation.question_id).where(
+                QuestionExplanation.question_id.in_(q_ids)
+            )
+        )
+        exp_qids = set(exp_res.all())
+
+        opt_res = await db.exec(
+            select(QuestionOption.question_id).where(
+                QuestionOption.question_id.in_(q_ids)
+            )
+        )
+        opt_qids = set(opt_res.all())
+
     for q in questions:
         extracted_numbers.add(q.question_number_in_paper)
         if q.status == QuestionStatus.PENDING_HUMAN_REVIEW:
@@ -447,15 +470,8 @@ async def get_exam_questions_extraction_status(
         elif q.status == QuestionStatus.PUBLISHED:
             published_count += 1
 
-        exp_stmt = select(QuestionExplanation).where(
-            QuestionExplanation.question_id == q.id
-        )
-        exp_res = await db.exec(exp_stmt)
-        has_exp = exp_res.first() is not None
-
-        opt_stmt = select(QuestionOption).where(QuestionOption.question_id == q.id)
-        opt_res = await db.exec(opt_stmt)
-        has_opts = len(opt_res.all()) > 0
+        has_exp = q.id in exp_qids
+        has_opts = q.id in opt_qids
 
         questions_checklist.append(
             {
@@ -551,16 +567,23 @@ async def stop_pipeline_task(
     runs_overview = await pm_service.get_exam_pipeline_overview(target_exam_id)
 
     # Mark active RUNNING pipelines as STOPPED in DB
+    type_map = {
+        "question_extraction": ["DOCUMENT_EXTRACTION", "QUESTION_EXTRACTION"],
+        "answer_key": ["ANSWER_KEY"],
+        "explanation_indexing": ["EXPLANATION_INDEXING"],
+    }
     for p_type, r_data in runs_overview.get("pipelines", {}).items():
         if isinstance(r_data, dict) and r_data.get("status") == "RUNNING":
-            await pm_service.update_pipeline_status(
-                exam_id=target_exam_id,
-                pipeline_type=p_type,
-                status="STOPPED",
-                current_step="STOPPED_BY_ADMIN",
-                progress_percent=0.0,
-                error_log="Pipeline execution stopped by admin request.",
-            )
+            db_targets = type_map.get(p_type, [p_type])
+            for target_type in db_targets:
+                await pm_service.update_pipeline_status(
+                    exam_id=target_exam_id,
+                    pipeline_type=target_type,
+                    status="STOPPED",
+                    current_step="STOPPED_BY_ADMIN",
+                    progress_percent=0.0,
+                    error_log="Pipeline execution stopped by admin request.",
+                )
 
     return {
         "status": "STOPPED",

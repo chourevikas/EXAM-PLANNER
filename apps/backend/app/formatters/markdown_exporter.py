@@ -95,10 +95,29 @@ async def async_export_question_to_markdown(
     hierarchy_links = (await session.exec(links_stmt)).all()
     if hierarchy_links:
         lines.append("## 🏷️ Concept Taxonomy & Syllabus Links")
+        subtop_ids = list({l.subtopic_id for l in hierarchy_links if l.subtopic_id})
+        top_ids = list({l.topic_id for l in hierarchy_links if l.topic_id})
+        subj_ids = list({l.subject_id for l in hierarchy_links if l.subject_id})
+
+        subtops_map = {}
+        if subtop_ids:
+            res_st = await session.exec(select(Subtopic).where(Subtopic.id.in_(subtop_ids)))
+            subtops_map = {st.id: st for st in res_st.all()}
+
+        tops_map = {}
+        if top_ids:
+            res_t = await session.exec(select(Topic).where(Topic.id.in_(top_ids)))
+            tops_map = {t.id: t for t in res_t.all()}
+
+        subjs_map = {}
+        if subj_ids:
+            res_s = await session.exec(select(Subject).where(Subject.id.in_(subj_ids)))
+            subjs_map = {s.id: s for s in res_s.all()}
+
         for link in hierarchy_links:
-            subtop = await session.get(Subtopic, link.subtopic_id)
-            top = await session.get(Topic, link.topic_id)
-            subj = await session.get(Subject, link.subject_id)
+            subtop = subtops_map.get(link.subtopic_id)
+            top = tops_map.get(link.topic_id)
+            subj = subjs_map.get(link.subject_id)
             subj_name = subj.name if subj else "N/A"
             top_name = top.name if top else "N/A"
             subtop_name = subtop.name if subtop else "N/A"
@@ -190,19 +209,24 @@ async def async_export_question_to_markdown(
             .order_by(col(QuestionOption.display_order))
         )
         options = options_res.all()
+        opt_ids = [opt.id for opt in options]
+
+        opt_trans_by_optid = {}
+        if opt_ids:
+            ot_res = await session.exec(
+                select(OptionTranslation).where(
+                    OptionTranslation.option_id.in_(opt_ids),
+                    OptionTranslation.language == q_trans.language,
+                )
+            )
+            opt_trans_by_optid = {ot.option_id: ot for ot in ot_res.all()}
 
         correct_opt_label = None
         for opt in options:
             if opt.is_correct:
                 correct_opt_label = opt.option_label
 
-            opt_trans_res = await session.exec(
-                select(OptionTranslation).where(
-                    OptionTranslation.option_id == opt.id,
-                    OptionTranslation.language == q_trans.language,
-                )
-            )
-            opt_trans = opt_trans_res.first()
+            opt_trans = opt_trans_by_optid.get(opt.id)
             opt_text = opt_trans.option_text if opt_trans else ""
             distractor = opt_trans.distractor_analysis if opt_trans else None
 

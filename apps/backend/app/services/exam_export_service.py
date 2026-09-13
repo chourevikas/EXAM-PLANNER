@@ -118,6 +118,57 @@ class ExamExportService:
 
         total_weight_sum = 0.0
 
+        q_ids = [q.id for q in questions]
+
+        # 1. Bulk pre-fetch all options
+        opts_by_qid: Dict[int, list[QuestionOption]] = {}
+        if q_ids:
+            all_opts_res = await self.session.exec(
+                select(QuestionOption).where(QuestionOption.question_id.in_(q_ids))
+            )
+            for opt in all_opts_res.all():
+                opts_by_qid.setdefault(opt.question_id, []).append(opt)
+
+        # 2. Bulk pre-fetch all metadata
+        meta_by_qid: Dict[int, QuestionMetadata] = {}
+        if q_ids:
+            all_meta_res = await self.session.exec(
+                select(QuestionMetadata).where(QuestionMetadata.question_id.in_(q_ids))
+            )
+            for meta in all_meta_res.all():
+                meta_by_qid[meta.question_id] = meta
+
+        # 3. Bulk pre-fetch all hierarchy links
+        links_by_qid: Dict[int, list[QuestionHierarchyLink]] = {}
+        all_links = []
+        if q_ids:
+            all_links_res = await self.session.exec(
+                select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id.in_(q_ids))
+            )
+            all_links = all_links_res.all()
+            for link in all_links:
+                links_by_qid.setdefault(link.question_id, []).append(link)
+
+        # 4. Bulk pre-fetch all referenced taxonomy nodes in 3 queries
+        subtop_ids = list({l.subtopic_id for l in all_links if l.subtopic_id})
+        top_ids = list({l.topic_id for l in all_links if l.topic_id})
+        subj_ids = list({l.subject_id for l in all_links if l.subject_id})
+
+        subtops_map: Dict[int, Subtopic] = {}
+        if subtop_ids:
+            res_st = await self.session.exec(select(Subtopic).where(Subtopic.id.in_(subtop_ids)))
+            subtops_map = {st.id: st for st in res_st.all()}
+
+        tops_map: Dict[int, Topic] = {}
+        if top_ids:
+            res_t = await self.session.exec(select(Topic).where(Topic.id.in_(top_ids)))
+            tops_map = {t.id: t for t in res_t.all()}
+
+        subjs_map: Dict[int, Subject] = {}
+        if subj_ids:
+            res_s = await self.session.exec(select(Subject).where(Subject.id.in_(subj_ids)))
+            subjs_map = {s.id: s for s in res_s.all()}
+
         with zipfile.ZipFile(temp_zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
             for q in questions:
                 q_stem = get_canonical_question_filename_stem(self.session, q, exam)
@@ -128,27 +179,28 @@ class ExamExportService:
                 zip_file.writestr(md_filename, md_content)
 
                 # Collect Correct Option
-                opts_stmt = select(QuestionOption).where(QuestionOption.question_id == q.id)
-                opts = (await self.session.exec(opts_stmt)).all()
+                opts = opts_by_qid.get(q.id, [])
                 correct_opt = next((o.option_label for o in opts if o.is_correct), "N/A")
 
                 # Collect Metadata
-                meta_stmt = select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
-                q_meta = (await self.session.exec(meta_stmt)).first()
-                b_level = q_meta.blooms_level.value if q_meta and hasattr(q_meta.blooms_level, "value") else (str(q_meta.blooms_level) if q_meta else "N/A")
+                q_meta = meta_by_qid.get(q.id)
+                b_level = (
+                    q_meta.blooms_level.value
+                    if q_meta and hasattr(q_meta.blooms_level, "value")
+                    else (str(q_meta.blooms_level) if q_meta else "N/A")
+                )
 
                 # Collect Hierarchy Links for Weightages
-                links_stmt = select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id == q.id)
-                links = (await self.session.exec(links_stmt)).all()
+                links = links_by_qid.get(q.id, [])
 
                 primary_topic_name = "General Concept"
                 for link in links:
                     weight = link.relevance_weight or 1.0
                     total_weight_sum += weight
 
-                    subtop = await self.session.get(Subtopic, link.subtopic_id)
-                    top = await self.session.get(Topic, link.topic_id)
-                    subj = await self.session.get(Subject, link.subject_id)
+                    subtop = subtops_map.get(link.subtopic_id)
+                    top = tops_map.get(link.topic_id)
+                    subj = subjs_map.get(link.subject_id)
 
                     subj_name = subj.name if subj else "General Subject"
                     top_name = top.name if top else "General Topic"

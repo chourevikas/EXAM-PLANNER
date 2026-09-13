@@ -284,12 +284,18 @@ async def get_question_from_db_fallback(
         for t in db_q_trans
     }
 
+    opt_ids = [o.id for o in db_opts]
+    opt_trans_by_optid = {}
+    if opt_ids:
+        all_ot_res = await session.exec(
+            select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
+        )
+        for ot in all_ot_res.all():
+            opt_trans_by_optid.setdefault(ot.option_id, []).append(ot)
+
     opts_list = []
     for o in db_opts:
-        opt_trans_res = await session.exec(
-            select(OptionTranslation).where(OptionTranslation.option_id == o.id)
-        )
-        db_opt_trans = opt_trans_res.all()
+        db_opt_trans = opt_trans_by_optid.get(o.id, [])
         opt_trans_map = {
             (ot.language.value if hasattr(ot.language, "value") else str(ot.language)): ot.option_text
             for ot in db_opt_trans

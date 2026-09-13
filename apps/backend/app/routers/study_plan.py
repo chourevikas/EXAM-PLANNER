@@ -4,7 +4,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from sqlmodel import select, col, SQLModel, func
+from sqlmodel import select, col, SQLModel, func, delete
 from sqlalchemy import case, cast, Date
 from sqlmodel.ext.asyncio.session import AsyncSession
 import asyncio
@@ -370,16 +370,13 @@ async def generate_weekly_study_plan(
     end_date = base_date + timedelta(days=6)
 
     # Clear ONLY AI-generated template tasks for the current week, keeping user custom tasks (is_ai_recommended == False)
-    stmt_existing = select(StudyTask).where(
+    stmt_delete = delete(StudyTask).where(
         StudyTask.user_id == current_user.id,
         StudyTask.scheduled_date >= base_date,
         StudyTask.scheduled_date <= end_date,
-        StudyTask.is_ai_recommended == True
+        StudyTask.is_ai_recommended == True,
     )
-    existing_tasks = (await session.exec(stmt_existing)).all()
-
-    for t in existing_tasks:
-        await session.delete(t)
+    await session.exec(stmt_delete)
     await session.commit()
 
     # Carry forward any incomplete tasks from past weeks to the current week (Monday)

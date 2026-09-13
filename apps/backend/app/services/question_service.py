@@ -1000,6 +1000,20 @@ class QuestionService:
         target_links: Dict[int, Dict[str, Any]] = {}
 
         if hierarchy_links:
+            q_rec = await self.session.get(Question, question_id)
+            syl_stmt = select(SyllabusVersion)
+            if q_rec and q_rec.exam_id:
+                syl_stmt = syl_stmt.where(SyllabusVersion.exam_id == q_rec.exam_id)
+            syl_ver = (await self.session.exec(syl_stmt)).first()
+            if not syl_ver:
+                syl_ver = SyllabusVersion(
+                    exam_id=q_rec.exam_id if q_rec else None,
+                    version_code="DEFAULT_v1",
+                    title="Default Syllabus",
+                )
+                self.session.add(syl_ver)
+                await self.session.flush()
+
             for idx, link_p in enumerate(hierarchy_links):
                 s_id = link_p.subtopic_id
                 t_id = link_p.topic_id
@@ -1009,20 +1023,6 @@ class QuestionService:
                     s_name = (link_p.subject_name or "").strip() or "General Science"
                     t_name = (link_p.topic_name or "").strip() or "General Concepts"
                     st_name = (link_p.subtopic_name or "").strip() or t_name
-
-                    syl_stmt = select(SyllabusVersion)
-                    q_rec = await self.session.get(Question, question_id)
-                    if q_rec and q_rec.exam_id:
-                        syl_stmt = syl_stmt.where(SyllabusVersion.exam_id == q_rec.exam_id)
-                    syl_ver = (await self.session.exec(syl_stmt)).first()
-                    if not syl_ver:
-                        syl_ver = SyllabusVersion(
-                            exam_id=q_rec.exam_id if q_rec else None,
-                            version_code="DEFAULT_v1",
-                            title="Default Syllabus",
-                        )
-                        self.session.add(syl_ver)
-                        await self.session.flush()
 
                     # Upsert Subject
                     s_stmt = select(Subject).where(
@@ -1427,10 +1427,29 @@ class QuestionService:
         links_stmt = select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id == q.id)
         links = (await self.session.exec(links_stmt)).all()
 
+        subj_ids = list({link.subject_id for link in links if link.subject_id})
+        top_ids = list({link.topic_id for link in links if link.topic_id})
+        subtop_ids = list({link.subtopic_id for link in links if link.subtopic_id})
+
+        subjs_map = {}
+        if subj_ids:
+            subjs_res = await self.session.exec(select(Subject).where(Subject.id.in_(subj_ids)))
+            subjs_map = {s.id: s for s in subjs_res.all()}
+
+        tops_map = {}
+        if top_ids:
+            tops_res = await self.session.exec(select(Topic).where(Topic.id.in_(top_ids)))
+            tops_map = {t.id: t for t in tops_res.all()}
+
+        subtops_map = {}
+        if subtop_ids:
+            subtops_res = await self.session.exec(select(Subtopic).where(Subtopic.id.in_(subtop_ids)))
+            subtops_map = {st.id: st for st in subtops_res.all()}
+
         for link in links:
-            subj = await self.session.get(Subject, link.subject_id) if link.subject_id else None
-            top = await self.session.get(Topic, link.topic_id) if link.topic_id else None
-            subtop = await self.session.get(Subtopic, link.subtopic_id) if link.subtopic_id else None
+            subj = subjs_map.get(link.subject_id) if link.subject_id else None
+            top = tops_map.get(link.topic_id) if link.topic_id else None
+            subtop = subtops_map.get(link.subtopic_id) if link.subtopic_id else None
 
             rel_pct = int(round((link.relevance_weight or 1.0) * 100))
             hierarchy_detail.append(
