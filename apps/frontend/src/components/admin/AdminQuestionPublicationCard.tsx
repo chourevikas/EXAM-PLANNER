@@ -373,7 +373,7 @@ export function AdminQuestionPublicationCard({
           </div>
         ) : (
           <div style={{ fontSize: '13.5px', fontStyle: 'italic', color: '#64748B' }}>
-            No detailed solution recorded yet. Click &apos;Modify Question & Solutions&apos; to edit.
+            No detailed solution recorded yet. Click &apos;Edit Question&apos; to add one.
           </div>
         )}
       </div>
@@ -466,7 +466,7 @@ export function AdminQuestionPublicationCard({
                   </ReactMarkdown>
                 ) : (
                   <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>
-                    No distractor analysis specified for this option. Click &apos;Modify Question & Solutions&apos; to edit.
+                    No distractor analysis specified for this option. Click &apos;Edit Question&apos; to add one.
                   </span>
                 )}
               </div>
