@@ -62,6 +62,7 @@ class UserOut(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
+    email: Optional[str] = None
     profile_image: Optional[str] = None
     phone: Optional[str] = None
     bio: Optional[str] = None
@@ -87,6 +88,9 @@ class RefreshTokenRequest(BaseModel):
 
 class ClerkExchangeRequest(BaseModel):
     clerk_token: str
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    profile_image: Optional[str] = None
 
 
 class ForgotPasswordRequest(BaseModel):

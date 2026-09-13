@@ -233,10 +233,53 @@ async def clerk_exchange(
         payload.get("email")
         or payload.get("email_address")
         or payload.get("primary_email_address")
+        or body.email
     )
-    clerk_name = payload.get("name") or payload.get("full_name")
+    clerk_name = (
+        payload.get("name")
+        or payload.get("full_name")
+        or body.full_name
+    )
+    clerk_image = (
+        body.profile_image
+        or payload.get("picture")
+        or payload.get("image_url")
+    )
 
-    user = await get_or_create_user_from_clerk(session, clerk_id, clerk_email, clerk_name)
+    # Server-side fallback via Clerk REST API if email/name missing and CLERK_SECRET_KEY configured
+    if (not clerk_email or not clerk_name) and getattr(settings, "CLERK_SECRET_KEY", None):
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                c_res = await client.get(
+                    f"https://api.clerk.com/v1/users/{clerk_id}",
+                    headers={"Authorization": f"Bearer {settings.CLERK_SECRET_KEY}"},
+                )
+                if c_res.status_code == 200:
+                    c_data = c_res.json()
+                    first = c_data.get("first_name") or ""
+                    last = c_data.get("last_name") or ""
+                    c_full = f"{first} {last}".strip()
+                    if c_full and not clerk_name:
+                        clerk_name = c_full
+                    
+                    emails = c_data.get("email_addresses", [])
+                    primary_id = c_data.get("primary_email_address_id")
+                    for em in emails:
+                        if em.get("id") == primary_id:
+                            clerk_email = em.get("email_address")
+                            break
+                    if not clerk_email and emails:
+                        clerk_email = emails[0].get("email_address")
+                    
+                    if not clerk_image:
+                        clerk_image = c_data.get("image_url") or c_data.get("profile_image_url")
+        except Exception as e:
+            logger.warning(f"Could not fetch user details directly from Clerk API: {e}")
+
+    user = await get_or_create_user_from_clerk(
+        session, clerk_id, clerk_email, clerk_name, clerk_image
+    )
 
     auth_service = AuthService(session)
     token_response, refresh_token = await auth_service.exchange_clerk_token(user)
@@ -429,6 +472,10 @@ async def update_current_user(
     await session.refresh(db_user)
     from app.cache.helpers import invalidate_user_cache
     await invalidate_user_cache(str(db_user.id), db_user.clerk_id)
+    cache = get_cache()
+    await cache.delete_pattern("ep:users:list*")
+    await cache.delete_pattern("users:list*")
+    await cache.delete_pattern("ep:admin:*")
     return await _build_user_out_response(current_user=db_user, session=session, background_tasks=background_tasks)
 
 

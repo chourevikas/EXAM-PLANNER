@@ -70,7 +70,11 @@ async def verify_clerk_token(token: str) -> dict:
 
 
 async def get_or_create_user_from_clerk(
-    session: AsyncSession, clerk_id: str, clerk_email: str | None, name: str | None
+    session: AsyncSession,
+    clerk_id: str,
+    clerk_email: str | None,
+    name: str | None,
+    profile_image: str | None = None,
 ) -> User:
     """Links or provisions a local User row for a verified Clerk identity.
 
@@ -81,9 +85,16 @@ async def get_or_create_user_from_clerk(
     result = await session.exec(query)
     user = result.one_or_none()
 
+    placeholder_names = {"Clerk Sync User", "Clerk Account", "Aspirant", ""}
+
     if user:
         updated = False
-        if name and (not user.full_name or user.full_name == "Clerk Sync User"):
+        if name and (
+            not user.full_name
+            or user.full_name in placeholder_names
+            or user.full_name.startswith("Candidate #")
+            or user.full_name != name
+        ):
             user.full_name = name
             updated = True
         if clerk_email and (not user.email or user.email.endswith("@clerk.local")):
@@ -91,10 +102,19 @@ async def get_or_create_user_from_clerk(
             if not collision:
                 user.email = clerk_email
                 updated = True
+        if profile_image and (not user.profile_image or user.profile_image != profile_image):
+            user.profile_image = profile_image
+            updated = True
         if updated:
             session.add(user)
             await session.commit()
             await session.refresh(user)
+            from app.cache import invalidate_user_cache, get_cache
+            await invalidate_user_cache(str(user.id), user.clerk_id)
+            cache = get_cache()
+            await cache.delete_pattern("ep:users:list*")
+            await cache.delete_pattern("users:list*")
+            await cache.delete_pattern("ep:admin:*")
 
     if not user and clerk_email:
         query_email = select(User).where(User.email == clerk_email)
@@ -102,11 +122,19 @@ async def get_or_create_user_from_clerk(
         user = res_email.one_or_none()
         if user:
             user.clerk_id = clerk_id
-            if name and (not user.full_name or user.full_name == "Clerk Sync User"):
+            if name and (not user.full_name or user.full_name in placeholder_names):
                 user.full_name = name
+            if profile_image and not user.profile_image:
+                user.profile_image = profile_image
             session.add(user)
             await session.commit()
             await session.refresh(user)
+            from app.cache import invalidate_user_cache, get_cache
+            await invalidate_user_cache(str(user.id), user.clerk_id)
+            cache = get_cache()
+            await cache.delete_pattern("ep:users:list*")
+            await cache.delete_pattern("users:list*")
+            await cache.delete_pattern("ep:admin:*")
 
     if not user:
         target_email = clerk_email or f"{clerk_id}@clerk.local"
@@ -115,6 +143,10 @@ async def get_or_create_user_from_clerk(
         ).one_or_none()
         if existing_email_user:
             existing_email_user.clerk_id = clerk_id
+            if name and (not existing_email_user.full_name or existing_email_user.full_name in placeholder_names):
+                existing_email_user.full_name = name
+            if profile_image and not existing_email_user.profile_image:
+                existing_email_user.profile_image = profile_image
             session.add(existing_email_user)
             await session.commit()
             await session.refresh(existing_email_user)
@@ -124,12 +156,20 @@ async def get_or_create_user_from_clerk(
                 clerk_id=clerk_id,
                 email=target_email,
                 full_name=name or "Clerk Sync User",
+                profile_image=profile_image,
                 status=UserStatus.ACTIVE,
                 role=UserRole.STUDENT,
             )
             session.add(user)
             await session.commit()
             await session.refresh(user)
+
+        from app.cache import invalidate_user_cache, get_cache
+        await invalidate_user_cache(str(user.id), user.clerk_id)
+        cache = get_cache()
+        await cache.delete_pattern("ep:users:list*")
+        await cache.delete_pattern("users:list*")
+        await cache.delete_pattern("ep:admin:*")
 
     if user.status != UserStatus.ACTIVE:
         raise HTTPException(status_code=400, detail="Inactive user account")

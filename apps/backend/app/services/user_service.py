@@ -96,8 +96,38 @@ class UserService:
             )
 
         update_data = user_in.model_dump(exclude_unset=True)
+        tier = update_data.pop("subscription_tier", None)
+
+        if "email" in update_data and update_data["email"] != user.email:
+            new_email = update_data["email"]
+            collision = (
+                await self.session.exec(
+                    select(User).where(User.email == new_email, User.id != user.id)
+                )
+            ).first()
+            if collision:
+                raise BaseAppException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Email '{new_email}' is already in use by another account.",
+                )
+
         for field, value in update_data.items():
-            setattr(user, field, value)
+            if hasattr(user, field):
+                setattr(user, field, value)
+
+        if tier and user.role == UserRole.STUDENT:
+            from app.db.models.user import StudentProfile
+            prof = (
+                await self.session.exec(
+                    select(StudentProfile).where(StudentProfile.user_id == user.id)
+                )
+            ).first()
+            if prof:
+                prof.subscription_tier = tier
+                self.session.add(prof)
+            else:
+                new_prof = StudentProfile(user_id=user.id, subscription_tier=tier)
+                self.session.add(new_prof)
 
         self.session.add(user)
         await self.session.commit()
@@ -108,6 +138,7 @@ class UserService:
         cache = get_cache()
         await cache.delete_pattern("ep:users:list*")
         await cache.delete_pattern("users:list*")
+        await cache.delete_pattern("ep:admin:*")
         return user
 
     async def delete_user(self, user_id: int | str) -> None:

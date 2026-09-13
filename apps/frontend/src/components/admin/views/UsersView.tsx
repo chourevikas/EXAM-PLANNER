@@ -360,9 +360,18 @@ export function UsersView() {
                               fontWeight: 800,
                               boxShadow: '0 2px 8px rgba(var(--primary-red-rgb), 0.2)',
                               border: '2px solid #ffffff',
-                              flexShrink: 0
+                              flexShrink: 0,
+                              overflow: 'hidden',
                             }}>
-                              {getCandidateInitials(u)}
+                              {u.profile_image && u.profile_image.startsWith('http') ? (
+                                <img
+                                  src={u.profile_image}
+                                  alt={getCandidateDisplayName(u)}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                              ) : (
+                                getCandidateInitials(u)
+                              )}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

@@ -82,6 +82,17 @@ export function ProfilePage() {
       if (phoneNum && !phone) {
         setPhone(phoneNum);
       }
+
+      // Proactively sync actual email and name to backend
+      if (name || (email && !email.includes('@clerk.local')) || clerkUser.imageUrl) {
+        updateUserProfile({
+          full_name: name || undefined,
+          email: (email && !email.includes('@clerk.local')) ? email : undefined,
+          profile_image: clerkUser.imageUrl || undefined,
+        }).catch(err => {
+          console.warn('Failed to auto-sync Clerk profile to backend:', err);
+        });
+      }
     }
   }, [clerkUser, isClerkLoaded]);
   

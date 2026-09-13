@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     SUPERADMIN_PASSWORD: str = Field(default="SuperAdmin#2026!")
     SUPERADMIN_NAME: str = Field(default="System Super Admin")
 
+    # Clerk Authentication
+    CLERK_SECRET_KEY: Optional[str] = Field(default=None)
+    CLERK_WEBHOOK_SECRET: Optional[str] = Field(default=None)
+
     # RBAC / Teacher Review Rewards
     REVIEW_POINTS_PER_ACTION: int = Field(
         default=10,

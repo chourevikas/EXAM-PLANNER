@@ -336,9 +336,18 @@ export function CandidateDetailView({
                 boxShadow: '0 6px 18px rgba(79, 70, 229, 0.25)',
                 border: '2px solid #ffffff',
                 flexShrink: 0,
+                overflow: 'hidden',
               }}
             >
-              {displayInitials}
+              {candidate.profile_image && candidate.profile_image.startsWith('http') ? (
+                <img
+                  src={candidate.profile_image}
+                  alt={displayName}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                displayInitials
+              )}
             </div>
 
             {/* Identity Info */}
