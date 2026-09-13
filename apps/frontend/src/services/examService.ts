@@ -385,26 +385,15 @@ export async function getAttemptStatusByExam(
 export async function getAllAttemptQuestionsBulk(
   attemptId: number | string,
   language: string = 'ENGLISH',
-  presignedUrl?: string | null
+  offset: number = 0,
+  limit?: number
 ): Promise<any> {
-  // --- S3 Presigned URL Fetch Commented Out (DB is single source of truth) ---
-  // if (presignedUrl) {
-  //   try {
-  //     const res = await fetch(presignedUrl);
-  //     if (res.ok) {
-  //       const data = await res.json();
-  //       if (data && (Array.isArray(data.questions) || Array.isArray(data))) {
-  //         return { questions: data.questions || data };
-  //       }
-  //     }
-  //   } catch (err) {
-  //     console.warn('Presigned URL fetch failed, falling back to API bulk endpoint:', err);
-  //   }
-  // }
-
-  // 2. Secondary Strategy: Fetch from FastAPI backend bulk questions endpoint
+  // Fetch from FastAPI backend bulk questions endpoint with chunking support
   try {
-    const url = `${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/questions/bulk?language=${encodeURIComponent(language)}`;
+    let url = `${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/questions/bulk?language=${encodeURIComponent(language)}&offset=${offset}`;
+    if (limit !== undefined && limit !== null) {
+      url += `&limit=${limit}`;
+    }
     const response = await guardedFetch(url, {
       method: 'GET',
       headers: getAuthHeaders(),
@@ -412,7 +401,12 @@ export async function getAllAttemptQuestionsBulk(
 
     if (response.ok) {
       const data = await response.json();
-      return { questions: data.questions || (Array.isArray(data) ? data : []) };
+      return {
+        questions: data.questions || (Array.isArray(data) ? data : []),
+        total_questions: data.total_questions,
+        offset: data.offset,
+        limit: data.limit,
+      };
     }
   } catch (err) {
     console.warn('Failed to fetch bulk questions from API:', err);

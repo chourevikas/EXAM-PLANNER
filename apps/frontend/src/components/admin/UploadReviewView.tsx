@@ -344,179 +344,58 @@ function TableRowItem({
         {renderStatusBadge(exam.status)}
       </td>
 
-      {/* 3-STAGE PROGRESS CHECKPOINTS */}
+      {/* SINGLE EXTRACTION STATUS */}
       <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
-          {/* Stage 1 Checkpoint */}
-          <div
-            onMouseEnter={(e) => {
-              e.stopPropagation();
-              setHoveredStageIndex(1);
-            }}
-            onMouseLeave={(e) => {
-              e.stopPropagation();
-              setHoveredStageIndex(null);
-            }}
-            style={{
-              padding: '3px 8px',
-              borderRadius: 0,
-              fontSize: 11.5,
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              backgroundColor: s1Completed ? '#DCFCE7' : s1InProgress ? '#FEF3C7' : s1Missing ? '#FEF2F2' : '#F1F5F9',
-              color: s1Completed ? '#15803D' : s1InProgress ? '#B45309' : s1Missing ? '#B42318' : '#64748B',
-              border: `1px solid ${s1Completed ? '#86EFAC' : s1InProgress ? '#FDE68A' : s1Missing ? '#FECDCA' : '#CBD5E1'}`,
-              opacity: hoveredStageIndex !== null && hoveredStageIndex !== 1 ? 0.45 : 1,
-              transform: hoveredStageIndex === 1 ? 'scale(1.05)' : 'scale(1)',
-              transition: 'all 150ms ease-out',
-              position: 'relative',
-            }}
-          >
-            {s1Completed ? <CheckCircle2 size={12} /> : s1InProgress ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
-            <span>01 Extraction ({ext}/{total})</span>
-
-            {/* Stage Hover Tooltip Popover */}
-            {hoveredStageIndex === 1 && (
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '100%',
-                  left: 0,
-                  marginBottom: 6,
-                  backgroundColor: '#172033',
-                  color: '#FFFFFF',
-                  padding: '6px 10px',
-                  borderRadius: 0,
-                  fontSize: 11,
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
-                  zIndex: 100,
-                }}
-              >
-                <div><strong>Stage 1: Question Extraction</strong></div>
-                <div>Completion: {Math.round((ext / (total || 1)) * 100)}% ({ext}/{total} Qs)</div>
-                <div>State: {s1Completed ? 'COMPLETED' : s1InProgress ? 'PARSING' : 'PENDING'}</div>
-              </div>
-            )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160, maxWidth: 220 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span
+              style={{
+                padding: '3px 8px',
+                borderRadius: 0,
+                fontSize: 11.5,
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                backgroundColor: s1Completed ? '#DCFCE7' : isExtracting ? '#FEF3C7' : s1Missing ? '#FEF2F2' : '#F1F5F9',
+                color: s1Completed ? '#15803D' : isExtracting ? '#B45309' : s1Missing ? '#B42318' : '#64748B',
+                border: `1px solid ${s1Completed ? '#86EFAC' : isExtracting ? '#FDE68A' : s1Missing ? '#FECDCA' : '#CBD5E1'}`,
+              }}
+            >
+              {s1Completed ? (
+                <CheckCircle2 size={12} />
+              ) : isExtracting ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : s1Missing ? (
+                <AlertCircle size={12} />
+              ) : (
+                <FileText size={12} />
+              )}
+              <span>
+                {s1Completed
+                  ? `Extracted (${ext}/${total} Qs)`
+                  : isExtracting
+                  ? `Extracting (${ext}/${total} Qs)`
+                  : s1Missing
+                  ? 'Missing Paper'
+                  : `Queued (${ext}/${total} Qs)`}
+              </span>
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: s1Completed ? '#15803D' : isExtracting ? '#B45309' : '#64748B' }}>
+              {Math.min(100, Math.round((ext / (total || 1)) * 100))}%
+            </span>
           </div>
 
-          <span style={{ color: '#CBD5E1', fontSize: 11, fontWeight: 700 }}>→</span>
-
-          {/* Stage 2 Checkpoint */}
-          <div
-            onMouseEnter={(e) => {
-              e.stopPropagation();
-              setHoveredStageIndex(2);
-            }}
-            onMouseLeave={(e) => {
-              e.stopPropagation();
-              setHoveredStageIndex(null);
-            }}
-            style={{
-              padding: '3px 8px',
-              borderRadius: 0,
-              fontSize: 11.5,
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              backgroundColor: s2Completed ? '#DCFCE7' : s2InProgress ? '#FEF3C7' : s2Missing ? '#FEF2F2' : '#F1F5F9',
-              color: s2Completed ? '#15803D' : s2InProgress ? '#B45309' : s2Missing ? '#B42318' : '#64748B',
-              border: `1px solid ${s2Completed ? '#86EFAC' : s2InProgress ? '#FDE68A' : s2Missing ? '#FECDCA' : '#CBD5E1'}`,
-              opacity: hoveredStageIndex !== null && hoveredStageIndex !== 2 ? 0.45 : 1,
-              transform: hoveredStageIndex === 2 ? 'scale(1.05)' : 'scale(1)',
-              transition: 'all 150ms ease-out',
-              position: 'relative',
-            }}
-          >
-            {s2Completed ? <CheckCircle2 size={12} /> : s2InProgress ? <Loader2 size={12} className="animate-spin" /> : <Key size={12} />}
-            <span>02 Key ({keyCount}/{targetQ})</span>
-
-            {/* Stage Hover Tooltip Popover */}
-            {hoveredStageIndex === 2 && (
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '100%',
-                  left: 0,
-                  marginBottom: 6,
-                  backgroundColor: '#172033',
-                  color: '#FFFFFF',
-                  padding: '6px 10px',
-                  borderRadius: 0,
-                  fontSize: 11,
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
-                  zIndex: 100,
-                }}
-              >
-                <div><strong>Stage 2: Answer Key Mapping</strong></div>
-                <div>Mapped: {keyCount}/{targetQ} Keys (Set {exam.paper_set_code || 'A'})</div>
-                <div>State: {s2Completed ? 'MAPPED' : s2InProgress ? 'MAPPING' : 'MISSING KEY'}</div>
-              </div>
-            )}
-          </div>
-
-          <span style={{ color: '#CBD5E1', fontSize: 11, fontWeight: 700 }}>→</span>
-
-          {/* Stage 3 Checkpoint */}
-          <div
-            onMouseEnter={(e) => {
-              e.stopPropagation();
-              setHoveredStageIndex(3);
-            }}
-            onMouseLeave={(e) => {
-              e.stopPropagation();
-              setHoveredStageIndex(null);
-            }}
-            style={{
-              padding: '3px 8px',
-              borderRadius: 0,
-              fontSize: 11.5,
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              backgroundColor: stage3Completed ? '#DCFCE7' : stage3InProgress ? '#FEF3C7' : '#F1F5F9',
-              color: stage3Completed ? '#15803D' : stage3InProgress ? '#B45309' : '#64748B',
-              border: `1px solid ${stage3Completed ? '#86EFAC' : stage3InProgress ? '#FDE68A' : '#CBD5E1'}`,
-              opacity: hoveredStageIndex !== null && hoveredStageIndex !== 3 ? 0.45 : 1,
-              transform: hoveredStageIndex === 3 ? 'scale(1.05)' : 'scale(1)',
-              transition: 'all 150ms ease-out',
-              position: 'relative',
-            }}
-          >
-            {stage3Completed ? <CheckCircle2 size={12} /> : stage3InProgress ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
-            <span>03 Explanations ({expCount}/{targetQ})</span>
-
-            {/* Stage Hover Tooltip Popover */}
-            {hoveredStageIndex === 3 && (
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '100%',
-                  left: 0,
-                  marginBottom: 6,
-                  backgroundColor: '#172033',
-                  color: '#FFFFFF',
-                  padding: '6px 10px',
-                  borderRadius: 0,
-                  fontSize: 11,
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
-                  zIndex: 100,
-                }}
-              >
-                <div><strong>Stage 3: Explanations Generator</strong></div>
-                <div>Generated: {expCount}/{targetQ} Detailed Solutions</div>
-                <div>State: {stage3Completed ? 'COMPLETED' : stage3InProgress ? 'GENERATING' : 'QUEUED'}</div>
-              </div>
-            )}
+          {/* Micro Progress Bar */}
+          <div style={{ width: '100%', height: 4, backgroundColor: '#E2E8F0', borderRadius: 0, overflow: 'hidden' }}>
+            <div
+              style={{
+                height: '100%',
+                width: `${Math.min(100, Math.round((ext / (total || 1)) * 100))}%`,
+                backgroundColor: s1Completed ? '#16A34A' : isExtracting ? '#F59E0B' : '#94A3B8',
+                transition: 'width 300ms ease-out',
+              }}
+            />
           </div>
         </div>
       </td>
@@ -1544,7 +1423,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                 }}
               >
                 {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                {isUploading ? 'Uploading & Starting Pipeline...' : 'Upload & Start 3-Stage Pipeline'}
+                {isUploading ? 'Uploading & Starting Pipeline...' : 'Upload & Start Extraction Pipeline'}
               </button>
             </div>
           </form>
@@ -1684,7 +1563,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                       STATUS
                     </th>
                     <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
-                      3-STAGE PROGRESS
+                      EXTRACTION STATUS
                     </th>
                     <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
                       OVERALL STATUS
@@ -2025,18 +1904,18 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
 
               <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: 0 }} />
 
-              {/* 3 Pipeline Stages Breakdown */}
+              {/* Extraction Pipeline Details */}
               <div>
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
-                  3-STAGE PIPELINE PROGRESS DETAILS
+                  EXTRACTION PIPELINE DETAILS
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 0, padding: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 1: Question Extraction</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>One-Pass Content Extraction</span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#15803D' }}>
-                        {selectedExam.extracted_questions_count} / {selectedExam.total_questions || 100} Qs
+                        {selectedExam.extracted_questions_count} / {selectedExam.total_questions || 100} Questions & Solutions
                       </span>
                     </div>
                     <div style={{ height: 6, background: '#E2E8F0', borderRadius: 0, overflow: 'hidden' }}>
@@ -2048,23 +1927,8 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                         }}
                       />
                     </div>
-                  </div>
-
-                  <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 0, padding: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 2: Answer Key Mapping</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#15803D' }}>
-                        Set Code: {selectedExam.paper_set_code || 'SET_A'} ({selectedExam.key_mapped_count ?? 0}/{selectedExam.extracted_questions_count || selectedExam.total_questions || 100} mapped)
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 0, padding: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 3: Explanations & Knowledge Base</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= (selectedExam.extracted_questions_count || 1) ? '#15803D' : '#0284C7' }}>
-                        {selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= (selectedExam.extracted_questions_count || 1) ? `Ready & Verified (${selectedExam.explanations_count || selectedExam.extracted_questions_count}/${selectedExam.extracted_questions_count})` : `${selectedExam.explanations_count || 0}/${selectedExam.extracted_questions_count || selectedExam.total_questions || 100} Generated`}
-                      </span>
+                    <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 6 }}>
+                      Unified extraction captures questions, official SET answer keys, and detailed explanations in a single pipeline pass.
                     </div>
                   </div>
                 </div>

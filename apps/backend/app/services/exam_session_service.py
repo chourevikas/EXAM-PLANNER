@@ -628,9 +628,11 @@ class ExamSessionService:
         attempt_id: int | str,
         user_id: int,
         language: Optional[str] = "ENGLISH",
+        offset: int = 0,
+        limit: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Loads all questions for an attempt in bulk.
+        Loads questions for an attempt in bulk (supports chunking via offset & limit).
         Checks master JSON -> folder JSONs -> dynamic DB fallback via ExamJsonBuilder.
         Synchronizes all question and option IDs with the database BigInt IDs.
         """
@@ -641,7 +643,7 @@ class ExamSessionService:
                 status_code=404, detail="EXAM_NOT_FOUND: Associated exam not found."
             )
 
-        # 1. Direct High-Performance Database Query (Loads all questions for the exam without solutions)
+        # 1. Direct High-Performance Database Query (Loads questions for the exam without solutions)
         from app.services.exam_json_builder import ExamJsonBuilder
         builder = ExamJsonBuilder(self.session)
 
@@ -650,6 +652,11 @@ class ExamSessionService:
             .where(Question.exam_id == exam.id)
             .order_by(col(Question.question_number_in_paper))
         )
+        if offset and offset > 0:
+            stmt = stmt.offset(offset)
+        if limit is not None and limit > 0:
+            stmt = stmt.limit(limit)
+
         res = await self.session.exec(stmt)
         questions = res.all()
 
@@ -665,10 +672,13 @@ class ExamSessionService:
                 )
                 questions_payload.append(q_card)
 
+            total_count = attempt.total_questions or exam.total_questions or len(questions_payload)
             return {
                 "exam_id": str(exam.id),
                 "exam_code": exam.code,
-                "total_questions": len(questions_payload),
+                "total_questions": total_count,
+                "offset": offset,
+                "limit": limit,
                 "questions": questions_payload,
             }
 

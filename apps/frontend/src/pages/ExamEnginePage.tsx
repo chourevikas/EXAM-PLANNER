@@ -83,6 +83,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   // Preloaded All Questions for Zero-Lag Client-Side Caching & Language Switching
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
+  const BATCH_SIZE = 20;
+  const loadedBatchesRef = useRef<Set<number>>(new Set());
+  const inFlightBatchesRef = useRef<Set<number>>(new Set());
 
   // Active question & responses
   const [activeQuestion, setActiveQuestion] = useState<QuestionNavResponse['question'] | null>(null);
@@ -228,6 +231,38 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
 
 
+  // ─── Batch Question Loader (20 questions at a time for complete PYQ exams) ───
+  const loadQuestionBatch = useCallback(
+    async (batchIdx: number, targetAttemptId?: string | number, lang: string = language) => {
+      const attId = targetAttemptId || attemptId;
+      if (!attId) return;
+      if (loadedBatchesRef.current.has(batchIdx) || inFlightBatchesRef.current.has(batchIdx)) {
+        return;
+      }
+      inFlightBatchesRef.current.add(batchIdx);
+      const offset = batchIdx * BATCH_SIZE;
+      try {
+        const bulkData = await getAllAttemptQuestionsBulk(attId, lang, offset, BATCH_SIZE);
+        if (bulkData.questions && bulkData.questions.length > 0) {
+          loadedBatchesRef.current.add(batchIdx);
+          setAllQuestions((prev) => {
+            const nextQuestions = [...prev];
+            bulkData.questions.forEach((q: QuestionOut, i: number) => {
+              const targetIndex = offset + i;
+              nextQuestions[targetIndex] = q;
+            });
+            return nextQuestions;
+          });
+        }
+      } catch (err) {
+        console.warn(`Failed to preload batch ${batchIdx} (offset: ${offset}):`, err);
+      } finally {
+        inFlightBatchesRef.current.delete(batchIdx);
+      }
+    },
+    [attemptId, language]
+  );
+
   // ─── 1. Session Initialization / Resume ─────────────────────────────────────
   useEffect(() => {
     async function initSession() {
@@ -298,14 +333,12 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           // immediately — don't wait on the full bulk preload for that.
           await loadQuestion(sessionStatus.attempt_id, sessionStatus.current_question_index + 1);
 
-          // Background: preload the rest for zero-lag switching/language toggle later.
-          getAllAttemptQuestionsBulk(sessionStatus.attempt_id, language)
-            .then((bulkData) => {
-              if (bulkData.questions && bulkData.questions.length > 0) {
-                setAllQuestions(bulkData.questions);
-              }
-            })
-            .catch((bulkErr) => console.warn('Bulk preload warning (resume):', bulkErr));
+          // In complete PYQ exams, load 20 questions in batches so initial start and transitions are fast
+          const initialBatch = Math.floor(sessionStatus.current_question_index / BATCH_SIZE);
+          loadQuestionBatch(initialBatch, sessionStatus.attempt_id, language);
+          if ((initialBatch + 1) * BATCH_SIZE < sessionStatus.total_questions) {
+            loadQuestionBatch(initialBatch + 1, sessionStatus.attempt_id, language);
+          }
         } else if (examId) {
           // Start new attempt session
           const startRes = await startExamAttempt({ exam_id: examId, mode: 'EXAM', language });
@@ -318,15 +351,20 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           setSelectedOptionId(startRes.first_question.response_state.selected_option_id as string | null);
           setIsMarkedForReview(startRes.first_question.response_state.is_marked_for_review);
 
-          // Background: preload the rest for zero-lag switching — the first
-          // question is already visible, so this must not block the loading state.
-          getAllAttemptQuestionsBulk(startRes.attempt_id, language)
-            .then((bulkData) => {
-              if (bulkData.questions && bulkData.questions.length > 0) {
-                setAllQuestions(bulkData.questions);
-              }
-            })
-            .catch((bulkErr) => console.warn('Bulk preload warning:', bulkErr));
+          // Seed question 1 into memory
+          setAllQuestions((prev) => {
+            const next = [...prev];
+            next[0] = startRes.first_question.question;
+            return next;
+          });
+
+          // In complete PYQ exams, load questions in batches of 20 starting with Batch 0 (Q1-20)
+          loadQuestionBatch(0, startRes.attempt_id, language);
+          if (startRes.total_questions > BATCH_SIZE) {
+            setTimeout(() => {
+              loadQuestionBatch(1, startRes.attempt_id, language);
+            }, 300);
+          }
         } else {
           // Fallback demo questions if no examId/attemptId provided in route
           loadFallbackDemoData();
@@ -599,7 +637,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       saveQuestionVisitTime(activeQuestion.question_id);
     }
 
-    if (allQuestions.length >= qNum && allQuestions[qNum - 1]) {
+    if (allQuestions[qNum - 1]) {
       // Instant Client-Side Zero-Lag Question Flipping
       questionStartTimeRef.current = Date.now();
       const q = allQuestions[qNum - 1];
@@ -625,6 +663,10 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       return;
     }
 
+    // Question not in cache yet: immediately trigger its 20-question batch
+    const targetBatch = Math.floor((qNum - 1) / BATCH_SIZE);
+    loadQuestionBatch(targetBatch, attId, language);
+
     setIsLoadingQuestion(true);
     questionStartTimeRef.current = Date.now();
     try {
@@ -632,6 +674,13 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       setActiveQuestion(qNav.question);
       setSelectedOptionId(qNav.response_state.selected_option_id as string | null);
       setIsMarkedForReview(qNav.response_state.is_marked_for_review);
+
+      // Seed question into cache
+      setAllQuestions((prev) => {
+        const next = [...prev];
+        next[qNum - 1] = qNav.question;
+        return next;
+      });
 
       // Find matching label
       const matchedOpt = qNav.question.options.find((o) => o.option_id === qNav.response_state.selected_option_id);
@@ -680,40 +729,24 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       ensureQuestionTranslation(allQuestions[currentQIndex + 1], newLang);
     }
 
-    // Refresh bulk preloaded questions in background with new language
+    // Refresh loaded question batches in background with new language
     if (attemptId) {
-      getAllAttemptQuestionsBulk(attemptId, newLang)
-        .then((bulkData) => {
-          if (bulkData.questions && bulkData.questions.length > 0) {
-            setAllQuestions((prev) => {
-              const bulkMap = new Map<string, any>(bulkData.questions.map((bq: any) => [String(bq.question_id), bq]));
-              return prev.map((item) => {
-                const bq: any = bulkMap.get(String(item.question_id));
-                if (!bq) return item;
-                return {
-                  ...item,
-                  text: bq.text || item.text,
-                  text_hindi: bq.text_hindi || item.text_hindi,
-                  translations: { ...(item.translations || {}), ...(bq.translations || {}) },
-                  options: (bq.options || item.options || []).map((bOpt: any) => {
-                    const existingOpt = (item.options || []).find(
-                      (o: any) => String(o.option_id) === String(bOpt.option_id),
-                    );
-                    return {
-                      ...(existingOpt || {}),
-                      ...bOpt,
-                      translations: {
-                        ...(existingOpt?.translations || {}),
-                        ...(bOpt.translations || {}),
-                      },
-                    };
-                  }),
-                };
+      loadedBatchesRef.current.forEach((batchIdx) => {
+        const offset = batchIdx * BATCH_SIZE;
+        getAllAttemptQuestionsBulk(attemptId, newLang, offset, BATCH_SIZE)
+          .then((bulkData) => {
+            if (bulkData.questions && bulkData.questions.length > 0) {
+              setAllQuestions((prev) => {
+                const nextQ = [...prev];
+                bulkData.questions.forEach((q: QuestionOut, i: number) => {
+                  nextQ[offset + i] = q;
+                });
+                return nextQ;
               });
-            });
-          }
-        })
-        .catch((err) => console.warn('Bulk preload refresh warning:', err));
+            }
+          })
+          .catch((err) => console.warn(`Batch ${batchIdx} language refresh warning:`, err));
+      });
     }
   };
 
@@ -929,6 +962,12 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       setCurrentQIndex(nextIdx);
       markAsVisited(nextIdx);
       if (attemptId) {
+        // Proactively preload next batch of 20 as we move ahead
+        const currentBatch = Math.floor(nextIdx / BATCH_SIZE);
+        const nextBatch = currentBatch + 1;
+        if (nextBatch * BATCH_SIZE < totalQuestions) {
+          loadQuestionBatch(nextBatch);
+        }
         await loadQuestion(attemptId, nextIdx + 1);
       }
       if (isTabletOrBelow) setMobileTab('question');
@@ -942,6 +981,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       setCurrentQIndex(prevIdx);
       markAsVisited(prevIdx);
       if (attemptId) {
+        const targetBatch = Math.floor(prevIdx / BATCH_SIZE);
+        loadQuestionBatch(targetBatch);
         await loadQuestion(attemptId, prevIdx + 1);
       }
       if (isTabletOrBelow) setMobileTab('question');
@@ -953,6 +994,12 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     setCurrentQIndex(idx);
     markAsVisited(idx);
     if (attemptId) {
+      // Ensure target batch of 20 is loaded for palette jump
+      const targetBatch = Math.floor(idx / BATCH_SIZE);
+      loadQuestionBatch(targetBatch);
+      if ((targetBatch + 1) * BATCH_SIZE < totalQuestions) {
+        loadQuestionBatch(targetBatch + 1);
+      }
       await loadQuestion(attemptId, idx + 1);
     }
     if (isTabletOrBelow) setMobileTab('question');
@@ -1045,8 +1092,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         }
         await flushPendingBatches();
 
-        const allFinalResponses = (allQuestions || []).map((q) => {
-          const qId = q.question_id;
+        const allFinalResponses = (palette.length > 0 ? palette : (allQuestions || []).filter(Boolean)).map((item: any) => {
+          const qId = item.question_id;
           const qKey = String(qId);
           const isCurrentActive = String(activeQuestion?.question_id) === qKey;
           const saved = lastSyncedSnapshotRef.current.get(qKey) || pendingBatchQueueRef.current.get(qKey);
@@ -1110,13 +1157,14 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   // Dynamic Subjects Extraction for Exam Sidebar (Shows all subjects, hides topics/subtopics)
   const subjectSections: Section[] = React.useMemo(() => {
-    if (!allQuestions || allQuestions.length === 0) {
+    const validQuestions = (allQuestions || []).filter(Boolean);
+    if (validQuestions.length === 0) {
       return [
         { id: 'all', label: 'All Subjects', total: totalQuestions, startQuestionNumber: 1, endQuestionNumber: totalQuestions }
       ];
     }
     const subjMap: Record<string, { total: number; startQNum: number; endQNum: number }> = {};
-    allQuestions.forEach((q, idx) => {
+    validQuestions.forEach((q, idx) => {
       const qNum = (q as any).question_number || idx + 1;
       const subj = (q as any).subject || (q as any).section_code || 'General Studies';
       if (!subjMap[subj]) {
@@ -1127,7 +1175,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     });
 
     const result: Section[] = [
-      { id: 'all', label: 'All Subjects', total: allQuestions.length, startQuestionNumber: 1, endQuestionNumber: allQuestions.length },
+      { id: 'all', label: 'All Subjects', total: totalQuestions || validQuestions.length, startQuestionNumber: 1, endQuestionNumber: totalQuestions || validQuestions.length },
     ];
     Object.entries(subjMap).forEach(([name, data]) => {
       result.push({

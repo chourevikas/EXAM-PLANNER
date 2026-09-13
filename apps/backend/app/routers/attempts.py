@@ -1,5 +1,5 @@
 from typing import Optional, Any
-from fastapi import APIRouter, Depends, status, BackgroundTasks, Body
+from fastapi import APIRouter, Depends, status, BackgroundTasks, Body, Query
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -101,17 +101,23 @@ async def start_exam_attempt(
 async def get_all_attempt_questions_bulk(
     attempt_id: int | str,
     language: Optional[str] = None,
+    offset: int = Query(default=0, ge=0),
+    limit: Optional[int] = Query(default=None, ge=1),
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Retrieves all exam questions in 1 single bulk response for seamless zero-lag client-side preloading.
+    Retrieves exam questions in bulk (supports pagination via offset & limit) for seamless zero-lag client-side preloading.
     Defaults to candidate's preferred_language if unspecified.
     """
     effective_lang = language or getattr(current_user, "preferred_language", "en") or "en"
     service = ExamSessionService(session)
     return await service.get_all_questions_bulk(
-        attempt_id=attempt_id, user_id=current_user.id, language=effective_lang
+        attempt_id=attempt_id,
+        user_id=current_user.id,
+        language=effective_lang,
+        offset=offset,
+        limit=limit,
     )
 
 

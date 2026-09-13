@@ -1076,6 +1076,15 @@ export function GuestExamPage() {
         setPalette([]);
       }
 
+      // Query solution in advance for initial question and upcoming question
+      const startQ = questionsList[0];
+      if (startQ?.question_id) {
+        fetchPracticeQuestionSolution(startQ.question_id, true);
+      }
+      if (questionsList[1]?.question_id) {
+        fetchPracticeQuestionSolution(questionsList[1].question_id, true);
+      }
+
       if (isInitialLoadRef.current) {
         setIsLoading(false);
         isInitialLoadRef.current = false;
@@ -1167,10 +1176,12 @@ export function GuestExamPage() {
 
   // Fetches full authoritative solution for a practice question via /api/v1/questions/{id}/solution
   const practiceSolutionLoadingRef = React.useRef<Record<string | number, boolean>>({});
-  const fetchPracticeQuestionSolution = async (targetId: string | number) => {
+  const fetchPracticeQuestionSolution = async (targetId: string | number, silent: boolean = false) => {
     if (!targetId || practiceSolutionLoadingRef.current[targetId]) return;
     practiceSolutionLoadingRef.current[targetId] = true;
-    setIsSolutionLoading(true);
+    if (!silent) {
+      setIsSolutionLoading(true);
+    }
     try {
       const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
       if (solRes.ok) {
@@ -1180,8 +1191,10 @@ export function GuestExamPage() {
           [targetId]: solPayload,
           [String(targetId)]: solPayload,
         }));
+        // Only enrich revealedMap if the question has already been submitted/revealed
         setRevealedMap((prev) => {
-          const current = prev[targetId] || prev[String(targetId)] || {};
+          const current = prev[targetId] || prev[String(targetId)];
+          if (!current) return prev;
           const updatedObj = {
             ...current,
             question_id: targetId,
@@ -1203,7 +1216,9 @@ export function GuestExamPage() {
       console.warn('Practice solution fetch error:', err);
     } finally {
       practiceSolutionLoadingRef.current[targetId] = false;
-      setIsSolutionLoading(false);
+      if (!silent) {
+        setIsSolutionLoading(false);
+      }
     }
   };
 
@@ -1222,6 +1237,14 @@ export function GuestExamPage() {
     setCurrentQIndex(idx);
     const targetQ = allQuestions[idx];
     setActiveQuestion(targetQ);
+
+    // Query solution in advance for current & next question so 'Show Solution' is never delayed
+    if (targetQ?.question_id) {
+      fetchPracticeQuestionSolution(targetQ.question_id, true);
+    }
+    if (allQuestions[idx + 1]?.question_id) {
+      fetchPracticeQuestionSolution(allQuestions[idx + 1].question_id, true);
+    }
 
     if (language && language !== 'en' && targetQ) {
       ensureQuestionTranslation(targetQ, language);
