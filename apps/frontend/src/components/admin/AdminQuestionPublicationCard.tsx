@@ -283,7 +283,7 @@ export function AdminQuestionPublicationCard({
       {/* 4. OPTIONS LIST (Indented with bold labels) */}
       <div
         style={{
-          paddingLeft: '32px',
+          paddingLeft: 'clamp(8px, 3vw, 28px)',
           marginBottom: '16px',
           display: 'flex',
           flexDirection: 'column',

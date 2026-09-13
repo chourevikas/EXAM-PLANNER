@@ -171,6 +171,9 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [toastMsg, setToastMsg] = useState<string>('');
 
+  // Mobile / Tablet Tab State: 'list' | 'preview'
+  const [mobileExploreTab, setMobileExploreTab] = useState<'list' | 'preview'>('list');
+
   // Question Filters inside Explore Workspace
   const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
   const [selectedSubtopic, setSelectedSubtopic] = useState<string>('ALL');
@@ -239,6 +242,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
       setSelectedDifficulty('ALL');
       setQuestionSearchQuery('');
       setSelectedQuestionIndex(0);
+      setMobileExploreTab('list');
     }
   }, [selectedSubject]);
 
@@ -368,7 +372,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
   // Copy Question ID / Text Handler
   const handleCopyQuestionId = (id: string) => {
     navigator.clipboard?.writeText(id);
-    setToastMsg(`Question ID ${id} copied to clipboard!`);
+    setToastMsg(`Question ID #${id} copied to clipboard!`);
     setTimeout(() => setToastMsg(''), 3500);
   };
 
@@ -385,7 +389,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
   };
 
   return (
-    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif', paddingBottom: 60 }}>
+    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif', paddingBottom: 60, width: '100%', boxSizing: 'border-box' }}>
       {/* Global Toast / Alerts */}
       {errorMsg && (
         <div
@@ -441,25 +445,25 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
             style={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              flexWrap: 'wrap',
+              alignItems: isMobile ? 'flex-start' : 'center',
+              flexDirection: isMobile ? 'column' : 'row',
               gap: 16,
               marginBottom: 24,
             }}
           >
             <div>
-              <h1 style={{ fontSize: 30, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: isMobile ? 24 : 30, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
                 Question Bank
               </h1>
-              <p style={{ fontSize: 14, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
+              <p style={{ fontSize: isMobile ? 13 : 14, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
                 Browse and review real-time questions organized by subject and mapped subtopics.
               </p>
               {/* Contextual Metadata Badge Line */}
-              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span
                   style={{
                     display: 'inline-block',
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: 600,
                     color: 'var(--primary-red)',
                     backgroundColor: '#F8FAFC',
@@ -497,7 +501,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
             </div>
 
             {/* Compact Search Field */}
-            <div style={{ position: 'relative', width: 280 }}>
+            <div style={{ position: 'relative', width: isMobile ? '100%' : 280 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: 12, color: '#64748B' }} />
               <input
                 type="text"
@@ -705,30 +709,45 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
         </div>
       ) : (
         /* ==================================================================== */
-        /* MODE 2: READ-ONLY SUBJECT EXPLORATION & CURRICULUM WORKSPACE          */
+        /* MODE 2: RESPONSIVE READ-ONLY SUBJECT EXPLORATION & CURRICULUM WORKSPACE */
         /* ==================================================================== */
-        <div>
+        <div style={{ maxWidth: '100%', overflowX: 'hidden' }}>
           {/* Header & Back Navigation Banner */}
           <div
             style={{
               backgroundColor: '#FFFFFF',
               borderRadius: 0,
               border: '1px solid #E2E8F0',
-              padding: '20px 24px',
-              marginBottom: 20,
+              padding: isMobile ? '14px 16px' : '18px 22px',
+              marginBottom: 16,
               boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'flex-start' : 'center',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: isMobile ? 'flex-start' : 'center',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: isMobile ? 8 : 14,
+                }}
+              >
                 <button
                   onClick={() => setSelectedSubject(null)}
                   style={{
-                    padding: '8px 14px',
+                    padding: '7px 12px',
                     backgroundColor: '#FFFFFF',
                     border: '1px solid #CBD5E1',
                     borderRadius: 0,
-                    fontSize: 13,
+                    fontSize: 12.5,
                     fontWeight: 600,
                     color: '#334155',
                     cursor: 'pointer',
@@ -736,6 +755,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     alignItems: 'center',
                     gap: 6,
                     boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                    flexShrink: 0,
                   }}
                 >
                   <ArrowLeft size={14} />
@@ -743,15 +763,23 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 </button>
 
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.015em' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <h1
+                      style={{
+                        fontSize: isMobile ? 18 : 22,
+                        fontWeight: 700,
+                        color: '#172033',
+                        margin: 0,
+                        letterSpacing: '-0.015em',
+                      }}
+                    >
                       {selectedSubject.name} Question Repository
                     </h1>
                     <span
                       style={{
-                        padding: '3px 9px',
+                        padding: '2px 8px',
                         borderRadius: 0,
-                        fontSize: 11.5,
+                        fontSize: 11,
                         fontWeight: 600,
                         backgroundColor: '#F8FAFC',
                         color: 'var(--primary-red)',
@@ -761,61 +789,95 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       {selectedSubject.code}
                     </span>
                   </div>
-                  <span style={{ fontSize: 12.5, color: '#64748B', marginTop: 2, display: 'block' }}>
+                  <span style={{ fontSize: 12, color: '#64748B', marginTop: 2, display: 'block' }}>
                     {questions.length} total questions cataloged across past UPSC papers
                   </span>
                 </div>
               </div>
 
               {/* Subject Intelligence Summary Pills */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  width: isMobile ? '100%' : 'auto',
+                  flexWrap: 'wrap',
+                }}
+              >
                 {/* Difficulty Distribution Pill */}
                 <div
                   style={{
-                    padding: '6px 12px',
+                    flex: isMobile ? 1 : 'none',
+                    padding: '6px 10px',
                     backgroundColor: '#FAFAFA',
                     border: '1px solid #E2E8F0',
-                    fontSize: 12,
+                    fontSize: 11.5,
                     color: '#475569',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8,
+                    justifyContent: 'center',
+                    gap: 6,
                   }}
                 >
-                  <BarChart3 size={14} color="#64748B" />
+                  <BarChart3 size={13} color="#64748B" />
                   <span>
-                    <strong style={{ color: '#16A34A' }}>{difficultyCounts.easy}</strong> Easy ·{' '}
-                    <strong style={{ color: '#D97706' }}>{difficultyCounts.medium}</strong> Med ·{' '}
-                    <strong style={{ color: '#DC2626' }}>{difficultyCounts.hard}</strong> Hard
+                    <strong style={{ color: '#16A34A' }}>{difficultyCounts.easy}</strong> E ·{' '}
+                    <strong style={{ color: '#D97706' }}>{difficultyCounts.medium}</strong> M ·{' '}
+                    <strong style={{ color: '#DC2626' }}>{difficultyCounts.hard}</strong> H
                   </span>
                 </div>
 
                 {/* Subtopic Coverage Pill */}
                 <div
                   style={{
-                    padding: '6px 12px',
+                    flex: isMobile ? 1 : 'none',
+                    padding: '6px 10px',
                     backgroundColor: '#FAFAFA',
                     border: '1px solid #E2E8F0',
-                    fontSize: 12,
+                    fontSize: 11.5,
                     color: '#475569',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8,
+                    justifyContent: 'center',
+                    gap: 6,
                   }}
                 >
-                  <Layers size={14} color="#64748B" />
+                  <Layers size={13} color="#64748B" />
                   <span>
-                    <strong>{subtopicCounts.length}</strong> Active Subtopics
+                    <strong>{subtopicCounts.length}</strong> Subtopics
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Exam Year Breakdown Tags */}
+            {/* Exam Year Breakdown Ribbon */}
             {yearCounts.length > 0 && (
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11.5, fontWeight: 600, color: '#64748B', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Calendar size={12} /> Paper Breakdown:
+              <div
+                style={{
+                  marginTop: 12,
+                  paddingTop: 12,
+                  borderTop: '1px solid #F1F5F9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  overflowX: 'auto',
+                  WebkitOverflowScrolling: 'touch',
+                  paddingBottom: 2,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: '#64748B',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    flexShrink: 0,
+                  }}
+                >
+                  <Calendar size={12} /> Paper Sets:
                 </span>
                 {yearCounts.map((yc) => (
                   <span
@@ -826,6 +888,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       fontWeight: 600,
                       padding: '2px 8px',
                       cursor: 'pointer',
+                      flexShrink: 0,
                       border: selectedYear === yc.year.toString() ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: selectedYear === yc.year.toString() ? 'var(--primary-red)' : '#F8FAFC',
                       color: selectedYear === yc.year.toString() ? '#FFFFFF' : '#334155',
@@ -845,416 +908,544 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       border: 'none',
                       cursor: 'pointer',
                       textDecoration: 'underline',
+                      flexShrink: 0,
                     }}
                   >
-                    Clear year filter
+                    Clear
                   </button>
                 )}
               </div>
             )}
           </div>
 
+          {/* Responsive View Switcher for Tablet & Mobile screens */}
+          {isTabletOrBelow && (
+            <div
+              style={{
+                display: 'flex',
+                gap: 4,
+                marginBottom: 14,
+                backgroundColor: '#E2E8F0',
+                padding: 4,
+                borderRadius: 0,
+              }}
+            >
+              <button
+                onClick={() => setMobileExploreTab('list')}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  fontSize: 12.5,
+                  fontWeight: mobileExploreTab === 'list' ? 700 : 500,
+                  backgroundColor: mobileExploreTab === 'list' ? '#FFFFFF' : 'transparent',
+                  color: mobileExploreTab === 'list' ? '#172033' : '#64748B',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  boxShadow: mobileExploreTab === 'list' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none',
+                  transition: 'all 150ms ease-out',
+                }}
+              >
+                <Layers size={14} color={mobileExploreTab === 'list' ? 'var(--primary-red)' : '#64748B'} />
+                <span>Questions List ({filteredQuestions.length})</span>
+              </button>
+              <button
+                onClick={() => setMobileExploreTab('preview')}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  fontSize: 12.5,
+                  fontWeight: mobileExploreTab === 'preview' ? 700 : 500,
+                  backgroundColor: mobileExploreTab === 'preview' ? '#FFFFFF' : 'transparent',
+                  color: mobileExploreTab === 'preview' ? '#172033' : '#64748B',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  boxShadow: mobileExploreTab === 'preview' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none',
+                  transition: 'all 150ms ease-out',
+                }}
+              >
+                <BookOpen size={14} color={mobileExploreTab === 'preview' ? 'var(--primary-red)' : '#64748B'} />
+                <span>
+                  Question Preview {selectedQuestion ? `(Q${selectedQuestion.question_number_in_paper})` : ''}
+                </span>
+              </button>
+            </div>
+          )}
+
           {/* Split-Pane Exploration Container */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: isTabletOrBelow ? '1fr' : '360px 1fr',
+              gridTemplateColumns: isTabletOrBelow ? '1fr' : '340px 1fr',
               gap: 20,
               minHeight: 680,
             }}
           >
             {/* LEFT PANEL: SUBTOPICS FILTER & QUESTION BROWSER */}
-            <div
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: 0,
-                padding: 16,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
-              }}
-            >
-              {/* Subtopic Filter Dropdown */}
-              <div>
-                <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
-                  FILTER BY SUBTOPIC ({subtopicCounts.length})
-                </label>
-                <select
-                  value={selectedSubtopic}
-                  onChange={(e) => {
-                    setSelectedSubtopic(e.target.value);
-                    setSelectedQuestionIndex(0);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '7px 10px',
-                    borderRadius: 0,
-                    border: '1px solid #CBD5E1',
-                    fontSize: 12.5,
-                    color: '#172033',
-                    backgroundColor: '#FAFAFA',
-                    outline: 'none',
-                  }}
-                >
-                  <option value="ALL">All Subtopics ({questions.length})</option>
-                  {subtopicCounts.map((st) => (
-                    <option key={st.name} value={st.name}>
-                      {st.name} ({st.count})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {(!isTabletOrBelow || mobileExploreTab === 'list') && (
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 0,
+                  padding: isMobile ? 12 : 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+                }}
+              >
+                {/* Subtopic Filter Dropdown */}
+                <div>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
+                    FILTER BY SUBTOPIC ({subtopicCounts.length})
+                  </label>
+                  <select
+                    value={selectedSubtopic}
+                    onChange={(e) => {
+                      setSelectedSubtopic(e.target.value);
+                      setSelectedQuestionIndex(0);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: 0,
+                      border: '1px solid #CBD5E1',
+                      fontSize: 13,
+                      color: '#172033',
+                      backgroundColor: '#FAFAFA',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value="ALL">All Subtopics ({questions.length})</option>
+                    {subtopicCounts.map((st) => (
+                      <option key={st.name} value={st.name}>
+                        {st.name} ({st.count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Difficulty Filter Tabs */}
-              <div>
-                <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
-                  DIFFICULTY
-                </label>
-                <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 0 }}>
-                  {(['ALL', 'EASY', 'MEDIUM', 'HARD'] as const).map((lvl) => (
+                {/* Difficulty Filter Tabs */}
+                <div>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
+                    DIFFICULTY
+                  </label>
+                  <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 0 }}>
+                    {(['ALL', 'EASY', 'MEDIUM', 'HARD'] as const).map((lvl) => (
+                      <button
+                        key={lvl}
+                        onClick={() => {
+                          setSelectedDifficulty(lvl);
+                          setSelectedQuestionIndex(0);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '6px 4px',
+                          fontSize: 11,
+                          fontWeight: selectedDifficulty === lvl ? 700 : 500,
+                          border: 'none',
+                          borderRadius: 0,
+                          background: selectedDifficulty === lvl ? '#FFFFFF' : 'transparent',
+                          color: selectedDifficulty === lvl ? '#172033' : '#64748B',
+                          cursor: 'pointer',
+                          boxShadow: selectedDifficulty === lvl ? '0 1px 2px rgba(15, 23, 42, 0.08)' : 'none',
+                        }}
+                      >
+                        {lvl === 'ALL' ? 'All' : lvl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quick Search in Question Stem */}
+                <div style={{ position: 'relative' }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: '#64748B' }} />
+                  <input
+                    type="text"
+                    placeholder="Search questions or keywords..."
+                    value={questionSearchQuery}
+                    onChange={(e) => {
+                      setQuestionSearchQuery(e.target.value);
+                      setSelectedQuestionIndex(0);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 8px 8px 30px',
+                      borderRadius: 0,
+                      border: '1px solid #CBD5E1',
+                      fontSize: 12.5,
+                      color: '#172033',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                {/* Header List Meta */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#172033' }}>
+                    {filteredQuestions.length} Questions Found
+                  </span>
+                  {(selectedSubtopic !== 'ALL' || selectedYear !== 'ALL' || selectedDifficulty !== 'ALL' || questionSearchQuery) && (
                     <button
-                      key={lvl}
                       onClick={() => {
-                        setSelectedDifficulty(lvl);
-                        setSelectedQuestionIndex(0);
+                        setSelectedSubtopic('ALL');
+                        setSelectedYear('ALL');
+                        setSelectedDifficulty('ALL');
+                        setQuestionSearchQuery('');
                       }}
-                      style={{
-                        flex: 1,
-                        padding: '5px 4px',
-                        fontSize: 11,
-                        fontWeight: selectedDifficulty === lvl ? 700 : 500,
-                        border: 'none',
-                        borderRadius: 0,
-                        background: selectedDifficulty === lvl ? '#FFFFFF' : 'transparent',
-                        color: selectedDifficulty === lvl ? '#172033' : '#64748B',
-                        cursor: 'pointer',
-                        boxShadow: selectedDifficulty === lvl ? '0 1px 2px rgba(15, 23, 42, 0.08)' : 'none',
-                      }}
+                      style={{ fontSize: 11, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}
                     >
-                      {lvl === 'ALL' ? 'All' : lvl}
+                      Reset filters
                     </button>
-                  ))}
+                  )}
+                </div>
+
+                {/* Scrollable Questions Navigator */}
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 540 }}>
+                  {loadingQuestions ? (
+                    <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                      <Loader2 size={18} className="animate-spin" style={{ margin: '0 auto 8px auto' }} />
+                      Loading questions...
+                    </div>
+                  ) : filteredQuestions.length === 0 ? (
+                    <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                      No questions match current filters.
+                    </div>
+                  ) : (
+                    filteredQuestions.map((q, idx) => {
+                      const isSelected = selectedQuestion?.id === q.id;
+
+                      return (
+                        <div
+                          key={q.id}
+                          onClick={() => {
+                            setSelectedQuestionIndex(idx);
+                            if (isTabletOrBelow) {
+                              setMobileExploreTab('preview');
+                              window.scrollTo({ top: 120, behavior: 'smooth' });
+                            }
+                          }}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 0,
+                            cursor: 'pointer',
+                            backgroundColor: isSelected ? '#F8FAFC' : '#FFFFFF',
+                            border: isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
+                            borderLeft: isSelected ? '3px solid var(--primary-red)' : '1px solid #E2E8F0',
+                            transition: 'all 150ms ease-out',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                fontFamily: 'monospace',
+                                color: isSelected ? 'var(--primary-red)' : '#172033',
+                                fontSize: 12.5,
+                              }}
+                            >
+                              Q{q.question_number_in_paper < 10 ? `0${q.question_number_in_paper}` : q.question_number_in_paper}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                color: '#64748B',
+                                backgroundColor: '#F1F5F9',
+                                padding: '1px 6px',
+                                borderRadius: 0,
+                              }}
+                            >
+                              {q.source_year}
+                            </span>
+                          </div>
+
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: isSelected ? '#172033' : '#475569',
+                              fontWeight: isSelected ? 600 : 400,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              marginBottom: 4,
+                            }}
+                            title={q.question_text}
+                          >
+                            {q.question_text}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748B' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
+                              {q.subtopic_name}
+                            </span>
+                            <span>•</span>
+                            <span style={{ fontWeight: 600, color: q.difficulty === 'HARD' ? '#DC2626' : q.difficulty === 'EASY' ? '#16A34A' : '#D97706' }}>
+                              {q.difficulty}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
-
-              {/* Quick Search in Question Stem */}
-              <div style={{ position: 'relative' }}>
-                <Search size={14} style={{ position: 'absolute', left: 10, top: 9, color: '#64748B' }} />
-                <input
-                  type="text"
-                  placeholder="Search questions or keywords..."
-                  value={questionSearchQuery}
-                  onChange={(e) => {
-                    setQuestionSearchQuery(e.target.value);
-                    setSelectedQuestionIndex(0);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '7px 8px 7px 30px',
-                    borderRadius: 0,
-                    border: '1px solid #CBD5E1',
-                    fontSize: 12.5,
-                    color: '#172033',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-
-              {/* Header List Meta */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#172033' }}>
-                  {filteredQuestions.length} Questions Found
-                </span>
-                {(selectedSubtopic !== 'ALL' || selectedYear !== 'ALL' || selectedDifficulty !== 'ALL' || questionSearchQuery) && (
-                  <button
-                    onClick={() => {
-                      setSelectedSubtopic('ALL');
-                      setSelectedYear('ALL');
-                      setSelectedDifficulty('ALL');
-                      setQuestionSearchQuery('');
-                    }}
-                    style={{ fontSize: 11, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                  >
-                    Reset filters
-                  </button>
-                )}
-              </div>
-
-              {/* Scrollable Questions Navigator */}
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 520 }}>
-                {loadingQuestions ? (
-                  <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>
-                    <Loader2 size={18} className="animate-spin" style={{ margin: '0 auto 8px auto' }} />
-                    Loading questions...
-                  </div>
-                ) : filteredQuestions.length === 0 ? (
-                  <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>
-                    No questions match current filters.
-                  </div>
-                ) : (
-                  filteredQuestions.map((q, idx) => {
-                    const isSelected = selectedQuestion?.id === q.id;
-
-                    return (
-                      <div
-                        key={q.id}
-                        onClick={() => setSelectedQuestionIndex(idx)}
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: 0,
-                          cursor: 'pointer',
-                          backgroundColor: isSelected ? '#F8FAFC' : '#FFFFFF',
-                          border: isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
-                          borderLeft: isSelected ? '3px solid var(--primary-red)' : '1px solid #E2E8F0',
-                          transition: 'all 150ms ease-out',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              fontFamily: 'monospace',
-                              color: isSelected ? 'var(--primary-red)' : '#172033',
-                              fontSize: 12.5,
-                            }}
-                          >
-                            Q{q.question_number_in_paper < 10 ? `0${q.question_number_in_paper}` : q.question_number_in_paper}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color: '#64748B',
-                              backgroundColor: '#F1F5F9',
-                              padding: '1px 6px',
-                              borderRadius: 0,
-                            }}
-                          >
-                            {q.source_year}
-                          </span>
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: isSelected ? '#172033' : '#475569',
-                            fontWeight: isSelected ? 600 : 400,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            marginBottom: 4,
-                          }}
-                          title={q.question_text}
-                        >
-                          {q.question_text}
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748B' }}>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
-                            {q.subtopic_name}
-                          </span>
-                          <span>•</span>
-                          <span style={{ fontWeight: 600, color: q.difficulty === 'HARD' ? '#DC2626' : q.difficulty === 'EASY' ? '#16A34A' : '#D97706' }}>
-                            {q.difficulty}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+            )}
 
             {/* RIGHT PANEL: CLEAN READ-ONLY QUESTION INSPECTOR */}
-            <div
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: 0,
-                padding: 24,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
-              }}
-            >
-              {selectedQuestion ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                  {/* Top Pedagogical Toolbar & Quick Action Buttons */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, paddingBottom: 14, borderBottom: '1px solid #E2E8F0' }}>
-                    <div>
-                      <div style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 700, color: '#172033', fontSize: 14 }}>
-                          Question #{selectedQuestion.question_number_in_paper}
-                        </span>
-                        <span>•</span>
-                        <span>{selectedQuestion.exam_name}</span>
-                        <span>•</span>
-                        <span>{selectedQuestion.source_year}</span>
-                        <span>•</span>
-                        <span
-                          style={{
-                            padding: '2px 8px',
-                            fontSize: 11,
-                            fontWeight: 700,
-                            borderRadius: 0,
-                            backgroundColor:
-                              selectedQuestion.difficulty === 'HARD'
-                                ? '#FEE2E2'
-                                : selectedQuestion.difficulty === 'EASY'
-                                ? '#DCFCE7'
-                                : '#FEF3C7',
-                            color:
-                              selectedQuestion.difficulty === 'HARD'
-                                ? '#B91C1C'
-                                : selectedQuestion.difficulty === 'EASY'
-                                ? '#15803D'
-                                : '#B45309',
-                          }}
-                        >
-                          {selectedQuestion.difficulty}
-                        </span>
-                        <span>•</span>
-                        <span style={{ fontSize: 11.5, color: '#64748B' }}>+{selectedQuestion.marks} marks</span>
-                      </div>
-                    </div>
-
-                    {/* Non-Edit Exploration Action Buttons */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {/* Copy Question ID */}
+            {(!isTabletOrBelow || mobileExploreTab === 'preview') && (
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 0,
+                  padding: isMobile ? '16px 14px' : '24px 28px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+                }}
+              >
+                {selectedQuestion ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    {/* Back to List button on mobile/tablet */}
+                    {isTabletOrBelow && (
                       <button
-                        onClick={() => handleCopyQuestionId(selectedQuestion.id)}
-                        title="Copy Question ID"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          padding: '6px 12px',
-                          borderRadius: 0,
-                          border: '1px solid #CBD5E1',
-                          background: '#FFFFFF',
-                          color: '#475569',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: 'pointer',
+                        onClick={() => {
+                          setMobileExploreTab('list');
+                          window.scrollTo({ top: 120, behavior: 'smooth' });
                         }}
-                      >
-                        <Copy size={13} />
-                        <span>Copy ID</span>
-                      </button>
-
-                      {/* Open in Exam Reviewer */}
-                      <button
-                        onClick={() => handleOpenInReviewer(selectedQuestion)}
-                        title="Audit or edit this question in the dedicated Exam Reviewer workspace"
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
-                          padding: '6px 14px',
-                          borderRadius: 0,
+                          padding: '7px 12px',
+                          marginBottom: 4,
+                          backgroundColor: '#F1F5F9',
                           border: '1px solid #CBD5E1',
-                          background: '#F8FAFC',
-                          color: '#172033',
+                          borderRadius: 0,
                           fontSize: 12,
                           fontWeight: 600,
+                          color: '#334155',
                           cursor: 'pointer',
-                          transition: 'all 150ms ease-out',
+                          alignSelf: 'flex-start',
                         }}
                       >
-                        <ExternalLink size={13} color="var(--primary-red)" />
-                        <span>Inspect in Exam Reviewer</span>
+                        <ArrowLeft size={13} />
+                        <span>Back to Questions List ({filteredQuestions.length})</span>
+                      </button>
+                    )}
+
+                    {/* Top Pedagogical Toolbar & Action Buttons */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: isMobile ? 'flex-start' : 'center',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        gap: 12,
+                        paddingBottom: 14,
+                        borderBottom: '1px solid #E2E8F0',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, color: '#172033', fontSize: 14 }}>
+                            Question #{selectedQuestion.question_number_in_paper}
+                          </span>
+                          <span>•</span>
+                          <span>{selectedQuestion.exam_name}</span>
+                          <span>•</span>
+                          <span>{selectedQuestion.source_year}</span>
+                          <span>•</span>
+                          <span
+                            style={{
+                              padding: '2px 8px',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              borderRadius: 0,
+                              backgroundColor:
+                                selectedQuestion.difficulty === 'HARD'
+                                  ? '#FEE2E2'
+                                  : selectedQuestion.difficulty === 'EASY'
+                                  ? '#DCFCE7'
+                                  : '#FEF3C7',
+                              color:
+                                selectedQuestion.difficulty === 'HARD'
+                                  ? '#B91C1C'
+                                  : selectedQuestion.difficulty === 'EASY'
+                                  ? '#15803D'
+                                  : '#B45309',
+                            }}
+                          >
+                            {selectedQuestion.difficulty}
+                          </span>
+                          <span>•</span>
+                          <span style={{ fontSize: 11.5, color: '#64748B' }}>+{selectedQuestion.marks} marks</span>
+                        </div>
+                      </div>
+
+                      {/* Non-Edit Exploration Action Buttons */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          width: isMobile ? '100%' : 'auto',
+                          justifyContent: isMobile ? 'space-between' : 'flex-end',
+                        }}
+                      >
+                        {/* Copy Question ID */}
+                        <button
+                          onClick={() => handleCopyQuestionId(selectedQuestion.id)}
+                          title="Copy Question ID"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '6px 12px',
+                            borderRadius: 0,
+                            border: '1px solid #CBD5E1',
+                            background: '#FFFFFF',
+                            color: '#475569',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Copy size={13} />
+                          <span>Copy ID</span>
+                        </button>
+
+                        {/* Open in Exam Reviewer */}
+                        <button
+                          onClick={() => handleOpenInReviewer(selectedQuestion)}
+                          title="Audit or edit this question in the dedicated Exam Reviewer workspace"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 14px',
+                            borderRadius: 0,
+                            border: '1px solid #CBD5E1',
+                            background: '#F8FAFC',
+                            color: '#172033',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 150ms ease-out',
+                          }}
+                        >
+                          <ExternalLink size={13} color="var(--primary-red)" />
+                          <span>{isMobile ? 'Reviewer' : 'Inspect in Exam Reviewer'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Clean Publication Standard Format Display Card */}
+                    <AdminQuestionPublicationCard
+                      question={{
+                        id: selectedQuestion.id,
+                        question_number_in_paper: selectedQuestion.question_number_in_paper,
+                        question_text: selectedQuestion.question_text,
+                        passage_text: selectedQuestion.passage_text,
+                        difficulty: selectedQuestion.difficulty,
+                        marks: selectedQuestion.marks,
+                        subject_name: selectedQuestion.subject_name,
+                        topic_name: selectedQuestion.topic_name,
+                        subtopic_name: selectedQuestion.subtopic_name,
+                        options: selectedQuestion.options,
+                        explanation: selectedQuestion.explanation,
+                      }}
+                      questionNumber={selectedQuestion.question_number_in_paper}
+                      style={{ border: 'none', padding: 0, boxShadow: 'none' }}
+                    />
+
+                    {/* Bottom Navigation Toolbar */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingTop: 16,
+                        borderTop: '1px solid #E2E8F0',
+                        gap: 8,
+                      }}
+                    >
+                      <button
+                        disabled={selectedQuestionIndex === 0}
+                        onClick={() => {
+                          setSelectedQuestionIndex((prev) => Math.max(0, prev - 1));
+                          if (isTabletOrBelow) window.scrollTo({ top: 120, behavior: 'smooth' });
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: isMobile ? '7px 10px' : '7px 14px',
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          borderRadius: 0,
+                          border: '1px solid #CBD5E1',
+                          background: '#FFFFFF',
+                          color: selectedQuestionIndex === 0 ? '#CBD5E1' : '#334155',
+                          cursor: selectedQuestionIndex === 0 ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <ChevronLeft size={15} />
+                        <span>{isMobile ? 'Prev' : 'Previous Question'}</span>
+                      </button>
+
+                      <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600, textAlign: 'center' }}>
+                        {isMobile
+                          ? `Q ${selectedQuestionIndex + 1} / ${filteredQuestions.length}`
+                          : `Question ${selectedQuestionIndex + 1} of ${filteredQuestions.length}`}
+                      </span>
+
+                      <button
+                        disabled={selectedQuestionIndex >= filteredQuestions.length - 1}
+                        onClick={() => {
+                          setSelectedQuestionIndex((prev) => Math.min(filteredQuestions.length - 1, prev + 1));
+                          if (isTabletOrBelow) window.scrollTo({ top: 120, behavior: 'smooth' });
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: isMobile ? '7px 10px' : '7px 14px',
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          borderRadius: 0,
+                          border: '1px solid #CBD5E1',
+                          background: '#FFFFFF',
+                          color: selectedQuestionIndex >= filteredQuestions.length - 1 ? '#CBD5E1' : '#334155',
+                          cursor: selectedQuestionIndex >= filteredQuestions.length - 1 ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <span>{isMobile ? 'Next' : 'Next Question'}</span>
+                        <ChevronRight size={15} />
                       </button>
                     </div>
                   </div>
-
-                  {/* Clean Publication Standard Format Display Card */}
-                  <AdminQuestionPublicationCard
-                    question={{
-                      id: selectedQuestion.id,
-                      question_number_in_paper: selectedQuestion.question_number_in_paper,
-                      question_text: selectedQuestion.question_text,
-                      passage_text: selectedQuestion.passage_text,
-                      difficulty: selectedQuestion.difficulty,
-                      marks: selectedQuestion.marks,
-                      subject_name: selectedQuestion.subject_name,
-                      topic_name: selectedQuestion.topic_name,
-                      subtopic_name: selectedQuestion.subtopic_name,
-                      options: selectedQuestion.options,
-                      explanation: selectedQuestion.explanation,
-                    }}
-                    questionNumber={selectedQuestion.question_number_in_paper}
-                    style={{ border: 'none', padding: 0, boxShadow: 'none' }}
-                  />
-
-                  {/* Bottom Navigation Toolbar */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      paddingTop: 16,
-                      borderTop: '1px solid #E2E8F0',
-                    }}
-                  >
-                    <button
-                      disabled={selectedQuestionIndex === 0}
-                      onClick={() => setSelectedQuestionIndex((prev) => Math.max(0, prev - 1))}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        padding: '7px 14px',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        borderRadius: 0,
-                        border: '1px solid #CBD5E1',
-                        background: '#FFFFFF',
-                        color: selectedQuestionIndex === 0 ? '#CBD5E1' : '#334155',
-                        cursor: selectedQuestionIndex === 0 ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      <ChevronLeft size={15} /> Previous Question
-                    </button>
-
-                    <span style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}>
-                      Question {selectedQuestionIndex + 1} of {filteredQuestions.length}
-                    </span>
-
-                    <button
-                      disabled={selectedQuestionIndex >= filteredQuestions.length - 1}
-                      onClick={() =>
-                        setSelectedQuestionIndex((prev) => Math.min(filteredQuestions.length - 1, prev + 1))
-                      }
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        padding: '7px 14px',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        borderRadius: 0,
-                        border: '1px solid #CBD5E1',
-                        background: '#FFFFFF',
-                        color: selectedQuestionIndex >= filteredQuestions.length - 1 ? '#CBD5E1' : '#334155',
-                        cursor: selectedQuestionIndex >= filteredQuestions.length - 1 ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      Next Question <ChevronRight size={15} />
-                    </button>
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#64748B', padding: 60 }}>
+                    <BookOpen size={36} color="#CBD5E1" style={{ margin: '0 auto 12px auto' }} />
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
+                      Select a question from the navigation panel to view its full publication preview.
+                    </p>
                   </div>
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', color: '#64748B', padding: 60 }}>
-                  <BookOpen size={36} color="#CBD5E1" style={{ margin: '0 auto 12px auto' }} />
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
-                    Select a question from the navigation panel to view its full publication preview.
-                  </p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
