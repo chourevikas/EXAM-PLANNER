@@ -1,14 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Clock, ChevronLeft, ChevronRight, Flag } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Flag, Crown, Medal, Trophy, ArrowRight } from 'lucide-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import {
   startChallengeAttempt,
   saveChallengeResponse,
   submitChallengeAttempt,
+  getLeaderboard,
   StartChallengeAttemptResponse,
   SubmitChallengeAttemptResponse,
+  LeaderboardEntry,
 } from '../services/challengeService';
+
+const RANK_STYLES: Record<number, { gradient: string; color: string; icon: typeof Crown }> = {
+  1: { gradient: 'linear-gradient(135deg, #FFDA6A, #F5A623)', color: '#7A4E00', icon: Crown },
+  2: { gradient: 'linear-gradient(135deg, #E7E9EC, #B7BEC7)', color: '#3F4650', icon: Medal },
+  3: { gradient: 'linear-gradient(135deg, #E8B98A, #C77B33)', color: '#5C3510', icon: Medal },
+};
 
 export function ChallengeAttemptPage() {
   const { idOrToken } = useParams<{ idOrToken: string }>();
@@ -22,6 +30,7 @@ export function ChallengeAttemptPage() {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitChallengeAttemptResponse | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
   const questionStartRef = useRef<number>(Date.now());
 
   useEffect(() => {
@@ -72,6 +81,7 @@ export function ChallengeAttemptPage() {
     try {
       const res = await submitChallengeAttempt(session.attempt_id);
       setResult(res);
+      getLeaderboard(session.challenge_id).then(setLeaderboard).catch(() => setLeaderboard([]));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not submit challenge.');
     } finally {
@@ -102,6 +112,11 @@ export function ChallengeAttemptPage() {
   }
 
   if (result) {
+    const myRank = leaderboard ? leaderboard.findIndex((e) => e.is_current_user) + 1 : 0;
+    const totalCompetitors = leaderboard?.length ?? 0;
+    const rankStyle = myRank ? RANK_STYLES[myRank] : undefined;
+    const MedalIcon = rankStyle?.icon ?? Trophy;
+
     return (
       <StudentLayout pageTitle="Challenge Result">
         <div
@@ -111,19 +126,88 @@ export function ChallengeAttemptPage() {
             backgroundColor: 'var(--bg-card)',
           }}
         >
+          <div
+            style={{
+              width: 72, height: 72, borderRadius: '50%', margin: '0 auto 16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: rankStyle ? rankStyle.gradient : 'var(--accent-bg)',
+            }}
+          >
+            <MedalIcon size={34} color={rankStyle ? rankStyle.color : 'var(--accent-primary)'} />
+          </div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-main)', marginBottom: 16 }}>Challenge Complete!</h1>
           <div style={{ fontSize: 40, fontWeight: 800, color: 'var(--accent-primary)', marginBottom: 8 }}>{result.total_score}</div>
-          <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>
             {result.total_correct} correct &middot; {result.total_incorrect} incorrect &middot; {result.total_unattempted} skipped
           </p>
+
+          {myRank > 0 && (
+            <div
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 20,
+                backgroundColor: myRank === 1 ? 'rgba(245, 166, 35, 0.14)' : 'var(--accent-bg)',
+                border: '1px solid var(--accent-primary)', fontSize: 13, fontWeight: 700,
+                color: 'var(--text-main)', marginBottom: 24,
+              }}
+            >
+              {myRank === 1
+                ? "You're #1! 🏆"
+                : `Ranked #${myRank} of ${totalCompetitors}`}
+            </div>
+          )}
+
+          {leaderboard && leaderboard.length > 1 && (
+            <div style={{ textAlign: 'left', marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, marginBottom: 8 }}>
+                TOP COMPETITORS
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {leaderboard.slice(0, 3).map((entry, idx) => {
+                  const style = RANK_STYLES[idx + 1];
+                  const Icon = style?.icon;
+                  return (
+                    <div
+                      key={entry.user_id}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                        padding: '8px 12px', borderRadius: 8,
+                        border: entry.is_current_user ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                        backgroundColor: 'var(--bg-body)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <div
+                          style={{
+                            width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 11, fontWeight: 800,
+                            background: style ? style.gradient : 'rgba(120,120,120,0.12)',
+                            color: style ? style.color : 'var(--text-muted)',
+                          }}
+                        >
+                          {Icon ? <Icon size={11} /> : idx + 1}
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {entry.user_name}{entry.is_current_user ? ' (You)' : ''}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-main)', flexShrink: 0 }}>{entry.total_score} pts</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => navigate(session ? `/challenges/${session.challenge_id}` : '/challenges')}
             style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
               backgroundColor: 'var(--accent-primary)', color: '#fff', border: 'none',
               borderRadius: 10, padding: '12px 24px', fontWeight: 700, cursor: 'pointer',
             }}
           >
-            View Leaderboard
+            View Full Leaderboard <ArrowRight size={16} />
           </button>
         </div>
       </StudentLayout>
@@ -143,7 +227,7 @@ export function ChallengeAttemptPage() {
 
   return (
     <StudentLayout pageTitle="Challenge">
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+      <div style={{ maxWidth: 680 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
             Question {currentIndex + 1} of {session.questions.length} &middot; {answeredCount} answered

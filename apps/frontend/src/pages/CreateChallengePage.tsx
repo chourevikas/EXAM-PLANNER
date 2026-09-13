@@ -82,7 +82,7 @@ export function CreateChallengePage() {
 
   return (
     <StudentLayout pageTitle="Create Challenge">
-      <div style={{ maxWidth: 560, margin: '0 auto' }}>
+      <div style={{ maxWidth: 560 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
           <Swords size={20} color="var(--accent-primary)" /> Create a Challenge
         </h1>
@@ -110,7 +110,14 @@ export function CreateChallengePage() {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <form
+            onSubmit={handleSubmit}
+            style={{
+              display: 'flex', flexDirection: 'column', gap: 18,
+              backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)',
+              borderRadius: 12, padding: 24,
+            }}
+          >
             <div>
               <label style={labelStyle}>Title</label>
               <input

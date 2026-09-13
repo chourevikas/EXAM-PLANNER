@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Swords, Plus, Users, Globe, Trophy, Copy, Check, Crown, Clock } from 'lucide-react';
+import { Swords, Plus, Users, Globe, Trophy, Copy, Check, Crown, Clock, Flame } from 'lucide-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { listMyChallenges, ChallengeSummary, formatChallengeExpiry, isChallengeExpired } from '../services/challengeService';
 
@@ -121,6 +121,7 @@ export function ChallengesPage() {
             <div
               key={c.id}
               onClick={() => navigate(`/challenges/${c.id}`)}
+              className="hover-lift hover-glow"
               style={{
                 backgroundColor: 'var(--bg-card)',
                 border: '1px solid var(--border-color)',
@@ -130,6 +131,7 @@ export function ChallengesPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12,
+                transition: 'transform 200ms ease-out, box-shadow 200ms ease-out',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -149,12 +151,17 @@ export function ChallengesPage() {
               {c.description && (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>{c.description}</p>
               )}
-              <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap', alignItems: 'center' }}>
                 <span>{c.question_count} Questions</span>
                 <span>{c.time_limit_minutes} min</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Trophy size={12} /> {c.attempt_count} attempt{c.attempt_count === 1 ? '' : 's'}
                 </span>
+                {c.attempt_count >= 5 && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#E8590C', fontWeight: 700 }}>
+                    <Flame size={12} /> Trending
+                  </span>
+                )}
                 {c.expires_at && (
                   <span
                     style={{
@@ -167,8 +174,14 @@ export function ChallengesPage() {
                 )}
               </div>
               {typeof c.my_best_score === 'number' && (
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-primary)' }}>
-                  Your best score: {c.my_best_score}
+                <div
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700,
+                    color: '#7A4E00', backgroundColor: 'rgba(245, 166, 35, 0.14)',
+                    padding: '6px 10px', borderRadius: 8, alignSelf: 'flex-start',
+                  }}
+                >
+                  <Trophy size={13} /> Your best: {c.my_best_score} pts
                 </div>
               )}
               <button
