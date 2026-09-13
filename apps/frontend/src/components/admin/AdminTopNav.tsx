@@ -181,6 +181,8 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
           <img
             src="/logo.jpeg"
             alt="ExamPlanner"
+            loading="lazy"
+            decoding="async"
             style={{
               width: 30,
               height: 30,

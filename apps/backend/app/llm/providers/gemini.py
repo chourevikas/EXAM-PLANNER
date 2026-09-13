@@ -11,6 +11,10 @@ from app.llm.providers.base import BaseLLMProvider
 logger = setup_logger("GeminiProvider")
 
 
+_cached_credentials = None
+_cached_cred_path = None
+
+
 class GeminiProvider(BaseLLMProvider):
     """LLM Provider implementation for Google Gemini via Vertex AI."""
 
@@ -21,6 +25,7 @@ class GeminiProvider(BaseLLMProvider):
     def get_chat_model(
         self, timeout: Optional[int] = None, max_retries: Optional[int] = None
     ) -> BaseChatModel:
+        global _cached_credentials, _cached_cred_path
         from langchain_google_genai import ChatGoogleGenerativeAI
 
         kwargs = {
@@ -59,19 +64,25 @@ class GeminiProvider(BaseLLMProvider):
                         break
 
             if abs_cred_path.exists():
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(abs_cred_path)
-                try:
-                    from google.oauth2 import service_account
+                path_str = str(abs_cred_path)
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = path_str
+                if _cached_credentials is not None and _cached_cred_path == path_str:
+                    kwargs["credentials"] = _cached_credentials
+                else:
+                    try:
+                        from google.oauth2 import service_account
 
-                    kwargs["credentials"] = (
-                        service_account.Credentials.from_service_account_file(
-                            str(abs_cred_path),
-                            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+                        _cached_credentials = (
+                            service_account.Credentials.from_service_account_file(
+                                path_str,
+                                scopes=["https://www.googleapis.com/auth/cloud-platform"],
+                            )
                         )
-                    )
-                except Exception:
-                    logger.exception(
-                        "Failed to load Google credentials from path: %s", cred_path
-                    )
+                        _cached_cred_path = path_str
+                        kwargs["credentials"] = _cached_credentials
+                    except Exception:
+                        logger.exception(
+                            "Failed to load Google credentials from path: %s", cred_path
+                        )
 
         return ChatGoogleGenerativeAI(**kwargs)

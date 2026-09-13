@@ -140,6 +140,24 @@ export function QuestionBankManager() {
   const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED'>('ALL');
 
+  // Debounced search queries (250ms) to prevent expensive re-filtering during typing
+  const [debouncedSubjectQuery, setDebouncedSubjectQuery] = useState<string>(subjectSearchQuery);
+  const [debouncedQuestionQuery, setDebouncedQuestionQuery] = useState<string>(questionSearchQuery);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSubjectQuery(subjectSearchQuery);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [subjectSearchQuery]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuestionQuery(questionSearchQuery);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [questionSearchQuery]);
+
   // Edit Modal State
   const [editingQuestion, setEditingQuestion] = useState<QuestionCatalogItem | null>(null);
   const [editFormText, setEditFormText] = useState<string>('');
@@ -387,28 +405,31 @@ export function QuestionBankManager() {
     }
   };
 
-  // Filtered Subject List for Directory
-  const filteredSubjects = subjectList.filter((s) => {
-    if (!subjectSearchQuery) return true;
-    const term = subjectSearchQuery.toLowerCase();
-    return s.name.toLowerCase().includes(term) || s.description.toLowerCase().includes(term);
-  });
+  // Filtered Subject List for Directory (debounced + memoized)
+  const filteredSubjects = React.useMemo(() => {
+    if (!debouncedSubjectQuery) return subjectList;
+    const term = debouncedSubjectQuery.toLowerCase();
+    return subjectList.filter((s) => s.name.toLowerCase().includes(term) || s.description.toLowerCase().includes(term));
+  }, [subjectList, debouncedSubjectQuery]);
 
-  // Filtered Questions for Split Pane
-  const filteredQuestions = questions.filter((q) => {
-    const matchesSearch =
-      !questionSearchQuery ||
-      q.question_text.toLowerCase().includes(questionSearchQuery.toLowerCase()) ||
-      q.subtopic_name?.toLowerCase().includes(questionSearchQuery.toLowerCase()) ||
-      q.question_number_in_paper.toString() === questionSearchQuery;
+  // Filtered Questions for Split Pane (debounced + memoized)
+  const filteredQuestions = React.useMemo(() => {
+    const qTerm = debouncedQuestionQuery.toLowerCase();
+    return questions.filter((q) => {
+      const matchesSearch =
+        !debouncedQuestionQuery ||
+        q.question_text.toLowerCase().includes(qTerm) ||
+        q.subtopic_name?.toLowerCase().includes(qTerm) ||
+        q.question_number_in_paper.toString() === debouncedQuestionQuery;
 
-    const matchesStatus =
-      statusFilter === 'ALL' ||
-      (statusFilter === 'PENDING' && q.status.toUpperCase().includes('PENDING')) ||
-      (statusFilter === 'APPROVED' && (q.status.toUpperCase().includes('PUBLISHED') || q.status.toUpperCase().includes('READY')));
+      const matchesStatus =
+        statusFilter === 'ALL' ||
+        (statusFilter === 'PENDING' && q.status.toUpperCase().includes('PENDING')) ||
+        (statusFilter === 'APPROVED' && (q.status.toUpperCase().includes('PUBLISHED') || q.status.toUpperCase().includes('READY')));
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    });
+  }, [questions, debouncedQuestionQuery, statusFilter]);
 
   const selectedQuestion = filteredQuestions[selectedQuestionIndex] || filteredQuestions[0] || null;
 

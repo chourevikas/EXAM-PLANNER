@@ -42,11 +42,33 @@ if settings.CELERY_TASK_ALWAYS_EAGER:
     )
 
 
+import time
+from typing import Any, Dict
+
+_worker_cache: Dict[str, Any] = {"status": False, "expires_at": 0.0}
+
+
 def has_active_celery_workers(timeout: float = 0.2) -> bool:
-    """Common utility checking if active Celery worker processes are online and listening on the queue."""
+    """Common utility checking if active Celery worker processes are online and listening on the queue.
+
+    Optimized with short in-memory cache (5s) to prevent blocking broker inspection overhead
+    on high-frequency status checks, and returns True immediately in eager execution mode.
+    """
+    if settings.CELERY_TASK_ALWAYS_EAGER:
+        return True
+
+    now = time.monotonic()
+    if now < _worker_cache["expires_at"]:
+        return bool(_worker_cache["status"])
+
     try:
         i = celery_app.control.inspect(timeout=timeout)
         workers = i.ping()
-        return bool(workers)
+        is_active = bool(workers)
+        _worker_cache["status"] = is_active
+        _worker_cache["expires_at"] = now + 5.0
+        return is_active
     except Exception:
+        _worker_cache["status"] = False
+        _worker_cache["expires_at"] = now + 2.0
         return False

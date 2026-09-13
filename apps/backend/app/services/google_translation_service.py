@@ -8,11 +8,13 @@ import os
 import re
 import json
 import asyncio
+import hashlib
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Any
 
 from app.config.settings import get_settings
 from app.config.logger import setup_logger
+from app.cache.factory import get_cache
 from app.core.languages import (
     get_language_info,
     normalize_language,
@@ -188,6 +190,7 @@ class GoogleTranslationService:
         Translates a list of texts into target_language in batch.
         Tries Google Cloud Translation API first; if unavailable or failing,
         falls back smoothly to Gemini Vertex AI.
+        Optimized with Domain 24 Translation Memory Cache (TTL: 30 days).
         """
         if not texts:
             return []
@@ -198,10 +201,39 @@ class GoogleTranslationService:
         if target_iso == source_iso:
             return texts
 
-        # Mask non-translatable elements across all texts
+        # Translation memory cache check: ep:trans:<target_iso>:<text_hash>
+        cache = get_cache()
+        prefix = self.settings.CACHE_KEY_PREFIX or "ep"
+        ttl = 2592000  # 30 days
+
+        miss_indices: List[int] = []
+        miss_texts: List[str] = []
+        results: List[Optional[str]] = [None] * len(texts)
+
+        for idx, t in enumerate(texts):
+            if not t or not str(t).strip():
+                results[idx] = t or ""
+                continue
+            h = hashlib.sha256(t.strip().encode("utf-8")).hexdigest()[:16]
+            ckey = f"{prefix}:trans:{target_iso}:{h}"
+            try:
+                cached_val = await cache.get(ckey)
+            except Exception:
+                cached_val = None
+
+            if cached_val is not None:
+                results[idx] = cached_val
+            else:
+                miss_indices.append(idx)
+                miss_texts.append(t)
+
+        if not miss_texts:
+            return [r if r is not None else "" for r in results]
+
+        # Mask non-translatable elements across cache misses only
         masked_texts: List[str] = []
         stores: List[Dict[str, str]] = []
-        for t in texts:
+        for t in miss_texts:
             masked, store = TextProtectionHandler.mask(t or "")
             masked_texts.append(masked)
             stores.append(store)
@@ -230,7 +262,7 @@ class GoogleTranslationService:
                     return all_res
 
                 translated_masked = await loop.run_in_executor(None, _call_gcp)
-                logger.debug(f"Successfully translated {len(texts)} texts using Google Cloud Translate ({target_iso}).")
+                logger.debug(f"Successfully translated {len(miss_texts)} texts using Google Cloud Translate ({target_iso}).")
             except Exception as gcp_err:
                 logger.warning(
                     f"Google Cloud Translate API failed ({gcp_err}). Falling back to Gemini Vertex AI translation..."
@@ -238,18 +270,26 @@ class GoogleTranslationService:
                 self._cloud_translate_failed = True
 
         # Fallback to Gemini Vertex AI
-        if not translated_masked or len(translated_masked) != len(texts):
+        if not translated_masked or len(translated_masked) != len(miss_texts):
             translated_masked = await self._translate_with_gemini(
                 masked_texts, target_language=target_language, source_language=source_language
             )
 
-        # Unmask non-translatable entities
-        final_results: List[str] = []
-        for translated, store in zip(translated_masked, stores):
+        # Unmask non-translatable entities and persist to translation memory cache
+        for idx_in_miss, (translated, store) in enumerate(zip(translated_masked, stores)):
             final = TextProtectionHandler.unmask(translated, store)
-            final_results.append(final)
+            original_idx = miss_indices[idx_in_miss]
+            results[original_idx] = final
 
-        return final_results
+            orig_text = miss_texts[idx_in_miss]
+            h = hashlib.sha256(orig_text.strip().encode("utf-8")).hexdigest()[:16]
+            ckey = f"{prefix}:trans:{target_iso}:{h}"
+            try:
+                await cache.set(ckey, final, ttl_seconds=ttl)
+            except Exception:
+                pass
+
+        return [r if r is not None else "" for r in results]
 
     async def _translate_with_gemini(
         self,

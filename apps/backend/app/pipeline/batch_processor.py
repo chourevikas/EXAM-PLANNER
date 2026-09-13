@@ -513,12 +513,12 @@ class BatchQuestionRegistrar:
                     exam_obj.missing_question_numbers_json = missing_nums
                     session.add(exam_obj)
 
-                    from sqlmodel import col
+                    from sqlmodel import col, func
                     q_ids_stmt = select(Question.id).where(Question.exam_id == exam_id)
-                    q_trans_res = await session.exec(
-                        select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids_stmt))
+                    q_trans_count_stmt = select(func.count(QuestionTranslation.id)).where(
+                        col(QuestionTranslation.question_id).in_(q_ids_stmt)
                     )
-                    total_translations_count = len(q_trans_res.all())
+                    total_translations_count = (await session.exec(q_trans_count_stmt)).one() or 0
                     await session.commit()
 
             logger.info(

@@ -76,6 +76,31 @@ async def invalidate_exam_cache(exam_id: str) -> None:
             logger.debug(f"[CACHE_INVALIDATE] Pattern '{pat}' deleted {deleted} keys.")
 
 
+async def invalidate_review_cache(
+    question_id: Optional[str] = None, exam_id: Optional[str] = None
+) -> None:
+    """Invalidates cached HITL review tasks, review queue count, and question review details."""
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+
+    await cache.delete_pattern(f"{prefix}:review:tasks*")
+    await cache.delete_pattern(f"{prefix}:hitl:tasks*")
+    await cache.delete_pattern(f"{prefix}:review:queue:count*")
+
+    if question_id:
+        q_id_str = str(question_id)
+        await cache.delete_pattern(f"{prefix}:hitl:task_detail:{q_id_str}*")
+
+    if exam_id:
+        exam_id_str = str(exam_id)
+        await cache.delete_pattern(f"{prefix}:exams:review:{exam_id_str}*")
+        await cache.delete_pattern(f"{prefix}:admin:review:{exam_id_str}*")
+    else:
+        await cache.delete_pattern(f"{prefix}:exams:review:*")
+        await cache.delete_pattern(f"{prefix}:admin:review:*")
+
+
 async def invalidate_question_cache(
     question_id: str, exam_id: Optional[str] = None
 ) -> None:
@@ -88,13 +113,7 @@ async def invalidate_question_cache(
     await cache.delete_pattern(f"{prefix}:questions:detail:{q_id_str}*")
     await cache.delete_pattern(f"{prefix}:questions:list*")
 
-    if exam_id:
-        exam_id_str = str(exam_id)
-        await cache.delete_pattern(f"{prefix}:exams:review:{exam_id_str}*")
-        await cache.delete_pattern(f"{prefix}:admin:review:{exam_id_str}*")
-    else:
-        await cache.delete_pattern(f"{prefix}:exams:review:*")
-        await cache.delete_pattern(f"{prefix}:admin:review:*")
+    await invalidate_review_cache(q_id_str, exam_id)
 
 
 async def invalidate_user_cache(user_id: str | int, clerk_id: Optional[str] = None) -> None:

@@ -20,6 +20,7 @@ import {
   clearExamIntegrityCache,
   ExamIntegrityQuestionsResponse
 } from '../../../services/adminService';
+import { createAdaptivePoller } from '../../../utils/adaptivePolling';
 import { AddMissingQuestionModal } from '../modals/AddMissingQuestionModal';
 
 interface MissingQuestionsViewProps {
@@ -128,21 +129,30 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
     loadData();
   }, []);
 
-  // Background polling for pipeline status changes (e.g. when extraction completes or progresses)
+  // Adaptive background polling for pipeline status changes (e.g. when extraction completes or progresses)
   useEffect(() => {
-    const allList: any[] = [];
-    Object.values(examsByYear).forEach((l) => {
-      if (Array.isArray(l)) allList.push(...l);
-    });
-    const hasExtracting = allList.some(
-      (e) => computeIsExtracting(e, integrityMap[e.id])
+    const poller = createAdaptivePoller(
+      async () => {
+        const allList: any[] = [];
+        Object.values(examsByYear).forEach((l) => {
+          if (Array.isArray(l)) allList.push(...l);
+        });
+        const hasExtracting = allList.some(
+          (e) => computeIsExtracting(e, integrityMap[e.id])
+        );
+        await loadData(hasExtracting, true);
+        return { hasActiveTask: hasExtracting };
+      },
+      {
+        initialDelayMs: 4000,
+        minDelayMs: 3000,
+        idleDelayMs: 15000,
+        maxDelayMs: 25000,
+      }
     );
-    const intervalMs = hasExtracting ? 4000 : 15000;
-    const interval = setInterval(() => {
-      loadData(hasExtracting, true);
-    }, intervalMs);
 
-    return () => clearInterval(interval);
+    poller.start();
+    return () => poller.stop();
   }, [examsByYear, integrityMap]);
 
   // Filter exams based on year and search

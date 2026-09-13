@@ -17,6 +17,7 @@ from app.cache.helpers import (
     invalidate_taxonomy_cache,
     invalidate_exam_type_cache,
     invalidate_site_settings_cache,
+    invalidate_review_cache,
 )
 
 __all__ = [
@@ -39,4 +40,5 @@ __all__ = [
     "invalidate_taxonomy_cache",
     "invalidate_exam_type_cache",
     "invalidate_site_settings_cache",
+    "invalidate_review_cache",
 ]

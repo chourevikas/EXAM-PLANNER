@@ -1,20 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { TeacherSidebar } from '../components/teacher/TeacherSidebar';
 import { TeacherTopNav } from '../components/teacher/TeacherTopNav';
 import { fetchCurrentUser } from '../services/authService';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
-import { TeacherOverviewView } from '../components/teacher/views/TeacherOverviewView';
-import { ReviewQueueView } from '../components/teacher/views/ReviewQueueView';
-import { ReviewTaskDetailView } from '../components/teacher/views/ReviewTaskDetailView';
-import { PointsView } from '../components/teacher/views/PointsView';
-import { RewardsView } from '../components/teacher/views/RewardsView';
+// Lazy-loaded views for code splitting
+const TeacherOverviewView = lazy(() =>
+  import('../components/teacher/views/TeacherOverviewView').then((m) => ({ default: m.TeacherOverviewView }))
+);
+const ReviewQueueView = lazy(() =>
+  import('../components/teacher/views/ReviewQueueView').then((m) => ({ default: m.ReviewQueueView }))
+);
+const ReviewTaskDetailView = lazy(() =>
+  import('../components/teacher/views/ReviewTaskDetailView').then((m) => ({ default: m.ReviewTaskDetailView }))
+);
+const PointsView = lazy(() =>
+  import('../components/teacher/views/PointsView').then((m) => ({ default: m.PointsView }))
+);
+const RewardsView = lazy(() =>
+  import('../components/teacher/views/RewardsView').then((m) => ({ default: m.RewardsView }))
+);
+
+function TeacherViewSkeleton() {
+  return (
+    <div
+      style={{
+        padding: 32,
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border-color)',
+        borderRadius: 0,
+        minHeight: 320,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--text-muted)' }}>
+        <div
+          style={{
+            width: 28,
+            height: 28,
+            border: '3px solid var(--border-color)',
+            borderTopColor: 'var(--primary-red)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
+        <span style={{ fontSize: 13, fontWeight: 500 }}>Loading view...</span>
+      </div>
+    </div>
+  );
+}
 
 export function TeacherPage() {
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const { isTabletOrBelow: isMobile } = useBreakpoint();
   const [user, setUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('user') || '{}');
@@ -28,16 +71,13 @@ export function TeacherPage() {
     fetchCurrentUser()
       .then((data) => setUser(data))
       .catch((err) => console.error('Failed to fetch user data:', err));
-
-    const handleResize = () => {
-      const mobile = window.innerWidth <= 768;
-      setIsMobile(mobile);
-      if (!mobile) setMobileOpen(false);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileOpen(false);
+    }
+  }, [isMobile]);
 
   const handleToggleSidebar = () => {
     if (isMobile) {
@@ -91,7 +131,17 @@ export function TeacherPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: 'Inter, sans-serif', color: '#172033', overflowX: 'hidden' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        backgroundColor: 'var(--background)',
+        fontFamily: 'Inter, sans-serif',
+        color: 'var(--text-main)',
+        overflowX: 'hidden',
+      }}
+    >
       <TeacherTopNav
         user={user}
         activeView={activeView === 'review-detail' ? 'review' : activeView}
@@ -120,8 +170,18 @@ export function TeacherPage() {
             width: '100%',
           }}
         >
-          <main style={{ flex: 1, overflowY: 'auto', background: '#F7F7F5', padding: isMobile ? '16px 20px' : '24px 32px', boxSizing: 'border-box' }}>
-            {renderView()}
+          <main
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              background: 'var(--background)',
+              padding: isMobile ? '16px 20px' : '24px 32px',
+              boxSizing: 'border-box',
+            }}
+          >
+            <Suspense fallback={<TeacherViewSkeleton />}>
+              {renderView()}
+            </Suspense>
           </main>
         </div>
       </div>

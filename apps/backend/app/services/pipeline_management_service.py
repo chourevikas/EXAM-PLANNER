@@ -126,21 +126,23 @@ class PipelineManagementService:
 
         run_dict = {r.pipeline_type: r for r in runs}
 
-        q_count_res = await self.session.exec(
-            select(Question).where(Question.exam_id == exam_id)
+        from sqlalchemy import case, func
+        q_stats_res = await self.session.exec(
+            select(
+                func.count(Question.id),
+                func.count(case((Question.is_complete == False, 1))),
+                func.count(case((Question.status == QuestionStatus.PUBLISHED, 1))),
+            ).where(Question.exam_id == exam_id)
         )
-        questions = q_count_res.all()
-
-        incomplete_count = sum(1 for q in questions if not q.is_complete)
-        published_count = sum(1 for q in questions if q.status == QuestionStatus.PUBLISHED)
+        total_extracted, incomplete_count, published_count = q_stats_res.one()
 
         p1 = run_dict.get("DOCUMENT_EXTRACTION") or run_dict.get("QUESTION_EXTRACTION")
 
         return {
             "exam_id": str(exam_id),
-            "total_questions_extracted": len(questions),
-            "published_questions_count": published_count,
-            "flagged_incomplete_count": incomplete_count,
+            "total_questions_extracted": total_extracted or 0,
+            "published_questions_count": published_count or 0,
+            "flagged_incomplete_count": incomplete_count or 0,
             "pipelines": {
                 "question_extraction": {
                     "status": p1.status if p1 else "PENDING",

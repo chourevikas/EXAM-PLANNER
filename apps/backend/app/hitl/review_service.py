@@ -84,7 +84,7 @@ class HumanReviewService:
         result = await self.session.exec(query.order_by(col(HumanReviewTask.created_at)))
         tasks = list(result.all())
         if tasks:
-            serialized = [t.dict() if hasattr(t, "dict") else t.model_dump(mode="json") for t in tasks]
+            serialized = [t.model_dump(mode="json") if hasattr(t, "model_dump") else t.dict() for t in tasks]
             await cache.set(cache_key, serialized, ttl_seconds=1800)
         return tasks
 
@@ -122,8 +122,9 @@ class HumanReviewService:
 
         # Fetch linked passage if exists
         passage_detail = None
-        if question.passage_id:
-            passage = await self.session.get(Passage, question.passage_id)
+        q_passage_id = getattr(question, "passage_id", None)
+        if q_passage_id:
+            passage = await self.session.get(Passage, q_passage_id)
             if passage:
                 p_trans_res = await self.session.exec(
                     select(PassageTranslation).where(
@@ -149,12 +150,19 @@ class HumanReviewService:
         )
         assets = assets_res.all()
 
+        # Batch load all OptionTranslations for these options in a single roundtrip query
+        opt_ids = [opt.id for opt in options]
+        trans_by_opt_id: Dict[int, List[OptionTranslation]] = {oid: [] for oid in opt_ids}
+        if opt_ids:
+            all_opt_trans_res = await self.session.exec(
+                select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
+            )
+            for ot in all_opt_trans_res.all():
+                trans_by_opt_id.setdefault(ot.option_id, []).append(ot)
+
         opt_details = []
         for opt in options:
-            opt_trans_res = await self.session.exec(
-                select(OptionTranslation).where(OptionTranslation.option_id == opt.id)
-            )
-            opt_trans = opt_trans_res.all()
+            opt_trans = trans_by_opt_id.get(opt.id, [])
             distractor_text = next((t.distractor_analysis for t in opt_trans if t.distractor_analysis), None)
             opt_details.append(
                 {
@@ -166,7 +174,7 @@ class HumanReviewService:
                     "distractor_analysis": distractor_text,
                     "translations": [
                         {
-                            "language": t.language.value,
+                            "language": t.language.value if hasattr(t.language, "value") else str(t.language),
                             "text": t.option_text,
                             "distractor_analysis": t.distractor_analysis,
                         }
@@ -222,25 +230,45 @@ class HumanReviewService:
                 "irt_pseudo_guessing_c": qm.irt_pseudo_guessing_c,
             }
 
-        # Fetch Hierarchy Links
+        # Fetch Hierarchy Links in bulk queries
         hierarchy_detail = []
         links_res = await self.session.exec(
             select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id == question_id)
         )
         links = links_res.all()
-        for link in links:
-            subj = await self.session.get(Subject, link.subject_id) if link.subject_id else None
-            top = await self.session.get(Topic, link.topic_id) if link.topic_id else None
-            subtop = await self.session.get(Subtopic, link.subtopic_id) if link.subtopic_id else None
-            hierarchy_detail.append({
-                "subject_id": str(subj.id) if subj else None,
-                "subject_name": subj.name if subj else None,
-                "topic_id": str(top.id) if top else None,
-                "topic_name": top.name if top else None,
-                "subtopic_id": str(subtop.id) if subtop else None,
-                "subtopic_name": subtop.name if subtop else None,
-                "is_primary": link.is_primary,
-            })
+        if links:
+            subj_ids = {l.subject_id for l in links if l.subject_id}
+            topic_ids = {l.topic_id for l in links if l.topic_id}
+            subtopic_ids = {l.subtopic_id for l in links if l.subtopic_id}
+
+            subj_map = {}
+            if subj_ids:
+                s_res = await self.session.exec(select(Subject).where(Subject.id.in_(subj_ids)))
+                subj_map = {s.id: s for s in s_res.all()}
+
+            top_map = {}
+            if topic_ids:
+                t_res = await self.session.exec(select(Topic).where(Topic.id.in_(topic_ids)))
+                top_map = {t.id: t for t in t_res.all()}
+
+            subtop_map = {}
+            if subtopic_ids:
+                st_res = await self.session.exec(select(Subtopic).where(Subtopic.id.in_(subtopic_ids)))
+                subtop_map = {st.id: st for st in st_res.all()}
+
+            for link in links:
+                subj = subj_map.get(link.subject_id)
+                top = top_map.get(link.topic_id)
+                subtop = subtop_map.get(link.subtopic_id)
+                hierarchy_detail.append({
+                    "subject_id": str(subj.id) if subj else None,
+                    "subject_name": subj.name if subj else None,
+                    "topic_id": str(top.id) if top else None,
+                    "topic_name": top.name if top else None,
+                    "subtopic_id": str(subtop.id) if subtop else None,
+                    "subtopic_name": subtop.name if subtop else None,
+                    "is_primary": link.is_primary,
+                })
 
         if not hierarchy_detail and question.subtopic_id:
             subtop = await self.session.get(Subtopic, question.subtopic_id)
@@ -324,10 +352,11 @@ class HumanReviewService:
             raise ValueError(f"Question with ID {question_id} not found.")
 
         # 1. Update Passage Text if provided
-        if updated_passage_text and question.passage_id:
+        q_pass_id = getattr(question, "passage_id", None)
+        if updated_passage_text and q_pass_id:
             p_trans_res = await self.session.exec(
                 select(PassageTranslation).where(
-                    PassageTranslation.passage_id == question.passage_id
+                    PassageTranslation.passage_id == q_pass_id
                 )
             )
             p_trans = p_trans_res.first()
@@ -347,46 +376,47 @@ class HumanReviewService:
                 trans.question_text = updated_question_text
                 self.session.add(trans)
 
-        # 3. Update Options if provided (text, correctness & distractor analysis)
-        if updated_options:
-            for opt_data in updated_options:
-                opt_label = opt_data.get("option_label")
-                opt_text = opt_data.get("option_text")
-                is_corr = opt_data.get("is_correct", False)
-                d_analysis = opt_data.get("distractor_analysis")
-
-                opt_res = await self.session.exec(
-                    select(QuestionOption).where(
-                        QuestionOption.question_id == q_id,
-                        QuestionOption.option_label == opt_label,
-                    )
-                )
-                opt = opt_res.first()
-                if opt:
-                    opt.is_correct = is_corr
-                    self.session.add(opt)
-
-                    opt_trans_res = await self.session.exec(
-                        select(OptionTranslation).where(
-                            OptionTranslation.option_id == opt.id
-                        )
-                    )
-                    opt_trans = opt_trans_res.first()
-                    if opt_trans:
-                        if opt_text:
-                            opt_trans.option_text = opt_text
-                        if d_analysis:
-                            opt_trans.distractor_analysis = d_analysis
-                        self.session.add(opt_trans)
-
-        # Update Correct Answer explicitly if label specified
-        if correct_option_label:
+        # 3. Update Options if provided (text, correctness & distractor analysis) in bulk queries
+        if updated_options or correct_option_label:
             options_res = await self.session.exec(
                 select(QuestionOption).where(QuestionOption.question_id == q_id)
             )
-            for opt in options_res.all():
-                opt.is_correct = opt.option_label == correct_option_label
-                self.session.add(opt)
+            all_options = list(options_res.all())
+            opts_by_label = {opt.option_label.upper(): opt for opt in all_options}
+
+            if updated_options:
+                opt_ids = [opt.id for opt in all_options]
+                opt_trans_by_opt_id = {}
+                if opt_ids:
+                    all_ot_res = await self.session.exec(
+                        select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
+                    )
+                    for ot in all_ot_res.all():
+                        opt_trans_by_opt_id[ot.option_id] = ot
+
+                for opt_data in updated_options:
+                    opt_label = (opt_data.get("option_label") or "").upper()
+                    opt_text = opt_data.get("option_text")
+                    is_corr = opt_data.get("is_correct", False)
+                    d_analysis = opt_data.get("distractor_analysis")
+
+                    opt = opts_by_label.get(opt_label)
+                    if opt:
+                        opt.is_correct = is_corr
+                        self.session.add(opt)
+
+                        opt_trans = opt_trans_by_opt_id.get(opt.id)
+                        if opt_trans:
+                            if opt_text:
+                                opt_trans.option_text = opt_text
+                            if d_analysis:
+                                opt_trans.distractor_analysis = d_analysis
+                            self.session.add(opt_trans)
+
+            if correct_option_label:
+                for opt in all_options:
+                    opt.is_correct = (opt.option_label.upper() == correct_option_label.upper())
+                    self.session.add(opt)
 
         # Transition Question Status to PUBLISHED
         question.status = QuestionStatus.PUBLISHED
@@ -452,8 +482,9 @@ class HumanReviewService:
             raise ValueError("Exam PDF path is missing or inaccessible.")
 
         target_pages = set(parse_json_field(question.page_numbers_json))
-        if question.passage_id:
-            passage = await self.session.get(Passage, question.passage_id)
+        re_pass_id = getattr(question, "passage_id", None)
+        if re_pass_id:
+            passage = await self.session.get(Passage, re_pass_id)
             if passage:
                 target_pages.update(parse_json_field(passage.page_numbers_json))
 

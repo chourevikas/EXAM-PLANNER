@@ -64,6 +64,8 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
           <img
             src="/logo.jpeg"
             alt="ExamPlanner"
+            loading="lazy"
+            decoding="async"
             style={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
           />
           {!isSmallScreen && (

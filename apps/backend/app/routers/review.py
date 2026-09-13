@@ -244,7 +244,10 @@ async def reject_question(
             reviewer_notes=req.reviewer_notes,
             admin_id=current_user.id,
         )
-        await invalidate_question_cache(str(qid))
+        from app.cache import invalidate_question_cache, invalidate_exam_cache
+        await invalidate_question_cache(str(qid), str(q.exam_id) if q.exam_id else None)
+        if q.exam_id:
+            await invalidate_exam_cache(str(q.exam_id))
         return {
             "message": f"Question #{q.question_number_in_paper} rejected.",
             "question_id": str(q.id),

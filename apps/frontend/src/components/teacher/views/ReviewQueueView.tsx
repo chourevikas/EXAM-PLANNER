@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ClipboardCheck, AlertTriangle, RefreshCw, ArrowRight } from 'lucide-react';
 import { HumanReviewTaskSummary } from '../../../types/auth';
 import { fetchReviewTasks } from '../../../services/teacherService';
+import { useMinimumLoadingTime } from '../../../hooks/useMinimumLoadingTime';
 
 interface ReviewQueueViewProps {
   onOpenQuestion: (questionId: number) => void;
@@ -10,6 +11,7 @@ interface ReviewQueueViewProps {
 export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
   const [tasks, setTasks] = useState<HumanReviewTaskSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const showLoading = useMinimumLoadingTime(loading, 350);
   const [error, setError] = useState<string | null>(null);
   const [onlyFlagged, setOnlyFlagged] = useState(false);
 
@@ -125,7 +127,7 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
         </div>
       )}
 
-      {loading ? (
+      {showLoading ? (
         <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
           Loading review queue...
         </div>

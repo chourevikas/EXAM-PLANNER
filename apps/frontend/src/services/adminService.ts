@@ -1,4 +1,5 @@
 import { AdminApprovalRequest, AdminApprovalLog, SystemStats, User, UserDirectoryItem } from '../types/auth';
+import { guardedFetch } from '../utils/apiGuard';
 
 const API_BASE_URL = '/api/v1/admin';
 
@@ -299,7 +300,7 @@ export async function dismissStuckPipeline(examId: number | string): Promise<any
 }
 
 export async function approveAndPublishExam(examId: number | string): Promise<any> {
-  const res = await fetch(`${API_BASE_URL}/exams/${examId}/approve`, {
+  const res = await guardedFetch(`${API_BASE_URL}/exams/${examId}/approve`, {
     method: 'POST',
     headers: getAuthHeader(),
   });
@@ -307,11 +308,13 @@ export async function approveAndPublishExam(examId: number | string): Promise<an
     const errorData = await res.json().catch(() => ({ detail: 'Failed to approve and publish exam' }));
     throw new Error(errorData.detail || 'Exam approval failed.');
   }
+  invalidateExamReviewCache(examId);
+  invalidateAdminSyllabusCache(examId);
   return await res.json();
 }
 
 export async function approveAllQuestions(examId: number | string): Promise<any> {
-  const res = await fetch(`${API_BASE_URL}/exams/${examId}/approve-all-questions`, {
+  const res = await guardedFetch(`${API_BASE_URL}/exams/${examId}/approve-all-questions`, {
     method: 'POST',
     headers: getAuthHeader(),
   });
@@ -319,6 +322,7 @@ export async function approveAllQuestions(examId: number | string): Promise<any>
     const errorData = await res.json().catch(() => ({ detail: 'Failed to approve all questions' }));
     throw new Error(errorData.detail || 'Approving all questions failed.');
   }
+  invalidateExamReviewCache(examId);
   return await res.json();
 }
 
@@ -402,7 +406,17 @@ export interface ExamReviewQuestionsResponse {
 
 const _examReviewCache = new Map<string, { data: ExamReviewQuestionsResponse; timestamp: number }>();
 const _examIntegrityCache = new Map<string, { data: ExamIntegrityQuestionsResponse; timestamp: number }>();
+const _adminSyllabusCache = new Map<string, { data: any; timestamp: number }>();
 const EXAM_REVIEW_CACHE_TTL = 5 * 60 * 1000;
+const ADMIN_SYLLABUS_CACHE_TTL = 10 * 60 * 1000;
+
+export function invalidateAdminSyllabusCache(examId?: string | number): void {
+  if (examId !== undefined) {
+    _adminSyllabusCache.delete(`exam_${examId}`);
+  } else {
+    _adminSyllabusCache.clear();
+  }
+}
 
 export function invalidateExamReviewCache(examId?: number | string) {
   if (examId !== undefined) {
@@ -685,9 +699,6 @@ export async function fetchExamsByYear(forceRefresh: boolean = false): Promise<a
   return await res.json();
 }
 
-const _adminSyllabusCache = new Map<string, { data: any; timestamp: number }>();
-const ADMIN_SYLLABUS_CACHE_TTL = 10 * 60 * 1000;
-
 export async function fetchMasterSyllabus(examId?: string | number): Promise<any> {
   const cacheKey = examId ? `exam_${examId}` : 'master';
   const cached = _adminSyllabusCache.get(cacheKey);
@@ -696,9 +707,9 @@ export async function fetchMasterSyllabus(examId?: string | number): Promise<any
   }
 
   const url = examId ? `/api/v1/exams/${encodeURIComponent(examId)}/syllabus` : '/api/v1/syllabus';
-  const res = await fetch(url, { headers: getAuthHeader() });
+  const res = await guardedFetch(url, { headers: getAuthHeader() });
   if (!res.ok) {
-    const fallbackRes = await fetch(`/api/v1/syllabus?exam_id=${encodeURIComponent(examId || '')}`, { headers: getAuthHeader() });
+    const fallbackRes = await guardedFetch(`/api/v1/syllabus?exam_id=${encodeURIComponent(examId || '')}`, { headers: getAuthHeader() });
     if (!fallbackRes.ok) {
       const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch syllabus hierarchy' }));
       throw new Error(errorData.detail || 'Could not fetch syllabus.');
