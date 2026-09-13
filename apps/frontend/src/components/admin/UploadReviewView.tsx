@@ -39,6 +39,7 @@ import {
 } from '../../services/adminService';
 import { createAdaptivePoller, AdaptivePollerController } from '../../utils/adaptivePolling';
 import { formatEnum, cleanExamTitle } from '../../utils/formatEnum';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface UploadReviewViewProps {
   onNavigate?: (view: string, extraData?: any) => void;
@@ -54,9 +55,10 @@ interface MetricCardProps {
   supportingText: string;
   icon: React.ReactNode;
   isProcessing?: boolean;
+  isMobile?: boolean;
 }
 
-function MetricCard({ title, value, supportingText, icon, isProcessing = false }: MetricCardProps) {
+function MetricCard({ title, value, supportingText, icon, isProcessing = false, isMobile = false }: MetricCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const accentColor = 'var(--primary-red)';
 
@@ -70,7 +72,7 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false }
         borderRadius: 0,
         position: 'relative',
         overflow: 'hidden',
-        padding: '18px 20px',
+        padding: isMobile ? '12px 14px' : '18px 20px',
         boxShadow: isHovered
           ? '0 8px 20px -4px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.03)'
           : '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
@@ -80,7 +82,7 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false }
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        minHeight: 120,
+        minHeight: isMobile ? 82 : 120,
       }}
     >
       {/* Top Edge Accent Line (Appears Left-to-Right on Hover) */}
@@ -99,14 +101,14 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false }
       />
 
       {/* Header Row: Title & Tinted Icon Container */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#172033', letterSpacing: '-0.01em' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 6 }}>
+        <div style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: '#172033', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
           {title}
         </div>
         <div
           style={{
-            width: 32,
-            height: 32,
+            width: isMobile ? 26 : 32,
+            height: isMobile ? 26 : 32,
             borderRadius: 0,
             backgroundColor: '#F8FAFC',
             display: 'flex',
@@ -122,10 +124,10 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false }
       </div>
 
       {/* Value & Supporting Detail */}
-      <div style={{ marginTop: 10 }}>
+      <div style={{ marginTop: isMobile ? 6 : 10 }}>
         <div
           style={{
-            fontSize: 28,
+            fontSize: isMobile ? 22 : 28,
             fontWeight: 700,
             color: isHovered ? accentColor : '#172033',
             lineHeight: 1.05,
@@ -137,9 +139,9 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false }
           }}
         >
           <span>{value}</span>
-          {isProcessing && <Loader2 size={18} className="animate-spin" color="var(--primary-red)" />}
+          {isProcessing && <Loader2 size={isMobile ? 15 : 18} className="animate-spin" color="var(--primary-red)" />}
         </div>
-        <div style={{ fontSize: 12, fontWeight: 500, color: '#64748B', marginTop: 4 }}>
+        <div style={{ fontSize: isMobile ? 11 : 12, fontWeight: 500, color: '#64748B', marginTop: isMobile ? 2 : 4 }}>
           {supportingText}
         </div>
       </div>
@@ -408,9 +410,261 @@ function TableRowItem({
 }
 
 // ----------------------------------------------------------------------
+// 2b. Mobile Pipeline Card Component (Optimized Native Mobile Layout)
+// ----------------------------------------------------------------------
+function MobilePipelineCard({
+  exam,
+  onSelect,
+  onNavigate,
+  renderOverallStatusBadge,
+  renderStatusBadge,
+}: {
+  exam: ExamPipelineStatusItem;
+  onSelect: (exam: ExamPipelineStatusItem) => void;
+  onNavigate?: (view: string, extraData?: any) => void;
+  renderOverallStatusBadge: (exam: ExamPipelineStatusItem) => React.ReactNode;
+  renderStatusBadge: (status: string) => React.ReactNode;
+}) {
+  const total = exam.total_questions || 100;
+  const ext = exam.extracted_questions_count || 0;
+  const keyCount = exam.key_mapped_count || 0;
+  const expCount = exam.explanations_count || 0;
+  const isPublished =
+    (exam.status || '').toUpperCase().includes('PUBLISHED') ||
+    Boolean(exam.questions_json_path && exam.solutions_json_path);
+
+  // Stage 1 status
+  const s1Completed = exam.stage1_status === 'COMPLETED' || isPublished || (ext >= total && ext > 0);
+  const s1InProgress = !s1Completed && (exam.stage1_status === 'IN_PROGRESS' || Boolean(exam.is_extracting));
+  const s1Missing = exam.stage1_status === 'MISSING_INPUT' || (!exam.has_question_paper && ext === 0);
+
+  // Stage 2 status
+  const targetQ = ext > 0 ? ext : total;
+  const s2Completed = exam.stage2_status === 'COMPLETED' || isPublished || (keyCount >= targetQ && targetQ > 0);
+  const s2InProgress = exam.stage2_status === 'IN_PROGRESS';
+
+  // Stage 3 status
+  const stage3Completed = exam.stage3_status === 'COMPLETED' || isPublished || (expCount >= targetQ && targetQ > 0);
+  const stage3InProgress = exam.stage3_status === 'IN_PROGRESS';
+
+  const isExtracting = !s1Completed && Boolean(
+    exam.is_extracting ||
+    s1InProgress ||
+    exam.stage1_status === 'IN_PROGRESS' ||
+    exam.overall_status === 'PROCESSING' ||
+    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((exam.status || '').toUpperCase()) ||
+    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((exam.overall_status || '').toUpperCase())
+  );
+
+  const isPipelineComplete =
+    !isExtracting &&
+    !s2InProgress &&
+    !stage3InProgress &&
+    ((s1Completed && s2Completed && stage3Completed) ||
+      exam.overall_status === 'READY_FOR_REVIEW' ||
+      exam.overall_status === 'PUBLISHED' ||
+      (exam.status || '').toUpperCase() === 'COMPLETED' ||
+      (exam.status || '').toUpperCase() === 'PUBLISHED');
+
+  const percent = Math.min(100, Math.round((ext / (total || 1)) * 100));
+
+  return (
+    <div
+      onClick={() => onSelect(exam)}
+      style={{
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E2E8F0',
+        borderRadius: 0,
+        padding: '14px 14px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+        cursor: 'pointer',
+        transition: 'all 150ms ease-out',
+        borderLeft: '3px solid var(--primary-red)',
+      }}
+    >
+      {/* Top Row: Exam Info & Badges */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#172033', lineHeight: 1.3, wordBreak: 'break-word' }}>
+            {cleanExamTitle(exam.name)}
+          </div>
+          <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+            {exam.source_year ? `Year ${exam.source_year}` : 'Year unspecified'}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+          {renderStatusBadge(exam.status)}
+          {renderOverallStatusBadge(exam)}
+        </div>
+      </div>
+
+      {/* Middle Row: Extraction Progress */}
+      <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 0, padding: '10px 12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 0,
+              fontSize: 11,
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              backgroundColor: s1Completed ? '#DCFCE7' : isExtracting ? '#FEF3C7' : s1Missing ? '#FEF2F2' : '#F1F5F9',
+              color: s1Completed ? '#15803D' : isExtracting ? '#B45309' : s1Missing ? '#B42318' : '#64748B',
+              border: `1px solid ${s1Completed ? '#86EFAC' : isExtracting ? '#FDE68A' : s1Missing ? '#FECDCA' : '#CBD5E1'}`,
+            }}
+          >
+            {s1Completed ? (
+              <CheckCircle2 size={11} />
+            ) : isExtracting ? (
+              <Loader2 size={11} className="animate-spin" />
+            ) : s1Missing ? (
+              <AlertCircle size={11} />
+            ) : (
+              <FileText size={11} />
+            )}
+            <span>
+              {s1Completed
+                ? `Extracted (${ext}/${total} Qs)`
+                : isExtracting
+                ? `Extracting (${ext}/${total} Qs)`
+                : s1Missing
+                ? 'Missing Paper'
+                : `Queued (${ext}/${total} Qs)`}
+            </span>
+          </span>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: s1Completed ? '#15803D' : isExtracting ? '#B45309' : '#64748B' }}>
+            {percent}%
+          </span>
+        </div>
+
+        {/* Micro Progress Bar */}
+        <div style={{ width: '100%', height: 5, backgroundColor: '#E2E8F0', borderRadius: 0, overflow: 'hidden' }}>
+          <div
+            style={{
+              height: '100%',
+              width: `${percent}%`,
+              backgroundColor: s1Completed ? '#16A34A' : isExtracting ? '#F59E0B' : '#94A3B8',
+              transition: 'width 300ms ease-out',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Bottom Row: Actions */}
+      <div
+        style={{ display: 'flex', gap: 8, width: '100%', marginTop: 2 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={() => onSelect(exam)}
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: '#172033',
+            background: '#FFFFFF',
+            border: '1px solid #CBD5E1',
+            borderRadius: 0,
+            cursor: 'pointer',
+            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          Details
+        </button>
+
+        {isExtracting ? (
+          <button
+            type="button"
+            disabled
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#94A3B8',
+              background: '#F1F5F9',
+              borderRadius: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              border: '1px solid #E2E8F0',
+              cursor: 'not-allowed',
+            }}
+          >
+            <Loader2 size={12} className="animate-spin text-amber-600" />
+            In Extraction
+          </button>
+        ) : isPipelineComplete ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (onNavigate) {
+                onNavigate('review', exam);
+              }
+            }}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: '#FFFFFF',
+              background: 'var(--primary-red)',
+              border: '1px solid var(--primary-red)',
+              borderRadius: 0,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
+          >
+            <Check size={13} />
+            Review Exam
+          </button>
+        ) : (
+          <span
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#64748B',
+              background: '#F1F5F9',
+              borderRadius: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              border: '1px solid #E2E8F0',
+            }}
+          >
+            <Loader2 size={12} className="animate-spin" />
+            Processing
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
 // Main UploadReviewView Component
 // ----------------------------------------------------------------------
 export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: UploadReviewViewProps = {}) {
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
+
   const {
     uploadMode,
     setUploadMode,
@@ -854,25 +1108,26 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          flexWrap: 'wrap',
-          gap: 16,
-          marginBottom: 24,
+          alignItems: isMobile ? 'stretch' : 'flex-start',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 12 : 16,
+          marginBottom: isMobile ? 16 : 24,
         }}
       >
         <div>
           <h1
             style={{
-              fontSize: 26,
+              fontSize: isMobile ? 21 : 26,
               fontWeight: 700,
               color: '#172033',
               margin: 0,
               letterSpacing: '-0.02em',
+              lineHeight: 1.25,
             }}
           >
             {activeTab === 'UPLOAD_ONLY' ? 'Upload Question Paper' : 'Exam Paper Pipeline'}
           </h1>
-          <p style={{ fontSize: 13.5, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: isMobile ? 12.5 : 13.5, color: '#64748B', marginTop: 4, margin: '4px 0 0 0', lineHeight: 1.4 }}>
             {activeTab === 'UPLOAD_ONLY'
               ? 'Configure examination parameters and upload PDF paper to ingest into content pipeline.'
               : 'Upload, process, review and publish examination papers through the content pipeline.'}
@@ -880,15 +1135,17 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: isMobile ? '100%' : 'auto' }}>
           {activeTab === 'UPLOAD_ONLY' ? (
             <button
               onClick={() => setActiveTab('PIPELINE_ONLY')}
               style={{
+                width: isMobile ? '100%' : 'auto',
+                justifyContent: 'center',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '8px 16px',
+                padding: '9px 16px',
                 fontSize: 13,
                 fontWeight: 600,
                 borderRadius: 0,
@@ -909,10 +1166,12 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                 onClick={() => loadRealTimeQueue(false)}
                 disabled={loadingQueue}
                 style={{
+                  flex: isMobile ? 1 : 'none',
+                  justifyContent: 'center',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
-                  padding: '8px 14px',
+                  padding: '9px 14px',
                   fontSize: 13,
                   fontWeight: 500,
                   borderRadius: 0,
@@ -926,17 +1185,19 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                 title="Refresh Real-Time Pipeline Status"
               >
                 <RefreshCw size={14} className={loadingQueue ? 'animate-spin' : ''} color="#64748B" />
-                <span>Refresh Pipeline</span>
+                <span>Refresh</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('UPLOAD_ONLY')}
                 style={{
+                  flex: isMobile ? 1 : 'none',
+                  justifyContent: 'center',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  padding: '8px 16px',
-                  fontSize: 13.5,
+                  padding: '9px 16px',
+                  fontSize: 13,
                   fontWeight: 600,
                   borderRadius: 0,
                   backgroundColor: '#172033',
@@ -945,10 +1206,11 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                   cursor: 'pointer',
                   boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
                   transition: 'background 0.15s ease',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <Upload size={15} />
-                <span>Upload Exam Paper</span>
+                <span>Upload Paper</span>
               </button>
             </>
           )}
@@ -961,9 +1223,9 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 16,
-          marginBottom: 24,
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: isMobile ? 10 : 16,
+          marginBottom: isMobile ? 16 : 24,
         }}
       >
         <MetricCard
@@ -971,6 +1233,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
           value={totalExamsCount}
           supportingText="Extracted & cataloged"
           icon={<FileSpreadsheet size={17} color="var(--primary-red)" />}
+          isMobile={isMobile}
         />
         <MetricCard
           title="Active Pipeline Tasks"
@@ -978,18 +1241,21 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
           supportingText="Processing in background"
           icon={<Activity size={17} color="var(--primary-red)" />}
           isProcessing={activeCount > 0}
+          isMobile={isMobile}
         />
         <MetricCard
           title="Pending Review"
           value={pendingCount}
           supportingText="Awaiting verification"
           icon={<Clock size={17} color="var(--primary-red)" />}
+          isMobile={isMobile}
         />
         <MetricCard
           title="Published"
           value={publishedCount}
           supportingText="Catalog live & active"
           icon={<CheckCircle2 size={17} color="var(--primary-red)" />}
+          isMobile={isMobile}
         />
       </div>
 
@@ -1106,7 +1372,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
             background: '#FFFFFF',
             border: '1px solid #E2E8F0',
             borderRadius: 0,
-            padding: 26,
+            padding: isMobile ? '18px 14px' : 26,
             marginBottom: 24,
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
           }}
@@ -1114,7 +1380,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
+              <h2 style={{ fontSize: isMobile ? 15.5 : 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
                 Upload Question Paper PDF
               </h2>
             </div>
@@ -1259,7 +1525,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                 border: `2px dashed ${isDragOver ? 'var(--primary-red)' : '#93C5FD'}`,
                 backgroundColor: isDragOver ? '#E2E8F0' : '#F8FAFC',
                 borderRadius: 0,
-                padding: '32px 24px',
+                padding: isMobile ? '22px 14px' : '32px 24px',
                 textAlign: 'center',
                 cursor: 'pointer',
                 transition: 'all 200ms ease-out',
@@ -1275,8 +1541,8 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
               />
               <div
                 style={{
-                  width: 48,
-                  height: 48,
+                  width: isMobile ? 40 : 48,
+                  height: isMobile ? 40 : 48,
                   borderRadius: 0,
                   backgroundColor: '#FFFFFF',
                   color: 'var(--primary-red)',
@@ -1289,18 +1555,26 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                   transition: 'transform 200ms ease-out',
                 }}
               >
-                <Cloud size={26} />
+                <Cloud size={isMobile ? 22 : 26} />
               </div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#172033' }}>
-                {selectedFile ? selectedFile.name : 'Click to upload or drag & drop Question Paper PDF'}
+              <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 700, color: '#172033' }}>
+                {selectedFile ? selectedFile.name : isMobile ? 'Tap to choose Question Paper PDF' : 'Click to upload or drag & drop Question Paper PDF'}
               </div>
-              <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+              <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 4 }}>
                 Supports standard PDF question papers (Max 50MB)
               </div>
             </div>
 
             {/* Footer Row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: 12,
+              }}
+            >
               <div style={{ fontSize: 13 }}>
                 {statusMessage && (
                   <span style={{ color: statusMessage.isError ? '#DC2626' : '#16A34A', fontWeight: 600 }}>
@@ -1313,10 +1587,12 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                 type="submit"
                 disabled={isUploading || !selectedFile}
                 style={{
+                  width: isMobile ? '100%' : 'auto',
+                  justifyContent: 'center',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  padding: '10px 22px',
+                  padding: isMobile ? '11px 18px' : '10px 22px',
                   borderRadius: 0,
                   fontSize: 13.5,
                   fontWeight: 600,
@@ -1350,16 +1626,16 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
           {/* Header & Filter Controls Bar */}
           <div
             style={{
-              padding: '16px 20px',
+              padding: isMobile ? '12px 14px' : '16px 20px',
               borderBottom: '1px solid #E2E8F0',
               display: 'flex',
-              gap: 12,
+              gap: 10,
               alignItems: 'center',
               flexWrap: 'wrap',
               backgroundColor: '#FAFAFA',
             }}
           >
-            <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
+            <div style={{ position: 'relative', flex: isMobile ? '1 1 100%' : 1, minWidth: isMobile ? '100%' : 260 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: 11, color: '#64748B' }} />
               <input
                 type="text"
@@ -1380,45 +1656,53 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
               />
             </div>
 
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: 0,
-                border: '1px solid #CBD5E1',
-                fontSize: 13,
-                fontWeight: 500,
-                color: '#172033',
-                backgroundColor: '#FFFFFF',
-                outline: 'none',
-              }}
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="PROCESSING">Processing</option>
-              <option value="PENDING">Pending Review</option>
-              <option value="COMPLETED">Published</option>
-              <option value="FAILED">Failed</option>
-            </select>
+            <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : 'none' }}>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  flex: isMobile ? 1 : 'none',
+                  width: isMobile ? '100%' : 'auto',
+                  padding: '8px 12px',
+                  borderRadius: 0,
+                  border: '1px solid #CBD5E1',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#172033',
+                  backgroundColor: '#FFFFFF',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="PROCESSING">Processing</option>
+                <option value="PENDING">Pending Review</option>
+                <option value="COMPLETED">Published</option>
+                <option value="FAILED">Failed</option>
+              </select>
 
-            <select
-              value={stageFilter}
-              onChange={(e) => setStageFilter(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: 0,
-                border: '1px solid #CBD5E1',
-                fontSize: 13,
-                fontWeight: 500,
-                color: '#172033',
-                backgroundColor: '#FFFFFF',
-                outline: 'none',
-              }}
-            >
-              <option value="ALL">All Stages</option>
-              <option value="prelims">Prelims</option>
-              <option value="mains">Mains</option>
-            </select>
+              <select
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                style={{
+                  flex: isMobile ? 1 : 'none',
+                  width: isMobile ? '100%' : 'auto',
+                  padding: '8px 12px',
+                  borderRadius: 0,
+                  border: '1px solid #CBD5E1',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#172033',
+                  backgroundColor: '#FFFFFF',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="ALL">All Stages</option>
+                <option value="prelims">Prelims</option>
+                <option value="mains">Mains</option>
+              </select>
+            </div>
 
             {(searchQuery || statusFilter !== 'ALL' || stageFilter !== 'ALL') && (
               <button
@@ -1428,6 +1712,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                   setStageFilter('ALL');
                 }}
                 style={{
+                  width: isMobile ? '100%' : 'auto',
                   padding: '8px 12px',
                   fontSize: 12.5,
                   fontWeight: 600,
@@ -1436,6 +1721,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                   border: '1px solid #CBD5E1',
                   borderRadius: 0,
                   cursor: 'pointer',
+                  textAlign: 'center',
                 }}
               >
                 Clear Filters
@@ -1443,7 +1729,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
             )}
           </div>
 
-          {/* Table Content */}
+          {/* Table / Card List Content */}
           {loadingQueue ? (
             <div style={{ padding: 48, textAlign: 'center', color: '#64748B', fontSize: 13.5 }}>
               <Loader2 size={24} className="animate-spin" color="var(--primary-red)" style={{ margin: '0 auto 10px' }} />
@@ -1453,6 +1739,22 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
             <div style={{ padding: 48, textAlign: 'center', color: '#64748B', fontSize: 13.5 }}>
               <FileSpreadsheet size={32} color="#94A3B8" style={{ margin: '0 auto 10px' }} />
               <div>No examination papers found matching filter criteria.</div>
+            </div>
+          ) : isMobile ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px' }}>
+              {paginatedExams.map((exam) => (
+                <MobilePipelineCard
+                  key={exam.id}
+                  exam={exam}
+                  onSelect={(item) => {
+                    setSelectedExam(item);
+                    setIsDrawerOpen(true);
+                  }}
+                  onNavigate={onNavigate}
+                  renderOverallStatusBadge={renderOverallStatusBadge}
+                  renderStatusBadge={renderStatusBadge}
+                />
+              ))}
             </div>
           ) : (
             <div className="pipeline-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -1474,19 +1776,24 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                     display: flex !important;
                     flex-wrap: wrap !important;
                     align-items: center !important;
-                    justify-content: space-between !important;
-                    padding: 16px !important;
+                    justify-content: flex-start !important;
+                    padding: 14px 16px !important;
                     gap: 12px 16px !important;
                     border-bottom: 1px solid #E2E8F0 !important;
+                    height: auto !important;
+                    min-height: auto !important;
                   }
                   .pipeline-table tr.pipeline-table-row td.pipeline-cell {
                     padding: 0 !important;
                     border: none !important;
                     white-space: normal !important;
+                    height: auto !important;
+                    min-height: auto !important;
                   }
                   .pipeline-table tr.pipeline-table-row td.cell-exam-paper {
-                    flex: 1 1 220px !important;
+                    flex: 1 1 200px !important;
                     max-width: 100% !important;
+                    height: auto !important;
                   }
                   .pipeline-table tr.pipeline-table-row td.cell-status {
                     flex: 0 0 auto !important;
@@ -1494,6 +1801,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                   .pipeline-table tr.pipeline-table-row td.cell-extraction {
                     flex: 1 1 190px !important;
                     max-width: 320px !important;
+                    height: auto !important;
                   }
                   .pipeline-table tr.pipeline-table-row td.cell-overall {
                     flex: 0 0 auto !important;
@@ -1503,16 +1811,26 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                     margin-left: auto !important;
                   }
                 }
-                @media (max-width: 580px) {
+                @media (max-width: 640px) {
                   .pipeline-table tr.pipeline-table-row {
                     flex-direction: column !important;
                     align-items: stretch !important;
+                    justify-content: flex-start !important;
                     gap: 12px !important;
+                  }
+                  .pipeline-table tr.pipeline-table-row td.pipeline-cell {
+                    flex: none !important;
+                    max-width: 100% !important;
+                    width: 100% !important;
+                    height: auto !important;
+                    min-height: auto !important;
                   }
                   .pipeline-table tr.pipeline-table-row td.cell-exam-paper,
                   .pipeline-table tr.pipeline-table-row td.cell-extraction {
+                    flex: none !important;
                     max-width: 100% !important;
                     width: 100% !important;
+                    height: auto !important;
                   }
                   .pipeline-table tr.pipeline-table-row td.cell-actions {
                     margin-left: 0 !important;
@@ -1575,7 +1893,8 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '14px 20px',
+                flexDirection: isMobile ? 'column' : 'row',
+                padding: isMobile ? '12px 14px' : '14px 20px',
                 borderTop: '1px solid #E2E8F0',
                 backgroundColor: '#FAFAFA',
                 flexWrap: 'wrap',
@@ -1583,7 +1902,17 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
               }}
             >
               {/* Left: Summary & Page Size Selector */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: '#475569' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: isMobile ? 'space-between' : 'flex-start',
+                  width: isMobile ? '100%' : 'auto',
+                  gap: 16,
+                  fontSize: 13,
+                  color: '#475569',
+                }}
+              >
                 <span>
                   Showing{' '}
                   <strong style={{ color: '#0F172A', fontWeight: 600 }}>
@@ -1601,7 +1930,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                 </span>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 12.5, color: '#64748B' }}>Per page:</span>
+                  <span style={{ fontSize: 12, color: '#64748B' }}>Per page:</span>
                   <select
                     value={pageSize}
                     onChange={(e) => {
@@ -1610,7 +1939,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                     }}
                     style={{
                       padding: '4px 8px',
-                      fontSize: 12.5,
+                      fontSize: 12,
                       fontWeight: 500,
                       borderRadius: 0,
                       border: '1px solid #CBD5E1',
@@ -1629,7 +1958,15 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
               </div>
 
               {/* Right: Page Navigation Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  width: isMobile ? '100%' : 'auto',
+                }}
+              >
                 <button
                   type="button"
                   disabled={safeCurrentPage === 1}
@@ -1782,8 +2119,8 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
               top: 0,
               right: 0,
               bottom: 0,
-              width: 480,
-              maxWidth: 'min(480px, 100vw)',
+              width: isMobile ? '100vw' : 480,
+              maxWidth: '100vw',
               backgroundColor: '#FFFFFF',
               boxShadow: '-4px 0 24px rgba(15, 23, 42, 0.15)',
               zIndex: 200,
@@ -1795,7 +2132,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
             {/* Drawer Header */}
             <div
               style={{
-                padding: '20px 24px',
+                padding: isMobile ? '16px 18px' : '20px 24px',
                 borderBottom: '1px solid #E2E8F0',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -1806,7 +2143,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                   PIPELINE AUDIT & INSPECTION
                 </div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: '4px 0 0 0' }}>
+                <h2 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: '#172033', margin: '4px 0 0 0' }}>
                   {cleanExamTitle(selectedExam.name)}
                 </h2>
                 <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
@@ -1828,7 +2165,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
             </div>
 
             {/* Drawer Body */}
-            <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ flex: 1, padding: isMobile ? '16px 18px' : 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Overall Status */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Overall Pipeline & Publication Status</span>
@@ -1842,7 +2179,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
                   PIPELINE INPUT PREREQUISITES
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
                   <div
                     style={{
                       padding: 10,
