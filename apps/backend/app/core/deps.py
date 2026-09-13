@@ -18,7 +18,9 @@ http_bearer = HTTPBearer(auto_error=False)
 
 # Cache PyJWKClient instances per issuer so Clerk's JWKS is fetched once and
 # reused (cache_jwk_set/cache_keys) instead of being re-fetched over the
-# network on every single request.
+# network on every single request. Only used by verify_clerk_token, which
+# backs the one-time POST /auth/clerk-exchange handshake — Clerk tokens are
+# no longer accepted as ongoing bearer tokens by get_current_user.
 _jwks_clients: dict[str, jwt.PyJWKClient] = {}
 
 
@@ -29,6 +31,92 @@ def _get_jwks_client(issuer: str) -> jwt.PyJWKClient:
         client = jwt.PyJWKClient(jwks_url, cache_keys=True, lifespan=3600)
         _jwks_clients[issuer] = client
     return client
+
+
+async def verify_clerk_token(token: str) -> dict:
+    """Verifies a Clerk-issued JWT via JWKS and returns its payload.
+
+    Used only by the POST /auth/clerk-exchange handshake (see routers/auth.py)
+    to mint our own session right after a Clerk OAuth login. Unlike the old
+    inline verification this replaced, a verification failure always raises
+    401 instead of silently falling back to trusting unverified claims.
+    """
+    try:
+        unverified_claims = jwt.decode(token, options={"verify_signature": False})
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Malformed Clerk token") from e
+
+    issuer = unverified_claims.get("iss", "")
+    if not issuer:
+        raise HTTPException(status_code=401, detail="Clerk token missing issuer")
+
+    try:
+        jwks_client = _get_jwks_client(issuer)
+        signing_key = await asyncio.to_thread(jwks_client.get_signing_key_from_jwt, token)
+        payload = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            issuer=issuer,
+            # Clerk's default leeway is sometimes needed
+            leeway=60,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid Clerk token") from e
+
+    if not payload.get("sub"):
+        raise HTTPException(status_code=401, detail="Clerk token missing subject")
+    return payload
+
+
+async def get_or_create_user_from_clerk(
+    session: AsyncSession, clerk_id: str, clerk_email: str | None, name: str | None
+) -> User:
+    """Links or provisions a local User row for a verified Clerk identity.
+
+    Lookup order: by clerk_id, then by email (backfilling clerk_id onto that
+    row), then creates a new User. Used only by POST /auth/clerk-exchange.
+    """
+    query = select(User).where(User.clerk_id == clerk_id)
+    result = await session.exec(query)
+    user = result.one_or_none()
+
+    if not user and clerk_email:
+        query_email = select(User).where(User.email == clerk_email)
+        res_email = await session.exec(query_email)
+        user = res_email.one_or_none()
+        if user:
+            user.clerk_id = clerk_id
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+
+    if not user:
+        target_email = clerk_email or f"{clerk_id}@clerk.local"
+        existing_email_user = (
+            await session.exec(select(User).where(User.email == target_email))
+        ).one_or_none()
+        if existing_email_user:
+            existing_email_user.clerk_id = clerk_id
+            session.add(existing_email_user)
+            await session.commit()
+            await session.refresh(existing_email_user)
+            user = existing_email_user
+        else:
+            user = User(
+                clerk_id=clerk_id,
+                email=target_email,
+                full_name=name or "Clerk Sync User",
+                status=UserStatus.ACTIVE,
+                role=UserRole.STUDENT,
+            )
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+
+    if user.status != UserStatus.ACTIVE:
+        raise HTTPException(status_code=400, detail="Inactive user account")
+    return user
 
 
 async def get_current_user(
@@ -76,124 +164,36 @@ async def get_current_user(
         session = await session_ctx.__aenter__()
 
     try:
-        # Check if this is a Clerk token by looking at unverified claims
-        unverified_claims = jwt.decode(token, options={"verify_signature": False})
-        issuer = unverified_claims.get("iss", "")
+        # Custom JWT verification only — Clerk tokens are no longer accepted
+        # here. A Clerk OAuth login is exchanged for one of these via
+        # POST /auth/clerk-exchange (see routers/auth.py), so every request
+        # that reaches this dependency carries a backend-issued JWT.
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
-        if issuer and "clerk" in issuer:
-            try:
-                # Verify Clerk JWT using JWKS. The client is cached per-issuer
-                # and the blocking fetch is offloaded to a thread so it
-                # doesn't stall the event loop for other concurrent requests.
-                jwks_client = _get_jwks_client(issuer)
-                signing_key = await asyncio.to_thread(
-                    jwks_client.get_signing_key_from_jwt, token
-                )
-                payload = jwt.decode(
-                    token, 
-                    signing_key.key, 
-                    algorithms=["RS256"], 
-                    issuer=issuer,
-                    # Clerk's default leeway is sometimes needed
-                    leeway=60 
-                )
-            except Exception:
-                payload = unverified_claims
+        if payload.get("type") != "access":
+            raise HTTPException(status_code=401, detail="Invalid token type")
 
-            clerk_id: str = payload.get("sub")
-            if not clerk_id:
-                raise HTTPException(status_code=401, detail="Clerk token missing subject")
-
-            # Fast path: check Redis cache first
-            cache_key = f"ep:user:clerk:{clerk_id}"
+        user_id_str: str = payload.get("sub")
+        if user_id_str:
+            cache_key = f"ep:user:id:{user_id_str}"
             cached_user = await cache.get(cache_key)
             if cached_user and isinstance(cached_user, dict):
                 user = User.model_validate(cached_user)
-                if user.status != UserStatus.ACTIVE:
-                    raise HTTPException(status_code=400, detail="Inactive user account")
-                return user
+                if user.status == UserStatus.ACTIVE:
+                    return user
 
-            clerk_email = (
-                payload.get("email")
-                or payload.get("email_address")
-                or payload.get("primary_email_address")
-            )
-
-            query = select(User).where(User.clerk_id == clerk_id)
-            result = await session.exec(query)
-            user = result.one_or_none()
-
-            if not user and clerk_email:
-                query_email = select(User).where(User.email == clerk_email)
-                res_email = await session.exec(query_email)
-                user = res_email.one_or_none()
-                if user:
-                    user.clerk_id = clerk_id
-                    session.add(user)
-                    await session.commit()
-                    await session.refresh(user)
-
-            if not user:
-                target_email = clerk_email or f"{clerk_id}@clerk.local"
-                existing_email_user = (await session.exec(select(User).where(User.email == target_email))).one_or_none()
-                if existing_email_user:
-                    existing_email_user.clerk_id = clerk_id
-                    session.add(existing_email_user)
-                    await session.commit()
-                    await session.refresh(existing_email_user)
-                    user = existing_email_user
-                else:
-                    user = User(
-                        clerk_id=clerk_id,
-                        email=target_email,
-                        full_name=payload.get("name") or payload.get("full_name") or "Clerk Sync User",
-                        status=UserStatus.ACTIVE,
-                        role=UserRole.STUDENT,
-                    )
-                    session.add(user)
-                    await session.commit()
-                    await session.refresh(user)
-
-            if user.status != UserStatus.ACTIVE:
-                raise HTTPException(status_code=400, detail="Inactive user account")
-
-            # Cache in Redis with 300s TTL
-            user_dict = jsonable_encoder(user.model_dump())
-            await cache.set(cache_key, user_dict, ttl_seconds=300)
-            if user.id:
-                await cache.set(f"ep:user:id:{user.id}", user_dict, ttl_seconds=300)
-            return user
-        else:
-            # Custom JWT Verification
             try:
-                payload = jwt.decode(
-                    token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-                )
-            except jwt.PyJWTError:
-                # If signature changed in dev, decode claims
-                payload = jwt.decode(token, options={"verify_signature": False})
-
-            user_id_str: str = payload.get("sub")
-            if user_id_str:
-                cache_key = f"ep:user:id:{user_id_str}"
-                cached_user = await cache.get(cache_key)
-                if cached_user and isinstance(cached_user, dict):
-                    user = User.model_validate(cached_user)
-                    if user.status == UserStatus.ACTIVE:
-                        return user
-
-                try:
-                    user_id_val = int(user_id_str) if str(user_id_str).isdigit() else user_id_str
-                    user_repo = UserRepository(session)
-                    user = await user_repo.get_by_id(user_id_val)
-                    if user and user.status == UserStatus.ACTIVE:
-                        user_dict = jsonable_encoder(user.model_dump())
-                        await cache.set(cache_key, user_dict, ttl_seconds=300)
-                        if user.clerk_id:
-                            await cache.set(f"ep:user:clerk:{user.clerk_id}", user_dict, ttl_seconds=300)
-                        return user
-                except (ValueError, TypeError):
-                    pass
+                user_id_val = int(user_id_str) if str(user_id_str).isdigit() else user_id_str
+                user_repo = UserRepository(session)
+                user = await user_repo.get_by_id(user_id_val)
+                if user and user.status == UserStatus.ACTIVE:
+                    user_dict = jsonable_encoder(user.model_dump())
+                    await cache.set(cache_key, user_dict, ttl_seconds=300)
+                    if user.clerk_id:
+                        await cache.set(f"ep:user:clerk:{user.clerk_id}", user_dict, ttl_seconds=300)
+                    return user
+            except (ValueError, TypeError):
+                pass
 
     except HTTPException:
         raise

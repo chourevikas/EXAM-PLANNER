@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import {
   listExams,
@@ -43,7 +42,6 @@ export function MockSelectionPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hoveredMock, setHoveredMock] = useState<number | string | null>(null);
   const [mocksList, setMocksList] = useState<DisplayMock[]>([]);
-  const { getToken } = useAuth();
 
   // Dynamic 3-level taxonomy & exam state
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
@@ -132,10 +130,7 @@ export function MockSelectionPage() {
     async function fetchLiveMocksAndAttempts() {
       setIsLoading(true);
       try {
-        const token = await getToken();
-        if (token) {
-          localStorage.setItem('access_token', token);
-        }
+        const token = localStorage.getItem('access_token');
         const [liveExams, statusByExam] = await Promise.all([
           listExams(undefined, true, token || undefined),
           getAttemptStatusByExam(token || undefined),
