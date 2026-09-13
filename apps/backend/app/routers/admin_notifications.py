@@ -62,6 +62,7 @@ async def create_notification(
     session.add(noti)
     await session.commit()
     await session.refresh(noti)
+    await _invalidate_notifications_cache()
 
     return NotificationResponse(
         id=noti.id,
@@ -77,6 +78,16 @@ async def create_notification(
         updatedAt=noti.updated_at,
         publishedAt=noti.published_at,
     )
+
+
+async def _invalidate_notifications_cache():
+    try:
+        from app.cache import get_cache
+        cache = get_cache()
+        await cache.delete_pattern("ep:admin:notifications:*")
+        await cache.delete_pattern("ep:notifications:*")
+    except Exception:
+        pass
 
 
 @router.get(
@@ -95,6 +106,17 @@ async def list_admin_notifications(
     Returns a paginated list of all broadcast notifications, optionally filtered by status (draft, published, rejected).
     Sorted by createdAt DESC.
     """
+    from app.cache import get_cache
+    from fastapi.encoders import jsonable_encoder
+    from fastapi.responses import JSONResponse
+
+    cache = get_cache()
+    sf = status_filter.strip().lower() if status_filter else "all"
+    cache_key = f"ep:admin:notifications:list:{page}:{limit}:{sf}"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     stmt = select(Notification)
     count_stmt = select(func.count()).select_from(Notification)
 
@@ -137,13 +159,16 @@ async def list_admin_notifications(
         for n in notis
     ]
 
-    return NotificationListResponse(
+    resp_data = NotificationListResponse(
         items=items,
         total=total,
         page=page,
         pageSize=limit,
         totalPages=total_pages,
     )
+    encoded = jsonable_encoder(resp_data)
+    await cache.set(cache_key, encoded, ttl_seconds=180)
+    return JSONResponse(content=encoded)
 
 
 @router.get(
@@ -234,6 +259,7 @@ async def update_notification(
     session.add(noti)
     await session.commit()
     await session.refresh(noti)
+    await _invalidate_notifications_cache()
 
     creator_name = "Admin"
     if noti.created_by_id:
@@ -306,6 +332,7 @@ async def publish_notification(
     session.add(noti)
     await session.commit()
     await session.refresh(noti)
+    await _invalidate_notifications_cache()
 
     # Queue background asynchronous email broadcasting
     background_tasks.add_task(dispatch_broadcast_notification_to_all_users, noti.id)
@@ -362,6 +389,7 @@ async def reject_notification(
     session.add(noti)
     await session.commit()
     await session.refresh(noti)
+    await _invalidate_notifications_cache()
 
     creator_name = "Admin"
     if noti.created_by_id:
@@ -413,6 +441,7 @@ async def delete_notification(
 
     await session.delete(noti)
     await session.commit()
+    await _invalidate_notifications_cache()
 
     return {"message": f"Notification #{notification_id} deleted successfully.", "id": notification_id}
 

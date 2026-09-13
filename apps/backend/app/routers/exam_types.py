@@ -61,8 +61,17 @@ async def admin_list_exam_types(
     session: AsyncSession = Depends(get_async_session),
     _: User = Depends(admin_or_super),
 ):
+    cache = get_cache()
+    cache_key = f"ep:admin:exam_types:{include_inactive}"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     service = ExamTypeService(session)
-    return await service.list_exam_types(include_inactive=include_inactive)
+    items = await service.list_exam_types(include_inactive=include_inactive)
+    serialized = [item.model_dump(mode="json") for item in items]
+    await cache.set(cache_key, serialized, ttl_seconds=1800)
+    return items
 
 
 @router.get(
