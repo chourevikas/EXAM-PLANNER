@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { UserRole } from './types/auth';
 
@@ -99,6 +100,7 @@ import { GlobalThemeToggle } from './components/common/GlobalThemeToggle';
 import { Spinner } from './components/common/Spinner';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { PersistentStudentLayout } from './components/student/PersistentStudentLayout';
+import { ClerkExchangeBridge } from './components/common/ClerkExchangeBridge';
 
 
 function LoadingFallback() {
@@ -128,6 +130,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
+      <ClerkExchangeBridge />
       <GlobalThemeToggle />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
@@ -140,6 +143,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/guest-exam" element={<GuestExamPage />} />
+          <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
           <Route path="/exams" element={<ExamsPage />} />
           <Route path="/about" element={<AboutUsPage />} />
           <Route path="/contact" element={<ContactUsPage />} />

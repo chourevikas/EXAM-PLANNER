@@ -202,6 +202,34 @@ class AuthService:
 
         return token_response, refresh_token
 
+    async def exchange_clerk_token(self, user: User) -> Tuple[TokenResponse, str]:
+        """Issues our own access/refresh token pair for a User already resolved
+        and verified from a Clerk OAuth login (see deps.get_or_create_user_from_clerk).
+        Mirrors the token-issuance tail of authenticate_user, minus the password
+        check — this is the sole way a Clerk login turns into a first-party session."""
+        access_token = create_access_token(subject=user.id, role=user.role.value)
+        refresh_token = create_refresh_token(subject=user.id, role=user.role.value)
+
+        expires_at = datetime.now(timezone.utc) + timedelta(
+            days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+        )
+        await self.user_repo.perform_login_housekeeping_and_save_token(
+            user_id=user.id,
+            token_hash=get_token_hash(refresh_token),
+            expires_at=expires_at,
+        )
+
+        token_response = TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=user,
+            redirect_url=self.get_role_redirect(user.role),
+            is_pending_approval=False,
+            message="Login successful!",
+        )
+
+        return token_response, refresh_token
+
     async def logout_user(self, user_id: int | str) -> None:
         await self.user_repo.revoke_user_refresh_tokens(user_id)
 

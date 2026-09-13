@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { fetchMonthlyBenchmark, MonthlyBenchmarkResponse } from '../services/analyticsService';
@@ -156,7 +155,6 @@ const BASE_PAGE_BTN_STYLE: React.CSSProperties = {
 // ==================== MAIN COMPONENT ====================
 
 export function MonthlyReportPage() {
-  const { getToken } = useAuth();
   const [data, setData] = useState<MonthlyBenchmarkResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -171,18 +169,7 @@ export function MonthlyReportPage() {
       setLoading(true);
       setError(null);
       try {
-        let token = localStorage.getItem('access_token');
-        if (!token || forceRefresh) {
-          try {
-            const clerkToken = await getToken();
-            if (clerkToken) {
-              token = clerkToken;
-              localStorage.setItem('access_token', clerkToken);
-            }
-          } catch (e) {
-            console.warn('Could not retrieve fresh Clerk token:', e);
-          }
-        }
+        const token = localStorage.getItem('access_token');
 
         const res = await fetchMonthlyBenchmark(token || undefined, {
           signal,
@@ -203,7 +190,7 @@ export function MonthlyReportPage() {
         }
       }
     },
-    [getToken]
+    []
   );
 
   useEffect(() => {

@@ -4,7 +4,7 @@ import { Logo } from '../components/common/Logo';
 import { Ico } from '../components/common/Icons';
 import { UserRole } from '../types/auth';
 import { loginUser } from '../services/authService';
-import { useClerk } from '@clerk/clerk-react';
+import { useClerk, useSignIn } from '@clerk/clerk-react';
 
 export function SignInPage() {
   const [email, setEmail] = useState('');
@@ -17,6 +17,7 @@ export function SignInPage() {
   const navigate = useNavigate();
   const clerk = useClerk();
   const { isSignedIn } = clerk;
+  const { signIn } = useSignIn();
 
   React.useEffect(() => {
     if (isSignedIn) {
@@ -314,13 +315,21 @@ export function SignInPage() {
               transition: 'all 0.15s ease',
               fontFamily: "'Manrope', sans-serif",
             }}
-            onClick={() => {
+            onClick={async () => {
               sessionStorage.setItem('pending_guest_sync', 'true');
               const redirectTarget = `${window.location.origin}/dashboard`;
-              clerk.openSignIn({
-                fallbackRedirectUrl: redirectTarget,
-                signUpFallbackRedirectUrl: redirectTarget,
-              });
+              try {
+                // Goes straight to Google's consent screen instead of opening
+                // Clerk's own hosted sign-in modal (which would show a second,
+                // redundant "Continue with Google" button).
+                await signIn?.authenticateWithRedirect({
+                  strategy: 'oauth_google',
+                  redirectUrl: `${window.location.origin}/sso-callback`,
+                  redirectUrlComplete: redirectTarget,
+                });
+              } catch (err) {
+                console.error('Failed to start Google sign-in:', err);
+              }
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#F8FAFC';

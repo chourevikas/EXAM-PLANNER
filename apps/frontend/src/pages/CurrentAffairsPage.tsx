@@ -1,21 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { useAuth } from '@clerk/clerk-react';
 import { ChevronRight } from 'lucide-react';
 import { Spinner } from '../components/common/Spinner';
 
 export function CurrentAffairsPage() {
   const [affairs, setAffairs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { getToken } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchAffairs = async () => {
       try {
-        const clerkToken = await getToken().catch(() => null);
-        const token = clerkToken || localStorage.getItem('access_token');
+        const token = localStorage.getItem('access_token');
         const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
         const res = await fetch('/api/v1/current-affairs/', { headers });
         if (res.ok) {
@@ -29,7 +26,7 @@ export function CurrentAffairsPage() {
       }
     };
     fetchAffairs();
-  }, [getToken]);
+  }, []);
 
   const groupedAffairs = useMemo(() => {
     const groups: Record<string, any[]> = {};

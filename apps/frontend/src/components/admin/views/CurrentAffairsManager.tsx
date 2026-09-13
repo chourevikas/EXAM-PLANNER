@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@clerk/clerk-react';
 
 export function CurrentAffairsManager() {
-  const { getToken } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -22,8 +20,7 @@ export function CurrentAffairsManager() {
 
   const fetchAffairs = async () => {
     try {
-      const clerkToken = await getToken().catch(() => null);
-      const token = clerkToken || localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token');
       const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
       const res = await fetch('/api/v1/current-affairs/', { headers });
       if (res.ok) {
@@ -43,8 +40,7 @@ export function CurrentAffairsManager() {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const clerkToken = await getToken().catch(() => null);
-      const token = clerkToken || localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token');
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
@@ -98,8 +94,7 @@ export function CurrentAffairsManager() {
 
   const handleDelete = async (id: number) => {
     try {
-      const clerkToken = await getToken().catch(() => null);
-      const token = clerkToken || localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token');
       const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
       const res = await fetch(`/api/v1/current-affairs/${id}`, { method: 'DELETE', headers });
       if (res.ok) {

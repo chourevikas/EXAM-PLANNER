@@ -85,6 +85,10 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: Optional[str] = None
 
 
+class ClerkExchangeRequest(BaseModel):
+    clerk_token: str
+
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 

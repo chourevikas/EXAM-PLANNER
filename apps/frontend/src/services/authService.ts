@@ -180,6 +180,35 @@ export async function loginUser(email: string, password: string, role?: UserRole
   return data;
 }
 
+/**
+ * Exchanges a Clerk OAuth session token for our own access/refresh tokens.
+ * This is the only point where a Clerk-issued token is ever sent anywhere —
+ * afterward the app behaves exactly like an email/password login (same
+ * storage, same proactive refresh, same guest-session sync).
+ */
+export async function exchangeClerkToken(clerkToken: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE_URL}/clerk-exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ clerk_token: clerkToken }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Clerk exchange failed' }));
+    throw new Error(errorData.detail || 'Could not complete sign-in.');
+  }
+
+  const data: AuthResponse = await res.json();
+  if (data.access_token && data.user) {
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    scheduleProactiveRefresh(data.access_token);
+    await syncGuestSessionsOnAuth(data.access_token);
+  }
+  return data;
+}
+
 export async function registerUser(
   email: string,
   password: string,
