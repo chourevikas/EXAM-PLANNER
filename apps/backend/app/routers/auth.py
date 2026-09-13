@@ -15,6 +15,7 @@ from app.schemas.auth import (
     UserLogin,
     TokenResponse,
     RefreshTokenRequest,
+    ClerkExchangeRequest,
     UserOut,
     UserUpdate,
     ForgotPasswordRequest,
@@ -24,7 +25,7 @@ from app.schemas.auth import (
 import jwt
 from app.config.settings import settings
 from app.services.auth_service import AuthService
-from app.core.deps import get_current_user, require_roles
+from app.core.deps import get_current_user, require_roles, verify_clerk_token, get_or_create_user_from_clerk
 from app.cache import get_cache, build_cache_key
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -202,6 +203,43 @@ async def login(
 ):
     auth_service = AuthService(session)
     token_response, refresh_token = await auth_service.authenticate_user(user_in)
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+    )
+    return token_response
+
+
+@router.post("/clerk-exchange", response_model=TokenResponse)
+async def clerk_exchange(
+    body: ClerkExchangeRequest,
+    response: Response,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Exchanges a verified Clerk OAuth login for our own session tokens.
+
+    This is the only point where a Clerk-issued token is ever accepted —
+    afterward the frontend uses the returned access/refresh tokens exactly
+    like a normal email/password login. get_current_user no longer accepts
+    Clerk tokens directly.
+    """
+    payload = await verify_clerk_token(body.clerk_token)
+    clerk_id = payload["sub"]
+    clerk_email = (
+        payload.get("email")
+        or payload.get("email_address")
+        or payload.get("primary_email_address")
+    )
+    clerk_name = payload.get("name") or payload.get("full_name")
+
+    user = await get_or_create_user_from_clerk(session, clerk_id, clerk_email, clerk_name)
+
+    auth_service = AuthService(session)
+    token_response, refresh_token = await auth_service.exchange_clerk_token(user)
 
     response.set_cookie(
         key="refresh_token",

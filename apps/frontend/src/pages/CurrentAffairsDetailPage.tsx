@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { useAuth } from '@clerk/clerk-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Ico } from '../components/common/Icons';
@@ -12,14 +11,12 @@ export function CurrentAffairsDetailPage() {
   const [affair, setAffair] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { getToken } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchAffair = async () => {
       try {
-        const clerkToken = await getToken().catch(() => null);
-        const token = clerkToken || localStorage.getItem('access_token');
+        const token = localStorage.getItem('access_token');
         const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
         const res = await fetch(`/api/v1/current-affairs/${id}`, { headers });
         if (res.ok) {
@@ -38,7 +35,7 @@ export function CurrentAffairsDetailPage() {
     if (id) {
       fetchAffair();
     }
-  }, [id, getToken]);
+  }, [id]);
 
   const handlePractice = (affairData: any) => {
     const params = new URLSearchParams();

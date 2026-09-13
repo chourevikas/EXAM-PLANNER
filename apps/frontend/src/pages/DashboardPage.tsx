@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { fetchCurrentUser, syncGuestSessionsOnAuth } from '../services/authService';
 import { listExams } from '../services/examService';
 import { guardedFetch } from '../utils/apiGuard';
-import { useUser, useAuth } from '@clerk/clerk-react';
+import { useUser } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
 import { LogStudyModal } from '../components/student/LogStudyModal';
@@ -43,7 +43,6 @@ export function DashboardPage() {
   }, [user, navigate]);
 
   const { user: clerkUser } = useUser();
-  const { getToken } = useAuth();
 
   const [activeExam, setActiveExam] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -78,7 +77,7 @@ export function DashboardPage() {
 
     const loadDashboard = async () => {
       // Acquire token once — reused by all parallel requests
-      const token = (await getToken()) || localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token');
       const authHeaders: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
 
       // Sync guest sessions before firing dashboard queries
@@ -946,7 +945,7 @@ export function DashboardPage() {
         onClose={() => setShowLogModal(false)}
         onSuccess={async () => {
           // Reload activity + stats in parallel after logging study
-          const token = (await getToken()) || localStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token');
           const authHeaders: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
           const [actRes, statsRes, subjRes] = await Promise.allSettled([
             guardedFetch('/api/v1/analytics/activity/today', { headers: authHeaders }).then(r => r.ok ? r.json() : null),

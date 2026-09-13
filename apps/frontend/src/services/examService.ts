@@ -19,10 +19,7 @@ import { guardedFetch } from '../utils/apiGuard';
 const API_BASE_URL = '/api/v1';
 
 function getAuthHeaders(customToken?: string): Record<string, string> {
-  let token = customToken || localStorage.getItem('access_token');
-  if (!token && (window as any).Clerk?.session) {
-    token = (window as any).Clerk.session.lastActiveToken?.jwt;
-  }
+  const token = customToken || localStorage.getItem('access_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };

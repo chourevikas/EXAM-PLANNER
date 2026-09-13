@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { listExams, getAttemptStatusByExam, ExamItem, formatCanonicalExamTitle } from '../services/examService';
@@ -24,7 +23,6 @@ export function PYQSelectionPage() {
   const [hoveredExam, setHoveredExam] = useState<number | string | null>(null);
   const [examsList, setExamsList] = useState<DisplayExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { getToken } = useAuth();
 
   // Filter bar state
   const [selectedYear, setSelectedYear] = useState<string>('All Years');
@@ -35,10 +33,7 @@ export function PYQSelectionPage() {
     async function fetchLiveExamsAndAttempts() {
       setIsLoading(true);
       try {
-        const token = await getToken();
-        if (token) {
-          localStorage.setItem('access_token', token);
-        }
+        const token = localStorage.getItem('access_token');
         const [liveExams, statusByExam] = await Promise.all([
           listExams('PUBLISHED', true, token || undefined),
           getAttemptStatusByExam(token || undefined),
