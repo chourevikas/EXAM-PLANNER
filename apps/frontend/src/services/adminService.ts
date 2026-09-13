@@ -535,6 +535,35 @@ export async function fetchCatalogQuestions(
   return await res.json();
 }
 
+export interface QuestionCatalogSubjectItem {
+  id: string;
+  name: string;
+  code: string;
+  query_name: string;
+  description: string;
+  questions_count: number;
+  pending_count: number;
+  subtopics_count: number;
+  icon?: string;
+}
+
+export interface QuestionCatalogSubjectsResponse {
+  total_subjects: number;
+  total_questions: number;
+  total_subtopics: number;
+  total_pending: number;
+  subjects: QuestionCatalogSubjectItem[];
+}
+
+export async function fetchQuestionCatalogSubjects(): Promise<QuestionCatalogSubjectsResponse> {
+  const res = await fetch(`${API_BASE_URL}/question-catalog/subjects`, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch catalog subjects' }));
+    throw new Error(errorData.detail || 'Could not fetch question catalog subjects.');
+  }
+  return await res.json();
+}
+
 export interface OverviewMetric {
   title: string;
   value: string;

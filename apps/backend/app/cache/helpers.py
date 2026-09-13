@@ -67,6 +67,7 @@ async def invalidate_exam_cache(exam_id: str) -> None:
         f"{prefix}:exams:review:{exam_id_str}*",
         f"{prefix}:admin:review:{exam_id_str}*",
         f"{prefix}:admin:overview_stats*",
+        f"{prefix}:admin:question_catalog*",
         f"{prefix}:syllabus:complete:{exam_id_str}*",
         f"{prefix}:syllabus:complete:master*",
     ]
@@ -87,6 +88,7 @@ async def invalidate_review_cache(
     await cache.delete_pattern(f"{prefix}:review:tasks*")
     await cache.delete_pattern(f"{prefix}:hitl:tasks*")
     await cache.delete_pattern(f"{prefix}:review:queue:count*")
+    await cache.delete_pattern(f"{prefix}:admin:question_catalog*")
 
     if question_id:
         q_id_str = str(question_id)

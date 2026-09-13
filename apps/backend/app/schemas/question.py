@@ -213,3 +213,23 @@ class ExamReviewQuestionsResponse(BaseModel):
     page: int
     limit: int
     pages: int
+
+
+class QuestionCatalogSubjectItemOut(BaseModel):
+    id: str
+    name: str
+    code: str
+    query_name: str
+    description: str
+    questions_count: int
+    pending_count: int
+    subtopics_count: int
+    icon: Optional[str] = None
+
+
+class QuestionCatalogSubjectsResponseOut(BaseModel):
+    total_subjects: int
+    total_questions: int
+    total_subtopics: int
+    total_pending: int
+    subjects: List[QuestionCatalogSubjectItemOut]

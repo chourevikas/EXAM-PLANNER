@@ -96,7 +96,7 @@ export function AdminPage() {
           />
         );
       case 'questions':
-        return <QuestionBankManager />;
+        return <QuestionBankManager onNavigate={handleNavigate} />;
       case 'exam-types':
         return <ExamTypesManager />;
       case 'review':

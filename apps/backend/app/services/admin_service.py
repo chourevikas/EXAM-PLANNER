@@ -28,6 +28,10 @@ from app.schemas.platform_analytics import (
     SubjectDiagnosticItemOut,
     AIPipelinePrecisionItemOut,
 )
+from app.schemas.question import (
+    QuestionCatalogSubjectItemOut,
+    QuestionCatalogSubjectsResponseOut,
+)
 
 
 
@@ -715,6 +719,165 @@ class AdminService:
             subject_accuracy=subject_accuracy_list,
             ai_precision_metrics=ai_precision_metrics,
             generated_at=now.isoformat(),
+        )
+
+        await cache.set(cache_key, resp.model_dump(mode="json"), ttl_seconds=300)
+        return resp
+
+    async def get_question_catalog_subjects(self) -> QuestionCatalogSubjectsResponseOut:
+        """
+        Fetches live aggregated catalog metrics (questions, pending reviews, subtopics)
+        per subject using an ultra-fast single CTE query. Results are grouped by standard
+        subject categories with full coverage of all database hierarchy records.
+        """
+        from app.cache import get_cache, build_cache_key
+        from sqlalchemy import text
+
+        cache = get_cache()
+        cache_key = build_cache_key("admin:question_catalog:subjects")
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return QuestionCatalogSubjectsResponseOut(**cached_data)
+
+        sql = text('''
+        WITH subject_mappings AS (
+            SELECT 
+                s.id AS subject_id,
+                s.name AS raw_name,
+                s.code AS raw_code,
+                CASE
+                    WHEN lower(s.name) LIKE '%polity%' OR lower(s.name) LIKE '%governance%' THEN 'Polity'
+                    WHEN lower(s.name) LIKE '%economy%' OR lower(s.name) LIKE '%banking%' OR lower(s.name) LIKE '%fiscal%' THEN 'Economy'
+                    WHEN lower(s.name) LIKE '%history%' OR lower(s.name) LIKE '%culture%' OR lower(s.name) LIKE '%ancient%' OR lower(s.name) LIKE '%medieval%' THEN 'History'
+                    WHEN lower(s.name) LIKE '%geography%' OR lower(s.name) LIKE '%climatology%' THEN 'Geography'
+                    WHEN lower(s.name) LIKE '%science%' OR lower(s.name) LIKE '%tech%' THEN 'Science & Technology'
+                    WHEN lower(s.name) LIKE '%environment%' OR lower(s.name) LIKE '%ecology%' THEN 'Environment'
+                    WHEN lower(s.name) LIKE '%international%' OR lower(s.name) LIKE '%ir%' OR lower(s.name) LIKE '%current%' THEN 'Current Affairs'
+                    WHEN lower(s.name) LIKE '%agriculture%' THEN 'Agriculture'
+                    ELSE s.name
+                END AS category_name,
+                CASE
+                    WHEN lower(s.name) LIKE '%polity%' OR lower(s.name) LIKE '%governance%' THEN 'POLITY'
+                    WHEN lower(s.name) LIKE '%economy%' OR lower(s.name) LIKE '%banking%' OR lower(s.name) LIKE '%fiscal%' THEN 'ECONOMY'
+                    WHEN lower(s.name) LIKE '%history%' OR lower(s.name) LIKE '%culture%' OR lower(s.name) LIKE '%ancient%' OR lower(s.name) LIKE '%medieval%' THEN 'HISTORY'
+                    WHEN lower(s.name) LIKE '%geography%' OR lower(s.name) LIKE '%climatology%' THEN 'GEOGRAPHY'
+                    WHEN lower(s.name) LIKE '%science%' OR lower(s.name) LIKE '%tech%' THEN 'SCIENCE'
+                    WHEN lower(s.name) LIKE '%environment%' OR lower(s.name) LIKE '%ecology%' THEN 'ENVIRONMENT'
+                    WHEN lower(s.name) LIKE '%international%' OR lower(s.name) LIKE '%ir%' OR lower(s.name) LIKE '%current%' THEN 'CURRENT_AFFAIRS'
+                    WHEN lower(s.name) LIKE '%agriculture%' THEN 'AGRICULTURE'
+                    ELSE upper(s.code)
+                END AS category_code,
+                CASE
+                    WHEN lower(s.name) LIKE '%polity%' OR lower(s.name) LIKE '%governance%' THEN 'Polity'
+                    WHEN lower(s.name) LIKE '%economy%' OR lower(s.name) LIKE '%banking%' OR lower(s.name) LIKE '%fiscal%' THEN 'Economy'
+                    WHEN lower(s.name) LIKE '%history%' OR lower(s.name) LIKE '%culture%' OR lower(s.name) LIKE '%ancient%' OR lower(s.name) LIKE '%medieval%' THEN 'History'
+                    WHEN lower(s.name) LIKE '%geography%' OR lower(s.name) LIKE '%climatology%' THEN 'Geography'
+                    WHEN lower(s.name) LIKE '%science%' OR lower(s.name) LIKE '%tech%' THEN 'Science & Tech'
+                    WHEN lower(s.name) LIKE '%environment%' OR lower(s.name) LIKE '%ecology%' THEN 'Environment'
+                    WHEN lower(s.name) LIKE '%international%' OR lower(s.name) LIKE '%ir%' OR lower(s.name) LIKE '%current%' THEN 'Current Affairs, International Relations'
+                    WHEN lower(s.name) LIKE '%agriculture%' THEN 'Agriculture'
+                    ELSE s.name
+                END AS query_name
+            FROM subjects s
+        ),
+        cat_subtopics AS (
+            SELECT 
+                sm.category_name,
+                COUNT(DISTINCT sub.id) AS subtopics_count
+            FROM subject_mappings sm
+            JOIN topics t ON t.subject_id = sm.subject_id
+            JOIN subtopics sub ON sub.topic_id = t.id
+            GROUP BY sm.category_name
+        ),
+        cat_questions AS (
+            SELECT 
+                sm.category_name,
+                COUNT(DISTINCT qhl.question_id) AS questions_count,
+                COUNT(DISTINCT CASE WHEN q.status = 'PENDING_HUMAN_REVIEW' THEN q.id END) AS pending_count
+            FROM subject_mappings sm
+            JOIN question_hierarchy_links qhl ON qhl.subject_id = sm.subject_id
+            JOIN questions q ON qhl.question_id = q.id
+            GROUP BY sm.category_name
+        )
+        SELECT 
+            sm.category_name,
+            sm.category_code,
+            sm.query_name,
+            COALESCE(MAX(cq.questions_count), 0) AS questions_count,
+            COALESCE(MAX(cq.pending_count), 0) AS pending_count,
+            COALESCE(MAX(cs.subtopics_count), 0) AS subtopics_count
+        FROM subject_mappings sm
+        LEFT JOIN cat_questions cq ON cq.category_name = sm.category_name
+        LEFT JOIN cat_subtopics cs ON cs.category_name = sm.category_name
+        GROUP BY sm.category_name, sm.category_code, sm.query_name
+        HAVING COALESCE(MAX(cq.questions_count), 0) > 0 OR COALESCE(MAX(cs.subtopics_count), 0) > 0
+        ORDER BY COALESCE(MAX(cq.questions_count), 0) DESC, sm.category_name ASC;
+        ''')
+
+        res = await self.session.execute(sql)
+        rows = res.fetchall()
+
+        DESCRIPTIONS = {
+            "Polity": "Indian Constitution, Governance, Rights Issues, Executive, Judiciary & Federal Structure.",
+            "Economy": "Indian Economy, Monetary Policy, Banking, Inflation, Fiscal System & Agriculture.",
+            "History": "Ancient, Medieval, Modern Indian Freedom Struggle, Art & Culture.",
+            "Geography": "Physical Geography, Climatology, Indian & World Physical & Economic Geography.",
+            "Science & Technology": "Space Tech, Biotechnology, Defense, IT, Nanotech & Everyday General Science.",
+            "Environment": "Ecology, Biodiversity Conservation, Climate Change & Environmental Laws.",
+            "Current Affairs": "National & International Events, Reports, Indices & Government Schemes.",
+            "Agriculture": "Cropping patterns, irrigation, storage, transport and marketing of agricultural produce.",
+        }
+
+        ICONS = {
+            "Polity": "Scale",
+            "Economy": "TrendingUp",
+            "History": "Landmark",
+            "Geography": "Globe",
+            "Science & Technology": "Cpu",
+            "Environment": "TreePine",
+            "Current Affairs": "Newspaper",
+            "Agriculture": "Sprout",
+        }
+
+        subjects_list = []
+        tot_q = 0
+        tot_pending = 0
+        tot_sub = 0
+
+        for r in rows:
+            cat_name = r[0]
+            cat_code = r[1]
+            q_name = r[2]
+            q_cnt = int(r[3])
+            pend_cnt = int(r[4])
+            sub_cnt = int(r[5])
+
+            tot_q += q_cnt
+            tot_pending += pend_cnt
+            tot_sub += sub_cnt
+
+            sub_id = cat_name.lower().replace("&", "and").replace(" ", "-")
+
+            subjects_list.append(
+                QuestionCatalogSubjectItemOut(
+                    id=sub_id,
+                    name=cat_name,
+                    code=cat_code,
+                    query_name=q_name,
+                    description=DESCRIPTIONS.get(cat_name, f"Curated catalog questions and syllabus topics for {cat_name}."),
+                    questions_count=q_cnt,
+                    pending_count=pend_cnt,
+                    subtopics_count=sub_cnt,
+                    icon=ICONS.get(cat_name, "BookOpen"),
+                )
+            )
+
+        resp = QuestionCatalogSubjectsResponseOut(
+            total_subjects=len(subjects_list),
+            total_questions=tot_q,
+            total_subtopics=tot_sub,
+            total_pending=tot_pending,
+            subjects=subjects_list,
         )
 
         await cache.set(cache_key, resp.model_dump(mode="json"), ttl_seconds=300)

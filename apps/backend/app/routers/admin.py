@@ -32,6 +32,7 @@ from app.schemas.question import (
     QuestionUpdatePayload,
     QuestionCreatePayload,
     ExamReviewQuestionsResponse,
+    QuestionCatalogSubjectsResponseOut,
 )
 from app.schemas.platform_analytics import PlatformAnalyticsResponse
 from app.services.admin_service import AdminService
@@ -70,6 +71,37 @@ async def get_admin_overview_stats(
         stats = await service.get_admin_overview_stats()
         if stats is not None:
             serialized = jsonable_encoder(stats)
+            await cache.set(cache_key, serialized, ttl_seconds=300)
+            return JSONResponse(content=serialized)
+        return JSONResponse(content={})
+
+
+@router.get(
+    "/question-catalog/subjects",
+    response_model=QuestionCatalogSubjectsResponseOut,
+    summary="Get Live Question Catalog Subjects Directory",
+)
+async def get_question_catalog_subjects(
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Returns live aggregated catalog metrics (questions, pending reviews, subtopics)
+    per subject category using a single CTE query and Redis/memory caching.
+    """
+    from app.cache import get_cache, build_cache_key
+
+    cache = get_cache()
+    cache_key = build_cache_key("admin:question_catalog:subjects")
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
+    from app.db.session import async_session_factory
+    async with async_session_factory() as session:
+        service = AdminService(session)
+        catalog = await service.get_question_catalog_subjects()
+        if catalog is not None:
+            serialized = jsonable_encoder(catalog)
             await cache.set(cache_key, serialized, ttl_seconds=300)
             return JSONResponse(content=serialized)
         return JSONResponse(content={})
