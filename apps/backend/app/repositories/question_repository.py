@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
 from sqlmodel import select, func, or_, and_, not_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -42,7 +42,7 @@ class QuestionRepository:
         exam_id: Optional[int] = None,
         exam_name: Optional[str] = None,
         exam_type: Optional[QuestionSourceType] = None,
-        exam_year: Optional[int] = None,
+        exam_year: Optional[Union[int, str]] = None,
         paper_set_code: Optional[str] = None,
         stage: Optional[str] = None,
         status: Optional[QuestionStatus] = None,
@@ -92,7 +92,16 @@ class QuestionRepository:
         if paper_set_code:
             id_stmt = id_stmt.where(func.lower(Question.paper_set_code) == paper_set_code.lower())
         if exam_year:
-            id_stmt = id_stmt.where(or_(Question.source_year == exam_year, Exam.source_year == exam_year))
+            years = []
+            if isinstance(exam_year, int):
+                years = [exam_year]
+            elif isinstance(exam_year, str):
+                import re
+                years = [int(y) for y in re.findall(r"\b(19\d\d|20\d\d)\b", exam_year)]
+            if len(years) == 1:
+                id_stmt = id_stmt.where(or_(Question.source_year == years[0], Exam.source_year == years[0]))
+            elif len(years) > 1:
+                id_stmt = id_stmt.where(or_(Question.source_year.in_(years), Exam.source_year.in_(years)))
         if exam_type:
             id_stmt = id_stmt.where(Exam.exam_type == exam_type)
         if stage:

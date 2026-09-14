@@ -30,7 +30,7 @@ import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode, listExams } 
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
 import { guardedFetch } from '../utils/apiGuard';
-import { parseTaxonomyParam, formatTaxonomyParam } from '../utils/taxonomyParam';
+import { parseTaxonomyParam, formatTaxonomyParam, parseYearParam } from '../utils/taxonomyParam';
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -56,6 +56,30 @@ export function GuestExamPage() {
   >({});
   const [availableYearsList, setAvailableYearsList] = useState<number[]>([]);
   const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE']);
+
+  const yearOptions = useMemo(() => {
+    if (availableYearsList.length > 0) {
+      const sorted = [...availableYearsList].sort((a, b) => b - a);
+      const minYear = Math.min(...availableYearsList);
+      const maxYear = Math.max(...availableYearsList);
+      return [`All Years (${minYear} - ${maxYear})`, ...sorted.map((y) => `${y} PYQs`)];
+    }
+    return [
+      'All Years (2017 - 2024)',
+      '2024 PYQs',
+      '2023 PYQs',
+      '2022 PYQs',
+      '2021 PYQs',
+      '2020 PYQs',
+      '2019 PYQs',
+      '2018 PYQs',
+      '2017 PYQs',
+    ];
+  }, [availableYearsList]);
+
+  const selectedYearsList = useMemo(() => {
+    return parseYearParam(gYear, yearOptions);
+  }, [gYear, yearOptions]);
 
   // Computed dynamic list of subjects directly from live master syllabus hierarchy
   const availableSubjectsList = useMemo(() => {
@@ -163,6 +187,45 @@ export function GuestExamPage() {
   }, [gSubtopic, availableSubtopicsList]);
 
   // Multi-Select Toggle & Select All Helpers with cascading child pruning
+  const toggleYearFilter = (yearName: string) => {
+    const current = new URLSearchParams(searchParams);
+    if (yearName.startsWith('All Years') || yearName === 'All Years') {
+      if (yearOptions.length > 0) {
+        current.set('year', yearOptions[0]);
+      } else {
+        current.delete('year');
+      }
+    } else {
+      let updated: string[];
+      if (selectedYearsList.includes(yearName)) {
+        updated = selectedYearsList.filter((y) => y !== yearName);
+      } else {
+        updated = [...selectedYearsList, yearName];
+      }
+      if (updated.length === 0) {
+        if (yearOptions.length > 0) {
+          current.set('year', yearOptions[0]);
+        } else {
+          current.delete('year');
+        }
+      } else {
+        current.set('year', formatTaxonomyParam(updated));
+      }
+    }
+    navigate(`/guest-exam?${current.toString()}`);
+  };
+
+  const selectAllYears = () => {
+    const current = new URLSearchParams(searchParams);
+    const individualYears = yearOptions.filter((y) => !y.startsWith('All Years'));
+    if (individualYears.length > 0) {
+      current.set('year', formatTaxonomyParam(individualYears));
+    } else {
+      current.delete('year');
+    }
+    navigate(`/guest-exam?${current.toString()}`);
+  };
+
   const toggleSubjectFilter = (subjectName: string) => {
     const current = new URLSearchParams(searchParams);
     if (subjectName === 'All Subjects') {
@@ -917,14 +980,12 @@ export function GuestExamPage() {
           : gExam.toLowerCase().trim()
         : '';
 
-      const rawYearDigits = gYear.replace(/\D/g, '');
-      const validYear =
-        rawYearDigits &&
-        !isNaN(Number(rawYearDigits)) &&
-        Number(rawYearDigits) >= 2000 &&
-        Number(rawYearDigits) <= 2024
-          ? rawYearDigits
-          : null;
+      let numericYears: string[] = [];
+      if (gYear && !gYear.startsWith('All Years')) {
+        const matches = Array.from(gYear.matchAll(/\b(19\d\d|20\d\d)\b/g));
+        numericYears = Array.from(new Set(matches.map((m) => m[1])));
+      }
+      const validYear = numericYears.length > 0 ? numericYears.join(',') : null;
 
       // 1. Try with subject + topic + subtopic + year + selected exam
       const p1 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
@@ -2117,7 +2178,234 @@ export function GuestExamPage() {
                   )}
                 </div>
 
-                {/* Filter 2: Subject */}
+                {/* Filter 2: Target / PYQ Year */}
+                <div style={{ position: 'relative', flex: 1, minWidth: 150 }}>
+                  <label
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: 4,
+                      display: 'block',
+                    }}
+                  >
+                    Target / PYQ Year
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDropdown(activeDropdown === 'year' ? null : 'year');
+                      setFilterSearchQuery('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 14px',
+                      borderRadius: 0,
+                      border:
+                        activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#F8FAFC',
+                      color: '#172033',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      boxShadow:
+                        activeDropdown === 'year' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span
+                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {selectedYearsList.length === 0
+                        ? (yearOptions[0] || 'All Years (2017 - 2024)')
+                        : selectedYearsList.length === 1
+                          ? selectedYearsList[0]
+                          : `${selectedYearsList.length} Years Selected`}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      color="#64748B"
+                      style={{
+                        transform: activeDropdown === 'year' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  </button>
+
+                  {activeDropdown === 'year' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        width: 250,
+                        maxWidth: 'calc(100vw - 32px)',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 0,
+                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                        padding: 10,
+                        zIndex: 100,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          paddingBottom: 6,
+                          marginBottom: 6,
+                          borderBottom: '1px solid #F1F5F9',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={selectAllYears}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#1E3A8A',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleYearFilter('All Years')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#64748B',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Clear
+                        </button>
+                      </div>
+
+                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                        <Search
+                          size={14}
+                          color="#94A3B8"
+                          style={{ position: 'absolute', left: 10, top: 10 }}
+                        />
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Search year..."
+                          value={filterSearchQuery}
+                          onChange={(e) => setFilterSearchQuery(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '7px 10px 7px 30px',
+                            borderRadius: 0,
+                            border: '1px solid #E2E8F0',
+                            fontSize: 12,
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            backgroundColor: '#F8FAFC',
+                          }}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          maxHeight: 180,
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 2,
+                        }}
+                      >
+                        {/* All Years Default */}
+                        {(yearOptions[0] || 'All Years (2017 - 2024)')
+                          .toLowerCase()
+                          .includes(filterSearchQuery.toLowerCase()) && (
+                          <div
+                            onClick={() => toggleYearFilter('All Years')}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: 0,
+                              fontSize: 12.5,
+                              fontWeight: selectedYearsList.length === 0 ? 700 : 500,
+                              color: selectedYearsList.length === 0 ? '#1E3A8A' : '#334155',
+                              backgroundColor:
+                                selectedYearsList.length === 0 ? '#F1F5F9' : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedYearsList.length === 0}
+                                onChange={() => {}}
+                                style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                              />
+                              <span>{yearOptions[0] || 'All Years (2017 - 2024)'}</span>
+                            </div>
+                            {selectedYearsList.length === 0 && (
+                              <Check size={14} color="#1E3A8A" />
+                            )}
+                          </div>
+                        )}
+
+                        {/* Individual Years */}
+                        {yearOptions
+                          .filter(
+                            (y) =>
+                              !y.startsWith('All Years') &&
+                              y.toLowerCase().includes(filterSearchQuery.toLowerCase()),
+                          )
+                          .map((opt: string) => {
+                            const isSelected = selectedYearsList.includes(opt);
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() => toggleYearFilter(opt)}
+                                style={{
+                                  padding: '8px 10px',
+                                  borderRadius: 0,
+                                  fontSize: 12.5,
+                                  fontWeight: isSelected ? 700 : 500,
+                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => {}}
+                                    style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                                  />
+                                  <span>{opt}</span>
+                                </div>
+                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filter 3: Subject */}
                 <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
                   <label
                     style={{
@@ -2873,7 +3161,234 @@ export function GuestExamPage() {
                 )}
               </div>
 
-              {/* Filter 2: Subject */}
+              {/* Filter 2: Target / PYQ Year */}
+              <div style={{ position: 'relative', flex: 1, minWidth: 150 }}>
+                <label
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    color: '#64748B',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: 4,
+                    display: 'block',
+                  }}
+                >
+                  Target / PYQ Year
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(activeDropdown === 'year' ? null : 'year');
+                    setFilterSearchQuery('');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 14px',
+                    borderRadius: 0,
+                    border:
+                      activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                    backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#F8FAFC',
+                    color: '#172033',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    boxShadow:
+                      activeDropdown === 'year' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span
+                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
+                    {selectedYearsList.length === 0
+                      ? (yearOptions[0] || 'All Years (2017 - 2024)')
+                      : selectedYearsList.length === 1
+                        ? selectedYearsList[0]
+                        : `${selectedYearsList.length} Years Selected`}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    color="#64748B"
+                    style={{
+                      transform: activeDropdown === 'year' ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.15s ease',
+                    }}
+                  />
+                </button>
+
+                {activeDropdown === 'year' && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      left: 0,
+                      width: 250,
+                      maxWidth: 'calc(100vw - 32px)',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 0,
+                      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                      padding: 10,
+                      zIndex: 100,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        paddingBottom: 6,
+                        marginBottom: 6,
+                        borderBottom: '1px solid #F1F5F9',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={selectAllYears}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#1E3A8A',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleYearFilter('All Years')}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#64748B',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+
+                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <Search
+                        size={14}
+                        color="#94A3B8"
+                        style={{ position: 'absolute', left: 10, top: 10 }}
+                      />
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Search year..."
+                        value={filterSearchQuery}
+                        onChange={(e) => setFilterSearchQuery(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '7px 10px 7px 30px',
+                          borderRadius: 0,
+                          border: '1px solid #E2E8F0',
+                          fontSize: 12,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          backgroundColor: '#F8FAFC',
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      style={{
+                        maxHeight: 180,
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                      }}
+                    >
+                      {/* All Years Default */}
+                      {(yearOptions[0] || 'All Years (2017 - 2024)')
+                        .toLowerCase()
+                        .includes(filterSearchQuery.toLowerCase()) && (
+                        <div
+                          onClick={() => toggleYearFilter('All Years')}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: 0,
+                            fontSize: 12.5,
+                            fontWeight: selectedYearsList.length === 0 ? 700 : 500,
+                            color: selectedYearsList.length === 0 ? '#1E3A8A' : '#334155',
+                            backgroundColor:
+                              selectedYearsList.length === 0 ? '#F1F5F9' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input
+                              type="checkbox"
+                              checked={selectedYearsList.length === 0}
+                              onChange={() => {}}
+                              style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                            />
+                            <span>{yearOptions[0] || 'All Years (2017 - 2024)'}</span>
+                          </div>
+                          {selectedYearsList.length === 0 && (
+                            <Check size={14} color="#1E3A8A" />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Individual Years */}
+                      {yearOptions
+                        .filter(
+                          (y) =>
+                            !y.startsWith('All Years') &&
+                            y.toLowerCase().includes(filterSearchQuery.toLowerCase()),
+                        )
+                        .map((opt: string) => {
+                          const isSelected = selectedYearsList.includes(opt);
+                          return (
+                            <div
+                              key={opt}
+                              onClick={() => toggleYearFilter(opt)}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: 0,
+                                fontSize: 12.5,
+                                fontWeight: isSelected ? 700 : 500,
+                                color: isSelected ? '#1E3A8A' : '#334155',
+                                backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {}}
+                                  style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                                />
+                                <span>{opt}</span>
+                              </div>
+                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter 3: Subject */}
               <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
                 <label
                   style={{

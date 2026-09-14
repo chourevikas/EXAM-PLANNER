@@ -74,7 +74,7 @@ class QuestionService:
         exam_id: Optional[int] = None,
         exam_name: Optional[str] = None,
         exam_type: Optional[QuestionSourceType] = None,
-        exam_year: Optional[int] = None,
+        exam_year: Optional[Union[int, str]] = None,
         paper_set_code: Optional[str] = None,
         stage: Optional[str] = None,
         status: Optional[QuestionStatus] = None,

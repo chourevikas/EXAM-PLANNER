@@ -68,3 +68,44 @@ export function formatTaxonomyParam(items: string[]): string {
   const hasComma = items.some((item) => item.includes(','));
   return hasComma ? items.join(';;') : items.join(',');
 }
+
+export function parseYearParam(
+  rawYear: string | null | undefined,
+  availableYears: string[] = [],
+): string[] {
+  if (!rawYear || rawYear.startsWith('All Years') || rawYear.startsWith('All ')) return [];
+  const trimmed = rawYear.trim();
+  if (!trimmed) return [];
+
+  const tokens = trimmed.includes(';;')
+    ? trimmed.split(';;')
+    : trimmed.includes('||')
+    ? trimmed.split('||')
+    : trimmed.split(',');
+  const cleanedTokens = tokens.map((t) => t.trim()).filter(Boolean);
+
+  if (availableYears.length === 0) return cleanedTokens;
+
+  const matched: string[] = [];
+  cleanedTokens.forEach((tok) => {
+    const exact = availableYears.find(
+      (y) => y.toLowerCase() === tok.toLowerCase() && !y.startsWith('All Years'),
+    );
+    if (exact && !matched.includes(exact)) {
+      matched.push(exact);
+      return;
+    }
+    const m = tok.match(/\b(19\d\d|20\d\d)\b/);
+    if (m) {
+      const yrNum = m[1];
+      const found = availableYears.find(
+        (y) => y.includes(yrNum) && !y.startsWith('All Years'),
+      );
+      if (found && !matched.includes(found)) {
+        matched.push(found);
+      }
+    }
+  });
+  return matched;
+}
+

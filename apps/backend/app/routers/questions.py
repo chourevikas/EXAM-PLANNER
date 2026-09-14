@@ -33,7 +33,7 @@ async def list_questions(
     exam_id: Optional[int] = Query(default=None, description="Filter by Exam ID"),
     exam_name: Optional[str] = Query(default=None, description="Filter by Exam Name e.g. upsc (substring match)"),
     exam_type: Optional[QuestionSourceType] = Query(default=None, description="Filter by Exam Type e.g. PYQ or STATIC_MOCK"),
-    exam_year: Optional[int] = Query(default=None, description="Filter by Exam Year e.g. 2023"),
+    exam_year: Optional[str] = Query(default=None, description="Filter by Exam Year e.g. 2023 or comma-separated e.g. 2023,2024"),
     paper_set_code: Optional[str] = Query(default=None, description="Filter by Paper Set Code e.g. SET_A"),
     stage: Optional[str] = Query(default=None, description="Filter by Stage e.g. prelims"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Status e.g. PENDING_HUMAN_REVIEW or PUBLISHED"),
