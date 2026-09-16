@@ -31,6 +31,16 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     } else {
       setIsCheckingRecovery(false);
     }
+
+    const handleAuthExpired = () => {
+      setToken(null);
+      setUserJson(null);
+    };
+
+    window.addEventListener('auth_expired', handleAuthExpired);
+    return () => {
+      window.removeEventListener('auth_expired', handleAuthExpired);
+    };
   }, [token, isSignedIn]);
 
   if (!isLoaded || isCheckingRecovery) return null;
