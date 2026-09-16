@@ -63,6 +63,7 @@ class QuestionUpdatePayload(BaseModel):
     passage_text: Optional[str] = None
     core_concept: Optional[str] = None
     detailed_solution: Optional[str] = None
+    reverse_logic: Optional[str] = None
     common_traps: Optional[List[str]] = None
     key_takeaways: Optional[List[str]] = None
     subject_name: Optional[str] = None
@@ -94,6 +95,7 @@ class QuestionCreatePayload(BaseModel):
     passage_text: Optional[str] = None
     core_concept: Optional[str] = None
     detailed_solution: Optional[str] = None
+    reverse_logic: Optional[str] = None
     common_traps: Optional[List[str]] = None
     key_takeaways: Optional[List[str]] = None
     subject_name: Optional[str] = None
@@ -146,6 +148,7 @@ class QuestionExplanationDetail(BaseModel):
     language: str
     core_concept: Optional[str] = None
     detailed_solution: Optional[str] = None
+    reverse_logic: Optional[str] = None
     common_traps: List[str] = []
     key_takeaways: List[str] = []
     translations: Dict[str, Any] = {}

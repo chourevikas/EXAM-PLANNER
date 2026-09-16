@@ -7,7 +7,6 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
-  Lightbulb,
   ChevronDown,
   ChevronUp,
   FolderTree,
@@ -45,6 +44,7 @@ export interface QuestionReviewData extends AdminQuestionPublicationData {
   hierarchy?: QuestionReviewHierarchyLink[];
   explanation?: {
     detailed_solution?: string | null;
+    reverse_logic?: string | null;
     common_traps?: string[];
     key_takeaways?: string[];
   } | null;
@@ -63,6 +63,7 @@ export interface QuestionReviewSavePayload {
   subtopic_name: string | null;
   hierarchy_links: QuestionReviewHierarchyLink[];
   detailed_solution: string;
+  reverse_logic: string;
   common_traps: string[];
   key_takeaways: string[];
   options: {
@@ -80,9 +81,6 @@ interface EditableOption {
   option_label: string;
   option_text: string;
   is_correct: boolean;
-  explanation: string; // used when this option is the correct answer
-  why_tempting: string; // used when this option is incorrect
-  whats_actually_true: string; // used when this option is incorrect
 }
 
 interface QuestionReviewCardProps {
@@ -155,6 +153,25 @@ function parseDistractor(opt: QuestionReviewOption): { why: string; actual: stri
   }
   // Legacy free-text that doesn't match either pattern — keep it visible rather than dropping it.
   return { why: raw, actual: '' };
+}
+
+// Formats each option's previously-separate explanation fields into one starting
+// draft for the combined Reverse Logic Box, so admins edit/clean up existing
+// analysis instead of retyping it from scratch.
+function buildReverseLogicDraft(rawOpts: QuestionReviewOption[]): string {
+  const blocks = rawOpts.map((opt) => {
+    const label = opt.option_label || '?';
+    if (opt.is_correct) {
+      const correctText = (opt.distractor_analysis || '').trim();
+      return `Option ${label} (Correct) — ${correctText || 'Explain why this option is correct...'}`;
+    }
+    const { why, actual } = parseDistractor(opt);
+    if (why && actual) return `Option ${label} — Why it seems tempting: ${why} What's actually true: ${actual}`;
+    if (why) return `Option ${label} — Why it seems tempting: ${why}`;
+    if (actual) return `Option ${label} — What's actually true: ${actual}`;
+    return `Option ${label} — Explain why this option is incorrect...`;
+  });
+  return blocks.join('\n\n');
 }
 
 function TextChipList({
@@ -248,6 +265,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
   const [negativeMarks, setNegativeMarks] = useState(0.66);
   const [expectedTime, setExpectedTime] = useState(60);
   const [detailedSolution, setDetailedSolution] = useState('');
+  const [reverseLogic, setReverseLogic] = useState('');
   const [commonTraps, setCommonTraps] = useState<string[]>([]);
   const [keyTakeaways, setKeyTakeaways] = useState<string[]>([]);
   const [hierarchyLinks, setHierarchyLinks] = useState<QuestionReviewHierarchyLink[]>([]);
@@ -300,19 +318,16 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
         : ['A', 'B', 'C', 'D'].map((label) => ({ option_label: label, option_text: '', is_correct: false }));
 
     setOptions(
-      rawOpts.map((opt) => {
-        const { why, actual } = parseDistractor(opt);
-        return {
-          option_id: opt.option_id,
-          option_label: opt.option_label,
-          option_text: opt.option_text || '',
-          is_correct: Boolean(opt.is_correct),
-          explanation: (opt.distractor_analysis || '').trim(),
-          why_tempting: why,
-          whats_actually_true: actual,
-        };
-      })
+      rawOpts.map((opt) => ({
+        option_id: opt.option_id,
+        option_label: opt.option_label,
+        option_text: opt.option_text || '',
+        is_correct: Boolean(opt.is_correct),
+      }))
     );
+
+    const existingReverseLogic = (question.explanation?.reverse_logic || '').trim();
+    setReverseLogic(existingReverseLogic || buildReverseLogicDraft(rawOpts));
   }, [isEditing, question]);
 
   if (!isEditing) {
@@ -321,25 +336,6 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
 
     return (
       <div>
-        <AdminQuestionPublicationCard question={question} questionNumber={question.question_number_in_paper} style={{ marginBottom: 16 }} />
-
-        {(commonTrapsList.length > 0 || keyTakeawaysList.length > 0) && (
-          <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', padding: '14px 18px', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
-              <AlertTriangle size={15} />
-              Points to Remember
-            </div>
-            <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
-              {commonTrapsList.map((trap, i) => (
-                <li key={`trap-${i}`}>{trap}</li>
-              ))}
-              {keyTakeawaysList.map((tk, i) => (
-                <li key={`takeaway-${i}`}>{tk}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         <div
           style={{
             display: 'flex',
@@ -352,6 +348,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
             backgroundColor: '#F8FAFC',
             fontSize: 12.5,
             color: '#475569',
+            marginBottom: 16,
           }}
         >
           <span>
@@ -383,6 +380,25 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
             Edit Question
           </button>
         </div>
+
+        <AdminQuestionPublicationCard question={question} questionNumber={question.question_number_in_paper} style={{ marginBottom: 16 }} />
+
+        {(commonTrapsList.length > 0 || keyTakeawaysList.length > 0) && (
+          <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', padding: '14px 18px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
+              <AlertTriangle size={15} />
+              Points to Remember
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
+              {commonTrapsList.map((trap, i) => (
+                <li key={`trap-${i}`}>{trap}</li>
+              ))}
+              {keyTakeawaysList.map((tk, i) => (
+                <li key={`takeaway-${i}`}>{tk}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     );
   }
@@ -425,28 +441,18 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
       subtopic_name: finalSubtopic,
       hierarchy_links: syncedHierarchy,
       detailed_solution: detailedSolution,
+      reverse_logic: reverseLogic,
       common_traps: commonTraps,
       key_takeaways: keyTakeaways,
-      options: options.map((opt, idx) => {
-        let distractor_analysis = '';
-        if (opt.is_correct) {
-          distractor_analysis = opt.explanation.trim();
-        } else {
-          const why = opt.why_tempting.trim();
-          const actual = opt.whats_actually_true.trim();
-          if (why && actual) distractor_analysis = `Why it seems tempting — ${why}. What's actually true — ${actual}`;
-          else if (why) distractor_analysis = `Why it seems tempting — ${why}`;
-          else if (actual) distractor_analysis = `What's actually true — ${actual}`;
-        }
-        return {
-          option_id: toNumericId(opt.option_id),
-          option_label: opt.option_label,
-          option_text: opt.option_text,
-          is_correct: opt.is_correct,
-          display_order: idx + 1,
-          distractor_analysis,
-        };
-      }),
+      options: options.map((opt, idx) => ({
+        option_id: toNumericId(opt.option_id),
+        option_label: opt.option_label,
+        option_text: opt.option_text,
+        is_correct: opt.is_correct,
+        display_order: idx + 1,
+        // Per-option analysis is superseded by the combined Reverse Logic Box.
+        distractor_analysis: '',
+      })),
     };
   };
 
@@ -537,47 +543,6 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
                   {opt.is_correct ? '✓ Correct Answer' : 'Mark as Correct'}
                 </button>
               </div>
-
-              <div style={{ marginTop: 10 }}>
-                {opt.is_correct ? (
-                  <div>
-                    <label style={labelStyle}>Why this is correct</label>
-                    <textarea
-                      rows={2}
-                      value={opt.explanation}
-                      onChange={(e) => setOption(idx, { explanation: e.target.value })}
-                      placeholder="Explain why this option is the correct answer..."
-                      style={inputStyle}
-                    />
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div>
-                      <label style={labelStyle}>
-                        <Lightbulb size={11} style={{ verticalAlign: -1, marginRight: 3 }} />
-                        Why it seems tempting
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={opt.why_tempting}
-                        onChange={(e) => setOption(idx, { why_tempting: e.target.value })}
-                        placeholder="Why a student might pick this option..."
-                        style={inputStyle}
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>What's actually true</label>
-                      <textarea
-                        rows={2}
-                        value={opt.whats_actually_true}
-                        onChange={(e) => setOption(idx, { whats_actually_true: e.target.value })}
-                        placeholder="Why it's actually wrong..."
-                        style={inputStyle}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           ))}
         </div>
@@ -590,6 +555,21 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
           value={detailedSolution}
           onChange={(e) => setDetailedSolution(e.target.value)}
           placeholder="Step-by-step comprehensive solution..."
+          style={inputStyle}
+        />
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Reverse Logic Box</div>
+        <div style={{ fontSize: 12, color: '#64748B', marginBottom: 10 }}>
+          Write the reasoning for every option in one place — why the correct answer holds, and why each
+          distractor is tempting but wrong. This is shown to students as a single combined explanation.
+        </div>
+        <textarea
+          rows={10}
+          value={reverseLogic}
+          onChange={(e) => setReverseLogic(e.target.value)}
+          placeholder={'Option A — ...\n\nOption B — ...\n\nOption C — ...\n\nOption D — ...'}
           style={inputStyle}
         />
       </div>

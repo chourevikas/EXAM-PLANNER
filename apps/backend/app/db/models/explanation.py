@@ -43,6 +43,10 @@ class QuestionExplanation(SQLModel, table=True):
         sa_column=Column(PortableJSON),
         description="High-yield bullet points for revision",
     )
+    reverse_logic: Optional[str] = Field(
+        default=None,
+        description="Combined option-by-option reasoning written as one free-form block, replacing per-option distractor analysis",
+    )
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

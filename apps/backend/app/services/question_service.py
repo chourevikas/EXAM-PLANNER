@@ -723,8 +723,14 @@ class QuestionService:
                     )
                     self.session.add(new_ot)
 
-        # Update Explanation (All 4 Parameters: core_concept, detailed_solution, common_traps, key_takeaways)
-        if any([payload.core_concept, payload.detailed_solution, payload.common_traps is not None, payload.key_takeaways is not None]):
+        # Update Explanation (core_concept, detailed_solution, reverse_logic, common_traps, key_takeaways)
+        if any([
+            payload.core_concept,
+            payload.detailed_solution,
+            payload.reverse_logic is not None,
+            payload.common_traps is not None,
+            payload.key_takeaways is not None,
+        ]):
             expl_stmt = select(QuestionExplanation).where(
                 QuestionExplanation.question_id == q.id,
                 QuestionExplanation.language == target_lang,
@@ -735,6 +741,8 @@ class QuestionService:
                     expl.core_concept = payload.core_concept
                 if payload.detailed_solution is not None:
                     expl.detailed_solution = payload.detailed_solution
+                if payload.reverse_logic is not None:
+                    expl.reverse_logic = payload.reverse_logic
                 if payload.common_traps is not None:
                     expl.common_traps_json = payload.common_traps
                 if payload.key_takeaways is not None:
@@ -746,6 +754,7 @@ class QuestionService:
                     language=target_lang,
                     core_concept=payload.core_concept or "",
                     detailed_solution=payload.detailed_solution or "",
+                    reverse_logic=payload.reverse_logic,
                     common_traps_json=payload.common_traps or [],
                     key_takeaways_json=payload.key_takeaways or [],
                 )
@@ -854,6 +863,7 @@ class QuestionService:
             payload.options is not None,
             payload.core_concept is not None,
             payload.detailed_solution is not None,
+            payload.reverse_logic is not None,
             payload.common_traps is not None,
             payload.key_takeaways is not None,
             payload.subject_name is not None,
@@ -985,12 +995,13 @@ class QuestionService:
                 self.session.add(new_ot)
 
         # Explanation
-        if any([payload.core_concept, payload.detailed_solution, payload.common_traps, payload.key_takeaways]):
+        if any([payload.core_concept, payload.detailed_solution, payload.reverse_logic, payload.common_traps, payload.key_takeaways]):
             new_expl = QuestionExplanation(
                 question_id=q.id,
                 language=target_lang,
                 core_concept=payload.core_concept or "",
                 detailed_solution=payload.detailed_solution or "",
+                reverse_logic=payload.reverse_logic,
                 common_traps_json=payload.common_traps or [],
                 key_takeaways_json=payload.key_takeaways or [],
             )
@@ -1459,6 +1470,7 @@ class QuestionService:
                     language=expl_obj.language.value if hasattr(expl_obj.language, "value") else str(expl_obj.language),
                     core_concept=expl_obj.core_concept,
                     detailed_solution=expl_obj.detailed_solution,
+                    reverse_logic=expl_obj.reverse_logic,
                     common_traps=expl_obj.common_traps_json or [],
                     key_takeaways=expl_obj.key_takeaways_json or [],
                 )
@@ -2080,6 +2092,7 @@ class QuestionService:
                         (k.value if hasattr(k, "value") else str(k)): {
                             "core_concept": e.core_concept,
                             "detailed_solution": e.detailed_solution,
+                            "reverse_logic": e.reverse_logic,
                             "common_traps": e.common_traps_json or ([e.common_mistake] if e.common_mistake else []),
                             "key_takeaways": e.key_takeaways_json or [],
                         }
@@ -2091,6 +2104,7 @@ class QuestionService:
                         language=expl_obj.language.value if hasattr(expl_obj.language, "value") else str(expl_obj.language),
                         core_concept=expl_obj.core_concept,
                         detailed_solution=expl_obj.detailed_solution,
+                        reverse_logic=expl_obj.reverse_logic,
                         common_traps=traps,
                         key_takeaways=expl_obj.key_takeaways_json or [],
                         translations=expl_translations,

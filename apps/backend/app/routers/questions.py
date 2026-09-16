@@ -483,6 +483,7 @@ async def get_question_solution(
             "difficulty": q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
             "explanation": {
                 "detailed_solution": expl.detailed_solution if expl else "",
+                "reverse_logic": expl.reverse_logic if expl else None,
                 "common_mistake": expl.common_mistake if expl else None,
                 "common_traps": (expl.common_traps_json or ([expl.common_mistake] if expl.common_mistake else [])) if expl else [],
             },
@@ -573,6 +574,7 @@ async def get_question_solution(
         "difficulty": q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
         "explanation": {
             "detailed_solution": detailed_solution,
+            "reverse_logic": expl.reverse_logic if expl else None,
             "common_mistake": expl.common_mistake if expl else None,
             "common_traps": common_traps,
         },

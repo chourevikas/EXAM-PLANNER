@@ -9,7 +9,7 @@ interface HeroSectionProps {
   onLogin?: () => void;
 }
 
-export function HeroSection({ }: HeroSectionProps) {
+export function HeroSection({}: HeroSectionProps) {
   const navigate = useNavigate();
 
   // Syllabus search state
@@ -34,24 +34,138 @@ export function HeroSection({ }: HeroSectionProps) {
   }, []);
 
   const FEATURED_CARDS_POOL = [
-    { badge: "Fundamental Rights", meta: "UPSC 2024", exam: "UPSC", subject: "Polity", topic: "Constitution", subtopic: "Fundamental Rights", q: 'In the context of the Constitution of India, "Due Process of Law" implies:' },
-    { badge: "Fundamental Rights", meta: "UPSC 2023", exam: "UPSC", subject: "Polity", topic: "Constitution", subtopic: "Fundamental Rights", q: "Which Constitutional Amendment was enacted to overcome judicial interpretations of the Fundamental Rights, particularly regarding the Right to Equality and Property?" },
-    { badge: "Inflation", meta: "UPSC 2022", exam: "UPSC", subject: "Economy", topic: "Macroeconomics", subtopic: "Inflation", q: "In India, which of the following is responsible for maintaining price stability by controlling inflation?" },
-    { badge: "Exchange Rates", meta: "UPSC 2021", exam: "UPSC", subject: "Economy", topic: "Macroeconomics", subtopic: "External Sector", q: "With reference to the Indian economy, consider the statements on Real Effective Exchange Rate (REER) and its relation to NEER and domestic inflation." },
-    { badge: "Conservation", meta: "UPSC 2023", exam: "UPSC", subject: "Environment", topic: "Biodiversity", subtopic: "Conservation efforts", q: "Consider the statements regarding the Wild Life (Protection) Amendment Act, 2022, on Schedules and CITES specimens." },
-    { badge: "Parliament", meta: "UPSC 2020", exam: "UPSC", subject: "Polity", topic: "Indian Government", subtopic: "Parliament", q: "Which Parliamentary Committee scrutinizes whether powers to make rules and regulations delegated by Parliament are properly exercised?" },
-    { badge: "Monetary Policy", meta: "UPSC 2020", exam: "UPSC", subject: "Economy", topic: "Money and Banking", subtopic: "Monetary Policy", q: "If the RBI decides to adopt an expansionary monetary policy, which of the following would it not do?" },
-    { badge: "Buddhism", meta: "UPSC 2019", exam: "UPSC", subject: "Ancient History", topic: "Ancient History", subtopic: "Buddhism and Jainism", q: "With reference to the religious history of India, consider the following statements regarding the Mahayana sect of Buddhism." },
-    { badge: "Ocean Currents", meta: "UPSC 2021", exam: "UPSC", subject: "Geography", topic: "Physical Geography", subtopic: "Oceanography", q: "Consider the following factors: 1. Rotation of the Earth 2. Air pressure and wind 3. Density of ocean water 4. Revolution of the Earth. Which of the above factors influence the ocean currents?" },
-    { badge: "Biotechnology", meta: "UPSC 2022", exam: "UPSC", subject: "Science & Tech", topic: "Biotechnology", subtopic: "Genetic Engineering", q: "With reference to 'CRISPR-Cas9', which of the following statements is/are correct?" },
-    { badge: "Maratha Empire", meta: "MPSC 2022", exam: "MPSC", subject: "Modern History", topic: "Modern History", subtopic: "Maratha Empire", q: "Consider the statements regarding the administrative system of Chhatrapati Shivaji Maharaj." },
-    { badge: "Geography", meta: "MPSC 2021", exam: "MPSC", subject: "Geography", topic: "Physical Geography", subtopic: "Maharashtra Geography", q: "Which of the following mountain ranges separates the Godavari and Tapi river basins?" },
-    { badge: "General Science", meta: "SSC 2022", exam: "SSC", subject: "Science & Tech", topic: "Physics", subtopic: "Optics", q: "What is the phenomenon responsible for the twinkling of stars?" },
-    { badge: "Quantitative", meta: "Banking 2023", exam: "Banking", subject: "Aptitude", topic: "Mathematics", subtopic: "Percentage", q: "If the price of an article is increased by 20% and then decreased by 10%, what is the net percentage change in its price?" },
+    {
+      badge: 'Fundamental Rights',
+      meta: 'UPSC 2024',
+      exam: 'UPSC',
+      subject: 'Polity',
+      topic: 'Constitution',
+      subtopic: 'Fundamental Rights',
+      q: 'In the context of the Constitution of India, "Due Process of Law" implies:',
+    },
+    {
+      badge: 'Fundamental Rights',
+      meta: 'UPSC 2023',
+      exam: 'UPSC',
+      subject: 'Polity',
+      topic: 'Constitution',
+      subtopic: 'Fundamental Rights',
+      q: 'Which Constitutional Amendment was enacted to overcome judicial interpretations of the Fundamental Rights, particularly regarding the Right to Equality and Property?',
+    },
+    {
+      badge: 'Inflation',
+      meta: 'UPSC 2022',
+      exam: 'UPSC',
+      subject: 'Economy',
+      topic: 'Macroeconomics',
+      subtopic: 'Inflation',
+      q: 'In India, which of the following is responsible for maintaining price stability by controlling inflation?',
+    },
+    {
+      badge: 'Exchange Rates',
+      meta: 'UPSC 2021',
+      exam: 'UPSC',
+      subject: 'Economy',
+      topic: 'Macroeconomics',
+      subtopic: 'External Sector',
+      q: 'With reference to the Indian economy, consider the statements on Real Effective Exchange Rate (REER) and its relation to NEER and domestic inflation.',
+    },
+    {
+      badge: 'Conservation',
+      meta: 'UPSC 2023',
+      exam: 'UPSC',
+      subject: 'Environment',
+      topic: 'Biodiversity',
+      subtopic: 'Conservation efforts',
+      q: 'Consider the statements regarding the Wild Life (Protection) Amendment Act, 2022, on Schedules and CITES specimens.',
+    },
+    {
+      badge: 'Parliament',
+      meta: 'UPSC 2020',
+      exam: 'UPSC',
+      subject: 'Polity',
+      topic: 'Indian Government',
+      subtopic: 'Parliament',
+      q: 'Which Parliamentary Committee scrutinizes whether powers to make rules and regulations delegated by Parliament are properly exercised?',
+    },
+    {
+      badge: 'Monetary Policy',
+      meta: 'UPSC 2020',
+      exam: 'UPSC',
+      subject: 'Economy',
+      topic: 'Money and Banking',
+      subtopic: 'Monetary Policy',
+      q: 'If the RBI decides to adopt an expansionary monetary policy, which of the following would it not do?',
+    },
+    {
+      badge: 'Buddhism',
+      meta: 'UPSC 2019',
+      exam: 'UPSC',
+      subject: 'Ancient History',
+      topic: 'Ancient History',
+      subtopic: 'Buddhism and Jainism',
+      q: 'With reference to the religious history of India, consider the following statements regarding the Mahayana sect of Buddhism.',
+    },
+    {
+      badge: 'Ocean Currents',
+      meta: 'UPSC 2021',
+      exam: 'UPSC',
+      subject: 'Geography',
+      topic: 'Physical Geography',
+      subtopic: 'Oceanography',
+      q: 'Consider the following factors: 1. Rotation of the Earth 2. Air pressure and wind 3. Density of ocean water 4. Revolution of the Earth. Which of the above factors influence the ocean currents?',
+    },
+    {
+      badge: 'Biotechnology',
+      meta: 'UPSC 2022',
+      exam: 'UPSC',
+      subject: 'Science & Tech',
+      topic: 'Biotechnology',
+      subtopic: 'Genetic Engineering',
+      q: "With reference to 'CRISPR-Cas9', which of the following statements is/are correct?",
+    },
+    {
+      badge: 'Maratha Empire',
+      meta: 'MPSC 2022',
+      exam: 'MPSC',
+      subject: 'Modern History',
+      topic: 'Modern History',
+      subtopic: 'Maratha Empire',
+      q: 'Consider the statements regarding the administrative system of Chhatrapati Shivaji Maharaj.',
+    },
+    {
+      badge: 'Geography',
+      meta: 'MPSC 2021',
+      exam: 'MPSC',
+      subject: 'Geography',
+      topic: 'Physical Geography',
+      subtopic: 'Maharashtra Geography',
+      q: 'Which of the following mountain ranges separates the Godavari and Tapi river basins?',
+    },
+    {
+      badge: 'General Science',
+      meta: 'SSC 2022',
+      exam: 'SSC',
+      subject: 'Science & Tech',
+      topic: 'Physics',
+      subtopic: 'Optics',
+      q: 'What is the phenomenon responsible for the twinkling of stars?',
+    },
+    {
+      badge: 'Quantitative',
+      meta: 'Banking 2023',
+      exam: 'Banking',
+      subject: 'Aptitude',
+      topic: 'Mathematics',
+      subtopic: 'Percentage',
+      q: 'If the price of an article is increased by 20% and then decreased by 10%, what is the net percentage change in its price?',
+    },
   ];
 
   const shuffleWithSeed = (array: any[], seed: number) => {
-    let m = array.length, t, i;
+    let m = array.length,
+      t,
+      i;
     const shuffled = [...array];
     let currentSeed = seed;
     while (m) {
@@ -67,21 +181,25 @@ export function HeroSection({ }: HeroSectionProps) {
   const filteredCards = useMemo(() => {
     let pool = FEATURED_CARDS_POOL;
     if (selectedExam !== 'All Exams') {
-      pool = pool.filter(card => card.exam === selectedExam);
+      pool = pool.filter((card) => card.exam === selectedExam);
     }
-    
+
     // Generate a daily seed based on the current local date
     const today = new Date();
     const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-    
+
     // Shuffle the filtered pool using the daily seed
     const shuffledPool = shuffleWithSeed(pool, seed);
-    
+
     // Display up to 6 random cards daily
     return shuffledPool.slice(0, 6);
   }, [selectedExam]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
+  const [searchResults, setSearchResults] = useState<{
+    mocks: any[];
+    pyqs: any[];
+    topics: any[];
+  } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -226,7 +344,10 @@ export function HeroSection({ }: HeroSectionProps) {
       // Check multi-word tokens
       if (score === 0 && queryTokens.length > 1) {
         const allTokensMatch = queryTokens.every(
-          token => labelLower.includes(token) || breadcrumbLower.includes(token) || keywordsLower.includes(token)
+          (token) =>
+            labelLower.includes(token) ||
+            breadcrumbLower.includes(token) ||
+            keywordsLower.includes(token),
         );
         if (allTokensMatch) {
           score += 50;
@@ -243,7 +364,7 @@ export function HeroSection({ }: HeroSectionProps) {
 
     // Sort descending by relevance score
     scoredResults.sort((a, b) => b.score - a.score);
-    return scoredResults.slice(0, 10).map(r => r.node);
+    return scoredResults.slice(0, 10).map((r) => r.node);
   }, [syllabusSearchQuery, allSyllabusNodes]);
 
   // Launch the exam with proper filters (Subject, Topic, Subtopic; ignoring exam year)
@@ -266,22 +387,23 @@ export function HeroSection({ }: HeroSectionProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHoveredSyllabusResult(prev => {
+      setHoveredSyllabusResult((prev) => {
         if (prev === null || prev >= syllabusSearchResults.length - 1) return 0;
         return prev + 1;
       });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setHoveredSyllabusResult(prev => {
+      setHoveredSyllabusResult((prev) => {
         if (prev === null || prev <= 0) return syllabusSearchResults.length - 1;
         return prev - 1;
       });
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (syllabusSearchResults.length > 0) {
-        const targetIndex = hoveredSyllabusResult !== null && hoveredSyllabusResult < syllabusSearchResults.length
-          ? hoveredSyllabusResult
-          : 0;
+        const targetIndex =
+          hoveredSyllabusResult !== null && hoveredSyllabusResult < syllabusSearchResults.length
+            ? hoveredSyllabusResult
+            : 0;
         handleSyllabusResultClick(syllabusSearchResults[targetIndex]);
       }
     } else if (e.key === 'Escape') {
@@ -324,14 +446,21 @@ export function HeroSection({ }: HeroSectionProps) {
           transform: 'translateX(-50%)',
           width: 'min(800px, 95vw)',
           height: 380,
-          background: 'radial-gradient(ellipse at center, rgba(var(--primary-red-rgb), 0.055) 0%, transparent 70%)',
+          background:
+            'radial-gradient(ellipse at center, rgba(var(--primary-red-rgb), 0.055) 0%, transparent 70%)',
           pointerEvents: 'none',
         }}
       />
 
       <div
         className="landing-container"
-        style={{ position: 'relative', zIndex: 1, maxWidth: 760, margin: '0 auto', textAlign: 'center' }}
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          maxWidth: 760,
+          margin: '0 auto',
+          textAlign: 'center',
+        }}
       >
         {/* Eyebrow */}
         <div
@@ -347,7 +476,15 @@ export function HeroSection({ }: HeroSectionProps) {
           }}
         >
           <Zap size={13} strokeWidth={2.5} style={{ color: 'var(--primary-red)' }} />
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--primary-red)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+          <span
+            style={{
+              fontSize: 11.5,
+              fontWeight: 700,
+              color: 'var(--primary-red)',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+            }}
+          >
             INSTANT PYQ MOCK TEST
           </span>
         </div>
@@ -363,7 +500,7 @@ export function HeroSection({ }: HeroSectionProps) {
             marginBottom: 14,
           }}
         >
-          Master UPSC with{' '}
+          Master Your Exam with{' '}
           <span style={{ color: 'var(--primary-red)' }}>Precision Analytics.</span>
         </h1>
 
@@ -378,11 +515,15 @@ export function HeroSection({ }: HeroSectionProps) {
             margin: '0 auto 36px',
           }}
         >
-          Search any subject, topic, or subtopic — your custom PYQ practice session starts instantly, no login needed.
+          Search any subject, topic, or subtopic — your custom PYQ practice session starts
+          instantly, no login needed.
         </p>
 
         {/* ─── Centered Search Bar ─── */}
-        <div ref={syllabusSearchRef} style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}>
+        <div
+          ref={syllabusSearchRef}
+          style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}
+        >
           <div
             style={{
               display: 'flex',
@@ -397,7 +538,17 @@ export function HeroSection({ }: HeroSectionProps) {
               overflow: 'hidden',
             }}
           >
-            <div style={{ padding: '0 16px', color: isSyllabusSearchFocused ? 'var(--primary-red)' : '#94A3B8', flexShrink: 0, display: 'flex', alignItems: 'center', borderRight: '1px solid #E2E8F0', height: 58 }}>
+            <div
+              style={{
+                padding: '0 16px',
+                color: isSyllabusSearchFocused ? 'var(--primary-red)' : '#94A3B8',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                borderRight: '1px solid #E2E8F0',
+                height: 58,
+              }}
+            >
               <select
                 value={selectedExam}
                 onChange={(e) => setSelectedExam(e.target.value)}
@@ -453,8 +604,18 @@ export function HeroSection({ }: HeroSectionProps) {
                   setSyllabusSearchQuery('');
                   setHoveredSyllabusResult(null);
                 }}
-                style={{ padding: '0 16px', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', flexShrink: 0, fontSize: 18 }}
-              >✕</button>
+                style={{
+                  padding: '0 16px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#94A3B8',
+                  flexShrink: 0,
+                  fontSize: 18,
+                }}
+              >
+                ✕
+              </button>
             )}
             <button
               onClick={() => {
@@ -478,8 +639,8 @@ export function HeroSection({ }: HeroSectionProps) {
                 fontFamily: 'inherit',
                 transition: 'background 0.2s',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#B91C1C'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'var(--primary-red)'}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#B91C1C')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--primary-red)')}
             >
               Search
             </button>
@@ -504,19 +665,52 @@ export function HeroSection({ }: HeroSectionProps) {
               }}
             >
               {syllabusSearchResults.length === 0 ? (
-                <div style={{ padding: '20px 16px', textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                <div
+                  style={{
+                    padding: '20px 16px',
+                    textAlign: 'center',
+                    color: '#64748B',
+                    fontSize: 13,
+                  }}
+                >
                   No matches for "<strong>{syllabusSearchQuery}</strong>"
                 </div>
               ) : (
                 <>
-                  <div style={{ padding: '8px 16px 6px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #F1F5F9' }}>
-                    {syllabusSearchResults.length} result{syllabusSearchResults.length !== 1 ? 's' : ''} — click to start instantly
+                  <div
+                    style={{
+                      padding: '8px 16px 6px',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#94A3B8',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      borderBottom: '1px solid #F1F5F9',
+                    }}
+                  >
+                    {syllabusSearchResults.length} result
+                    {syllabusSearchResults.length !== 1 ? 's' : ''} — click to start instantly
                   </div>
                   {syllabusSearchResults.map((result, idx) => {
                     const isHovered = hoveredSyllabusResult === idx;
-                    const typeBg = result.type === 'subject' ? '#FFF1F2' : result.type === 'topic' ? '#F0F9FF' : '#F0FDF4';
-                    const typeColor = result.type === 'subject' ? 'var(--primary-red)' : result.type === 'topic' ? '#0369A1' : '#059669';
-                    const typeLabel = result.type === 'subject' ? 'Subject' : result.type === 'topic' ? 'Topic' : 'Subtopic';
+                    const typeBg =
+                      result.type === 'subject'
+                        ? '#FFF1F2'
+                        : result.type === 'topic'
+                          ? '#F0F9FF'
+                          : '#F0FDF4';
+                    const typeColor =
+                      result.type === 'subject'
+                        ? 'var(--primary-red)'
+                        : result.type === 'topic'
+                          ? '#0369A1'
+                          : '#059669';
+                    const typeLabel =
+                      result.type === 'subject'
+                        ? 'Subject'
+                        : result.type === 'topic'
+                          ? 'Topic'
+                          : 'Subtopic';
                     return (
                       <div
                         key={`${result.type}_${result.subject}_${result.topic || ''}_${result.subtopic || ''}_${idx}`}
@@ -530,19 +724,49 @@ export function HeroSection({ }: HeroSectionProps) {
                           padding: '11px 16px',
                           cursor: 'pointer',
                           background: isHovered ? '#F8FAFC' : '#FFFFFF',
-                          borderBottom: idx < syllabusSearchResults.length - 1 ? '1px solid #F8FAFC' : 'none',
+                          borderBottom:
+                            idx < syllabusSearchResults.length - 1 ? '1px solid #F8FAFC' : 'none',
                           transition: 'background 0.1s ease',
                         }}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div
+                            style={{
+                              fontSize: 13.5,
+                              fontWeight: 600,
+                              color: '#172033',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
                             {result.label}
                           </div>
-                          <div style={{ fontSize: 11.5, color: '#94A3B8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
+                          <div
+                            style={{
+                              fontSize: 11.5,
+                              color: '#94A3B8',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              marginTop: 1,
+                            }}
+                          >
                             {result.breadcrumb}
                           </div>
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: typeBg, color: typeColor, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            background: typeBg,
+                            color: typeColor,
+                            flexShrink: 0,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
                           {typeLabel}
                         </span>
                         <ArrowRight size={14} color="#CBD5E1" style={{ flexShrink: 0 }} />
@@ -555,7 +779,15 @@ export function HeroSection({ }: HeroSectionProps) {
           )}
 
           {/* Quick-pick hint chips */}
-          <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div
+            style={{
+              marginTop: 14,
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+            }}
+          >
             {activeSubjects.map((hint) => (
               <button
                 key={hint}
@@ -573,8 +805,14 @@ export function HeroSection({ }: HeroSectionProps) {
                   fontFamily: 'inherit',
                   transition: 'all 0.12s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary-red)'; e.currentTarget.style.color = 'var(--primary-red)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#475569'; }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary-red)';
+                  e.currentTarget.style.color = 'var(--primary-red)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.color = '#475569';
+                }}
               >
                 {hint}
               </button>
@@ -610,19 +848,50 @@ export function HeroSection({ }: HeroSectionProps) {
 
       {/* Featured Solved PYQs Section (Filters dynamically) */}
       <div id="featured-pyqs" style={{ maxWidth: 1080, margin: '64px auto 0', padding: '0 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 24,
+          }}
+        >
           <h2 style={{ fontSize: 22, fontWeight: 800, color: '#172033', margin: 0 }}>
             Featured Solved PYQs
           </h2>
-          <a href="#" style={{ fontSize: 14, color: 'var(--primary-red)', fontWeight: 600, textDecoration: 'none' }}>View all questions &rarr;</a>
+          <a
+            href="#"
+            style={{
+              fontSize: 14,
+              color: 'var(--primary-red)',
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            View all questions &rarr;
+          </a>
         </div>
 
         {filteredCards.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#64748B', background: '#FFFFFF', border: '1px dashed #E2E8F0' }}>
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '40px',
+              color: '#64748B',
+              background: '#FFFFFF',
+              border: '1px dashed #E2E8F0',
+            }}
+          >
             No featured PYQs match this exam.
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: 18,
+            }}
+          >
             {filteredCards.map((card, i) => (
               <div
                 key={i}
@@ -641,7 +910,7 @@ export function HeroSection({ }: HeroSectionProps) {
                   gap: 12,
                   cursor: 'pointer',
                   transition: 'box-shadow 0.15s ease, transform 0.15s ease',
-                  textAlign: 'left'
+                  textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
@@ -652,16 +921,51 @@ export function HeroSection({ }: HeroSectionProps) {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontWeight: 700 }}>
-                  <span style={{ background: '#FFF1F2', color: 'var(--primary-red)', padding: '2px 8px', borderRadius: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >
+                  <span
+                    style={{
+                      background: '#FFF1F2',
+                      color: 'var(--primary-red)',
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
                     {card.badge}
                   </span>
                   <span style={{ color: '#94A3B8' }}>{card.meta}</span>
                 </div>
-                <p style={{ fontSize: 15, color: '#1E293B', lineHeight: 1.5, margin: 0, flex: 1, fontWeight: 500 }}>
+                <p
+                  style={{
+                    fontSize: 15,
+                    color: '#1E293B',
+                    lineHeight: 1.5,
+                    margin: 0,
+                    flex: 1,
+                    fontWeight: 500,
+                  }}
+                >
                   {card.q}
                 </p>
-                <span style={{ fontSize: 13, color: '#0369A1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: '#0369A1',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
                   View solution &rarr;
                 </span>
               </div>

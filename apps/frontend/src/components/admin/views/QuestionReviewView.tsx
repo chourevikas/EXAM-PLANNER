@@ -59,6 +59,7 @@ interface QuestionExplanationItem {
   language?: string;
   core_concept?: string;
   detailed_solution?: string;
+  reverse_logic?: string | null;
   common_traps?: string[];
   key_takeaways?: string[];
   translations?: Record<string, any>;
@@ -412,6 +413,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 language: q.explanation.language,
                 core_concept: q.explanation.core_concept || '',
                 detailed_solution: q.explanation.detailed_solution || '',
+                reverse_logic: q.explanation.reverse_logic || null,
                 common_traps: q.explanation.common_traps || [],
                 key_takeaways: q.explanation.key_takeaways || [],
                 translations: q.explanation.translations || {},
@@ -1526,26 +1528,6 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         )}
 
 
-
-        {/* Exam Publication & Artifact Status Banner */}
-        {publishStatus.is_published && (
-          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 0, backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <CheckCircle2 size={20} color="#16A34A" />
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#15803D' }}>
-                  Exam Package Published & Active
-                </div>
-                <div style={{ fontSize: 12, color: '#166534', marginTop: 2 }}>
-                  All questions verified & deployed. Active in catalog for mock tests and student assessments.
-                </div>
-              </div>
-            </div>
-            <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 0, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
-              LIVE IN CATALOG
-            </span>
-          </div>
-        )}
 
         {publishStatus.publish_status === 'PUBLISH_FAILED' && publishStatus.can_retry && (
           <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 0, backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>

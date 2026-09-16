@@ -934,6 +934,7 @@ export function ExamQuestionCard({
                               (typeof revealResult.explanation === 'string'
                                 ? revealResult.explanation
                                 : ''),
+                            reverse_logic: (revealResult.explanation as any).reverse_logic || '',
                             common_traps:
                               (revealResult.explanation as any).common_traps ||
                               (revealResult.explanation as any).traps ||

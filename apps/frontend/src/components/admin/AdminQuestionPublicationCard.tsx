@@ -40,6 +40,7 @@ export interface AdminQuestionPublicationData {
   options: AdminQuestionOption[];
   explanation?: {
     detailed_solution?: string | null;
+    reverse_logic?: string | null;
     core_concept?: string | null;
     common_traps?: string[];
     key_takeaways?: string[];
@@ -186,13 +187,10 @@ export function AdminQuestionPublicationCard({
   // Solution bullets
   const solutionBullets = parseSolutionBullets(question.explanation?.detailed_solution);
 
-  // Check if any distractor analysis or reverse logic exists
-  const hasAnyReverseLogic = incorrectOptions.some(
-    (opt) =>
-      Boolean(opt.why_tempting) ||
-      Boolean(opt.whats_actually_true) ||
-      Boolean(opt.distractor_analysis && opt.distractor_analysis.trim())
-  );
+  // Combined reasoning written as one block via the Reverse Logic Box editor.
+  // Falls back to the per-option distractor breakdown below when a question
+  // hasn't been re-saved through it yet.
+  const combinedReverseLogic = (question.explanation?.reverse_logic || '').trim();
 
   return (
     <div
@@ -402,6 +400,14 @@ export function AdminQuestionPublicationCard({
           <span>Reverse Logic Box — Why the other options are wrong</span>
         </div>
 
+        {combinedReverseLogic ? (
+          <div
+            className="prose prose-slate max-w-none"
+            style={{ fontSize: '13.5px', lineHeight: 1.65, color: '#1E293B' }}
+          >
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{combinedReverseLogic}</ReactMarkdown>
+          </div>
+        ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {incorrectOptions.map((opt) => {
             const parsed = parseDistractorText(opt);
@@ -473,6 +479,7 @@ export function AdminQuestionPublicationCard({
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

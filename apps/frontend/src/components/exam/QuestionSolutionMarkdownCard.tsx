@@ -52,6 +52,7 @@ export interface QuestionSolutionData {
     detailed_solution?: string;
     detailed_text?: string;
     text?: string;
+    reverse_logic?: string;
     common_traps?: string[];
     traps?: string[];
     key_takeaways?: string[];
@@ -149,6 +150,11 @@ export function QuestionSolutionMarkdownCard({
     : explObj?.key_takeaway
     ? [explObj.key_takeaway]
     : [];
+
+  // Combined option-by-option reasoning, written by the admin as one block.
+  // Falls back to the per-option distractor list below only when a question
+  // hasn't been re-saved through the new Reverse Logic Box yet.
+  const reverseLogic = (explObj?.reverse_logic || '').trim();
 
   // Extract common traps
   const commonTraps: string[] = Array.isArray(explObj?.common_traps)
@@ -409,7 +415,34 @@ export function QuestionSolutionMarkdownCard({
               </ReactMarkdown>
             </div>
 
-            {distractorsList.length > 0 && (
+            {reverseLogic ? (
+              <div
+                style={{
+                  borderTop: '1px solid #E2E8F0',
+                  padding: '4px 18px 16px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#64748B',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    padding: '10px 0 8px',
+                  }}
+                >
+                  <Target size={13} style={{ color: 'var(--primary-red)' }} />
+                  Option-by-Option Reasoning
+                </div>
+                <div className="prose prose-slate max-w-none text-slate-800" style={{ fontSize: 13.5, lineHeight: 1.6, color: '#334155' }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{reverseLogic}</ReactMarkdown>
+                </div>
+              </div>
+            ) : distractorsList.length > 0 && (
               <div
                 style={{
                   borderTop: '1px solid #E2E8F0',
