@@ -901,14 +901,52 @@ export function HeroSection({}: HeroSectionProps) {
         {filteredCards.length === 0 ? (
           <div
             style={{
-              textAlign: 'center',
-              padding: '40px',
-              color: '#64748B',
-              background: '#FFFFFF',
-              border: '1px dashed #E2E8F0',
+              display: 'flex',
+              justifyContent: 'center',
             }}
           >
-            No featured PYQs match this exam.
+            <div
+              onClick={() => {
+                const params = new URLSearchParams({ count: '10' });
+                if (selectedExam !== 'All Exams') params.set('exam', selectedExam === 'UPSC' ? 'UPSC CSE' : selectedExam);
+                navigate(`/guest-exam?${params.toString()}`);
+              }}
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: 8,
+                padding: 24,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                cursor: 'pointer',
+                transition: 'box-shadow 0.15s ease, transform 0.15s ease',
+                textAlign: 'center',
+                maxWidth: 400,
+                width: '100%',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 18px rgba(15, 23, 42, 0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                <Target size={32} style={{ color: 'var(--primary-red)' }} />
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                Start Random Practice
+              </h3>
+              <p style={{ fontSize: 14, color: '#475569', margin: 0, lineHeight: 1.5 }}>
+                Jump into a random mix of questions for <strong>{selectedExam}</strong> right away!
+              </p>
+              <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--primary-red)', fontWeight: 600, fontSize: 14 }}>
+                Launch Session <ArrowRight size={16} />
+              </div>
+            </div>
           </div>
         ) : (
           <div
