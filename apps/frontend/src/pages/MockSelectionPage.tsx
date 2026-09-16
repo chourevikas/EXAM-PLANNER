@@ -51,6 +51,7 @@ export function MockSelectionPage() {
 
   // Form selections matching StudentPracticeExamPage
   const [selectedExam, setSelectedExam] = useState<string>('UPSC CSE');
+  const [selectedExamsList, setSelectedExamsList] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedYearsList, setSelectedYearsList] = useState<string[]>([]);
   const [selectedSubjectsList, setSelectedSubjectsList] = useState<string[]>([]);
@@ -278,6 +279,24 @@ export function MockSelectionPage() {
   }, [selectedSubjectsList, selectedTopicsList, masterSyllabus]);
 
   // Multi-Select Toggle & Select All Helpers
+  const toggleExamFilter = (examName: string) => {
+    if (examName === 'All Exams') {
+      setSelectedExamsList([]);
+    } else {
+      let updated: string[];
+      if (selectedExamsList.includes(examName)) {
+        updated = selectedExamsList.filter((e) => e !== examName);
+      } else {
+        updated = [...selectedExamsList, examName];
+      }
+      setSelectedExamsList(updated);
+    }
+  };
+
+  const selectAllExams = () => {
+    setSelectedExamsList([...(availableExams.length > 0 ? availableExams : ['UPSC CSE'])]);
+  };
+
   const toggleYearFilter = (yearName: string) => {
     if (yearName.startsWith('All Years') || yearName === 'All Years') {
       setSelectedYearsList([]);
@@ -364,7 +383,10 @@ export function MockSelectionPage() {
     e.preventDefault();
     const queryParams = new URLSearchParams();
 
-    if (selectedExam) {
+    // Support multi-select exams
+    if (selectedExamsList.length > 0) {
+      queryParams.set('exam', selectedExamsList.join(','));
+    } else if (selectedExam) {
       queryParams.set('exam', selectedExam);
     }
     if (selectedYearsList.length > 0) {
@@ -430,11 +452,12 @@ export function MockSelectionPage() {
 
         <form onSubmit={handleStartPracticeTest}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-            {/* Filter 1: Target Exam */}
+            {/* Filter 1: Target Exam (multi-select) */}
             <div style={{ position: 'relative' }}>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Target Exam
               </label>
+              {/* --- Multi-select Exam Dropdown --- */}
               <button
                 type="button"
                 onClick={() => {
@@ -453,7 +476,11 @@ export function MockSelectionPage() {
                 }}
               >
                 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {selectedExam || 'UPSC CSE'}
+                  {selectedExamsList.length === 0
+                    ? 'All Exams'
+                    : selectedExamsList.length === 1
+                      ? selectedExamsList[0]
+                      : `${selectedExamsList.length} Exams Selected`}
                 </span>
                 <ChevronDown
                   size={14}
@@ -472,40 +499,84 @@ export function MockSelectionPage() {
                     position: 'absolute',
                     top: 'calc(100% + 6px)',
                     left: 0,
-                    width: 220,
+                    width: 240,
                     maxWidth: 'calc(100vw - 32px)',
                     backgroundColor: '#FFFFFF',
                     border: '1px solid #E2E8F0',
                     borderRadius: 0,
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
-                    padding: 6,
+                    padding: 10,
                     zIndex: 100,
                   }}
                 >
-                  {(availableExams.length > 0 ? availableExams : ['UPSC CSE']).map((opt) => (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                    <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleExamFilter('All Exams')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                  </div>
+
+                  <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {/* All Exams default */}
                     <div
-                      key={opt}
-                      onClick={() => {
-                        setSelectedExam(opt);
-                        setActiveDropdown(null);
-                      }}
+                      onClick={() => toggleExamFilter('All Exams')}
                       style={{
-                        padding: '9px 12px',
+                        padding: '8px 10px',
                         borderRadius: 0,
                         fontSize: 12.5,
-                        fontWeight: selectedExam === opt ? 700 : 500,
-                        color: selectedExam === opt ? '#1E3A8A' : '#334155',
-                        backgroundColor: selectedExam === opt ? '#F8FAFC' : 'transparent',
+                        fontWeight: selectedExamsList.length === 0 ? 700 : 500,
+                        color: selectedExamsList.length === 0 ? '#1E3A8A' : '#334155',
+                        backgroundColor: selectedExamsList.length === 0 ? '#F1F5F9' : 'transparent',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         cursor: 'pointer',
                       }}
                     >
-                      <span>{opt}</span>
-                      {selectedExam === opt && <Check size={14} color="#1E3A8A" />}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedExamsList.length === 0}
+                          onChange={() => {}}
+                          style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                        />
+                        <span>All Exams</span>
+                      </div>
+                      {selectedExamsList.length === 0 && <Check size={14} color="#1E3A8A" />}
                     </div>
-                  ))}
+
+                    {/* Individual exam options */}
+                    {(availableExams.length > 0 ? availableExams : ['UPSC CSE']).map((opt) => {
+                      const isSelected = selectedExamsList.includes(opt);
+                      return (
+                        <div
+                          key={opt}
+                          onClick={() => toggleExamFilter(opt)}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: 0,
+                            fontSize: 12.5,
+                            fontWeight: isSelected ? 700 : 500,
+                            color: isSelected ? '#1E3A8A' : '#334155',
+                            backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                            />
+                            <span>{opt}</span>
+                          </div>
+                          {isSelected && <Check size={14} color="#1E3A8A" />}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

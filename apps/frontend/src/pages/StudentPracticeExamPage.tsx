@@ -992,9 +992,13 @@ export function StudentPracticeExamPage() {
 
       try {
         const targetExam = gExam
-          ? gExam.toLowerCase().includes('upsc')
-            ? 'upsc'
-            : gExam.toLowerCase().trim()
+          ? gExam.split(',')
+              .map((e) => {
+                const cleaned = e.trim().toLowerCase();
+                return cleaned.includes('upsc') ? 'upsc' : cleaned;
+              })
+              .filter(Boolean)
+              .join(',')
           : '';
 
         const initialFetchLimit = 100;

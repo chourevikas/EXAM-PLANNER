@@ -1,0 +1,850 @@
+[
+  {
+    "tag": "Authentication",
+    "path": "/api/v1/auth/me",
+    "url": "http://localhost:8000/api/v1/auth/me",
+    "status": 200,
+    "latency_ms": 2009.89,
+    "error": null
+  },
+  {
+    "tag": "Authentication",
+    "path": "/api/v1/auth/admin-only",
+    "url": "http://localhost:8000/api/v1/auth/admin-only",
+    "status": 200,
+    "latency_ms": 12.11,
+    "error": null
+  },
+  {
+    "tag": "Authentication",
+    "path": "/api/v1/auth/super-admin-only",
+    "url": "http://localhost:8000/api/v1/auth/super-admin-only",
+    "status": 200,
+    "latency_ms": 4.81,
+    "error": null
+  },
+  {
+    "tag": "Authentication",
+    "path": "/api/v1/auth/languages",
+    "url": "http://localhost:8000/api/v1/auth/languages",
+    "status": 200,
+    "latency_ms": 2.56,
+    "error": null
+  },
+  {
+    "tag": "Users",
+    "path": "/api/v1/users/me/bookmarks",
+    "url": "http://localhost:8000/api/v1/users/me/bookmarks",
+    "status": 200,
+    "latency_ms": 1831.57,
+    "error": null
+  },
+  {
+    "tag": "Users",
+    "path": "/api/v1/users",
+    "url": "http://localhost:8000/api/v1/users",
+    "status": 200,
+    "latency_ms": 2322.75,
+    "error": null
+  },
+  {
+    "tag": "Users",
+    "path": "/api/v1/users/lookup",
+    "url": "http://localhost:8000/api/v1/users/lookup",
+    "status": 422,
+    "latency_ms": 4.83,
+    "error": "[{'type': 'missing', 'loc': ['query', 'email'], 'msg': 'Field required', 'input': None}]"
+  },
+  {
+    "tag": "Users",
+    "path": "/api/v1/users/{user_id}",
+    "url": "http://localhost:8000/api/v1/users/22",
+    "status": 200,
+    "latency_ms": 2069.38,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/overview-stats",
+    "url": "http://localhost:8000/api/v1/admin/overview-stats",
+    "status": 200,
+    "latency_ms": 6270.54,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/question-catalog/subjects",
+    "url": "http://localhost:8000/api/v1/admin/question-catalog/subjects",
+    "status": 200,
+    "latency_ms": 1595.24,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/pending-requests",
+    "url": "http://localhost:8000/api/v1/admin/pending-requests",
+    "status": 200,
+    "latency_ms": 1892.54,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/active-admins",
+    "url": "http://localhost:8000/api/v1/admin/active-admins",
+    "status": 200,
+    "latency_ms": 3674.9,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/all-users",
+    "url": "http://localhost:8000/api/v1/admin/all-users",
+    "status": 200,
+    "latency_ms": 3609.93,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/audit-logs",
+    "url": "http://localhost:8000/api/v1/admin/audit-logs",
+    "status": 200,
+    "latency_ms": 748.3,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/system-stats",
+    "url": "http://localhost:8000/api/v1/admin/system-stats",
+    "status": 200,
+    "latency_ms": 1773.24,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/analytics/platform-reports",
+    "url": "http://localhost:8000/api/v1/admin/analytics/platform-reports",
+    "status": 200,
+    "latency_ms": 6294.88,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/exams/pipeline-status",
+    "url": "http://localhost:8000/api/v1/admin/exams/pipeline-status",
+    "status": 200,
+    "latency_ms": 5965.93,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/exams/stuck-pipelines",
+    "url": "http://localhost:8000/api/v1/admin/exams/stuck-pipelines",
+    "status": 200,
+    "latency_ms": 4981.49,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/exams/{exam_id}/review-questions",
+    "url": "http://localhost:8000/api/v1/admin/exams/16/review-questions",
+    "status": 200,
+    "latency_ms": 13.9,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/exams/{exam_id}/sync-status",
+    "url": "http://localhost:8000/api/v1/admin/exams/16/sync-status",
+    "status": 200,
+    "latency_ms": 1362.76,
+    "error": null
+  },
+  {
+    "tag": "Admin Management",
+    "path": "/api/v1/admin/languages",
+    "url": "http://localhost:8000/api/v1/admin/languages",
+    "status": 200,
+    "latency_ms": 8.72,
+    "error": null
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams",
+    "url": "http://localhost:8000/api/v1/exams",
+    "status": 200,
+    "latency_ms": 7.82,
+    "error": null
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/{exam_id}/solutions",
+    "url": "http://localhost:8000/api/v1/exams/16/solutions",
+    "status": 200,
+    "latency_ms": 8.64,
+    "error": null
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/{exam_id}/review-questions",
+    "url": "http://localhost:8000/api/v1/exams/16/review-questions",
+    "status": 200,
+    "latency_ms": 6.44,
+    "error": null
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/{exam_id}/question-artifact/{question_number}",
+    "url": "http://localhost:8000/api/v1/exams/16/question-artifact/1",
+    "status": 404,
+    "latency_ms": 5250.88,
+    "error": "Question artifact #1 not found in S3 storage folder."
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/{exam_id}/question-db/{question_number}",
+    "url": "http://localhost:8000/api/v1/exams/16/question-db/1",
+    "status": 200,
+    "latency_ms": 5.2,
+    "error": null
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/{exam_id}/solution-artifact/{question_number}",
+    "url": "http://localhost:8000/api/v1/exams/16/solution-artifact/1",
+    "status": 404,
+    "latency_ms": 2670.59,
+    "error": "Solution artifact #1 not found in S3 storage folder."
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/{exam_id}/solution-db/{question_number}",
+    "url": "http://localhost:8000/api/v1/exams/16/solution-db/1",
+    "status": 200,
+    "latency_ms": 8.14,
+    "error": null
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/export-zip",
+    "url": "http://localhost:8000/api/v1/exams/export-zip",
+    "status": 422,
+    "latency_ms": 3.08,
+    "error": "[{'type': 'missing', 'loc': ['query', 'exam_name'], 'msg': 'Field required', 'input': None}]"
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/{exam_name}/export-zip",
+    "url": "http://localhost:8000/api/v1/exams/upsc/export-zip",
+    "status": 404,
+    "latency_ms": 2189.8,
+    "error": "Exam with identifier 'upsc' not found."
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/years",
+    "url": "http://localhost:8000/api/v1/exams/years",
+    "status": 200,
+    "latency_ms": 1866.53,
+    "error": null
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/by-year",
+    "url": "http://localhost:8000/api/v1/exams/by-year",
+    "status": 200,
+    "latency_ms": 5.5,
+    "error": null
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/{exam_id}",
+    "url": "http://localhost:8000/api/v1/exams/16",
+    "status": 200,
+    "latency_ms": 1497.67,
+    "error": null
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/{exam_id}/syllabus",
+    "url": "http://localhost:8000/api/v1/exams/16/syllabus",
+    "status": 200,
+    "latency_ms": 7.96,
+    "error": null
+  },
+  {
+    "tag": "Exams & Document Ingestion",
+    "path": "/api/v1/exams/{exam_id}/integrity-questions",
+    "url": "http://localhost:8000/api/v1/exams/16/integrity-questions",
+    "status": 200,
+    "latency_ms": 3366.03,
+    "error": null
+  },
+  {
+    "tag": "Questions & Formatted Outputs",
+    "path": "/api/v1/questions",
+    "url": "http://localhost:8000/api/v1/questions",
+    "status": 200,
+    "latency_ms": 7853.11,
+    "error": null
+  },
+  {
+    "tag": "Questions & Formatted Outputs",
+    "path": "/api/v1/questions/taxonomy",
+    "url": "http://localhost:8000/api/v1/questions/taxonomy",
+    "status": 200,
+    "latency_ms": 16.02,
+    "error": null
+  },
+  {
+    "tag": "Questions & Formatted Outputs",
+    "path": "/api/v1/questions/recommended",
+    "url": "http://localhost:8000/api/v1/questions/recommended",
+    "status": 200,
+    "latency_ms": 8723.33,
+    "error": null
+  },
+  {
+    "tag": "Questions & Formatted Outputs",
+    "path": "/api/v1/questions/{question_id}",
+    "url": "http://localhost:8000/api/v1/questions/204",
+    "status": 200,
+    "latency_ms": 4.31,
+    "error": null
+  },
+  {
+    "tag": "Questions & Formatted Outputs",
+    "path": "/api/v1/questions/{question_id}/formatted/yaml",
+    "url": "http://localhost:8000/api/v1/questions/204/formatted/yaml",
+    "status": 200,
+    "latency_ms": 3.37,
+    "error": null
+  },
+  {
+    "tag": "Questions & Formatted Outputs",
+    "path": "/api/v1/questions/{question_id}/formatted/markdown",
+    "url": "http://localhost:8000/api/v1/questions/204/formatted/markdown",
+    "status": 200,
+    "latency_ms": 3.54,
+    "error": null
+  },
+  {
+    "tag": "Questions & Formatted Outputs",
+    "path": "/api/v1/questions/{question_id}/solution",
+    "url": "http://localhost:8000/api/v1/questions/204/solution",
+    "status": 200,
+    "latency_ms": 8.98,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/attempts/{attempt_id}/status",
+    "url": "http://localhost:8000/api/v1/analytics/reports/attempts/69/status",
+    "status": 200,
+    "latency_ms": 1339.65,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/attempts/{attempt_id}/questions",
+    "url": "http://localhost:8000/api/v1/analytics/reports/attempts/69/questions",
+    "status": 200,
+    "latency_ms": 2704.42,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/attempts/{attempt_id}/exam",
+    "url": "http://localhost:8000/api/v1/analytics/reports/attempts/69/exam",
+    "status": 200,
+    "latency_ms": 48.6,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/attempts/{attempt_id}/user-delta",
+    "url": "http://localhost:8000/api/v1/analytics/reports/attempts/69/user-delta",
+    "status": 200,
+    "latency_ms": 1668.62,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/user/{user_id}/skill-profile",
+    "url": "http://localhost:8000/api/v1/analytics/reports/user/22/skill-profile",
+    "status": 200,
+    "latency_ms": 3220.6,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/users/{user_id}/aggregate-report",
+    "url": "http://localhost:8000/api/v1/analytics/users/22/aggregate-report",
+    "status": 200,
+    "latency_ms": 3344.62,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/users/{user_id}/aggregate-report/markdown",
+    "url": "http://localhost:8000/api/v1/analytics/users/22/aggregate-report/markdown",
+    "status": 200,
+    "latency_ms": 3576.52,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/attempts/{attempt_id}/json",
+    "url": "http://localhost:8000/api/v1/analytics/reports/attempts/69/json",
+    "status": 200,
+    "latency_ms": 3563.21,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/attempts/{attempt_id}/yaml",
+    "url": "http://localhost:8000/api/v1/analytics/reports/attempts/69/yaml",
+    "status": 200,
+    "latency_ms": 6812.69,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/attempts/{attempt_id}/markdown",
+    "url": "http://localhost:8000/api/v1/analytics/reports/attempts/69/markdown",
+    "status": 200,
+    "latency_ms": 2664.98,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/activity/today",
+    "url": "http://localhost:8000/api/v1/analytics/activity/today",
+    "status": 200,
+    "latency_ms": 1329.4,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/predicted-rank",
+    "url": "http://localhost:8000/api/v1/analytics/predicted-rank",
+    "status": 200,
+    "latency_ms": 2938.65,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/monthly-benchmark",
+    "url": "http://localhost:8000/api/v1/analytics/monthly-benchmark",
+    "status": 200,
+    "latency_ms": 1865.83,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/subject-performance",
+    "url": "http://localhost:8000/api/v1/analytics/subject-performance",
+    "status": 200,
+    "latency_ms": 5.11,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/user/{user_id}/exam/{exam_id}/json",
+    "url": "http://localhost:8000/api/v1/analytics/reports/user/22/exam/16/json",
+    "status": 200,
+    "latency_ms": 3858.05,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/user/{user_id}/exam/{exam_id}/yaml",
+    "url": "http://localhost:8000/api/v1/analytics/reports/user/22/exam/16/yaml",
+    "status": 200,
+    "latency_ms": 6704.77,
+    "error": null
+  },
+  {
+    "tag": "Psychometric & Cognitive Analytics",
+    "path": "/api/v1/analytics/reports/user/{user_id}/exam/{exam_id}/markdown",
+    "url": "http://localhost:8000/api/v1/analytics/reports/user/22/exam/16/markdown",
+    "status": 200,
+    "latency_ms": 3880.33,
+    "error": null
+  },
+  {
+    "tag": "Admin QA Review",
+    "path": "/api/v1/admin/review/exams/{exam_id}/questions",
+    "url": "http://localhost:8000/api/v1/admin/review/exams/16/questions",
+    "status": 200,
+    "latency_ms": 11.04,
+    "error": null
+  },
+  {
+    "tag": "Admin QA Review",
+    "path": "/api/v1/admin/review/tasks",
+    "url": "http://localhost:8000/api/v1/admin/review/tasks",
+    "status": 200,
+    "latency_ms": 5.76,
+    "error": null
+  },
+  {
+    "tag": "Admin QA Review",
+    "path": "/api/v1/admin/review/tasks/{question_id}",
+    "url": "http://localhost:8000/api/v1/admin/review/tasks/204",
+    "status": 200,
+    "latency_ms": 9.39,
+    "error": null
+  },
+  {
+    "tag": "Pipeline Management",
+    "path": "/api/v1/pipeline/questions-status/{exam_identifier}",
+    "url": "http://localhost:8000/api/v1/pipeline/questions-status/1",
+    "status": 404,
+    "latency_ms": 1066.09,
+    "error": "Exam with identifier '1' not found in database."
+  },
+  {
+    "tag": "Pipeline Management",
+    "path": "/api/v1/pipeline/status/{exam_identifier}",
+    "url": "http://localhost:8000/api/v1/pipeline/status/1",
+    "status": 404,
+    "latency_ms": 747.31,
+    "error": "Exam with identifier '1' not found in database."
+  },
+  {
+    "tag": "Study Plan & Gamification",
+    "path": "/api/v1/study-plan/tasks",
+    "url": "http://localhost:8000/api/v1/study-plan/tasks",
+    "status": 200,
+    "latency_ms": 772.11,
+    "error": null
+  },
+  {
+    "tag": "Study Plan & Gamification",
+    "path": "/api/v1/study-plan/tasks/attempt/{attempt_id}/status",
+    "url": "http://localhost:8000/api/v1/study-plan/tasks/attempt/69/status",
+    "status": 200,
+    "latency_ms": 1200.87,
+    "error": null
+  },
+  {
+    "tag": "Study Plan & Gamification",
+    "path": "/api/v1/study-plan/weekly-schedule",
+    "url": "http://localhost:8000/api/v1/study-plan/weekly-schedule",
+    "status": 200,
+    "latency_ms": 1118.87,
+    "error": null
+  },
+  {
+    "tag": "Study Plan & Gamification",
+    "path": "/api/v1/study-plan/weekly-insights",
+    "url": "http://localhost:8000/api/v1/study-plan/weekly-insights",
+    "status": 200,
+    "latency_ms": 6629.06,
+    "error": null
+  },
+  {
+    "tag": "Study Plan & Gamification",
+    "path": "/api/v1/study-plan/activities",
+    "url": "http://localhost:8000/api/v1/study-plan/activities",
+    "status": 200,
+    "latency_ms": 1544.79,
+    "error": null
+  },
+  {
+    "tag": "Study Plan & Gamification",
+    "path": "/api/v1/study-plan/activities/summary",
+    "url": "http://localhost:8000/api/v1/study-plan/activities/summary",
+    "status": 200,
+    "latency_ms": 1358.54,
+    "error": null
+  },
+  {
+    "tag": "Study Plan & Gamification",
+    "path": "/api/v1/study-plan/badges",
+    "url": "http://localhost:8000/api/v1/study-plan/badges",
+    "status": 200,
+    "latency_ms": 4.95,
+    "error": null
+  },
+  {
+    "tag": "Student Exam-Taking Sessions",
+    "path": "/api/v1/attempts",
+    "url": "http://localhost:8000/api/v1/attempts",
+    "status": 200,
+    "latency_ms": 1832.04,
+    "error": null
+  },
+  {
+    "tag": "Student Exam-Taking Sessions",
+    "path": "/api/v1/attempts/status-by-exam",
+    "url": "http://localhost:8000/api/v1/attempts/status-by-exam",
+    "status": 200,
+    "latency_ms": 775.33,
+    "error": null
+  },
+  {
+    "tag": "Student Exam-Taking Sessions",
+    "path": "/api/v1/attempts/{attempt_id}/questions/bulk",
+    "url": "http://localhost:8000/api/v1/attempts/69/questions/bulk",
+    "status": 404,
+    "latency_ms": 1570.16,
+    "error": "ATTEMPT_NOT_FOUND: Exam attempt not found or unauthorized."
+  },
+  {
+    "tag": "Student Exam-Taking Sessions",
+    "path": "/api/v1/attempts/{attempt_id}/questions/{question_number}",
+    "url": "http://localhost:8000/api/v1/attempts/69/questions/1",
+    "status": 404,
+    "latency_ms": 806.06,
+    "error": "ATTEMPT_NOT_FOUND: Exam attempt not found or unauthorized."
+  },
+  {
+    "tag": "Student Exam-Taking Sessions",
+    "path": "/api/v1/attempts/{attempt_id}/responses/batch/{batch_id}",
+    "url": "http://localhost:8000/api/v1/attempts/69/responses/batch/1",
+    "status": 200,
+    "latency_ms": 3.47,
+    "error": null
+  },
+  {
+    "tag": "Student Exam-Taking Sessions",
+    "path": "/api/v1/attempts/{attempt_id}/status",
+    "url": "http://localhost:8000/api/v1/attempts/69/status",
+    "status": 404,
+    "latency_ms": 1262.31,
+    "error": "ATTEMPT_NOT_FOUND: Exam attempt not found or unauthorized."
+  },
+  {
+    "tag": "Student Exam-Taking Sessions",
+    "path": "/api/v1/attempts/{attempt_id}/result",
+    "url": "http://localhost:8000/api/v1/attempts/69/result",
+    "status": 404,
+    "latency_ms": 1416.11,
+    "error": "ATTEMPT_NOT_FOUND: Exam attempt not found or unauthorized."
+  },
+  {
+    "tag": "Student Exam-Taking Sessions",
+    "path": "/api/v1/attempts/student-dashboard-stats",
+    "url": "http://localhost:8000/api/v1/attempts/student-dashboard-stats",
+    "status": 200,
+    "latency_ms": 1367.27,
+    "error": null
+  },
+  {
+    "tag": "Global Search",
+    "path": "/api/v1/search/",
+    "url": "http://localhost:8000/api/v1/search/",
+    "status": 422,
+    "latency_ms": 3.54,
+    "error": "[{'type': 'missing', 'loc': ['query', 'q'], 'msg': 'Field required', 'input': None}]"
+  },
+  {
+    "tag": "Global Search",
+    "path": "/api/v1/search",
+    "url": "http://localhost:8000/api/v1/search",
+    "status": 422,
+    "latency_ms": 2.75,
+    "error": "[{'type': 'missing', 'loc': ['query', 'q'], 'msg': 'Field required', 'input': None}]"
+  },
+  {
+    "tag": "Syllabus & Taxonomy",
+    "path": "/api/v1/syllabus/hierarchy",
+    "url": "http://localhost:8000/api/v1/syllabus/hierarchy",
+    "status": 200,
+    "latency_ms": 8.67,
+    "error": null
+  },
+  {
+    "tag": "Syllabus & Taxonomy",
+    "path": "/api/v1/syllabus",
+    "url": "http://localhost:8000/api/v1/syllabus",
+    "status": 200,
+    "latency_ms": 7.32,
+    "error": null
+  },
+  {
+    "tag": "Notifications",
+    "path": "/api/v1/notifications",
+    "url": "http://localhost:8000/api/v1/notifications",
+    "status": 200,
+    "latency_ms": 4047.49,
+    "error": null
+  },
+  {
+    "tag": "Notifications",
+    "path": "/api/v1/notifications/{notification_id}",
+    "url": "http://localhost:8000/api/v1/notifications/1",
+    "status": 200,
+    "latency_ms": 1301.93,
+    "error": null
+  },
+  {
+    "tag": "Testimonials",
+    "path": "/api/v1/testimonials/approved",
+    "url": "http://localhost:8000/api/v1/testimonials/approved",
+    "status": 200,
+    "latency_ms": 1265.95,
+    "error": null
+  },
+  {
+    "tag": "Testimonials",
+    "path": "/api/v1/testimonials/admin/all",
+    "url": "http://localhost:8000/api/v1/testimonials/admin/all",
+    "status": 200,
+    "latency_ms": 1293.68,
+    "error": null
+  },
+  {
+    "tag": "Roles & Permissions",
+    "path": "/api/v1/admin/permissions",
+    "url": "http://localhost:8000/api/v1/admin/permissions",
+    "status": 200,
+    "latency_ms": 799.6,
+    "error": null
+  },
+  {
+    "tag": "Roles & Permissions",
+    "path": "/api/v1/admin/roles",
+    "url": "http://localhost:8000/api/v1/admin/roles",
+    "status": 200,
+    "latency_ms": 1322.49,
+    "error": null
+  },
+  {
+    "tag": "Teacher",
+    "path": "/api/v1/teacher/points",
+    "url": "http://localhost:8000/api/v1/teacher/points",
+    "status": 403,
+    "latency_ms": 12.59,
+    "error": "User role 'UserRole.SUPER_ADMIN' is not authorized for this resource"
+  },
+  {
+    "tag": "Teacher",
+    "path": "/api/v1/teacher/rewards",
+    "url": "http://localhost:8000/api/v1/teacher/rewards",
+    "status": 403,
+    "latency_ms": 11.22,
+    "error": "User role 'UserRole.SUPER_ADMIN' is not authorized for this resource"
+  },
+  {
+    "tag": "Admin: Teacher Rewards",
+    "path": "/api/v1/admin/teachers",
+    "url": "http://localhost:8000/api/v1/admin/teachers",
+    "status": 200,
+    "latency_ms": 812.31,
+    "error": null
+  },
+  {
+    "tag": "Admin: Teacher Rewards",
+    "path": "/api/v1/admin/teachers/{teacher_id}/rewards",
+    "url": "http://localhost:8000/api/v1/admin/teachers/2/rewards",
+    "status": 200,
+    "latency_ms": 801.13,
+    "error": null
+  },
+  {
+    "tag": "Current Affairs",
+    "path": "/api/v1/current-affairs/",
+    "url": "http://localhost:8000/api/v1/current-affairs/",
+    "status": 200,
+    "latency_ms": 833.69,
+    "error": null
+  },
+  {
+    "tag": "Current Affairs",
+    "path": "/api/v1/current-affairs/{id}",
+    "url": "http://localhost:8000/api/v1/current-affairs/1",
+    "status": 404,
+    "latency_ms": 1062.62,
+    "error": "Current affair not found"
+  },
+  {
+    "tag": "Exam Types",
+    "path": "/api/v1/exam-types",
+    "url": "http://localhost:8000/api/v1/exam-types",
+    "status": 200,
+    "latency_ms": 9.83,
+    "error": null
+  },
+  {
+    "tag": "Exam Types",
+    "path": "/api/v1/admin/exam-types",
+    "url": "http://localhost:8000/api/v1/admin/exam-types",
+    "status": 200,
+    "latency_ms": 5.81,
+    "error": null
+  },
+  {
+    "tag": "Exam Types",
+    "path": "/api/v1/admin/exam-types/{exam_type_id}",
+    "url": "http://localhost:8000/api/v1/admin/exam-types/1",
+    "status": 200,
+    "latency_ms": 1327.62,
+    "error": null
+  },
+  {
+    "tag": "Admin Notifications",
+    "path": "/api/v1/admin/notifications",
+    "url": "http://localhost:8000/api/v1/admin/notifications",
+    "status": 200,
+    "latency_ms": 1843.2,
+    "error": null
+  },
+  {
+    "tag": "Admin Notifications",
+    "path": "/api/v1/admin/notifications/{notification_id}",
+    "url": "http://localhost:8000/api/v1/admin/notifications/1",
+    "status": 200,
+    "latency_ms": 1657.4,
+    "error": null
+  },
+  {
+    "tag": "Challenges",
+    "path": "/api/v1/challenges",
+    "url": "http://localhost:8000/api/v1/challenges",
+    "status": 200,
+    "latency_ms": 1983.28,
+    "error": null
+  },
+  {
+    "tag": "Challenges",
+    "path": "/api/v1/challenges/public/{share_token}",
+    "url": "http://localhost:8000/api/v1/challenges/public/1",
+    "status": 404,
+    "latency_ms": 1023.0,
+    "error": "Challenge not found"
+  },
+  {
+    "tag": "Challenges",
+    "path": "/api/v1/challenges/{challenge_id}",
+    "url": "http://localhost:8000/api/v1/challenges/1",
+    "status": 404,
+    "latency_ms": 1052.53,
+    "error": "Challenge not found"
+  },
+  {
+    "tag": "Challenges",
+    "path": "/api/v1/challenges/{challenge_id}/leaderboard",
+    "url": "http://localhost:8000/api/v1/challenges/1/leaderboard",
+    "status": 404,
+    "latency_ms": 1262.21,
+    "error": "Challenge not found"
+  },
+  {
+    "tag": "Site Settings",
+    "path": "/api/v1/site-settings/theme",
+    "url": "http://localhost:8000/api/v1/site-settings/theme",
+    "status": 200,
+    "latency_ms": 8.82,
+    "error": null
+  },
+  {
+    "tag": "Untagged",
+    "path": "/",
+    "url": "http://localhost:8000/",
+    "status": 200,
+    "latency_ms": 5.74,
+    "error": null
+  }
+]

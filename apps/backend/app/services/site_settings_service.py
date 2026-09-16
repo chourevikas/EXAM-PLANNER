@@ -76,15 +76,35 @@ class SiteSettingsService:
         if theme_name not in ALLOWED_THEMES:
             raise ValueError(f"theme_name must be one of {sorted(ALLOWED_THEMES)}")
 
-        settings = await self.get_theme()
-        settings.theme_name = theme_name
-        settings.updated_at = datetime.now(timezone.utc)
-        settings.updated_by_id = updated_by_id
-        self.session.add(settings)
+        now = datetime.now(timezone.utc)
+
+        # Use a raw UPSERT so we never hit the unique-key violation on the
+        # singleton row (id=1). This handles both "first write ever" and
+        # "updating an existing row" in one atomic statement.
+        await self.session.execute(
+            text("""
+                INSERT INTO site_settings (id, theme_name, updated_at, updated_by_id)
+                VALUES (:id, :theme_name, :updated_at, :updated_by_id)
+                ON CONFLICT (id) DO UPDATE
+                    SET theme_name     = EXCLUDED.theme_name,
+                        updated_at     = EXCLUDED.updated_at,
+                        updated_by_id  = EXCLUDED.updated_by_id;
+            """),
+            {
+                "id": SINGLETON_ID,
+                "theme_name": theme_name,
+                "updated_at": now,
+                "updated_by_id": updated_by_id,
+            },
+        )
         await self.session.commit()
-        await self.session.refresh(settings)
 
         from app.cache.helpers import invalidate_site_settings_cache
         await invalidate_site_settings_cache()
-        return settings
 
+        # Return a fresh object reflecting the new state
+        settings = await self.session.get(SiteSettings, SINGLETON_ID)
+        if settings is None:
+            settings = SiteSettings(id=SINGLETON_ID, theme_name=theme_name,
+                                    updated_at=now, updated_by_id=updated_by_id)
+        return settings

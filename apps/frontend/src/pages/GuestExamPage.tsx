@@ -711,9 +711,13 @@ export function GuestExamPage() {
         const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? formatTaxonomyParam(selectedSubtopicsList) : '';
         const rawDiff = gDifficulty && !gDifficulty.startsWith('All') ? gDifficulty.trim() : '';
         const targetExam = gExam
-          ? gExam.toLowerCase().includes('upsc')
-            ? 'upsc'
-            : gExam.toLowerCase().trim()
+          ? gExam.split(',')
+              .map((e) => {
+                const cleaned = e.trim().toLowerCase();
+                return cleaned.includes('upsc') ? 'upsc' : cleaned;
+              })
+              .filter(Boolean)
+              .join(',')
           : '';
 
         let newFetched: any[] = [];
@@ -975,9 +979,13 @@ export function GuestExamPage() {
       const reqSubtopic = rawSubtopic;
 
       const targetExam = gExam
-        ? gExam.toLowerCase().includes('upsc')
-          ? 'upsc'
-          : gExam.toLowerCase().trim()
+        ? gExam.split(',')
+            .map((e) => {
+              const cleaned = e.trim().toLowerCase();
+              return cleaned.includes('upsc') ? 'upsc' : cleaned;
+            })
+            .filter(Boolean)
+            .join(',')
         : '';
 
       let numericYears: string[] = [];

@@ -26,7 +26,7 @@ export function PYQSelectionPage() {
 
   // Filter bar state
   const [selectedYear, setSelectedYear] = useState<string>('All Years');
-  const [selectedExamTarget, setSelectedExamTarget] = useState<string>('UPSC CSE');
+  const [selectedExamTarget, setSelectedExamTarget] = useState<string>('All Exams');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
@@ -93,14 +93,40 @@ export function PYQSelectionPage() {
     return ['All Years', ...years];
   }, [examsList]);
 
+  // Derive distinct exam names from the loaded exams list
+  const examOptions = useMemo(() => {
+    const names = Array.from(
+      new Set(
+        examsList.map((e) => {
+          // Extract canonical exam family from the title
+          const t = e.title || '';
+          if (t.toLowerCase().includes('upsc')) return 'UPSC CSE';
+          if (t.toLowerCase().includes('mpsc')) return 'MPSC';
+          if (t.toLowerCase().includes('mppsc')) return 'MPPSC';
+          if (t.toLowerCase().includes('uppcs') || t.toLowerCase().includes('uppsc')) return 'UPPCS';
+          if (t.toLowerCase().includes('bpsc')) return 'BPSC';
+          // Fallback: use the first word of the title
+          return t.split(' ')[0] || 'Other';
+        })
+      )
+    ).sort();
+    return ['All Exams', ...names];
+  }, [examsList]);
+
   const filteredExamsList = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return examsList.filter((e) => {
       if (selectedYear !== 'All Years' && String(e.year) !== selectedYear) return false;
+      if (selectedExamTarget !== 'All Exams') {
+        // Match exam name against the title
+        const t = (e.title || '').toLowerCase();
+        const target = selectedExamTarget.toLowerCase();
+        if (!t.includes(target.split(' ')[0].toLowerCase())) return false;
+      }
       if (query && !e.title.toLowerCase().includes(query) && !String(e.code || '').toLowerCase().includes(query)) return false;
       return true;
     });
-  }, [examsList, selectedYear, searchQuery]);
+  }, [examsList, selectedYear, selectedExamTarget, searchQuery]);
 
   return (
     <StudentLayout pageTitle="Previous Year Questions">
@@ -153,7 +179,9 @@ export function PYQSelectionPage() {
               color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, outline: 'none',
             }}
           >
-            <option value="UPSC CSE">UPSC CSE (Civil Services)</option>
+            {examOptions.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
           </select>
         </div>
 
