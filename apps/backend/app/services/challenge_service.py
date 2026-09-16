@@ -249,14 +249,14 @@ class ChallengeService:
         attempt_count = (await self.session.exec(
             select(func.count()).select_from(ChallengeAttempt).where(
                 ChallengeAttempt.challenge_id == challenge.id,
-                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
+                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED.value,
             )
         )).one()
         my_best = (await self.session.exec(
             select(func.max(ChallengeAttempt.total_score)).where(
                 ChallengeAttempt.challenge_id == challenge.id,
                 ChallengeAttempt.user_id == user.id,
-                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
+                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED.value,
             )
         )).one()
         return ChallengeSummary(
@@ -506,7 +506,7 @@ class ChallengeService:
             select(ChallengeAttempt)
             .where(
                 ChallengeAttempt.challenge_id == challenge_id,
-                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
+                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED.value,
             )
             .order_by(ChallengeAttempt.total_score.desc(), ChallengeAttempt.time_spent_seconds.asc())
         )
