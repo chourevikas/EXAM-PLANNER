@@ -19,7 +19,7 @@ import {
   ClipboardCheck,
   Activity,
   ArrowRight,
-  ArrowLeft,
+
   ChevronRight,
   ChevronLeft,
   ChevronsRight,
@@ -662,7 +662,7 @@ function MobilePipelineCard({
 // ----------------------------------------------------------------------
 // Main UploadReviewView Component
 // ----------------------------------------------------------------------
-export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: UploadReviewViewProps = {}) {
+export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: UploadReviewViewProps = {}) {
   const { isMobile, isTabletOrBelow } = useBreakpoint();
 
   const {
@@ -703,13 +703,14 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [stageFilter, setStageFilter] = useState<string>('ALL');
 
-  // UI Mode ('UPLOAD_ONLY' | 'PIPELINE_ONLY') - Default to UPLOAD_ONLY for direct paper upload
-  const [activeTab, setActiveTab] = useState<'UPLOAD_ONLY' | 'PIPELINE_ONLY'>(initialTab);
+  // Always show PIPELINE_ONLY as main screen; Upload is a modal
 
-  // Sync activeTab when initialTab prop changes from external navigation
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(initialTab === 'UPLOAD_ONLY');
+
+  // Open upload modal if initialTab changes to UPLOAD_ONLY
   useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab);
+    if (initialTab === 'UPLOAD_ONLY') {
+      setIsUploadModalOpen(true);
     }
   }, [initialTab]);
 
@@ -843,7 +844,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
     setTimeout(() => {
       pollerRef.current?.resetCurve();
       loadRealTimeQueue(true);
-      setActiveTab('PIPELINE_ONLY');
+      setIsUploadModalOpen(false);
     }, 1200);
   };
 
@@ -1125,100 +1126,72 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
               lineHeight: 1.25,
             }}
           >
-            {activeTab === 'UPLOAD_ONLY' ? 'Upload Question Paper' : 'Exam Paper Pipeline'}
+            Exam Paper Pipeline
           </h1>
           <p style={{ fontSize: isMobile ? 12.5 : 13.5, color: '#64748B', marginTop: 4, margin: '4px 0 0 0', lineHeight: 1.4 }}>
-            {activeTab === 'UPLOAD_ONLY'
-              ? 'Configure examination parameters and upload PDF paper to ingest into content pipeline.'
-              : 'Upload, process, review and publish examination papers through the content pipeline.'}
+            Upload, process, review and publish examination papers through the content pipeline.
           </p>
         </div>
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: isMobile ? '100%' : 'auto' }}>
-          {activeTab === 'UPLOAD_ONLY' ? (
+          <>
             <button
-              onClick={() => setActiveTab('PIPELINE_ONLY')}
+              onClick={() => loadRealTimeQueue(false)}
+              disabled={loadingQueue}
               style={{
-                width: isMobile ? '100%' : 'auto',
+                flex: isMobile ? 1 : 'none',
                 justifyContent: 'center',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
+                padding: '9px 14px',
+                fontSize: 13,
+                fontWeight: 500,
+                borderRadius: 0,
+                backgroundColor: '#FFFFFF',
+                color: '#172033',
+                border: '1px solid #E2E8F0',
+                cursor: loadingQueue ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s ease',
+                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+              }}
+              title="Refresh Real-Time Pipeline Status"
+            >
+              <RefreshCw size={14} className={loadingQueue ? 'animate-spin' : ''} color="#64748B" />
+              <span>Refresh</span>
+            </button>
+
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              style={{
+                flex: isMobile ? 1 : 'none',
+                justifyContent: 'center',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
                 padding: '9px 16px',
                 fontSize: 13,
                 fontWeight: 600,
                 borderRadius: 0,
-                backgroundColor: '#FFFFFF',
-                color: '#334155',
-                border: '1px solid #CBD5E1',
+                backgroundColor: '#172033',
+                color: '#FFFFFF',
+                border: '1px solid #172033',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
+                transition: 'background 0.15s ease',
+                whiteSpace: 'nowrap',
               }}
             >
-              <ArrowLeft size={15} />
-              <span>Back to Pipeline & Artifacts</span>
+              <Upload size={15} />
+              <span>Upload Paper</span>
             </button>
-          ) : (
-            <>
-              <button
-                onClick={() => loadRealTimeQueue(false)}
-                disabled={loadingQueue}
-                style={{
-                  flex: isMobile ? 1 : 'none',
-                  justifyContent: 'center',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '9px 14px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  borderRadius: 0,
-                  backgroundColor: '#FFFFFF',
-                  color: '#172033',
-                  border: '1px solid #E2E8F0',
-                  cursor: loadingQueue ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.15s ease',
-                  boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                }}
-                title="Refresh Real-Time Pipeline Status"
-              >
-                <RefreshCw size={14} className={loadingQueue ? 'animate-spin' : ''} color="#64748B" />
-                <span>Refresh</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('UPLOAD_ONLY')}
-                style={{
-                  flex: isMobile ? 1 : 'none',
-                  justifyContent: 'center',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '9px 16px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  borderRadius: 0,
-                  backgroundColor: '#172033',
-                  color: '#FFFFFF',
-                  border: '1px solid #172033',
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
-                  transition: 'background 0.15s ease',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <Upload size={15} />
-                <span>Upload Paper</span>
-              </button>
-            </>
-          )}
+          </>
         </div>
       </div>
 
       {/* 2. Compact 4 Metric Cards (Shown in Pipeline View) */}
-      {activeTab === 'PIPELINE_ONLY' && (
+      {(
         <>
       <div
         style={{
@@ -1365,26 +1338,64 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
       )}
 
 
-      {/* 4. Upload Examination Document Card (Visual Focal Point) */}
-      {activeTab === 'UPLOAD_ONLY' && (
+
+      {/* Upload Question Paper Modal */}
+      {isUploadModalOpen && (
         <div
           style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: 0,
-            padding: isMobile ? '18px 14px' : 26,
-            marginBottom: 24,
-            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
           }}
+          onClick={(e) => { if (e.target === e.currentTarget) setIsUploadModalOpen(false); }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
-              <h2 style={{ fontSize: isMobile ? 15.5 : 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
-                Upload Question Paper PDF
-              </h2>
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 680,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderRadius: 0,
+              padding: isMobile ? '18px 14px' : 28,
+              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
+                <h2 style={{ fontSize: isMobile ? 15.5 : 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
+                  Upload Question Paper PDF
+                </h2>
+              </div>
+              <button
+                onClick={() => setIsUploadModalOpen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                  color: '#64748B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontSize: 20,
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
             </div>
-          </div>
+            <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 18px 0', lineHeight: 1.4 }}>
+              Configure examination parameters and upload PDF paper to ingest into content pipeline.
+            </p>
+
 
           <form onSubmit={handleFormSubmit}>
             {/* Metadata Inputs Grid */}
@@ -1609,11 +1620,12 @@ export function UploadReviewView({ onNavigate, initialTab = 'UPLOAD_ONLY' }: Upl
               </button>
             </div>
           </form>
+          </div>
         </div>
       )}
 
       {/* Pipeline Table View (Pipeline & Artifacts Repository) */}
-      {activeTab === 'PIPELINE_ONLY' && (
+      {(
         <div
           style={{
             background: '#FFFFFF',

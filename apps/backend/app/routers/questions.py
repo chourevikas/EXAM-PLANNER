@@ -272,6 +272,24 @@ async def list_recommended_questions(
             )
 
     lang_code = parse_language(language)
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = None
+    if not exclude_ids:
+        cache_key = build_cache_key(
+            "questions:recommended",
+            s=subject_name,
+            t=topic_name,
+            st=subtopic_name,
+            e=exam_name,
+            d=difficulty,
+            l=lang_code.value,
+            lim=limit,
+        )
+        cached = await cache.get(cache_key)
+        if cached is not None:
+            return JSONResponse(content=cached)
+
     service = QuestionService(session)
     res = await service.list_recommended_questions(
         subject_name=subject_name,
@@ -283,6 +301,8 @@ async def list_recommended_questions(
         language=lang_code,
         limit=limit,
     )
+    if cache_key and res:
+        await cache.set(cache_key, res, ttl_seconds=300)
     return JSONResponse(content=res)
 
 

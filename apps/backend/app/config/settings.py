@@ -47,8 +47,8 @@ class Settings(BaseSettings):
     # Security & Auth Settings
     SECRET_KEY: str = Field(default="secret-key-change-in-production-1234567890")
     ALGORITHM: str = Field(default="HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=15)
-    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30 * 24 * 60)  # 30 days (43200 minutes)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=30)  # 30 days
     FRONTEND_URL: str = Field(default="https://examplanner.in")
     SUPERADMIN_EMAIL: str = Field(default="admin@examplanner.com")
     SUPERADMIN_PASSWORD: str = Field(default="SuperAdmin#2026!")

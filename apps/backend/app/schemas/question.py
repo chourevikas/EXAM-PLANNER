@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from app.db.models.enums import (
     DifficultyLevel,
     LanguageCode,
@@ -33,15 +33,33 @@ class QuestionHierarchyLinkPayload(BaseModel):
 
 
 class QuestionUpdatePayload(BaseModel):
-    language: LanguageCode = Field(default=LanguageCode.ENGLISH)
+    language: Union[LanguageCode, str] = Field(default=LanguageCode.ENGLISH)
     question_text: Optional[str] = None
     paper_set_code: Optional[str] = None
     section_code: Optional[str] = None
-    difficulty: Optional[DifficultyLevel] = None
+    difficulty: Optional[Union[DifficultyLevel, str]] = None
     marks: Optional[float] = None
     negative_marks: Optional[float] = None
     expected_time_seconds: Optional[int] = None
     options: Optional[List[QuestionOptionPayload]] = None
+
+    @field_validator("language", mode="before")
+    def validate_language(cls, v):
+        if v is None:
+            return LanguageCode.ENGLISH
+        from app.core.languages import parse_language
+        return parse_language(v)
+
+    @field_validator("difficulty", mode="before")
+    def validate_difficulty(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, DifficultyLevel):
+            return v
+        try:
+            return DifficultyLevel(str(v).upper())
+        except (ValueError, KeyError):
+            return DifficultyLevel.MEDIUM
     passage_text: Optional[str] = None
     core_concept: Optional[str] = None
     detailed_solution: Optional[str] = None
@@ -68,7 +86,7 @@ class QuestionCreatePayload(BaseModel):
     paper_set_code: Optional[str] = "SET_A"
     section_code: Optional[str] = "DEFAULT"
     question_type: Optional[str] = "SINGLE_CHOICE"
-    difficulty: Optional[DifficultyLevel] = DifficultyLevel.MEDIUM
+    difficulty: Optional[Union[DifficultyLevel, str]] = DifficultyLevel.MEDIUM
     marks: Optional[float] = 2.0
     negative_marks: Optional[float] = 0.66
     expected_time_seconds: Optional[int] = 60
@@ -89,7 +107,25 @@ class QuestionCreatePayload(BaseModel):
     blooms_level: Optional[BloomsLevel] = None
     cognitive_skill: Optional[str] = None
     primary_concept_tag: Optional[str] = None
-    language: LanguageCode = Field(default=LanguageCode.ENGLISH)
+    language: Union[LanguageCode, str] = Field(default=LanguageCode.ENGLISH)
+
+    @field_validator("language", mode="before")
+    def validate_language(cls, v):
+        if v is None:
+            return LanguageCode.ENGLISH
+        from app.core.languages import parse_language
+        return parse_language(v)
+
+    @field_validator("difficulty", mode="before")
+    def validate_difficulty(cls, v):
+        if v is None:
+            return DifficultyLevel.MEDIUM
+        if isinstance(v, DifficultyLevel):
+            return v
+        try:
+            return DifficultyLevel(str(v).upper())
+        except (ValueError, KeyError):
+            return DifficultyLevel.MEDIUM
 
 
 class QuestionOptionDetail(BaseModel):

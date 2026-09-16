@@ -45,16 +45,15 @@ class ExamExportService:
         # 1. Try parsing 5-token filename format
         try:
             year_match = re.search(r"\b(19\d\d|20\d\d)\b", clean_id)
-            if not year_match.group(1):
-                raise ValueError("Exam year not found in identifier.")
-            extracted_year = int(year_match.group(1))
-            parsed = parse_question_paper_filename(clean_id, year=extracted_year)
-            canonical_code = parsed["canonical_code"]
-            stmt = select(Exam).where(Exam.code == canonical_code)
-            exam = (await self.session.exec(stmt)).first()
-            if exam:
-                return exam
-        except ValueError:
+            if year_match and year_match.group(1):
+                extracted_year = int(year_match.group(1))
+                parsed = parse_question_paper_filename(clean_id, year=extracted_year)
+                canonical_code = parsed["canonical_code"]
+                stmt = select(Exam).where(Exam.code == canonical_code)
+                exam = (await self.session.exec(stmt)).first()
+                if exam:
+                    return exam
+        except Exception:
             pass
 
         # 2. Try directly matching Exam.code (case-insensitive)

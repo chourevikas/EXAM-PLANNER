@@ -678,7 +678,7 @@ class ExamJsonBuilder:
         # Fetch questions ordered by paper number
         stmt = (
             select(Question)
-            .where(Question.exam_id == exam_id)
+            .where(Question.exam_id == exam_id, Question.status != "REJECTED")
             .order_by(col(Question.question_number_in_paper))
         )
         res = await self.session.exec(stmt)

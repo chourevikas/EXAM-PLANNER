@@ -277,9 +277,21 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   const [showPublishModal, setShowPublishModal] = useState<boolean>(false);
   const [showPublishWarningModal, setShowPublishWarningModal] = useState<boolean>(false);
 
+  // Reject Question Confirmation Modal
+  const [showRejectConfirmModal, setShowRejectConfirmModal] = useState<boolean>(false);
+  const [questionToReject, setQuestionToReject] = useState<QuestionDetailItem | null>(null);
+
   // Inline Question Editing (owned/rendered by QuestionReviewCard)
   const [isEditingQuestion, setIsEditingQuestion] = useState<boolean>(false);
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
+
+  const confirmRejectQuestion = async () => {
+    if (!questionToReject) return;
+    const q = questionToReject;
+    setShowRejectConfirmModal(false);
+    setQuestionToReject(null);
+    await handleRejectQuestion(q);
+  };
 
   useEffect(() => {
     if (!selectedExam) {
@@ -2089,7 +2101,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 {/* Primary & Destructive Action Buttons (disabled while inline-editing) */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <button
-                    onClick={() => handleRejectQuestion(activeQuestion)}
+                    onClick={() => {
+                      setQuestionToReject(activeQuestion);
+                      setShowRejectConfirmModal(true);
+                    }}
                     disabled={isEditingQuestion || actionLoadingId === activeQuestion.id}
                     style={{
                       padding: '8px 14px',
@@ -2525,6 +2540,99 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               >
                 {publishingExam ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 Confirm & Publish Package
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: Reject Question Confirmation */}
+      {showRejectConfirmModal && questionToReject && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 0,
+              maxWidth: 460,
+              width: '100%',
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.2)',
+              border: '1px solid #FECDCA',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#B42318', marginBottom: 12 }}>
+              <AlertTriangle size={24} color="#B42318" />
+              <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: '#172033' }}>
+                Reject Question #{questionToReject.question_number_in_paper}?
+              </h3>
+            </div>
+            <p style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.5, margin: '0 0 16px 0' }}>
+              Are you sure you want to reject this question?
+            </p>
+            <div
+              style={{
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECDCA',
+                padding: '12px 14px',
+                fontSize: 12.5,
+                color: '#B42318',
+                lineHeight: 1.5,
+                marginBottom: 20,
+              }}
+            >
+              ⚠️ <strong>Impact:</strong> Once rejected, this question will be immediately hidden and removed from all user-facing mock exams, PYQs, and practice sessions.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                onClick={() => {
+                  setShowRejectConfirmModal(false);
+                  setQuestionToReject(null);
+                }}
+                disabled={actionLoadingId === questionToReject.id}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 0,
+                  border: '1px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  color: '#334155',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRejectQuestion}
+                disabled={actionLoadingId === questionToReject.id}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 0,
+                  border: 'none',
+                  backgroundColor: '#DC2626',
+                  color: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <ThumbsDown size={14} />
+                Yes, Reject Question
               </button>
             </div>
           </div>

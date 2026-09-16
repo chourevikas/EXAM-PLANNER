@@ -176,6 +176,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
 
   // Question Filters inside Explore Workspace
   const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
+  const [selectedTopic, setSelectedTopic] = useState<string>('ALL');
   const [selectedSubtopic, setSelectedSubtopic] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('ALL');
@@ -237,6 +238,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
   useEffect(() => {
     if (selectedSubject) {
       loadQuestionsForSubject(selectedSubject.query_name || selectedSubject.name);
+      setSelectedTopic('ALL');
       setSelectedSubtopic('ALL');
       setSelectedYear('ALL');
       setSelectedDifficulty('ALL');
@@ -305,17 +307,31 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
     );
   }, [subjects, debouncedSubjectQuery]);
 
-  // Distinct Subtopics breakdown for the selected subject's questions
+  // Distinct Topics breakdown for the selected subject's questions
+  const topicCounts = useMemo(() => {
+    const map: { [key: string]: number } = {};
+    questions.forEach((q) => {
+      const t = q.topic_name || 'General Topic';
+      map[t] = (map[t] || 0) + 1;
+    });
+    return Object.entries(map)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [questions]);
+
+  // Distinct Subtopics breakdown — filtered by selected topic
   const subtopicCounts = useMemo(() => {
     const map: { [key: string]: number } = {};
     questions.forEach((q) => {
+      // Only include subtopics of the selected topic
+      if (selectedTopic !== 'ALL' && (q.topic_name || 'General Topic') !== selectedTopic) return;
       const st = q.subtopic_name || 'General / Uncategorized';
       map[st] = (map[st] || 0) + 1;
     });
     return Object.entries(map)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
-  }, [questions]);
+  }, [questions, selectedTopic]);
 
   // Distinct Exam Years for selected subject's questions
   const yearCounts = useMemo(() => {
@@ -354,6 +370,9 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
         q.subtopic_name?.toLowerCase().includes(qTerm) ||
         q.question_number_in_paper.toString() === debouncedQuestionQuery;
 
+      const matchesTopic =
+        selectedTopic === 'ALL' || (q.topic_name || 'General Topic') === selectedTopic;
+
       const matchesSubtopic =
         selectedSubtopic === 'ALL' || q.subtopic_name === selectedSubtopic;
 
@@ -363,9 +382,9 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
       const matchesDifficulty =
         selectedDifficulty === 'ALL' || (q.difficulty || '').toUpperCase() === selectedDifficulty;
 
-      return matchesSearch && matchesSubtopic && matchesYear && matchesDifficulty;
+      return matchesSearch && matchesTopic && matchesSubtopic && matchesYear && matchesDifficulty;
     });
-  }, [questions, debouncedQuestionQuery, selectedSubtopic, selectedYear, selectedDifficulty]);
+  }, [questions, debouncedQuestionQuery, selectedTopic, selectedSubtopic, selectedYear, selectedDifficulty]);
 
   const selectedQuestion = filteredQuestions[selectedQuestionIndex] || filteredQuestions[0] || null;
 
@@ -1010,15 +1029,16 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
                 }}
               >
-                {/* Subtopic Filter Dropdown */}
+                {/* Topic Filter Dropdown (Tier 1) */}
                 <div>
                   <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
-                    FILTER BY SUBTOPIC ({subtopicCounts.length})
+                    FILTER BY TOPIC ({topicCounts.length})
                   </label>
                   <select
-                    value={selectedSubtopic}
+                    value={selectedTopic}
                     onChange={(e) => {
-                      setSelectedSubtopic(e.target.value);
+                      setSelectedTopic(e.target.value);
+                      setSelectedSubtopic('ALL'); // Reset subtopic when topic changes
                       setSelectedQuestionIndex(0);
                     }}
                     style={{
@@ -1033,7 +1053,46 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       boxSizing: 'border-box',
                     }}
                   >
-                    <option value="ALL">All Subtopics ({questions.length})</option>
+                    <option value="ALL">All Topics ({questions.length})</option>
+                    {topicCounts.map((t) => (
+                      <option key={t.name} value={t.name}>
+                        {t.name} ({t.count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Subtopic Filter Dropdown (Tier 2 — depends on selected Topic) */}
+                <div>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
+                    FILTER BY SUBTOPIC
+                    {selectedTopic !== 'ALL' ? ` (${subtopicCounts.length})` : ''}
+                  </label>
+                  <select
+                    value={selectedSubtopic}
+                    onChange={(e) => {
+                      setSelectedSubtopic(e.target.value);
+                      setSelectedQuestionIndex(0);
+                    }}
+                    disabled={selectedTopic === 'ALL' && topicCounts.length > 1}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: 0,
+                      border: '1px solid #CBD5E1',
+                      fontSize: 13,
+                      color: selectedTopic === 'ALL' && topicCounts.length > 1 ? '#94A3B8' : '#172033',
+                      backgroundColor: selectedTopic === 'ALL' && topicCounts.length > 1 ? '#F8FAFC' : '#FAFAFA',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      cursor: selectedTopic === 'ALL' && topicCounts.length > 1 ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <option value="ALL">
+                      {selectedTopic === 'ALL' && topicCounts.length > 1
+                        ? 'Select a topic first'
+                        : `All Subtopics (${subtopicCounts.reduce((s, x) => s + x.count, 0)})`}
+                    </option>
                     {subtopicCounts.map((st) => (
                       <option key={st.name} value={st.name}>
                         {st.name} ({st.count})
@@ -1103,9 +1162,10 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#172033' }}>
                     {filteredQuestions.length} Questions Found
                   </span>
-                  {(selectedSubtopic !== 'ALL' || selectedYear !== 'ALL' || selectedDifficulty !== 'ALL' || questionSearchQuery) && (
+                  {(selectedTopic !== 'ALL' || selectedSubtopic !== 'ALL' || selectedYear !== 'ALL' || selectedDifficulty !== 'ALL' || questionSearchQuery) && (
                     <button
                       onClick={() => {
+                        setSelectedTopic('ALL');
                         setSelectedSubtopic('ALL');
                         setSelectedYear('ALL');
                         setSelectedDifficulty('ALL');

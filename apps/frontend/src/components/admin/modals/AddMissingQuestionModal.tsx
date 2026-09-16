@@ -230,7 +230,7 @@ export function AddMissingQuestionModal({
         subject_name: selectedSubject || undefined,
         topic_name: selectedTopic || undefined,
         subtopic_name: selectedSubtopic || undefined,
-        language: 'en',
+        language: 'ENGLISH',
       };
 
       const result = await createAdminQuestion(payload);
@@ -302,7 +302,7 @@ export function AddMissingQuestionModal({
                 Add Missing Question #{questionNumber}
               </h3>
               <p style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.65)', margin: '2px 0 0 0' }}>
-                {exam.name || 'Exam Paper'} • Set {paperSetCode}
+                {exam.name || 'Exam Paper'}
               </p>
             </div>
           </div>
@@ -396,24 +396,7 @@ export function AddMissingQuestionModal({
                 )}
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#334155', marginBottom: 6 }}>
-                  Paper Set Code
-                </label>
-                <input
-                  type="text"
-                  value={paperSetCode}
-                  onChange={(e) => setPaperSetCode(e.target.value.toUpperCase())}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    border: '1px solid #CBD5E1',
-                    fontSize: 14,
-                    outline: 'none',
-                  }}
-                />
-              </div>
+
 
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#334155', marginBottom: 6 }}>

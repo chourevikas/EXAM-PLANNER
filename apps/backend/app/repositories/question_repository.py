@@ -89,6 +89,8 @@ class QuestionRepository:
             id_stmt = id_stmt.where(or_(Question.exam_id == exam_id, Exam.id == exam_id))
         if status:
             id_stmt = id_stmt.where(Question.status == status)
+        else:
+            id_stmt = id_stmt.where(Question.status != QuestionStatus.REJECTED)
         if paper_set_code:
             id_stmt = id_stmt.where(func.lower(Question.paper_set_code) == paper_set_code.lower())
         if exam_year:

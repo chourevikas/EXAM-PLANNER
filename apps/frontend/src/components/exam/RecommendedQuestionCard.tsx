@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Lightbulb } from 'lucide-react';
+import { ChevronDown, Lightbulb, X } from 'lucide-react';
 import { QuestionOut } from '../../types/exam';
 import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { getQuestionText, getOptionText } from './ExamQuestionCard';
@@ -28,288 +28,357 @@ export function RecommendedQuestionCard({
   language,
 }: RecommendedQuestionCardProps) {
   const selectedOption = (rec.options as any[])?.find((o: any) => o.option_id === answeredOptId);
-  const [showSolution, setShowSolution] = useState(false);
+  const [showSolutionModal, setShowSolutionModal] = useState(false);
 
   return (
-    <div
-      style={{
-        backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
-        border: '1px solid',
-        borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
-        borderRadius: 6,
-        transition: 'all 0.15s ease',
-        boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
-        overflow: 'hidden',
-      }}
-    >
+    <>
+      {/* Solution Modal Popup */}
+      {showSolutionModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSolutionModal(false); }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 640,
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderRadius: 8,
+              padding: 24,
+              boxShadow: '0 20px 48px rgba(15, 23, 42, 0.2)',
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ flex: 1, paddingRight: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                  <Lightbulb size={16} color="#1E3A8A" />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#172033' }}>Solution &amp; Explanation</span>
+                </div>
+                <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.45, margin: 0 }}>
+                  {(() => {
+                    const displayQuestionText = getQuestionText(rec, language || 'en');
+                    return displayQuestionText
+                      ? displayQuestionText.length > 150
+                        ? `${displayQuestionText.substring(0, 150)}...`
+                        : displayQuestionText
+                      : `Practice Question ${idx + 1}`;
+                  })()}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSolutionModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  padding: 6,
+                  color: '#64748B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+                title="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 16 }}>
+              <QuestionSolutionMarkdownCard
+                solution={solution ?? {}}
+                isLoading={isSolutionLoading}
+                isUserCorrect={selectedOption ? !!selectedOption.is_correct : undefined}
+                selectedOptionLabel={selectedOption?.option_label}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
-        onClick={onToggleExpand}
-        style={{ cursor: 'pointer', padding: '10px 12px' }}
-        onMouseEnter={(e) => {
-          if (!isExpanded) {
-            e.currentTarget.style.backgroundColor = '#FFFFFF';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isExpanded) {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.boxShadow = 'none';
-          }
+        style={{
+          backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
+          border: '1px solid',
+          borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
+          borderRadius: 6,
+          transition: 'all 0.15s ease',
+          boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
+          overflow: 'hidden',
         }}
       >
         <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 4,
-            marginBottom: 6,
+          onClick={onToggleExpand}
+          style={{ cursor: 'pointer', padding: '10px 12px' }}
+          onMouseEnter={(e) => {
+            if (!isExpanded) {
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isExpanded) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.boxShadow = 'none';
+            }
           }}
         >
-          <span
+          <div
             style={{
-              fontSize: 9.5,
-              fontWeight: 700,
-              padding: '2px 6px',
-              borderRadius: 3,
-              backgroundColor: '#F1F5F9',
-              color: '#334155',
-              textTransform: 'uppercase',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 4,
+              marginBottom: 6,
             }}
           >
-            {rec.topic_name || rec.subject || rec.section_code || 'General Studies'}
-          </span>
-          {rec.subtopic_name && (
             <span
               style={{
                 fontSize: 9.5,
-                fontWeight: 600,
+                fontWeight: 700,
                 padding: '2px 6px',
                 borderRadius: 3,
-                backgroundColor: '#EEF2FF',
-                color: '#4338CA',
+                backgroundColor: '#F1F5F9',
+                color: '#334155',
+                textTransform: 'uppercase',
               }}
             >
-              {rec.subtopic_name}
+              {rec.topic_name || rec.subject || rec.section_code || 'General Studies'}
             </span>
-          )}
-          {(() => {
-            const d = (rec.difficulty || 'MEDIUM').toUpperCase();
-            const bg = d === 'EASY' ? '#ECFDF5' : d === 'HARD' ? '#FEF2F2' : '#FFFBEB';
-            const text = d === 'EASY' ? '#047857' : d === 'HARD' ? '#B91C1C' : '#B45309';
-            const border = d === 'EASY' ? '#A7F3D0' : d === 'HARD' ? '#FECACA' : '#FDE68A';
-            return (
+            {rec.subtopic_name && (
               <span
                 style={{
                   fontSize: 9.5,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   padding: '2px 6px',
                   borderRadius: 3,
-                  backgroundColor: bg,
-                  color: text,
-                  border: `1px solid ${border}`,
+                  backgroundColor: '#EEF2FF',
+                  color: '#4338CA',
                 }}
               >
-                {d}
+                {rec.subtopic_name}
               </span>
-            );
-          })()}
-          <span
-            style={{
-              fontSize: 9.5,
-              fontWeight: 600,
-              padding: '2px 6px',
-              borderRadius: 3,
-              backgroundColor: '#F8FAFC',
-              color: '#64748B',
-              border: '1px solid #E2E8F0',
-            }}
-          >
-            ⏱️ {rec.expected_time_seconds || 60}s
-          </span>
-          {Boolean((rec as any).exam_name || (rec as any).source_year) && (
+            )}
+            {(() => {
+              const d = (rec.difficulty || 'MEDIUM').toUpperCase();
+              const bg = d === 'EASY' ? '#ECFDF5' : d === 'HARD' ? '#FEF2F2' : '#FFFBEB';
+              const text = d === 'EASY' ? '#047857' : d === 'HARD' ? '#B91C1C' : '#B45309';
+              const border = d === 'EASY' ? '#A7F3D0' : d === 'HARD' ? '#FECACA' : '#FDE68A';
+              return (
+                <span
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    borderRadius: 3,
+                    backgroundColor: bg,
+                    color: text,
+                    border: `1px solid ${border}`,
+                  }}
+                >
+                  {d}
+                </span>
+              );
+            })()}
             <span
               style={{
                 fontSize: 9.5,
                 fontWeight: 600,
                 padding: '2px 6px',
                 borderRadius: 3,
-                backgroundColor: '#F3E8FF',
-                color: '#7E22CE',
+                backgroundColor: '#F8FAFC',
+                color: '#64748B',
+                border: '1px solid #E2E8F0',
               }}
             >
-              {(rec as any).exam_name || 'UPSC'}{' '}
-              {(rec as any).source_year ? `• ${(rec as any).source_year}` : ''}
+              ⏱️ {rec.expected_time_seconds || 60}s
             </span>
-          )}
-          <ChevronDown
-            size={14}
-            style={{
-              marginLeft: 'auto',
-              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-              transition: '0.2s',
-              color: '#94A3B8',
-            }}
-          />
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            color: '#172033',
-            lineHeight: 1.35,
-          }}
-        >
-          {(() => {
-            const displayQuestionText = getQuestionText(rec, language || 'en');
-            return displayQuestionText
-              ? isExpanded
-                ? displayQuestionText
-                : displayQuestionText.length > 70
-                  ? `${displayQuestionText.substring(0, 70)}...`
-                  : displayQuestionText
-              : `Practice Question ${idx + 1}`;
-          })()}
-        </div>
-      </div>
-
-      {/* Inline Options Dropdown */}
-      {isExpanded && (
-        <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
-          <div
-            style={{
-              marginTop: 10,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            {(rec.options as any[])?.map((opt: any, optIdx: number) => {
-              const isSelected = answeredOptId === opt.option_id;
-              const isCorrect = opt.is_correct;
-              const isWrongSelected = isSelected && !isCorrect;
-              const showResult = !!answeredOptId;
-
-              let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
-              let bgStyle = '#FFFFFF';
-
-              if (showResult) {
-                if (isCorrect) {
-                  borderStyle = '1px solid #3A8B53';
-                  bgStyle = '#ECFDF5';
-                } else if (isWrongSelected) {
-                  borderStyle = '1px solid #EF4444';
-                  bgStyle = '#FEF2F2';
-                }
-              }
-
-              const optDisplayText = getOptionText(opt, language || 'en', optIdx, rec);
-
-              return (
-                <button
-                  key={opt.option_id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!answeredOptId) {
-                      onSelectOption(opt.option_id);
-                    }
-                  }}
-                  style={{
-                    textAlign: 'left',
-                    padding: '8px 10px',
-                    border: borderStyle,
-                    backgroundColor: bgStyle,
-                    borderRadius: 4,
-                    fontSize: 11.5,
-                    color: '#334155',
-                    cursor: answeredOptId ? 'default' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 6,
-                    width: '100%',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 14,
-                      height: 14,
-                      flexShrink: 0,
-                      marginTop: 2,
-                      borderRadius: '50%',
-                      border: '1px solid #CBD5E1',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: isSelected ? '#1E3A8A' : '#FFF',
-                    }}
-                  >
-                    {isSelected && (
-                      <div
-                        style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          backgroundColor: '#FFF',
-                        }}
-                      />
-                    )}
-                  </div>
-                  <span
-                    style={{
-                      fontWeight: 800,
-                      color: showResult && isCorrect ? '#047857' : '#475569',
-                    }}
-                  >
-                    {opt.option_label}.
-                  </span>
-                  <span style={{ lineHeight: 1.35, flex: 1 }}>{optDisplayText}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {answeredOptId != null && (
-            <div style={{ marginTop: 10 }}>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowSolution((prev) => !prev);
-                }}
+            {Boolean((rec as any).exam_name || (rec as any).source_year) && (
+              <span
                 style={{
-                  padding: '7px 14px',
-                  borderRadius: 4,
-                  border: showSolution ? '1px solid #1E3A8A' : '1px solid #CBD5E1',
-                  backgroundColor: showSolution ? '#EFF6FF' : '#FFFFFF',
-                  color: showSolution ? '#1E3A8A' : '#334155',
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  transition: 'all 0.15s ease',
+                  fontSize: 9.5,
+                  fontWeight: 600,
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  backgroundColor: '#F3E8FF',
+                  color: '#7E22CE',
                 }}
               >
-                <Lightbulb size={13} color={showSolution ? '#1E3A8A' : '#64748B'} />
-                <span>{showSolution ? 'Hide Explanation' : 'Show Explanation'}</span>
-              </button>
-
-              {showSolution && (
-                <div style={{ marginTop: 10 }}>
-                  <QuestionSolutionMarkdownCard
-                    solution={solution ?? {}}
-                    isLoading={isSolutionLoading}
-                    isUserCorrect={selectedOption ? !!selectedOption.is_correct : undefined}
-                    selectedOptionLabel={selectedOption?.option_label}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+                {(rec as any).exam_name || 'UPSC'}{' '}
+                {(rec as any).source_year ? `• ${(rec as any).source_year}` : ''}
+              </span>
+            )}
+            <ChevronDown
+              size={14}
+              style={{
+                marginLeft: 'auto',
+                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: '0.2s',
+                color: '#94A3B8',
+              }}
+            />
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#172033',
+              lineHeight: 1.35,
+            }}
+          >
+            {(() => {
+              const displayQuestionText = getQuestionText(rec, language || 'en');
+              return displayQuestionText
+                ? isExpanded
+                  ? displayQuestionText
+                  : displayQuestionText.length > 70
+                    ? `${displayQuestionText.substring(0, 70)}...`
+                    : displayQuestionText
+                : `Practice Question ${idx + 1}`;
+            })()}
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* Inline Options Dropdown */}
+        {isExpanded && (
+          <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
+            <div
+              style={{
+                marginTop: 10,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              {(rec.options as any[])?.map((opt: any, optIdx: number) => {
+                const isSelected = answeredOptId === opt.option_id;
+                const isCorrect = opt.is_correct;
+                const isWrongSelected = isSelected && !isCorrect;
+                const showResult = !!answeredOptId;
+
+                let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
+                let bgStyle = '#FFFFFF';
+
+                if (showResult) {
+                  if (isCorrect) {
+                    borderStyle = '1px solid #3A8B53';
+                    bgStyle = '#ECFDF5';
+                  } else if (isWrongSelected) {
+                    borderStyle = '1px solid #EF4444';
+                    bgStyle = '#FEF2F2';
+                  }
+                }
+
+                const optDisplayText = getOptionText(opt, language || 'en', optIdx, rec);
+
+                return (
+                  <button
+                    key={opt.option_id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!answeredOptId) {
+                        onSelectOption(opt.option_id);
+                      }
+                    }}
+                    style={{
+                      textAlign: 'left',
+                      padding: '8px 10px',
+                      border: borderStyle,
+                      backgroundColor: bgStyle,
+                      borderRadius: 4,
+                      fontSize: 11.5,
+                      color: '#334155',
+                      cursor: answeredOptId ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 6,
+                      width: '100%',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 14,
+                        height: 14,
+                        flexShrink: 0,
+                        marginTop: 2,
+                        borderRadius: '50%',
+                        border: '1px solid #CBD5E1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: isSelected ? '#1E3A8A' : '#FFF',
+                      }}
+                    >
+                      {isSelected && (
+                        <div
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            backgroundColor: '#FFF',
+                          }}
+                        />
+                      )}
+                    </div>
+                    <span
+                      style={{
+                        fontWeight: 800,
+                        color: showResult && isCorrect ? '#047857' : '#475569',
+                      }}
+                    >
+                      {opt.option_label}.
+                    </span>
+                    <span style={{ lineHeight: 1.35, flex: 1 }}>{optDisplayText}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {answeredOptId != null && (
+              <div style={{ marginTop: 10 }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSolutionModal(true);
+                  }}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: 4,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: '#334155',
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Lightbulb size={13} color="#64748B" />
+                  <span>View Explanation</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

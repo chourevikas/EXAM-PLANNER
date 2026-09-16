@@ -1266,17 +1266,37 @@ class QuestionService:
         return True
 
     async def get_question_yaml_file(self, question_id: int | str) -> str:
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("questions:yaml", str(question_id))
+        cached = await cache.get(cache_key)
+        if cached:
+            return cached
+
         q = await self.repo.get_by_id(question_id)
         if not q:
             raise HTTPException(status_code=404, detail="Question not found")
-        return await async_export_question_to_yaml_string(self.session, q)
+        content = await async_export_question_to_yaml_string(self.session, q)
+        if content:
+            await cache.set(cache_key, content, ttl_seconds=3600)
+        return content
 
     async def get_question_markdown_file(self, question_id: int | str) -> str:
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("questions:markdown", str(question_id))
+        cached = await cache.get(cache_key)
+        if cached:
+            return cached
+
         q = await self.repo.get_by_id(question_id)
         if not q:
             raise HTTPException(status_code=404, detail="Question not found")
         storage = get_storage_provider()
-        return await async_export_question_to_markdown(self.session, q, storage=storage)
+        content = await async_export_question_to_markdown(self.session, q, storage=storage)
+        if content:
+            await cache.set(cache_key, content, ttl_seconds=3600)
+        return content
 
     # --- Internal Helper ---
 

@@ -875,31 +875,55 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
         })
 
     if tax_rows:
-        for row in tax_rows:
-            m_obj = tax_map.get((row["taxonomy_type"], row["taxonomy_id_code"])) or tax_map.get(
-                (row["taxonomy_type"], row["taxonomy_name"].strip().upper())
+        try:
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+            # Deduplicate by unique index (user_id, taxonomy_type, taxonomy_id_code)
+            unique_tax_rows = {}
+            for r in tax_rows:
+                unique_tax_rows[(r["user_id"], r["taxonomy_type"], r["taxonomy_id_code"])] = r
+            deduped_rows = list(unique_tax_rows.values())
+
+            stmt = pg_insert(UserTaxonomyMastery).values(deduped_rows)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["user_id", "taxonomy_type", "taxonomy_id_code"],
+                set_={
+                    "taxonomy_name": stmt.excluded.taxonomy_name,
+                    "total_attempts": stmt.excluded.total_attempts,
+                    "correct_attempts": stmt.excluded.correct_attempts,
+                    "mastery_percentage": stmt.excluded.mastery_percentage,
+                    "strength_status": stmt.excluded.strength_status,
+                    "updated_at": stmt.excluded.updated_at,
+                },
             )
-            if not m_obj:
-                new_m = UserTaxonomyMastery(
-                    user_id=row["user_id"],
-                    taxonomy_type=row["taxonomy_type"],
-                    taxonomy_id_code=row["taxonomy_id_code"],
-                    taxonomy_name=row["taxonomy_name"],
-                    total_attempts=row["total_attempts"],
-                    correct_attempts=row["correct_attempts"],
-                    mastery_percentage=row["mastery_percentage"],
-                    strength_status=row["strength_status"],
-                    updated_at=row["updated_at"],
+            await session.exec(stmt)
+        except Exception as tax_err:
+            logger.warning(f"PostgreSQL ON CONFLICT upsert failed: {tax_err}. Falling back to safe row-by-row merge.")
+            for row in tax_rows:
+                m_obj = tax_map.get((row["taxonomy_type"], row["taxonomy_id_code"])) or tax_map.get(
+                    (row["taxonomy_type"], row["taxonomy_name"].strip().upper())
                 )
-                session.add(new_m)
-                tax_map[(row["taxonomy_type"], row["taxonomy_id_code"])] = new_m
-            else:
-                m_obj.total_attempts = row["total_attempts"]
-                m_obj.correct_attempts = row["correct_attempts"]
-                m_obj.mastery_percentage = row["mastery_percentage"]
-                m_obj.strength_status = row["strength_status"]
-                m_obj.updated_at = row["updated_at"]
-                session.add(m_obj)
+                if not m_obj:
+                    new_m = UserTaxonomyMastery(
+                        user_id=row["user_id"],
+                        taxonomy_type=row["taxonomy_type"],
+                        taxonomy_id_code=row["taxonomy_id_code"],
+                        taxonomy_name=row["taxonomy_name"],
+                        total_attempts=row["total_attempts"],
+                        correct_attempts=row["correct_attempts"],
+                        mastery_percentage=row["mastery_percentage"],
+                        strength_status=row["strength_status"],
+                        updated_at=row["updated_at"],
+                    )
+                    session.add(new_m)
+                    tax_map[(row["taxonomy_type"], row["taxonomy_id_code"])] = new_m
+                else:
+                    m_obj.total_attempts = row["total_attempts"]
+                    m_obj.correct_attempts = row["correct_attempts"]
+                    m_obj.mastery_percentage = row["mastery_percentage"]
+                    m_obj.strength_status = row["strength_status"]
+                    m_obj.updated_at = row["updated_at"]
+                    session.add(m_obj)
 
     # 7b. Bulk Update FSRS UserMemoryState & UserConceptRetention
     try:
