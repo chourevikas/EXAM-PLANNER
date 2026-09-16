@@ -32,6 +32,16 @@ import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
 import { guardedFetch } from '../utils/apiGuard';
 import { parseTaxonomyParam, formatTaxonomyParam, parseYearParam } from '../utils/taxonomyParam';
 
+
+const shortenExamName = (name: string) => {
+  if (!name) return name;
+  const n = name.toLowerCase();
+  if (n.includes('upsc') || n.includes('union public service')) return 'UPSC CSE';
+  if (n.includes('mpsc') || n.includes('maharashtra public service')) return 'MPSC';
+  if (n.includes('ssc') || n.includes('staff selection')) return 'SSC';
+  return name;
+};
+
 export function GuestExamPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -686,7 +696,7 @@ export function GuestExamPage() {
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
 
-  const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
+  const SESSION_KEY = `guest_exam_session_${shortenExamName(gExam)}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
 
   // Background prefetch function for dynamic recommended questions
   const prefetchRecommendations = useCallback(
@@ -2117,7 +2127,7 @@ export function GuestExamPage() {
                     <span
                       style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                      {gExam}
+                      {shortenExamName(gExam)}
                     </span>
                     {!isExamLocked && (
                       <ChevronDown
@@ -2178,7 +2188,7 @@ export function GuestExamPage() {
                               e.currentTarget.style.backgroundColor = 'transparent';
                           }}
                         >
-                          <span>{opt}</span>
+                          <span>{shortenExamName(opt)}</span>
                           {gExam === opt && <Check size={14} color="#1E3A8A" />}
                         </div>
                       ))}
@@ -2402,7 +2412,7 @@ export function GuestExamPage() {
                                     onChange={() => {}}
                                     style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
                                   />
-                                  <span>{opt}</span>
+                                  <span>{shortenExamName(opt)}</span>
                                 </div>
                                 {isSelected && <Check size={14} color="#1E3A8A" />}
                               </div>
@@ -2553,7 +2563,7 @@ export function GuestExamPage() {
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                   <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
-                                  <span>{opt}</span>
+                                  <span>{shortenExamName(opt)}</span>
                                 </div>
                                 {isSelected && <Check size={14} color="#1E3A8A" />}
                               </div>
@@ -2703,7 +2713,7 @@ export function GuestExamPage() {
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                   <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
-                                  <span>{opt}</span>
+                                  <span>{shortenExamName(opt)}</span>
                                 </div>
                                 {isSelected && <Check size={14} color="#1E3A8A" />}
                               </div>
@@ -2853,7 +2863,7 @@ export function GuestExamPage() {
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                   <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
-                                  <span>{opt}</span>
+                                  <span>{shortenExamName(opt)}</span>
                                 </div>
                                 {isSelected && <Check size={14} color="#1E3A8A" />}
                               </div>
@@ -2972,7 +2982,7 @@ export function GuestExamPage() {
                                 e.currentTarget.style.backgroundColor = 'transparent';
                             }}
                           >
-                            <span>{opt}</span>
+                            <span>{shortenExamName(opt)}</span>
                             {isSelected && <Check size={14} color="#1E3A8A" />}
                           </div>
                         );
@@ -3101,7 +3111,7 @@ export function GuestExamPage() {
                   <span
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
-                    {gExam}
+                    {shortenExamName(gExam)}
                   </span>
                   {!isExamLocked && (
                     <ChevronDown
@@ -3161,7 +3171,7 @@ export function GuestExamPage() {
                           if (gExam !== opt) e.currentTarget.style.backgroundColor = 'transparent';
                         }}
                       >
-                        <span>{opt}</span>
+                        <span>{shortenExamName(opt)}</span>
                         {gExam === opt && <Check size={14} color="#1E3A8A" />}
                       </div>
                     ))}
@@ -3385,7 +3395,7 @@ export function GuestExamPage() {
                                   onChange={() => {}}
                                   style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
                                 />
-                                <span>{opt}</span>
+                                <span>{shortenExamName(opt)}</span>
                               </div>
                               {isSelected && <Check size={14} color="#1E3A8A" />}
                             </div>
@@ -3535,7 +3545,7 @@ export function GuestExamPage() {
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
-                                <span>{opt}</span>
+                                <span>{shortenExamName(opt)}</span>
                               </div>
                               {isSelected && <Check size={14} color="#1E3A8A" />}
                             </div>
@@ -3685,7 +3695,7 @@ export function GuestExamPage() {
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
-                                <span>{opt}</span>
+                                <span>{shortenExamName(opt)}</span>
                               </div>
                               {isSelected && <Check size={14} color="#1E3A8A" />}
                             </div>
@@ -3835,7 +3845,7 @@ export function GuestExamPage() {
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
-                                <span>{opt}</span>
+                                <span>{shortenExamName(opt)}</span>
                               </div>
                               {isSelected && <Check size={14} color="#1E3A8A" />}
                             </div>
@@ -3951,7 +3961,7 @@ export function GuestExamPage() {
                               e.currentTarget.style.backgroundColor = 'transparent';
                           }}
                         >
-                          <span>{opt}</span>
+                          <span>{shortenExamName(opt)}</span>
                           {isSelected && <Check size={14} color="#1E3A8A" />}
                         </div>
                       );

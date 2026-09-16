@@ -11,6 +11,16 @@ interface HeroSectionProps {
   onLogin?: () => void;
 }
 
+
+const shortenExamName = (name: string) => {
+  if (!name) return name;
+  const n = name.toLowerCase();
+  if (n.includes('upsc') || n.includes('union public service')) return 'UPSC CSE';
+  if (n.includes('mpsc') || n.includes('maharashtra public service')) return 'MPSC';
+  if (n.includes('ssc') || n.includes('staff selection')) return 'SSC';
+  return name;
+};
+
 export function HeroSection({}: HeroSectionProps) {
   const navigate = useNavigate();
 
@@ -465,7 +475,7 @@ export function HeroSection({}: HeroSectionProps) {
                 <option value="All Exams">All Exams</option>
                 {examTypeOptions.map((et) => (
                   <option key={et.id} value={et.name}>
-                    {et.name}
+                    {shortenExamName(et.name)}
                   </option>
                 ))}
               </select>
