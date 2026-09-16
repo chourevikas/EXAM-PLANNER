@@ -1,23 +1,40 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, BookOpen } from 'lucide-react';
+import { ArrowRight, BookOpen, Loader2 } from 'lucide-react';
 import { PublicLayout } from '../components/common/PublicLayout';
+import { fetchActiveExamTypes } from '../services/examTypeService';
+import { ExamType } from '../types/examType';
 
-const EXAMS = [
-  { name: 'UPSC CSE', description: 'Civil Services Examination', icon: '🏛️' },
-  { name: 'MPSC', description: 'Maharashtra Public Service Commission', icon: '⛰️' },
-  { name: 'UPPSC', description: 'Uttar Pradesh Public Service Commission', icon: '🌟' },
-  { name: 'BPSC', description: 'Bihar Public Service Commission', icon: '🌿' },
-  { name: 'SSC CGL', description: 'Staff Selection Commission - Combined Graduate Level', icon: '🏢' },
-  { name: 'Banking PO', description: 'Probationary Officer Exams (SBI, IBPS)', icon: '🏦' },
-  { name: 'Railways RRB', description: 'Railway Recruitment Board', icon: '🚆' },
-  { name: 'NDA', description: 'National Defence Academy', icon: '⚔️' },
-  { name: 'CDS', description: 'Combined Defence Services', icon: '🛡️' },
-  { name: 'RBI Grade B', description: 'Reserve Bank of India Officer', icon: '💰' },
-];
+const EXAM_ICONS: Record<string, string> = {
+  upsc: '🏛️',
+  mpsc: '⛰️',
+  uppsc: '🌟',
+  bpsc: '🌿',
+  ssc: '🏢',
+  banking: '🏦',
+  railways: '🚆',
+  rrb: '🚆',
+  nda: '⚔️',
+  cds: '🛡️',
+  rbi: '💰',
+};
+
+function iconForExamType(type: string, name: string): string {
+  const key = `${type} ${name}`.toLowerCase();
+  const match = Object.keys(EXAM_ICONS).find((k) => key.includes(k));
+  return match ? EXAM_ICONS[match] : '📘';
+}
 
 export function ExamsPage() {
   const navigate = useNavigate();
+  const [examTypes, setExamTypes] = useState<ExamType[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchActiveExamTypes()
+      .then((types) => setExamTypes(types.filter((t) => t.is_active)))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleExamClick = (examName: string) => {
     // Generate a random subject/topic to start practice
@@ -51,6 +68,15 @@ export function ExamsPage() {
 
       {/* Exam Cards Grid */}
       <section className="landing-section-padding" style={{ background: 'var(--bg-body)', paddingTop: 0 }}>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+            <Loader2 size={28} className="animate-spin" color="var(--accent-primary)" />
+          </div>
+        ) : examTypes.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '48px 0' }}>
+            No exams are available to practice yet. Check back soon.
+          </div>
+        ) : (
         <div
           className="landing-container"
           style={{
@@ -61,9 +87,9 @@ export function ExamsPage() {
             margin: '0 auto'
           }}
         >
-          {EXAMS.map((exam) => (
+          {examTypes.map((exam) => (
             <div
-              key={exam.name}
+              key={exam.id}
               onClick={() => handleExamClick(exam.name)}
               style={{
                 backgroundColor: 'var(--bg-card)',
@@ -89,11 +115,11 @@ export function ExamsPage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 32 }}>{exam.icon}</span>
-                <div 
-                  style={{ 
-                    padding: '4px 10px', 
-                    borderRadius: 20, 
+                <span style={{ fontSize: 32 }}>{iconForExamType(exam.type, exam.name)}</span>
+                <div
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 20,
                     backgroundColor: 'var(--accent-bg)',
                     color: 'var(--accent-primary)',
                     fontSize: 12,
@@ -108,7 +134,7 @@ export function ExamsPage() {
                   {exam.name}
                 </h3>
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-                  {exam.description}
+                  {exam.description || `${exam.number_of_questions} questions · ${exam.total_duration} min`}
                 </p>
               </div>
               <div style={{ 
@@ -125,6 +151,7 @@ export function ExamsPage() {
             </div>
           ))}
         </div>
+        )}
       </section>
     </PublicLayout>
   );

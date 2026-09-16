@@ -334,6 +334,7 @@ class ExamSessionService:
         q_stmt = select(Question).where(
             Question.exam_id == exam.id,
             Question.question_number_in_paper == question_number,
+            Question.status != QuestionStatus.REJECTED,
         )
         q_res = await self.session.exec(q_stmt)
         q_model = q_res.first()
@@ -649,7 +650,7 @@ class ExamSessionService:
 
         stmt = (
             select(Question)
-            .where(Question.exam_id == exam.id)
+            .where(Question.exam_id == exam.id, Question.status != QuestionStatus.REJECTED)
             .order_by(col(Question.question_number_in_paper))
         )
         if offset and offset > 0:

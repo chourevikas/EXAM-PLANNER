@@ -4,11 +4,13 @@ import { Logo } from '../components/common/Logo';
 import { Ico } from '../components/common/Icons';
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { registerUser } from '../services/authService';
+import { SUPPORTED_LANGUAGES } from '../constants/languages';
 
 export function SignUpPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [preferredLanguage, setPreferredLanguage] = useState('en');
   const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -29,7 +31,11 @@ export function SignUpPage() {
       const res = await registerUser(
         email,
         password,
-        fullName
+        fullName,
+        undefined,
+        undefined,
+        undefined,
+        preferredLanguage
       );
 
       if (res.is_pending_approval) {
@@ -262,6 +268,34 @@ export function SignUpPage() {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
+                Preferred Question Language
+              </label>
+              <select
+                value={preferredLanguage}
+                onChange={(e) => setPreferredLanguage(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: 0,
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-main)',
+                  fontSize: 14,
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer',
+                }}
+              >
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name} ({lang.nativeName})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <button

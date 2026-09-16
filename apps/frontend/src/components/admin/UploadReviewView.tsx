@@ -25,12 +25,14 @@ import {
   ChevronsRight,
   ChevronsLeft,
   Filter,
+  Trash2,
 } from 'lucide-react';
 import { useExamUpload } from '../../hooks/useExamUpload';
 import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS, GROUPED_YEAR_OPTIONS } from '../../constants/exam';
 import {
   fetchExamPipelineStatuses,
   approveAndPublishExam,
+  deleteAdminExam,
   fetchStuckPipelines,
   resumeExamPipeline,
   dismissStuckPipeline,
@@ -727,6 +729,8 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
   const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [examToDelete, setExamToDelete] = useState<ExamPipelineStatusItem | null>(null);
+  const [deletingExam, setDeletingExam] = useState<boolean>(false);
 
   const loadStuckPipelines = async () => {
     try {
@@ -776,6 +780,24 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
       setStuckPipelines((prev) => prev.filter((p) => p.exam_id !== examId));
     } catch (err: any) {
       console.error('Failed to dismiss stuck pipeline prompt:', err);
+    }
+  };
+
+  const handleConfirmDeleteExam = async () => {
+    if (!examToDelete) return;
+    setDeletingExam(true);
+    try {
+      await deleteAdminExam(examToDelete.id);
+      setToastMessage(`Exam '${examToDelete.name}' and all associated data were deleted.`);
+      setTimeout(() => setToastMessage(null), 5000);
+      setExamToDelete(null);
+      setIsDrawerOpen(false);
+      setSelectedExam(null);
+      await loadRealTimeQueue(false);
+    } catch (err: any) {
+      alert(`Error deleting exam: ${err.message}`);
+    } finally {
+      setDeletingExam(false);
     }
   };
 
@@ -2273,7 +2295,8 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
             </div>
 
             {/* Drawer Actions */}
-            <div style={{ padding: 20, borderTop: '1px solid #E2E8F0', backgroundColor: '#FAFAFA', display: 'flex', gap: 10 }}>
+            <div style={{ padding: 20, borderTop: '1px solid #E2E8F0', backgroundColor: '#FAFAFA' }}>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
               <button
                 onClick={() => setIsDrawerOpen(false)}
                 style={{
@@ -2394,8 +2417,131 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 );
               })()}
             </div>
+
+            <button
+              onClick={() => setExamToDelete(selectedExam)}
+              style={{
+                width: '100%',
+                padding: '9px 16px',
+                borderRadius: 0,
+                border: '1px solid #FECACA',
+                backgroundColor: '#FFFFFF',
+                color: '#DC2626',
+                fontWeight: 600,
+                fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                cursor: 'pointer',
+              }}
+            >
+              <Trash2 size={14} />
+              <span>Delete Exam Paper</span>
+            </button>
+            </div>
           </div>
         </>
+      )}
+
+      {/* Delete Exam Confirmation Modal */}
+      {examToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 'min(480px, calc(100vw - 24px))',
+              backgroundColor: '#FFFFFF',
+              borderRadius: 0,
+              boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.25)',
+              padding: 24,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 0,
+                  backgroundColor: '#FEE2E2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AlertCircle size={22} color="#DC2626" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#172033' }}>
+                  Delete Exam Paper
+                </h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: 12.5, color: '#64748B' }}>
+                  This action is permanent and cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.5, margin: '0 0 20px 0' }}>
+              Are you sure you want to delete <strong>{examToDelete.name}</strong>?
+              <span style={{ display: 'block', color: '#DC2626', fontWeight: 600, marginTop: 8 }}>
+                ⚠️ Warning: all extracted questions, options, solutions, review history, and any student
+                attempts linked to this paper will be permanently deleted.
+              </span>
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setExamToDelete(null)}
+                disabled={deletingExam}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#F1F5F9',
+                  border: '1px solid #CBD5E1',
+                  color: '#334155',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={deletingExam}
+                onClick={handleConfirmDeleteExam}
+                style={{
+                  padding: '8px 18px',
+                  backgroundColor: '#DC2626',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: deletingExam ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {deletingExam ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Conflict Modal */}

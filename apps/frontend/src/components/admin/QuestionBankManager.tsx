@@ -576,9 +576,6 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     SUBJECT
                   </th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
-                    DESCRIPTION
-                  </th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
                     QUESTIONS
                   </th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
@@ -605,7 +602,6 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '16px' }}><div style={{ width: 220, height: 12, backgroundColor: '#F1F5F9' }} /></td>
                       <td style={{ padding: '16px' }}><div style={{ width: 50, height: 16, backgroundColor: '#F1F5F9' }} /></td>
                       <td style={{ padding: '16px' }}><div style={{ width: 80, height: 14, backgroundColor: '#F1F5F9' }} /></td>
                       <td style={{ padding: '16px' }}><div style={{ width: 70, height: 14, backgroundColor: '#F1F5F9' }} /></td>
@@ -614,7 +610,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   ))
                 ) : filteredSubjects.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: '#64748B' }}>
+                    <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: '#64748B' }}>
                       No subjects found matching "{debouncedSubjectQuery}".
                     </td>
                   </tr>
@@ -658,10 +654,6 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           </div>
                         </td>
 
-                        {/* Description */}
-                        <td style={{ padding: '16px', color: '#64748B', maxWidth: 360, lineHeight: 1.45, fontSize: 12.5 }}>
-                          {sub.description}
-                        </td>
 
                         {/* Question Count */}
                         <td style={{ padding: '16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>

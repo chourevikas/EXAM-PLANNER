@@ -229,7 +229,8 @@ export async function registerUser(
   fullName: string,
   role: UserRole = UserRole.STUDENT,
   organizationName?: string,
-  department?: string
+  department?: string,
+  preferredLanguage?: string
 ): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE_URL}/register`, {
     method: 'POST',
@@ -241,7 +242,8 @@ export async function registerUser(
       full_name: fullName,
       role,
       organization_name: organizationName,
-      department
+      department,
+      preferred_language: preferredLanguage,
     }),
   });
 
@@ -318,7 +320,7 @@ export async function fetchCurrentUser(customToken?: string): Promise<any> {
   return data;
 }
 
-export async function updateUserProfile(updateData: { full_name?: string; profile_image?: string; email?: string }, customToken?: string): Promise<any> {
+export async function updateUserProfile(updateData: { full_name?: string; profile_image?: string; email?: string; preferred_language?: string }, customToken?: string): Promise<any> {
   const token = customToken || localStorage.getItem('access_token');
   if (!token) throw new Error('No access token found');
 

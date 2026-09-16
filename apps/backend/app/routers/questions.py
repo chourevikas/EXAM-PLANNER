@@ -6,7 +6,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi import HTTPException
 from app.db.session import get_async_session
 from app.db.models import QuestionStatus, QuestionSourceType, DifficultyLevel
+from app.db.models.user import User, UserRole
 from app.core.languages import parse_language
+from app.core.deps import require_roles
 from app.schemas.question import (
     QuestionUpdatePayload,
     QuestionCreatePayload,
@@ -390,8 +392,9 @@ async def patch_question(
 async def delete_question(
     question_id: int | str,
     session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
-    """Deletes a question entity by ID."""
+    """Deletes a question entity by ID. Admin/Super Admin only — permanently removes the question."""
     try:
         qid_int = int(question_id)
     except (ValueError, TypeError):
@@ -464,7 +467,7 @@ async def get_question_solution(
         .join(QuestionOption, col(QuestionOption.question_id) == col(Question.id))
         .outerjoin(OptionTranslation, col(OptionTranslation.option_id) == col(QuestionOption.id))
         .outerjoin(QuestionOptionReasoning, col(QuestionOptionReasoning.question_option_id) == col(QuestionOption.id))
-        .where(col(Question.id) == qid_int)
+        .where(col(Question.id) == qid_int, col(Question.status) != QuestionStatus.REJECTED)
         .order_by(col(QuestionOption.display_order).asc())
     )
     rows = (await session.exec(stmt)).all()
@@ -472,7 +475,7 @@ async def get_question_solution(
     if not rows:
         # Fallback if question exists without options
         q = await session.get(Question, qid_int)
-        if not q:
+        if not q or q.status == QuestionStatus.REJECTED:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
         expl = (await session.exec(select(QuestionExplanation).where(col(QuestionExplanation.question_id) == q.id))).first()
         sol_card = {

@@ -530,6 +530,32 @@ export async function updateAdminQuestionStatus(questionId: number | string, sta
   return await res.json();
 }
 
+export async function deleteAdminQuestion(questionId: number | string): Promise<void> {
+  const res = await fetch(`/api/v1/questions/${questionId}`, {
+    method: 'DELETE',
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to delete question' }));
+    throw new Error(errorData.detail || 'Question deletion failed.');
+  }
+  invalidateExamReviewCache();
+}
+
+export async function deleteAdminExam(examId: number | string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`/api/v1/exams/${examId}`, {
+    method: 'DELETE',
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to delete exam' }));
+    throw new Error(errorData.detail || 'Exam deletion failed.');
+  }
+  invalidateExamReviewCache(examId);
+  clearExamIntegrityCache();
+  return await res.json();
+}
+
 export async function fetchCatalogQuestions(
   page: number = 1,
   limit: number = 20,

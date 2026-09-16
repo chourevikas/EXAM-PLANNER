@@ -25,6 +25,7 @@ import {
 
 import { updateUserProfile, fetchCurrentUser } from '../services/authService';
 import { UserAvatar } from '../components/common/UserAvatar';
+import { SUPPORTED_LANGUAGES } from '../constants/languages';
 
 const PREDEFINED_AVATARS = ['👨‍🎓', '👩‍🎓', '🚀', '🌟', '🧠', '🦉', '🎯', '📚'];
 
@@ -56,7 +57,30 @@ export function ProfilePage() {
   const [profileImage, setProfileImage] = useState(user.profile_image || '👨‍🎓');
   const [phone, setPhone] = useState(user.phone || '');
   const [bio, setBio] = useState(user.bio || 'Determined UPSC CSE 2026 aspirant focused on Prelims General Studies & Answer Writing.');
-  
+
+  // Question display language — drives which language questions/solutions are shown
+  // in across mock tests and practice sessions (same field the in-exam switcher uses).
+  const [activeLanguage, setActiveLanguage] = useState<string>(
+    () => localStorage.getItem('preferred_language') || user.preferred_language || 'en'
+  );
+  const [switchingLanguage, setSwitchingLanguage] = useState(false);
+
+  const handleLanguageChange = async (nextLang: string) => {
+    if (nextLang === activeLanguage) return;
+    const previousLang = activeLanguage;
+    setActiveLanguage(nextLang);
+    setSwitchingLanguage(true);
+    try {
+      await updateUserProfile({ preferred_language: nextLang });
+      localStorage.setItem('preferred_language', nextLang);
+    } catch (err) {
+      console.error('Failed to update language preference:', err);
+      setActiveLanguage(previousLang);
+    } finally {
+      setSwitchingLanguage(false);
+    }
+  };
+
   // Sync Clerk user details if logged in via Clerk
   useEffect(() => {
     if (isClerkLoaded && clerkUser) {
@@ -532,6 +556,39 @@ export function ProfilePage() {
                     cursor: 'not-allowed'
                   }}
                 />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                  Preferred Question Language
+                </label>
+                <select
+                  value={activeLanguage}
+                  disabled={switchingLanguage}
+                  onChange={(e) => handleLanguageChange(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 0,
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-subtle)',
+                    color: 'var(--text-primary)',
+                    fontSize: 14,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    cursor: switchingLanguage ? 'not-allowed' : 'pointer',
+                    opacity: switchingLanguage ? 0.7 : 1,
+                  }}
+                >
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name} ({lang.nativeName})
+                    </option>
+                  ))}
+                </select>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+                  Controls which language questions and solutions are shown in across mock tests and practice sessions.
+                </p>
               </div>
 
               <div style={{ gridColumn: 'span 2' }}>

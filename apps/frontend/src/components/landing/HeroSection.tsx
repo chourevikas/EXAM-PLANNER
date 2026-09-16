@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Target, Zap, CheckCircle2, ArrowRight, Search } from 'lucide-react';
 import { FLAT_SYLLABUS_NODES, FlatSyllabusNode } from '../../constants/syllabusData';
 import { fetchMasterSyllabus } from '../../services/examService';
+import { fetchActiveExamTypes } from '../../services/examTypeService';
+import { ExamType } from '../../types/examType';
 
 interface HeroSectionProps {
   onSignup?: () => void;
@@ -21,6 +23,14 @@ export function HeroSection({}: HeroSectionProps) {
 
   // Dynamic supplementary nodes if backend provides extra taxonomy nodes
   const [dynamicNodes, setDynamicNodes] = useState<FlatSyllabusNode[]>([]);
+
+  // Only exams actually configured in the admin panel are offered here.
+  const [examTypeOptions, setExamTypeOptions] = useState<ExamType[]>([]);
+  useEffect(() => {
+    fetchActiveExamTypes()
+      .then((types) => setExamTypeOptions(types.filter((t) => t.is_active)))
+      .catch(() => setExamTypeOptions([]));
+  }, []);
 
   // Close search dropdown on outside click
   useEffect(() => {
@@ -181,7 +191,10 @@ export function HeroSection({}: HeroSectionProps) {
   const filteredCards = useMemo(() => {
     let pool = FEATURED_CARDS_POOL;
     if (selectedExam !== 'All Exams') {
-      pool = pool.filter((card) => card.exam === selectedExam);
+      const needle = selectedExam.toLowerCase();
+      pool = pool.filter(
+        (card) => needle.includes(card.exam.toLowerCase()) || card.exam.toLowerCase().includes(needle)
+      );
     }
 
     // Generate a daily seed based on the current local date
@@ -540,18 +553,20 @@ export function HeroSection({}: HeroSectionProps) {
           >
             <div
               style={{
-                padding: '0 16px',
+                padding: '0 12px',
                 color: isSyllabusSearchFocused ? 'var(--primary-red)' : '#94A3B8',
                 flexShrink: 0,
                 display: 'flex',
                 alignItems: 'center',
                 borderRight: '1px solid #E2E8F0',
                 height: 58,
+                maxWidth: 130,
               }}
             >
               <select
                 value={selectedExam}
                 onChange={(e) => setSelectedExam(e.target.value)}
+                title={selectedExam}
                 style={{
                   border: 'none',
                   background: 'transparent',
@@ -561,15 +576,19 @@ export function HeroSection({}: HeroSectionProps) {
                   outline: 'none',
                   cursor: 'pointer',
                   fontFamily: 'inherit',
+                  width: '100%',
+                  maxWidth: 106,
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
                 }}
               >
                 <option value="All Exams">All Exams</option>
-                <option value="UPSC">UPSC</option>
-                <option value="MPSC">MPSC</option>
-                <option value="SSC">SSC</option>
-                <option value="Banking">Banking</option>
-                <option value="Railways">Railways</option>
-                <option value="State PSC">State PSC</option>
+                {examTypeOptions.map((et) => (
+                  <option key={et.id} value={et.name}>
+                    {et.name}
+                  </option>
+                ))}
               </select>
             </div>
             <input
@@ -861,11 +880,18 @@ export function HeroSection({}: HeroSectionProps) {
           </h2>
           <a
             href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              const params = new URLSearchParams({ count: '20' });
+              if (selectedExam !== 'All Exams') params.set('exam', selectedExam);
+              navigate(`/guest-exam?${params.toString()}`);
+            }}
             style={{
               fontSize: 14,
               color: 'var(--primary-red)',
               fontWeight: 600,
               textDecoration: 'none',
+              cursor: 'pointer',
             }}
           >
             View all questions &rarr;

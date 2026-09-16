@@ -575,7 +575,7 @@ class QuestionService:
             return QuestionDetailResponse(**cached_data)
 
         q = await self.repo.get_by_id(q_id)
-        if not q:
+        if not q or q.status == QuestionStatus.REJECTED:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
         detail_res = await self._build_question_detail_response(q, target_lang=language)
         if detail_res is not None:

@@ -23,6 +23,7 @@ import {
   ShieldAlert,
   Plus,
   CheckCheck,
+  Trash2,
 } from 'lucide-react';
 import { Spinner } from '../../../components/common/Spinner';
 import {
@@ -30,6 +31,7 @@ import {
   fetchExamQuestionsForReview,
   updateAdminQuestionDetail,
   updateAdminQuestionStatus,
+  deleteAdminQuestion,
   approveAndPublishExam,
   approveAllQuestions,
   fetchExamIntegrityQuestions,
@@ -282,6 +284,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   const [showRejectConfirmModal, setShowRejectConfirmModal] = useState<boolean>(false);
   const [questionToReject, setQuestionToReject] = useState<QuestionDetailItem | null>(null);
 
+  // Delete Question Confirmation Modal
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState<boolean>(false);
+  const [questionToDelete, setQuestionToDelete] = useState<QuestionDetailItem | null>(null);
+  const [deletingQuestion, setDeletingQuestion] = useState<boolean>(false);
+
   // Inline Question Editing (owned/rendered by QuestionReviewCard)
   const [isEditingQuestion, setIsEditingQuestion] = useState<boolean>(false);
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
@@ -292,6 +299,25 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     setShowRejectConfirmModal(false);
     setQuestionToReject(null);
     await handleRejectQuestion(q);
+  };
+
+  const confirmDeleteQuestion = async () => {
+    if (!questionToDelete) return;
+    const q = questionToDelete;
+    setDeletingQuestion(true);
+    try {
+      await deleteAdminQuestion(q.id);
+      showToast('success', `Question #${q.question_number_in_paper} deleted.`);
+      setShowDeleteConfirmModal(false);
+      setQuestionToDelete(null);
+      if (selectedExam) {
+        await loadExamQuestions(selectedExam.id, questionStatusFilter, currentPage, selectedQuestionIndex);
+      }
+    } catch (err: any) {
+      showToast('error', `Failed to delete question: ${err.message}`);
+    } finally {
+      setDeletingQuestion(false);
+    }
   };
 
   useEffect(() => {
@@ -2084,6 +2110,32 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <button
                     onClick={() => {
+                      setQuestionToDelete(activeQuestion);
+                      setShowDeleteConfirmModal(true);
+                    }}
+                    disabled={isEditingQuestion || actionLoadingId === activeQuestion.id}
+                    title="Permanently delete this question"
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: 0,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      border: '1px solid #E2E8F0',
+                      backgroundColor: '#FFFFFF',
+                      color: '#64748B',
+                      cursor: isEditingQuestion ? 'not-allowed' : 'pointer',
+                      opacity: isEditingQuestion ? 0.5 : 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <Trash2 size={14} />
+                    Delete
+                  </button>
+
+                  <button
+                    onClick={() => {
                       setQuestionToReject(activeQuestion);
                       setShowRejectConfirmModal(true);
                     }}
@@ -2615,6 +2667,100 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               >
                 <ThumbsDown size={14} />
                 Yes, Reject Question
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Delete Question Confirmation */}
+      {showDeleteConfirmModal && questionToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 0,
+              maxWidth: 460,
+              width: '100%',
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.2)',
+              border: '1px solid #FECDCA',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#B42318', marginBottom: 12 }}>
+              <AlertTriangle size={24} color="#B42318" />
+              <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: '#172033' }}>
+                Delete Question #{questionToDelete.question_number_in_paper}?
+              </h3>
+            </div>
+            <p style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.5, margin: '0 0 16px 0' }}>
+              This permanently removes the question — this is different from Reject, which just hides it.
+            </p>
+            <div
+              style={{
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECDCA',
+                padding: '12px 14px',
+                fontSize: 12.5,
+                color: '#B42318',
+                lineHeight: 1.5,
+                marginBottom: 20,
+              }}
+            >
+              ⚠️ <strong>Impact:</strong> The question, its options, solution, and review history will be permanently
+              deleted and cannot be recovered. This action cannot be undone.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirmModal(false);
+                  setQuestionToDelete(null);
+                }}
+                disabled={deletingQuestion}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 0,
+                  border: '1px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  color: '#334155',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteQuestion}
+                disabled={deletingQuestion}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 0,
+                  border: 'none',
+                  backgroundColor: '#DC2626',
+                  color: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: deletingQuestion ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {deletingQuestion ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Yes, Delete Question
               </button>
             </div>
           </div>

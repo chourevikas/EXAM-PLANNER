@@ -8,7 +8,9 @@ from sqlmodel import select, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.db.models import Exam, LanguageCode, QuestionStatus
+from app.db.models.user import User, UserRole
 from app.core.languages import parse_language
+from app.core.deps import require_roles
 from app.schemas.question import ExamReviewQuestionsResponse
 from app.schemas.syllabus import CompleteSyllabusResponse
 from app.schemas.question_integrity import ExamIntegrityQuestionsResponse
@@ -649,11 +651,14 @@ async def get_exam_detail(
 
 @router.delete("/{exam_id}")
 async def delete_exam_endpoint(
-    exam_id: int | str, session: AsyncSession = Depends(get_async_session)
+    exam_id: int | str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """
     Permanently deletes an exam and all associated data (questions, options,
     review tasks, answer keys, attempts, pipeline runs, syllabus links) from database and cache.
+    Admin/Super Admin only.
     """
     from fastapi import HTTPException
     service = ExamService(session)

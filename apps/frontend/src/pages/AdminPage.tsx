@@ -91,7 +91,10 @@ export function AdminPage() {
       case 'upload':
         return (
           <UploadReviewView
-            initialTab={selectedExamForReview === 'PIPELINE_ONLY' ? 'PIPELINE_ONLY' : 'UPLOAD_ONLY'}
+            // Only explicit shortcuts (e.g. the dashboard's "Upload New Paper" quick action)
+            // should auto-open the upload dialog; plain navigation (sidebar, search) lands
+            // on the pipeline table instead.
+            initialTab={selectedExamForReview === 'UPLOAD_ONLY' ? 'UPLOAD_ONLY' : 'PIPELINE_ONLY'}
             onNavigate={handleNavigate}
           />
         );

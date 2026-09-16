@@ -4,6 +4,7 @@ import { Ico } from '../common/Icons';
 import { UserRole } from '../../types/auth';
 import { loginUser, registerUser } from '../../services/authService';
 import { useClerk, useSignIn } from '@clerk/clerk-react';
+import { SUPPORTED_LANGUAGES } from '../../constants/languages';
 
 export type AuthMode = 'login' | 'signup';
 
@@ -28,6 +29,7 @@ export function AuthModal({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [preferredLanguage, setPreferredLanguage] = useState('en');
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -100,7 +102,10 @@ export function AuthModal({
           email,
           password,
           fullName,
-          UserRole.STUDENT
+          UserRole.STUDENT,
+          undefined,
+          undefined,
+          preferredLanguage
         );
 
         if (res.is_pending_approval) {
@@ -350,6 +355,49 @@ export function AuthModal({
                       }}
                     />
                   </div>
+                </div>
+              )}
+
+              {mode === 'signup' && (
+                <div>
+                  <label
+                    htmlFor="auth-language-select"
+                    style={{
+                      display: 'block',
+                      fontSize: 13.5,
+                      fontWeight: 500,
+                      color: '#172033',
+                      marginBottom: 6,
+                    }}
+                  >
+                    Preferred question language
+                  </label>
+                  <select
+                    id="auth-language-select"
+                    value={preferredLanguage}
+                    onChange={(e) => setPreferredLanguage(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: 52,
+                      borderRadius: 0,
+                      backgroundColor: '#F8FAFC',
+                      border: '1px solid #E2E8F0',
+                      padding: '0 16px',
+                      fontSize: 14.5,
+                      fontWeight: 400,
+                      color: '#172033',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      cursor: 'pointer',
+                      fontFamily: "'Manrope', sans-serif",
+                    }}
+                  >
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.name} ({lang.nativeName})
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
 
