@@ -204,7 +204,7 @@ class ChallengeService:
                 )
                 .where(
                     ChallengeAttempt.challenge_id.in_(c_ids),
-                    ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
+                    ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED.value,
                 )
                 .group_by(ChallengeAttempt.challenge_id)
             )
@@ -370,7 +370,7 @@ class ChallengeService:
             select(ChallengeAttempt).where(
                 ChallengeAttempt.challenge_id == challenge.id,
                 ChallengeAttempt.user_id == user.id,
-                ChallengeAttempt.status == ChallengeAttemptStatus.IN_PROGRESS,
+                ChallengeAttempt.status == ChallengeAttemptStatus.IN_PROGRESS.value,
             )
         )
         attempt = existing_res.first()
