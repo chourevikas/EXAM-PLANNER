@@ -204,7 +204,7 @@ class ChallengeService:
                 )
                 .where(
                     ChallengeAttempt.challenge_id.in_(c_ids),
-                    ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED.value,
+                    ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
                 )
                 .group_by(ChallengeAttempt.challenge_id)
             )
@@ -249,14 +249,14 @@ class ChallengeService:
         attempt_count = (await self.session.exec(
             select(func.count()).select_from(ChallengeAttempt).where(
                 ChallengeAttempt.challenge_id == challenge.id,
-                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED.value,
+                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
             )
         )).one()
         my_best = (await self.session.exec(
             select(func.max(ChallengeAttempt.total_score)).where(
                 ChallengeAttempt.challenge_id == challenge.id,
                 ChallengeAttempt.user_id == user.id,
-                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED.value,
+                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
             )
         )).one()
         return ChallengeSummary(
@@ -370,7 +370,7 @@ class ChallengeService:
             select(ChallengeAttempt).where(
                 ChallengeAttempt.challenge_id == challenge.id,
                 ChallengeAttempt.user_id == user.id,
-                ChallengeAttempt.status == ChallengeAttemptStatus.IN_PROGRESS.value,
+                ChallengeAttempt.status == ChallengeAttemptStatus.IN_PROGRESS,
             )
         )
         attempt = existing_res.first()
@@ -506,7 +506,7 @@ class ChallengeService:
             select(ChallengeAttempt)
             .where(
                 ChallengeAttempt.challenge_id == challenge_id,
-                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED.value,
+                ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
             )
             .order_by(ChallengeAttempt.total_score.desc(), ChallengeAttempt.time_spent_seconds.asc())
         )

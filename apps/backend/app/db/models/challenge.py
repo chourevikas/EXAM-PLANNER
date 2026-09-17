@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship, Index
+from sqlmodel import SQLModel, Field, Relationship, Index, AutoString
 from app.db.models.enums import DifficultyLevel
 from app.db.models.types import DateTimeTZ, BigIntPK
 
@@ -45,9 +45,9 @@ class Challenge(SQLModel, table=True):
     difficulty: Optional[DifficultyLevel] = Field(default=None)
     subject_name: Optional[str] = Field(default=None, max_length=200)
     time_limit_minutes: int = Field(default=15)
-    visibility: ChallengeVisibility = Field(default=ChallengeVisibility.INVITE_ONLY, index=True)
+    visibility: ChallengeVisibility = Field(default=ChallengeVisibility.INVITE_ONLY, index=True, sa_type=AutoString)
     share_token: str = Field(max_length=64)
-    status: ChallengeStatus = Field(default=ChallengeStatus.ACTIVE, index=True)
+    status: ChallengeStatus = Field(default=ChallengeStatus.ACTIVE, index=True, sa_type=AutoString)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
@@ -96,7 +96,7 @@ class ChallengeInvite(SQLModel, table=True):
     challenge_id: int = Field(foreign_key="challenges.id", ondelete="CASCADE", index=True)
     invited_user_id: int = Field(foreign_key="users.id", ondelete="CASCADE")
     invited_by_id: int = Field(foreign_key="users.id", ondelete="CASCADE")
-    status: ChallengeInviteStatus = Field(default=ChallengeInviteStatus.PENDING)
+    status: ChallengeInviteStatus = Field(default=ChallengeInviteStatus.PENDING, sa_type=AutoString)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
@@ -118,7 +118,7 @@ class ChallengeAttempt(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     challenge_id: int = Field(foreign_key="challenges.id", ondelete="CASCADE", index=True)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE")
-    status: ChallengeAttemptStatus = Field(default=ChallengeAttemptStatus.IN_PROGRESS, index=True)
+    status: ChallengeAttemptStatus = Field(default=ChallengeAttemptStatus.IN_PROGRESS, index=True, sa_type=AutoString)
 
     total_score: float = Field(default=0.0)
     total_correct: int = Field(default=0)

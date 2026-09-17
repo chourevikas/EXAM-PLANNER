@@ -704,6 +704,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [stageFilter, setStageFilter] = useState<string>('ALL');
+  const [examFilter, setExamFilter] = useState<string>('ALL');
 
   // Always show PIPELINE_ONLY as main screen; Upload is a modal
 
@@ -723,7 +724,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
   // Reset pagination to page 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, stageFilter]);
+  }, [searchQuery, statusFilter, stageFilter, examFilter]);
 
   // Slide-out Audit Drawer
   const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | null>(null);
@@ -887,9 +888,22 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
       (statusFilter === 'FAILED' && (statusUpper.includes('FAILED') || statusUpper.includes('REJECTED') || overallUpper.includes('MISSING')));
 
     const matchesStage = stageFilter === 'ALL' || exam.stage?.toLowerCase() === stageFilter.toLowerCase();
+    
+    const matchesExam = examFilter === 'ALL' || exam.name === examFilter || exam.code === examFilter;
 
-    return matchesSearch && matchesStatus && matchesStage;
+    return matchesSearch && matchesStatus && matchesStage && matchesExam;
   });
+
+  // Unique exams for the filter dropdown
+  const uniqueExamOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    pipelineExams.forEach(e => {
+      if (!options.has(e.name)) {
+        options.set(e.name, cleanExamTitle(e.name));
+      }
+    });
+    return Array.from(options.entries()).map(([name, title]) => ({ value: name, label: title }));
+  }, [pipelineExams]);
 
   // Table Pagination Computations
   const totalPages = Math.max(1, Math.ceil(filteredQueueExams.length / pageSize));
@@ -1736,14 +1750,40 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 <option value="prelims">Prelims</option>
                 <option value="mains">Mains</option>
               </select>
+
+              <select
+                value={examFilter}
+                onChange={(e) => setExamFilter(e.target.value)}
+                style={{
+                  flex: isMobile ? 1 : 'none',
+                  width: isMobile ? '100%' : 'auto',
+                  padding: '8px 12px',
+                  borderRadius: 0,
+                  border: '1px solid #CBD5E1',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#172033',
+                  backgroundColor: '#FFFFFF',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="ALL">All Exams</option>
+                {uniqueExamOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {(searchQuery || statusFilter !== 'ALL' || stageFilter !== 'ALL') && (
+            {(searchQuery || statusFilter !== 'ALL' || stageFilter !== 'ALL' || examFilter !== 'ALL') && (
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setStatusFilter('ALL');
                   setStageFilter('ALL');
+                  setExamFilter('ALL');
                 }}
                 style={{
                   width: isMobile ? '100%' : 'auto',
