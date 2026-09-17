@@ -118,11 +118,16 @@ def parse_question_paper_filename(
         fn_set_code = sanitize_set_code(set_token, default=final_set_code)
         effective_set = fn_set_code if not user_set_code else final_set_code
         parsed_exam = _normalize_exam_name(m_exam_name)
-        canonical_code = f"{parsed_exam}-{m_stage}-{m_subject_code}-{norm_year}-{effective_set}".lower()
+        
+        final_exam = parsed_exam if not exam_name else norm_exam_name
+        final_stage = m_stage.upper() if not stage else norm_stage.upper()
+        final_subject = m_subject_code.upper() if not subject_code else norm_subj
+        
+        canonical_code = f"{final_exam}-{final_stage}-{final_subject}-{norm_year}-{effective_set}".lower()
         return {
-            "exam_name": parsed_exam if not exam_name else norm_exam_name,
-            "stage": m_stage.upper() if not stage else norm_stage.upper(),
-            "subject_code": m_subject_code.upper() if not subject_code else norm_subj,
+            "exam_name": final_exam,
+            "stage": final_stage,
+            "subject_code": final_subject,
             "year": norm_year,
             "set_code": effective_set,
             "raw_set_token": effective_set.replace("SET_", ""),
