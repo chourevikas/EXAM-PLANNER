@@ -25,6 +25,7 @@ export interface StudyTaskItem {
   is_ai_recommended?: boolean;
   source_attempt_id?: string;
   created_at?: string;
+  completed_at?: string;
 }
 
 export interface StudyActivityItem {

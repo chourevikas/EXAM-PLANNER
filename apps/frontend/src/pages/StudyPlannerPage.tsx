@@ -239,7 +239,7 @@ function renderActivityCategoryDropdowns(
 }
 
 export function StudyPlannerPage() {
-  const [activeTab, setActiveTab] = useState<'weekly' | 'daily' | 'logs'>('weekly');
+  const [activeTab, setActiveTab] = useState<'weekly' | 'daily' | 'logs' | 'history'>('weekly');
   const [schedule, setSchedule] = useState<WeeklyScheduleResponse | null>(null);
   const [tasks, setTasks] = useState<StudyTaskItem[]>([]);
   const [activities, setActivities] = useState<StudyActivityItem[]>([]);
@@ -264,6 +264,9 @@ export function StudyPlannerPage() {
   const [logModalInitialSubject, setLogModalInitialSubject] = useState('');
   const [logModalInitialTopic, setLogModalInitialTopic] = useState('');
   const [filterSubject, setFilterSubject] = useState<string>('ALL');
+  const [historyTopicFilter, setHistoryTopicFilter] = useState<string>('');
+  const [historyTimeWindow, setHistoryTimeWindow] = useState<string>('1_day');
+  const [historyTimeOffset, setHistoryTimeOffset] = useState<number>(0);
   const [selectedDayDate, setSelectedDayDate] = useState<string>('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
@@ -450,6 +453,61 @@ export function StudyPlannerPage() {
     ? tasks
     : tasks.filter(t => (t.subject || '').toLowerCase().includes(filterSubject.toLowerCase()));
 
+  const getFilterDateRange = () => {
+    if (historyTimeWindow === 'all') return null;
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    let daysInWindow = 1;
+    if (historyTimeWindow === '3_days') daysInWindow = 3;
+    if (historyTimeWindow === '1_week') daysInWindow = 7;
+    if (historyTimeWindow === '1_month') daysInWindow = 30;
+
+    const end = new Date(today);
+    end.setDate(end.getDate() - (historyTimeOffset * daysInWindow));
+
+    const start = new Date(end);
+    start.setDate(start.getDate() - daysInWindow + 1);
+    start.setHours(0, 0, 0, 0);
+
+    return { start, end };
+  };
+
+  const dateRange = getFilterDateRange();
+
+  const getWindowLabel = () => {
+    if (!dateRange) return 'All Time';
+    const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    if (historyTimeWindow === '1_day') {
+      return fmt(dateRange.start);
+    }
+    return `${fmt(dateRange.start)} - ${fmt(dateRange.end)}`;
+  };
+
+  const completedTasks = tasks.filter(t => t.is_completed).sort((a, b) => {
+    // Sort by completion date or scheduled date descending
+    const dateA = a.completed_at || a.scheduled_date || '';
+    const dateB = b.completed_at || b.scheduled_date || '';
+    return dateB.localeCompare(dateA);
+  }).filter(t => {
+    if (historyTopicFilter && !((t.title || '').toLowerCase().includes(historyTopicFilter.toLowerCase()) || (t.topic || '').toLowerCase().includes(historyTopicFilter.toLowerCase()) || (t.subject || '').toLowerCase().includes(historyTopicFilter.toLowerCase()))) {
+      return false;
+    }
+    if (dateRange) {
+      const taskDateStr = (t.completed_at || t.scheduled_date || '').split('T')[0];
+      if (taskDateStr) {
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const toLocalYYYYMMDD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const startStr = toLocalYYYYMMDD(dateRange.start);
+        const endStr = toLocalYYYYMMDD(dateRange.end);
+        if (taskDateStr < startStr || taskDateStr > endStr) return false;
+      } else {
+        return false;
+      }
+    }
+    return true;
+  });
 
   return (
     <StudentLayout pageTitle="Study Planner">
@@ -541,7 +599,8 @@ export function StudyPlannerPage() {
         {[
           { key: 'weekly', label: '7-Day Weekly Board', icon: Ico.Cal },
           { key: 'daily', label: `Today's Focus (${todayTasks.length})`, icon: Ico.Check },
-          { key: 'logs', label: `Study Session Logs (${activities.length})`, icon: Ico.Clock }
+          { key: 'logs', label: `Study Session Logs (${activities.length})`, icon: Ico.Clock },
+          { key: 'history', label: `Study History (${completedTasks.length})`, icon: Ico.Check }
         ].map(tab => (
           <button
             key={tab.key}
@@ -911,6 +970,152 @@ export function StudyPlannerPage() {
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* TAB 4: STUDY HISTORY (COMPLETED TASKS) */}
+            {activeTab === 'history' && (
+              <div style={{ backgroundColor: 'var(--bg-card)', padding: 'clamp(16px, 3vw, 28px)', borderRadius: 0, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
+                <div style={{ marginBottom: 20 }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Completed Study History</h3>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Review previously completed topics and study targets.</div>
+                </div>
+
+                {/* History Filters */}
+                <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', maxWidth: 300 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>Search by Topic / Subject:</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Polity, Geography, fundamental rights..."
+                      value={historyTopicFilter}
+                      onChange={(e) => setHistoryTopicFilter(e.target.value)}
+                      style={{ padding: '0 14px', height: 42, boxSizing: 'border-box', borderRadius: 0, border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', maxWidth: 400 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>Filter by Time:</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <select
+                        value={historyTimeWindow}
+                        onChange={(e) => { setHistoryTimeWindow(e.target.value); setHistoryTimeOffset(0); }}
+                        style={{ padding: '0 14px', height: 42, boxSizing: 'border-box', borderRadius: 0, border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)', flex: 1, minWidth: 120 }}
+                      >
+                        <option value="all">All Time</option>
+                        <option value="1_day">1 Day</option>
+                        <option value="3_days">3 Days</option>
+                        <option value="1_week">1 Week</option>
+                        <option value="1_month">1 Month</option>
+                      </select>
+                      
+                      {historyTimeWindow !== 'all' && (
+                        <div style={{ display: 'flex', alignItems: 'center', height: 42, boxSizing: 'border-box', backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: 0, flexShrink: 0 }}>
+                          <button 
+                            onClick={() => setHistoryTimeOffset(o => o + 1)}
+                            style={{ padding: '0 12px', height: '100%', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-primary)' }}
+                            title="Older"
+                          >
+                            {'<'}
+                          </button>
+                          <span style={{ fontSize: 13, fontWeight: 700, padding: '0 8px', width: 90, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            {getWindowLabel()}
+                          </span>
+                          <button 
+                            onClick={() => setHistoryTimeOffset(o => Math.max(0, o - 1))}
+                            disabled={historyTimeOffset === 0}
+                            style={{ padding: '0 12px', height: '100%', border: 'none', background: 'transparent', cursor: historyTimeOffset === 0 ? 'not-allowed' : 'pointer', color: historyTimeOffset === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}
+                            title="Newer"
+                          >
+                            {'>'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ width: 100, paddingBottom: 2 }}>
+                    {(historyTopicFilter || historyTimeWindow !== 'all') && (
+                      <button
+                        onClick={() => { setHistoryTopicFilter(''); setHistoryTimeWindow('all'); setHistoryTimeOffset(0); }}
+                        style={{ padding: '10px 14px', backgroundColor: 'transparent', color: 'var(--text-muted)', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontSize: 13 }}
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {completedTasks.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No study tasks completed yet. Check off items from your Weekly Board to build history!
+                    </div>
+                  ) : (
+                    completedTasks.map(t => {
+                      const badge = getSubjectBadgeStyle(t.subject);
+                      return (
+                        <div
+                          key={t.id}
+                          style={{
+                            padding: 'clamp(12px, 2.5vw, 18px)',
+                            borderRadius: 0,
+                            border: '1px solid var(--border-default)',
+                            backgroundColor: 'var(--bg-subtle)',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 14,
+                            boxSizing: 'border-box',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flex: '1 1 240px', minWidth: 0 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 0, backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>
+                                  {t.subject || 'General'}
+                                </span>
+                                {t.completed_at ? (
+                                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Completed on {new Date(t.completed_at).toLocaleDateString()}
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Scheduled {t.scheduled_date}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                                {t.title}
+                              </div>
+                              {t.topic && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Topic: {t.topic}</div>}
+                              {t.description && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>{t.description}</div>}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                              ⏱️ {t.allocated_time_minutes} mins
+                            </span>
+                            <span style={{
+                              padding: '6px 12px',
+                              borderRadius: 0,
+                              backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                              color: '#16A34A',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              border: '1px solid rgba(34, 197, 94, 0.25)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6
+                            }}>
+                              <Ico.Check size={14} /> Completed
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             )}
 
