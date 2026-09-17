@@ -889,20 +889,21 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
 
     const matchesStage = stageFilter === 'ALL' || exam.stage?.toLowerCase() === stageFilter.toLowerCase();
     
-    const matchesExam = examFilter === 'ALL' || exam.name === examFilter || exam.code === examFilter;
+    const matchesExam = examFilter === 'ALL' || exam.name.startsWith(examFilter);
 
     return matchesSearch && matchesStatus && matchesStage && matchesExam;
   });
 
   // Unique exams for the filter dropdown
   const uniqueExamOptions = useMemo(() => {
-    const options = new Map<string, string>();
+    const options = new Set<string>();
     pipelineExams.forEach(e => {
-      if (!options.has(e.name)) {
-        options.set(e.name, cleanExamTitle(e.name));
+      if (e.name) {
+        const baseName = e.name.split(' ')[0];
+        if (baseName) options.add(baseName);
       }
     });
-    return Array.from(options.entries()).map(([name, title]) => ({ value: name, label: title }));
+    return Array.from(options).sort().map(name => ({ value: name, label: name }));
   }, [pipelineExams]);
 
   // Table Pagination Computations

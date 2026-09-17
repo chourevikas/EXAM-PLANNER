@@ -666,7 +666,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
         </div>
       )}
 
-      {/* 2. Top Metric Cards (4 Columns) */}
+      {/* 2. Top Metric Cards (2 Columns) */}
       <div
         style={{
           display: 'grid',
@@ -695,27 +695,6 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           onClick={() => onNavigate('questions')}
         />
 
-        {/* Card 3: Extraction Accuracy -> Question & Solution QA */}
-        <MetricCard
-          title="Extraction Accuracy"
-          value={stats?.metrics?.[2]?.value || '0.0%'}
-          supportingText={stats?.metrics?.[2]?.badge || (isDataLoading ? 'Loading...' : 'Extraction confidence')}
-          icon={<CheckCircle2 size={18} color="var(--primary-red)" />}
-          showProgress={!isDataLoading}
-          progressPercent={stats?.metrics?.[2]?.value ? parseFloat(stats.metrics[2].value.replace('%', '')) : 100}
-          isLoading={isDataLoading}
-          onClick={() => onNavigate('review')}
-        />
-
-        {/* Card 4: Supported Exam Types -> Exam Types */}
-        <MetricCard
-          title="Supported Exam Types"
-          value={stats?.metrics?.[3]?.value || '0'}
-          supportingText={stats?.metrics?.[3]?.badge || (isDataLoading ? 'Loading...' : 'Exam frameworks')}
-          icon={<GraduationCap size={18} color="var(--primary-red)" />}
-          isLoading={isDataLoading}
-          onClick={() => onNavigate('exam-types')}
-        />
       </div>
 
       {/* 3. Lower Section: Recent Uploads (Left) & Question Distribution (Right) */}
