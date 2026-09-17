@@ -30,6 +30,7 @@ class ExamRepository:
         stage: Optional[str] = None,
         subject_code: Optional[str] = None,
         paper_set_code: Optional[str] = None,
+        exam_name: Optional[str] = None,
     ) -> List[Exam]:
         """
         Finds all existing exams matching by code, code aliases, or composite key (year, stage, subject, set).
@@ -74,6 +75,12 @@ class ExamRepository:
                 subj_variants = {subj_clean, subj_clean.replace("-", ""), subj_clean.replace("_", "")}
                 set_variants = {set_clean, set_clean.replace("set_", ""), f"set_{set_clean}"}
 
+                exam_prefix = None
+                if exam_name:
+                    exam_prefix = str(exam_name).strip().lower()
+                elif code:
+                    exam_prefix = code.split("-")[0].strip().lower()
+
                 stmt = select(Exam).where(
                     Exam.source_year == norm_year,
                     func.lower(Exam.stage) == norm_stage,
@@ -85,6 +92,13 @@ class ExamRepository:
                     if (e_subj in subj_variants or e_subj.replace("-", "") in subj_variants) and (
                         e_set in set_variants or e_set.replace("set_", "") in set_variants
                     ):
+                        if exam_prefix and e.code:
+                            e_prefix = e.code.split("-")[0].strip().lower()
+                            if exam_prefix in ("upsc", "upse") and e_prefix in ("upsc", "upse"):
+                                pass
+                            elif exam_prefix != e_prefix:
+                                continue
+
                         if e.id is not None:
                             matched_exams_dict[e.id] = e
             except (ValueError, TypeError):
@@ -99,6 +113,7 @@ class ExamRepository:
         stage: Optional[str] = None,
         subject_code: Optional[str] = None,
         paper_set_code: Optional[str] = None,
+        exam_name: Optional[str] = None,
     ) -> Optional[Exam]:
         """
         Finds a primary existing exam by code, code aliases, or composite key.
@@ -109,6 +124,7 @@ class ExamRepository:
             stage=stage,
             subject_code=subject_code,
             paper_set_code=paper_set_code,
+            exam_name=exam_name,
         )
         return matches[0] if matches else None
 

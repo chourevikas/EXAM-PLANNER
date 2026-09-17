@@ -80,6 +80,7 @@ class ExamService:
             stage=parsed_tokens["stage"],
             subject_code=parsed_tokens["subject_code"],
             paper_set_code=clean_set,
+            exam_name=parsed_tokens.get("exam_name"),
         )
         exam = existing_matches[0] if existing_matches else None
 
