@@ -103,6 +103,10 @@ export function GuestExamPage() {
   }, [subjectsList, threeLevelHierarchy]);
 
   // Selected Multi-Select Arrays derived from URL parameters and validated against available taxonomy
+  const selectedExamsList = useMemo(() => {
+    return parseTaxonomyParam(gExam, availableExams.length > 0 ? availableExams : []);
+  }, [gExam, availableExams]);
+
   const selectedSubjectsList = useMemo(() => {
     return parseTaxonomyParam(gSubject, availableSubjectsList);
   }, [gSubject, availableSubjectsList]);
@@ -232,6 +236,37 @@ export function GuestExamPage() {
       current.set('year', formatTaxonomyParam(individualYears));
     } else {
       current.delete('year');
+    }
+    navigate(`/guest-exam?${current.toString()}`);
+  };
+
+  const toggleExamFilter = (examName: string) => {
+    const current = new URLSearchParams(searchParams);
+    if (examName === 'All Exams') {
+      current.delete('exam');
+    } else {
+      let updated: string[];
+      if (selectedExamsList.includes(examName)) {
+        updated = selectedExamsList.filter((e) => e !== examName);
+      } else {
+        updated = [...selectedExamsList, examName];
+      }
+      if (updated.length === 0) {
+        current.delete('exam');
+      } else {
+        current.set('exam', formatTaxonomyParam(updated));
+      }
+    }
+    navigate(`/guest-exam?${current.toString()}`);
+  };
+
+  const selectAllExams = () => {
+    const current = new URLSearchParams(searchParams);
+    const individualExams = availableExams.filter((e) => e !== 'All Exams');
+    if (individualExams.length > 0) {
+      current.set('exam', formatTaxonomyParam(individualExams));
+    } else {
+      current.delete('exam');
     }
     navigate(`/guest-exam?${current.toString()}`);
   };
@@ -696,7 +731,7 @@ export function GuestExamPage() {
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
 
-  const SESSION_KEY = `guest_exam_session_${shortenExamName(gExam)}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
+  const SESSION_KEY = `guest_exam_session_${selectedExamsList.length === 0 ? 'All Exams' : selectedExamsList.length === 1 ? shortenExamName(selectedExamsList[0]) : `${selectedExamsList.length} Exams`}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
 
   // Background prefetch function for dynamic recommended questions
   const prefetchRecommendations = useCallback(
@@ -2127,7 +2162,7 @@ export function GuestExamPage() {
                     <span
                       style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                      {shortenExamName(gExam)}
+                      {selectedExamsList.length === 0 ? 'All Exams' : selectedExamsList.length === 1 ? shortenExamName(selectedExamsList[0]) : `${selectedExamsList.length} Exams`}
                     </span>
                     {!isExamLocked && (
                       <ChevronDown
@@ -2141,57 +2176,88 @@ export function GuestExamPage() {
                     )}
                   </button>
 
-                  {/* Exam Popover */}
+                  {/* Exam Popover with Multi-Select */}
                   {activeDropdown === 'exam' && (
                     <div
                       style={{
                         position: 'absolute',
                         top: 'calc(100% + 8px)',
                         left: 0,
-                        width: 220,
+                        width: 260,
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: '#FFFFFF',
                         border: '1px solid #E2E8F0',
                         borderRadius: 0,
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
-                        padding: 8,
+                        padding: 10,
                         zIndex: 100,
                       }}
                     >
-                      {(availableExams.length > 0 ? availableExams : ['UPSC CSE']).map((opt) => (
-                        <div
-                          key={opt}
-                          onClick={() => {
-                            navigate(
-                              `/guest-exam?exam=${encodeURIComponent(opt)}&subject=${encodeURIComponent(gSubject)}&count=${gCount}`,
+                      {/* Action Bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                        <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={() => toggleExamFilter('All Exams')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                      </div>
+
+                      <div
+                        style={{
+                          maxHeight: 180,
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 2,
+                        }}
+                      >
+                        {['All Exams', ...(availableExams.length > 0 ? availableExams : ['UPSC CSE'])]
+                          .map((opt) => {
+                            const isSelected = opt === 'All Exams' ? selectedExamsList.length === 0 : selectedExamsList.includes(opt);
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() => toggleExamFilter(opt)}
+                                style={{
+                                  padding: '7px 10px',
+                                  borderRadius: 4,
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? 700 : 500,
+                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  cursor: 'pointer',
+                                  transition: 'background-color 0.15s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isSelected) e.currentTarget.style.backgroundColor = '#F8FAFC';
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isSelected)
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: 14,
+                                    height: 14,
+                                    border: isSelected ? '1px solid #1E3A8A' : '1px solid #CBD5E1',
+                                    borderRadius: 3,
+                                    marginRight: 8,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: isSelected ? '#1E3A8A' : '#FFFFFF',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {isSelected && <Check size={10} color="#FFFFFF" />}
+                                </div>
+                                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {opt === 'All Exams' ? opt : shortenExamName(opt)}
+                                </span>
+                              </div>
                             );
-                            setActiveDropdown(null);
-                          }}
-                          style={{
-                            padding: '9px 12px',
-                            borderRadius: 0,
-                            fontSize: 12.5,
-                            fontWeight: gExam === opt ? 700 : 500,
-                            color: gExam === opt ? '#1E3A8A' : '#334155',
-                            backgroundColor: gExam === opt ? '#F8FAFC' : 'transparent',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            cursor: 'pointer',
-                            transition: 'backgroundColor 0.1s ease',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (gExam !== opt) e.currentTarget.style.backgroundColor = '#F8FAFC';
-                          }}
-                          onMouseLeave={(e) => {
-                            if (gExam !== opt)
-                              e.currentTarget.style.backgroundColor = 'transparent';
-                          }}
-                        >
-                          <span>{shortenExamName(opt)}</span>
-                          {gExam === opt && <Check size={14} color="#1E3A8A" />}
-                        </div>
-                      ))}
+                          })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -3111,7 +3177,7 @@ export function GuestExamPage() {
                   <span
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
-                    {shortenExamName(gExam)}
+                    {selectedExamsList.length === 0 ? 'All Exams' : selectedExamsList.length === 1 ? shortenExamName(selectedExamsList[0]) : `${selectedExamsList.length} Exams`}
                   </span>
                   {!isExamLocked && (
                     <ChevronDown
@@ -3125,58 +3191,90 @@ export function GuestExamPage() {
                   )}
                 </button>
 
-                {/* Exam Popover */}
-                {activeDropdown === 'exam' && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 8px)',
-                      left: 0,
-                      width: 220,
-                      maxWidth: 'calc(100vw - 32px)',
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #E2E8F0',
-                      borderRadius: 0,
-                      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
-                      padding: 8,
-                      zIndex: 100,
-                    }}
-                  >
-                    {(availableExams.length > 0 ? availableExams : ['UPSC CSE']).map((opt) => (
+                {/* Exam Popover with Multi-Select */}
+                  {activeDropdown === 'exam' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        width: 260,
+                        maxWidth: 'calc(100vw - 32px)',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 0,
+                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                        padding: 10,
+                        zIndex: 100,
+                      }}
+                    >
+                      {/* Action Bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                        <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={() => toggleExamFilter('All Exams')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                      </div>
+
                       <div
-                        key={opt}
-                        onClick={() => {
-                          navigate(
-                            `/guest-exam?exam=${encodeURIComponent(opt)}&subject=${encodeURIComponent(gSubject)}&count=${gCount}`,
-                          );
-                          setActiveDropdown(null);
-                        }}
                         style={{
-                          padding: '9px 12px',
-                          borderRadius: 0,
-                          fontSize: 12.5,
-                          fontWeight: gExam === opt ? 700 : 500,
-                          color: gExam === opt ? '#1E3A8A' : '#334155',
-                          backgroundColor: gExam === opt ? '#F8FAFC' : 'transparent',
+                          maxHeight: 180,
+                          overflowY: 'auto',
                           display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          cursor: 'pointer',
-                          transition: 'backgroundColor 0.1s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (gExam !== opt) e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (gExam !== opt) e.currentTarget.style.backgroundColor = 'transparent';
+                          flexDirection: 'column',
+                          gap: 2,
                         }}
                       >
-                        <span>{shortenExamName(opt)}</span>
-                        {gExam === opt && <Check size={14} color="#1E3A8A" />}
+                        {['All Exams', ...(availableExams.length > 0 ? availableExams : ['UPSC CSE'])]
+                          .map((opt) => {
+                            const isSelected = opt === 'All Exams' ? selectedExamsList.length === 0 : selectedExamsList.includes(opt);
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() => toggleExamFilter(opt)}
+                                style={{
+                                  padding: '7px 10px',
+                                  borderRadius: 4,
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? 700 : 500,
+                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  cursor: 'pointer',
+                                  transition: 'background-color 0.15s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isSelected) e.currentTarget.style.backgroundColor = '#F8FAFC';
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isSelected)
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: 14,
+                                    height: 14,
+                                    border: isSelected ? '1px solid #1E3A8A' : '1px solid #CBD5E1',
+                                    borderRadius: 3,
+                                    marginRight: 8,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: isSelected ? '#1E3A8A' : '#FFFFFF',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {isSelected && <Check size={10} color="#FFFFFF" />}
+                                </div>
+                                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {opt === 'All Exams' ? opt : shortenExamName(opt)}
+                                </span>
+                              </div>
+                            );
+                          })}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  )}
               </div>
 
               {/* Filter 2: Target / PYQ Year */}
