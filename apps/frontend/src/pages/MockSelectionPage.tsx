@@ -77,28 +77,20 @@ export function MockSelectionPage() {
     };
   }, []);
 
-  // Fetch Dynamic 3-level Taxonomy (/api/v1/syllabus), Exams By Year (/api/v1/exams/by-year), & Published Exams
+  const [allYearsData, setAllYearsData] = useState<any>(null);
+
+  // Fetch Global Data (Exams by year, Published exams)
   useEffect(() => {
-    async function loadDynamicTaxonomy() {
+    async function loadGlobalData() {
       setIsTaxonomyLoading(true);
       try {
-        const [taxData, yearsData, publishedExams] = await Promise.all([
-          fetchMasterSyllabus().catch(() => null),
+        const [yearsData, publishedExams] = await Promise.all([
           fetchExamsByYear().catch(() => null),
           listExams('PUBLISHED').catch(() => []),
         ]);
 
-        if (taxData) {
-          setMasterSyllabus(taxData);
-        }
-
-        if (yearsData && Array.isArray(yearsData.years) && yearsData.years.length > 0) {
-          const fetchedYears = yearsData.years.map((y: number) => `${y} PYQs`);
-          const minYear = Math.min(...yearsData.years);
-          const maxYear = Math.max(...yearsData.years);
-          const yearsArray = [`All Years (${minYear} - ${maxYear})`, ...fetchedYears];
-          setYearOptions(yearsArray);
-          setSelectedYear((prev) => (prev ? prev : yearsArray[0]));
+        if (yearsData) {
+          setAllYearsData(yearsData);
         }
 
         const dynamicExams: string[] = [];
@@ -118,14 +110,58 @@ export function MockSelectionPage() {
           setAvailableExams(['UPSC CSE']);
         }
       } catch (err) {
-        console.warn('Taxonomy / Exam years fetch warning:', err);
+        console.warn('Exam years fetch warning:', err);
       } finally {
         setIsTaxonomyLoading(false);
       }
     }
-
-    loadDynamicTaxonomy();
+    loadGlobalData();
   }, []);
+
+  // Filter years based on selectedExam and update yearOptions
+  useEffect(() => {
+    if (allYearsData && Array.isArray(allYearsData.years) && allYearsData.years.length > 0) {
+      const examName = extractCanonicalExamName(selectedExam);
+      let filteredYears = allYearsData.years;
+      if (selectedExam !== 'All Exams') {
+        filteredYears = allYearsData.years.filter((y: number) => {
+          const examsInYear = allYearsData.exams_by_year[String(y)] || [];
+          return examsInYear.some((e: any) => extractCanonicalExamName(e.name || e.code) === examName);
+        });
+      }
+      if (filteredYears.length > 0) {
+        const sorted = [...filteredYears].sort((a, b) => b - a);
+        const fetchedYears = sorted.map((y: number) => `${y} PYQs`);
+        const minYear = Math.min(...filteredYears);
+        const maxYear = Math.max(...filteredYears);
+        const yearsArray = [`All Years (${minYear} - ${maxYear})`, ...fetchedYears];
+        setYearOptions(yearsArray);
+        setSelectedYear((prev) => (prev && yearsArray.includes(prev) ? prev : yearsArray[0]));
+      } else {
+        const fallback = ['All Years (2017 - 2024)'];
+        setYearOptions(fallback);
+        setSelectedYear(fallback[0]);
+      }
+    }
+  }, [allYearsData, selectedExam]);
+
+  // Fetch Taxonomy specifically for selectedExam
+  useEffect(() => {
+    async function loadTaxonomy() {
+      try {
+        const examParam = selectedExam === 'All Exams' ? undefined : extractCanonicalExamName(selectedExam);
+        const taxData = await fetchMasterSyllabus(undefined, examParam).catch(() => null);
+        if (taxData) {
+          setMasterSyllabus(taxData);
+        } else {
+          setMasterSyllabus(null);
+        }
+      } catch (err) {
+        console.warn('Taxonomy fetch warning:', err);
+      }
+    }
+    loadTaxonomy();
+  }, [selectedExam]);
 
   // Live mocks and student attempt status
   useEffect(() => {

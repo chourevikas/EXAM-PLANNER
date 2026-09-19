@@ -64,8 +64,18 @@ export function GuestExamPage() {
   const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<
     Record<string, Record<string, string[]>>
   >({});
-  const [availableYearsList, setAvailableYearsList] = useState<number[]>([]);
+  const [allYearsData, setAllYearsData] = useState<any>(null);
   const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE']);
+
+  const availableYearsList = useMemo(() => {
+    if (!allYearsData || !allYearsData.years) return [];
+    if (gExam === 'All Exams') return allYearsData.years;
+    const examName = extractCanonicalExamName(gExam);
+    return allYearsData.years.filter((y: number) => {
+      const examsInYear = allYearsData.exams_by_year[String(y)] || [];
+      return examsInYear.some((e: any) => extractCanonicalExamName(e.name || e.code) === examName);
+    });
+  }, [allYearsData, gExam]);
 
   const yearOptions = useMemo(() => {
     if (availableYearsList.length > 0) {
@@ -423,38 +433,17 @@ export function GuestExamPage() {
     navigate(`/guest-exam?${current.toString()}`);
   };
 
-  // Fetch dynamic master syllabus taxonomy (/api/v1/syllabus) & exams by year (/api/v1/exams/by-year)
+  // Fetch global exam and year lists
   useEffect(() => {
-    async function loadTaxonomyAndYears() {
+    async function loadGlobalData() {
       try {
-        const [syllabusData, yearsData, publishedExams] = await Promise.all([
-          fetchMasterSyllabus().catch(() => null),
+        const [yearsData, publishedExams] = await Promise.all([
           fetchExamsByYear().catch(() => null),
           listExams('PUBLISHED').catch(() => []),
         ]);
-        if (syllabusData) {
-          if (
-            syllabusData.subjects &&
-            Array.isArray(syllabusData.subjects) &&
-            syllabusData.subjects.length > 0
-          ) {
-            setMasterSubjects(syllabusData.subjects);
-          }
-          if (syllabusData.subjects_list && Array.isArray(syllabusData.subjects_list)) {
-            const cleanSubs = syllabusData.subjects_list.filter(
-              (s: string) => s !== 'All Subjects' && s.trim() !== '',
-            );
-            if (cleanSubs.length > 0) {
-              setSubjectsList(cleanSubs);
-            }
-          }
-          if (syllabusData.hierarchy && typeof syllabusData.hierarchy === 'object') {
-            setThreeLevelHierarchy(syllabusData.hierarchy);
-          }
-        }
 
-        if (yearsData && Array.isArray(yearsData.years)) {
-          setAvailableYearsList(yearsData.years);
+        if (yearsData) {
+          setAllYearsData(yearsData);
         }
         if (publishedExams && publishedExams.length > 0) {
           const dynamicExams = publishedExams
@@ -465,11 +454,52 @@ export function GuestExamPage() {
           if (names.length > 0) setAvailableExams(names);
         }
       } catch (err) {
-        console.warn('Failed to fetch syllabus taxonomy or exam years:', err);
+        console.warn('Failed to fetch exam years or global exams:', err);
       }
     }
-    loadTaxonomyAndYears();
+    loadGlobalData();
   }, []);
+
+  // Fetch syllabus taxonomy dependent on the selected exam
+  useEffect(() => {
+    async function loadTaxonomy() {
+      try {
+        const examParam = gExam === 'All Exams' ? undefined : extractCanonicalExamName(gExam);
+        const syllabusData = await fetchMasterSyllabus(undefined, examParam).catch(() => null);
+        if (syllabusData) {
+          if (
+            syllabusData.subjects &&
+            Array.isArray(syllabusData.subjects) &&
+            syllabusData.subjects.length > 0
+          ) {
+            setMasterSubjects(syllabusData.subjects);
+          } else {
+            setMasterSubjects([]);
+          }
+          if (syllabusData.subjects_list && Array.isArray(syllabusData.subjects_list)) {
+            const cleanSubs = syllabusData.subjects_list.filter(
+              (s: string) => s !== 'All Subjects' && s.trim() !== '',
+            );
+            if (cleanSubs.length > 0) {
+              setSubjectsList(cleanSubs);
+            } else {
+              setSubjectsList([]);
+            }
+          } else {
+            setSubjectsList([]);
+          }
+          if (syllabusData.hierarchy && typeof syllabusData.hierarchy === 'object') {
+            setThreeLevelHierarchy(syllabusData.hierarchy);
+          } else {
+            setThreeLevelHierarchy({});
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch syllabus taxonomy:', err);
+      }
+    }
+    loadTaxonomy();
+  }, [gExam]);
 
   // Auto-heal URL when hierarchy loads to prune any orphaned topic or subtopic query params
   useEffect(() => {

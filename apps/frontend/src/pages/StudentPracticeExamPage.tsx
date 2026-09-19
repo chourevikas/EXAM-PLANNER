@@ -861,7 +861,7 @@ export function StudentPracticeExamPage() {
       // 1. Fetch Master Syllabus Tree & Published Exams from API
       try {
         const [sData, eList, yData] = await Promise.all([
-          fetchMasterSyllabus().catch(() => null),
+          fetchMasterSyllabus(undefined, gExam === 'All Exams' ? undefined : extractCanonicalExamName(gExam)).catch(() => null),
           listExams('PUBLISHED').catch(() => []),
           fetchExamsByYear().catch(() => null),
         ]);
@@ -875,12 +875,24 @@ export function StudentPracticeExamPage() {
           if (names.length > 0) setAvailableExams(names);
         }
         if (yData && Array.isArray(yData.years) && yData.years.length > 0) {
-          const sorted = [...yData.years].sort((a, b) => b - a);
-          const fetchedYears = sorted.map((y: number) => `${y} PYQs`);
-          const minYear = Math.min(...yData.years);
-          const maxYear = Math.max(...yData.years);
-          const yearsArray = [`All Years (${minYear} - ${maxYear})`, ...fetchedYears];
-          setYearOptions(yearsArray);
+          const examName = extractCanonicalExamName(gExam);
+          let filteredYears = yData.years;
+          if (gExam !== 'All Exams') {
+             filteredYears = yData.years.filter((y: number) => {
+                 const examsInYear = yData.exams_by_year[String(y)] || [];
+                 return examsInYear.some((e: any) => extractCanonicalExamName(e.name || e.code) === examName);
+             });
+          }
+          if (filteredYears.length > 0) {
+              const sorted = [...filteredYears].sort((a, b) => b - a);
+              const fetchedYears = sorted.map((y: number) => `${y} PYQs`);
+              const minYear = Math.min(...filteredYears);
+              const maxYear = Math.max(...filteredYears);
+              const yearsArray = [`All Years (${minYear} - ${maxYear})`, ...fetchedYears];
+              setYearOptions(yearsArray);
+          } else {
+              setYearOptions(['All Years (2017 - 2024)']);
+          }
         }
       } catch (err) {
         console.warn('Practice exam taxonomy API warning:', err);
@@ -1582,14 +1594,14 @@ export function StudentPracticeExamPage() {
           justifyContent: 'center',
           height: '100vh',
           width: '100vw',
-          backgroundColor: '#F8FAFC',
+          backgroundColor: 'var(--bg-subtle)',
           padding: 24,
           textAlign: 'center',
         }}
       >
         <div
           style={{
-            background: '#FFFFFF',
+            background: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
             borderRadius: 0,
             padding: '40px 32px',
@@ -1597,10 +1609,10 @@ export function StudentPracticeExamPage() {
             boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
           }}
         >
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', marginBottom: 8 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--deep-navy)', marginBottom: 8 }}>
             No Questions Available
           </h2>
-          <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
             No questions available for{' '}
             <strong>{formatEnum(gSubject || 'this selection')}</strong>.
           </p>
@@ -1615,8 +1627,8 @@ export function StudentPracticeExamPage() {
               style={{
                 padding: '12px 20px',
                 borderRadius: 0,
-                backgroundColor: '#172033',
-                color: '#FFFFFF',
+                backgroundColor: 'var(--deep-navy)',
+                color: 'var(--bg-card)',
                 fontWeight: 600,
                 fontSize: 14,
                 border: 'none',
@@ -1631,7 +1643,7 @@ export function StudentPracticeExamPage() {
                 padding: '12px 20px',
                 borderRadius: 0,
                 backgroundColor: 'var(--primary-red)',
-                color: '#FFFFFF',
+                color: 'var(--bg-card)',
                 fontWeight: 600,
                 fontSize: 14,
                 border: 'none',
@@ -1656,7 +1668,7 @@ export function StudentPracticeExamPage() {
         minHeight: '100vh',
         width: '100vw',
         overflow: isTabletOrBelow ? 'visible' : 'hidden',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: 'var(--bg-subtle)',
       }}
     >
       {/* Top Header Bar */}
@@ -1693,7 +1705,7 @@ export function StudentPracticeExamPage() {
         >
           <div
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               border: '1px solid #E2E8F0',
               borderRadius: 0,
               padding: 'clamp(10px, 2vw, 14px) clamp(12px, 2.5vw, 18px)',
@@ -1725,8 +1737,8 @@ export function StudentPracticeExamPage() {
                     width: 32,
                     height: 32,
                     borderRadius: 0,
-                    backgroundColor: isFilterRefreshing ? '#EFF6FF' : '#F8FAFC',
-                    color: '#1E3A8A',
+                    backgroundColor: isFilterRefreshing ? 'var(--accent-bg)' : 'var(--bg-subtle)',
+                    color: 'var(--accent-primary)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1734,7 +1746,7 @@ export function StudentPracticeExamPage() {
                   }}
                 >
                   {isFilterRefreshing ? (
-                    <Loader2 size={16} className="animate-spin" color="#2563EB" />
+                    <Loader2 size={16} className="animate-spin" color="var(--accent-primary)" />
                   ) : (
                     <SlidersHorizontal size={16} />
                   )}
@@ -1744,7 +1756,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: '#2563EB',
+                      color: 'var(--accent-primary)',
                       whiteSpace: 'nowrap',
                     }}
                   >
@@ -1762,7 +1774,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       fontSize: 10.5,
                       fontWeight: 700,
-                      color: '#64748B',
+                      color: 'var(--text-muted)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       marginBottom: 4,
@@ -1782,8 +1794,8 @@ export function StudentPracticeExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                      backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      backgroundColor: activeDropdown === 'exam' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -1802,7 +1814,7 @@ export function StudentPracticeExamPage() {
                     </span>
                     <ChevronDown
                       size={14}
-                      color="#64748B"
+                      color="var(--text-muted)"
                       style={{
                         transform: activeDropdown === 'exam' ? 'rotate(180deg)' : 'none',
                         transition: 'transform 0.15s ease',
@@ -1818,7 +1830,7 @@ export function StudentPracticeExamPage() {
                         left: 0,
                         width: 220,
                         maxWidth: 'calc(100vw - 32px)',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
                         borderRadius: 0,
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -1841,8 +1853,8 @@ export function StudentPracticeExamPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: gExam === opt ? 700 : 500,
-                              color: gExam === opt ? '#1E3A8A' : '#334155',
-                              backgroundColor: gExam === opt ? '#F8FAFC' : 'transparent',
+                              color: gExam === opt ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                              backgroundColor: gExam === opt ? 'var(--bg-subtle)' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -1850,7 +1862,7 @@ export function StudentPracticeExamPage() {
                             }}
                           >
                             <span>{opt}</span>
-                            {gExam === opt && <Check size={14} color="#1E3A8A" />}
+                            {gExam === opt && <Check size={14} color="var(--accent-primary)" />}
                           </div>
                         ),
                       )}
@@ -1864,7 +1876,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       fontSize: 10.5,
                       fontWeight: 700,
-                      color: '#64748B',
+                      color: 'var(--text-muted)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       marginBottom: 4,
@@ -1885,8 +1897,8 @@ export function StudentPracticeExamPage() {
                       borderRadius: 0,
                       border:
                         activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                      backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      backgroundColor: activeDropdown === 'year' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -1909,7 +1921,7 @@ export function StudentPracticeExamPage() {
                     </span>
                     <ChevronDown
                       size={14}
-                      color="#64748B"
+                      color="var(--text-muted)"
                       style={{
                         transform: activeDropdown === 'year' ? 'rotate(180deg)' : 'none',
                         transition: 'transform 0.15s ease',
@@ -1925,7 +1937,7 @@ export function StudentPracticeExamPage() {
                         left: 0,
                         width: 250,
                         maxWidth: 'calc(100vw - 32px)',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
                         borderRadius: 0,
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -1948,7 +1960,7 @@ export function StudentPracticeExamPage() {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#1E3A8A',
+                            color: 'var(--accent-primary)',
                             fontSize: 11,
                             fontWeight: 700,
                             cursor: 'pointer',
@@ -1962,7 +1974,7 @@ export function StudentPracticeExamPage() {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#64748B',
+                            color: 'var(--text-muted)',
                             fontSize: 11,
                             fontWeight: 600,
                             cursor: 'pointer',
@@ -1975,7 +1987,7 @@ export function StudentPracticeExamPage() {
                       <div style={{ position: 'relative', marginBottom: 8 }}>
                         <Search
                           size={14}
-                          color="#94A3B8"
+                          color="var(--text-disabled)"
                           style={{ position: 'absolute', left: 10, top: 10 }}
                         />
                         <input
@@ -1992,7 +2004,7 @@ export function StudentPracticeExamPage() {
                             fontSize: 12,
                             outline: 'none',
                             boxSizing: 'border-box',
-                            backgroundColor: '#F8FAFC',
+                            backgroundColor: 'var(--bg-subtle)',
                           }}
                         />
                       </div>
@@ -2017,9 +2029,9 @@ export function StudentPracticeExamPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: selectedYearsList.length === 0 ? 700 : 500,
-                              color: selectedYearsList.length === 0 ? '#1E3A8A' : '#334155',
+                              color: selectedYearsList.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
                               backgroundColor:
-                                selectedYearsList.length === 0 ? '#F1F5F9' : 'transparent',
+                                selectedYearsList.length === 0 ? 'var(--bg-hover)' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -2031,12 +2043,12 @@ export function StudentPracticeExamPage() {
                                 type="checkbox"
                                 checked={selectedYearsList.length === 0}
                                 onChange={() => {}}
-                                style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                                style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
                               />
                               <span>{yearOptions[0] || 'All Years (2017 - 2024)'}</span>
                             </div>
                             {selectedYearsList.length === 0 && (
-                              <Check size={14} color="#1E3A8A" />
+                              <Check size={14} color="var(--accent-primary)" />
                             )}
                           </div>
                         )}
@@ -2059,8 +2071,8 @@ export function StudentPracticeExamPage() {
                                   borderRadius: 0,
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
-                                  backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                  color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                  backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
@@ -2072,11 +2084,11 @@ export function StudentPracticeExamPage() {
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={() => {}}
-                                    style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                                    style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
                                   />
                                   <span>{opt}</span>
                                 </div>
-                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                                {isSelected && <Check size={14} color="var(--accent-primary)" />}
                               </div>
                             );
                           })}
@@ -2091,7 +2103,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       fontSize: 10.5,
                       fontWeight: 700,
-                      color: '#64748B',
+                      color: 'var(--text-muted)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       marginBottom: 4,
@@ -2112,8 +2124,8 @@ export function StudentPracticeExamPage() {
                       borderRadius: 0,
                       border:
                         activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                      backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      backgroundColor: activeDropdown === 'subject' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -2136,7 +2148,7 @@ export function StudentPracticeExamPage() {
                     </span>
                     <ChevronDown
                       size={14}
-                      color="#64748B"
+                      color="var(--text-muted)"
                       style={{
                         transform: activeDropdown === 'subject' ? 'rotate(180deg)' : 'none',
                         transition: 'transform 0.15s ease',
@@ -2152,7 +2164,7 @@ export function StudentPracticeExamPage() {
                         left: 0,
                         width: 250,
                         maxWidth: 'calc(100vw - 32px)',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
                         borderRadius: 0,
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -2162,14 +2174,14 @@ export function StudentPracticeExamPage() {
                     >
                       {/* Action Bar */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                        <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                        <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                        <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
                       <div style={{ position: 'relative', marginBottom: 8 }}>
                         <Search
                           size={14}
-                          color="#94A3B8"
+                          color="var(--text-disabled)"
                           style={{ position: 'absolute', left: 10, top: 10 }}
                         />
                         <input
@@ -2186,7 +2198,7 @@ export function StudentPracticeExamPage() {
                             fontSize: 12,
                             outline: 'none',
                             boxSizing: 'border-box',
-                            backgroundColor: '#F8FAFC',
+                            backgroundColor: 'var(--bg-subtle)',
                           }}
                         />
                       </div>
@@ -2213,8 +2225,8 @@ export function StudentPracticeExamPage() {
                                   borderRadius: 0,
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
-                                  backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                  color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                  backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
@@ -2222,10 +2234,10 @@ export function StudentPracticeExamPage() {
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
                                   <span>{opt}</span>
                                 </div>
-                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                                {isSelected && <Check size={14} color="var(--accent-primary)" />}
                               </div>
                             );
                           })}
@@ -2240,7 +2252,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       fontSize: 10.5,
                       fontWeight: 700,
-                      color: '#64748B',
+                      color: 'var(--text-muted)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       marginBottom: 4,
@@ -2261,8 +2273,8 @@ export function StudentPracticeExamPage() {
                       borderRadius: 0,
                       border:
                         activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                      backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      backgroundColor: activeDropdown === 'topic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -2285,7 +2297,7 @@ export function StudentPracticeExamPage() {
                     </span>
                     <ChevronDown
                       size={14}
-                      color="#64748B"
+                      color="var(--text-muted)"
                       style={{
                         transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
                         transition: 'transform 0.15s ease',
@@ -2301,7 +2313,7 @@ export function StudentPracticeExamPage() {
                         left: 0,
                         width: 260,
                         maxWidth: 'calc(100vw - 32px)',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
                         borderRadius: 0,
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -2311,14 +2323,14 @@ export function StudentPracticeExamPage() {
                     >
                       {/* Action Bar */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                        <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                        <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                        <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
                       <div style={{ position: 'relative', marginBottom: 8 }}>
                         <Search
                           size={14}
-                          color="#94A3B8"
+                          color="var(--text-disabled)"
                           style={{ position: 'absolute', left: 10, top: 10 }}
                         />
                         <input
@@ -2335,7 +2347,7 @@ export function StudentPracticeExamPage() {
                             fontSize: 12,
                             outline: 'none',
                             boxSizing: 'border-box',
-                            backgroundColor: '#F8FAFC',
+                            backgroundColor: 'var(--bg-subtle)',
                           }}
                         />
                       </div>
@@ -2362,8 +2374,8 @@ export function StudentPracticeExamPage() {
                                   borderRadius: 0,
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
-                                  backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                  color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                  backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
@@ -2371,10 +2383,10 @@ export function StudentPracticeExamPage() {
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
                                   <span>{opt}</span>
                                 </div>
-                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                                {isSelected && <Check size={14} color="var(--accent-primary)" />}
                               </div>
                             );
                           })}
@@ -2389,7 +2401,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       fontSize: 10.5,
                       fontWeight: 700,
-                      color: '#64748B',
+                      color: 'var(--text-muted)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       marginBottom: 4,
@@ -2410,8 +2422,8 @@ export function StudentPracticeExamPage() {
                       borderRadius: 0,
                       border:
                         activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                      backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      backgroundColor: activeDropdown === 'subtopic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -2434,7 +2446,7 @@ export function StudentPracticeExamPage() {
                     </span>
                     <ChevronDown
                       size={14}
-                      color="#64748B"
+                      color="var(--text-muted)"
                       style={{
                         transform: activeDropdown === 'subtopic' ? 'rotate(180deg)' : 'none',
                         transition: 'transform 0.15s ease',
@@ -2450,7 +2462,7 @@ export function StudentPracticeExamPage() {
                         left: 0,
                         width: 270,
                         maxWidth: 'calc(100vw - 32px)',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
                         borderRadius: 0,
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -2460,14 +2472,14 @@ export function StudentPracticeExamPage() {
                     >
                       {/* Action Bar */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                        <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                        <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                        <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
                       <div style={{ position: 'relative', marginBottom: 8 }}>
                         <Search
                           size={14}
-                          color="#94A3B8"
+                          color="var(--text-disabled)"
                           style={{ position: 'absolute', left: 10, top: 10 }}
                         />
                         <input
@@ -2484,7 +2496,7 @@ export function StudentPracticeExamPage() {
                             fontSize: 12,
                             outline: 'none',
                             boxSizing: 'border-box',
-                            backgroundColor: '#F8FAFC',
+                            backgroundColor: 'var(--bg-subtle)',
                           }}
                         />
                       </div>
@@ -2511,8 +2523,8 @@ export function StudentPracticeExamPage() {
                                   borderRadius: 0,
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
-                                  backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                  color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                  backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
@@ -2520,10 +2532,10 @@ export function StudentPracticeExamPage() {
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
                                   <span>{opt}</span>
                                 </div>
-                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                                {isSelected && <Check size={14} color="var(--accent-primary)" />}
                               </div>
                             );
                           })}
@@ -2538,7 +2550,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       fontSize: 10.5,
                       fontWeight: 700,
-                      color: '#64748B',
+                      color: 'var(--text-muted)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       marginBottom: 4,
@@ -2559,8 +2571,8 @@ export function StudentPracticeExamPage() {
                       borderRadius: 0,
                       border:
                         activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                      backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      backgroundColor: activeDropdown === 'difficulty' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -2577,7 +2589,7 @@ export function StudentPracticeExamPage() {
                     <span>{gDifficulty ? gDifficulty : 'All Levels'}</span>
                     <ChevronDown
                       size={14}
-                      color="#64748B"
+                      color="var(--text-muted)"
                       style={{
                         transform: activeDropdown === 'difficulty' ? 'rotate(180deg)' : 'none',
                         transition: 'transform 0.15s ease',
@@ -2593,7 +2605,7 @@ export function StudentPracticeExamPage() {
                         left: 0,
                         width: 170,
                         maxWidth: 'calc(100vw - 32px)',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
                         borderRadius: 0,
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -2620,8 +2632,8 @@ export function StudentPracticeExamPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
-                              color: isSelected ? '#1E3A8A' : '#334155',
-                              backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                              color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                              backgroundColor: isSelected ? 'var(--bg-subtle)' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -2629,7 +2641,7 @@ export function StudentPracticeExamPage() {
                             }}
                           >
                             <span>{opt}</span>
-                            {isSelected && <Check size={14} color="#1E3A8A" />}
+                            {isSelected && <Check size={14} color="var(--accent-primary)" />}
                           </div>
                         );
                       })}
@@ -2663,7 +2675,7 @@ export function StudentPracticeExamPage() {
               left: 0,
               right: 0,
               zIndex: 151,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               borderBottom: '1px solid #E2E8F0',
               boxShadow: '0 20px 40px rgba(15, 23, 42, 0.18)',
               padding: '14px 16px 18px 16px',
@@ -2681,12 +2693,12 @@ export function StudentPracticeExamPage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <SlidersHorizontal size={16} color="#1E3A8A" />
+                <SlidersHorizontal size={16} color="var(--accent-primary)" />
                 <span
                   style={{
                     fontSize: 13,
                     fontWeight: 800,
-                    color: '#1E3A8A',
+                    color: 'var(--accent-primary)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                   }}
@@ -2701,7 +2713,7 @@ export function StudentPracticeExamPage() {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#64748B',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: 4,
                 }}
@@ -2718,7 +2730,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     fontSize: 10.5,
                     fontWeight: 700,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     marginBottom: 4,
@@ -2738,8 +2750,8 @@ export function StudentPracticeExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                    backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    backgroundColor: activeDropdown === 'exam' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -2758,7 +2770,7 @@ export function StudentPracticeExamPage() {
                   </span>
                   <ChevronDown
                     size={14}
-                    color="#64748B"
+                    color="var(--text-muted)"
                     style={{
                       transform: activeDropdown === 'exam' ? 'rotate(180deg)' : 'none',
                       transition: 'transform 0.15s ease',
@@ -2774,7 +2786,7 @@ export function StudentPracticeExamPage() {
                       left: 0,
                       width: 220,
                       maxWidth: 'calc(100vw - 32px)',
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
                       borderRadius: 0,
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -2797,8 +2809,8 @@ export function StudentPracticeExamPage() {
                             borderRadius: 0,
                             fontSize: 12.5,
                             fontWeight: gExam === opt ? 700 : 500,
-                            color: gExam === opt ? '#1E3A8A' : '#334155',
-                            backgroundColor: gExam === opt ? '#F8FAFC' : 'transparent',
+                            color: gExam === opt ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            backgroundColor: gExam === opt ? 'var(--bg-subtle)' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -2806,7 +2818,7 @@ export function StudentPracticeExamPage() {
                           }}
                         >
                           <span>{opt}</span>
-                          {gExam === opt && <Check size={14} color="#1E3A8A" />}
+                          {gExam === opt && <Check size={14} color="var(--accent-primary)" />}
                         </div>
                       ),
                     )}
@@ -2820,7 +2832,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     fontSize: 10.5,
                     fontWeight: 700,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     marginBottom: 4,
@@ -2841,8 +2853,8 @@ export function StudentPracticeExamPage() {
                     borderRadius: 0,
                     border:
                       activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                    backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    backgroundColor: activeDropdown === 'year' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -2865,7 +2877,7 @@ export function StudentPracticeExamPage() {
                   </span>
                   <ChevronDown
                     size={14}
-                    color="#64748B"
+                    color="var(--text-muted)"
                     style={{
                       transform: activeDropdown === 'year' ? 'rotate(180deg)' : 'none',
                       transition: 'transform 0.15s ease',
@@ -2881,7 +2893,7 @@ export function StudentPracticeExamPage() {
                       left: 0,
                       width: 250,
                       maxWidth: 'calc(100vw - 32px)',
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
                       borderRadius: 0,
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -2904,7 +2916,7 @@ export function StudentPracticeExamPage() {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#1E3A8A',
+                          color: 'var(--accent-primary)',
                           fontSize: 11,
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -2918,7 +2930,7 @@ export function StudentPracticeExamPage() {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#64748B',
+                          color: 'var(--text-muted)',
                           fontSize: 11,
                           fontWeight: 600,
                           cursor: 'pointer',
@@ -2931,7 +2943,7 @@ export function StudentPracticeExamPage() {
                     <div style={{ position: 'relative', marginBottom: 8 }}>
                       <Search
                         size={14}
-                        color="#94A3B8"
+                        color="var(--text-disabled)"
                         style={{ position: 'absolute', left: 10, top: 10 }}
                       />
                       <input
@@ -2948,7 +2960,7 @@ export function StudentPracticeExamPage() {
                           fontSize: 12,
                           outline: 'none',
                           boxSizing: 'border-box',
-                          backgroundColor: '#F8FAFC',
+                          backgroundColor: 'var(--bg-subtle)',
                         }}
                       />
                     </div>
@@ -2973,9 +2985,9 @@ export function StudentPracticeExamPage() {
                             borderRadius: 0,
                             fontSize: 12.5,
                             fontWeight: selectedYearsList.length === 0 ? 700 : 500,
-                            color: selectedYearsList.length === 0 ? '#1E3A8A' : '#334155',
+                            color: selectedYearsList.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
                             backgroundColor:
-                              selectedYearsList.length === 0 ? '#F1F5F9' : 'transparent',
+                              selectedYearsList.length === 0 ? 'var(--bg-hover)' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -2987,12 +2999,12 @@ export function StudentPracticeExamPage() {
                               type="checkbox"
                               checked={selectedYearsList.length === 0}
                               onChange={() => {}}
-                              style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                              style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
                             />
                             <span>{yearOptions[0] || 'All Years (2017 - 2024)'}</span>
                           </div>
                           {selectedYearsList.length === 0 && (
-                            <Check size={14} color="#1E3A8A" />
+                            <Check size={14} color="var(--accent-primary)" />
                           )}
                         </div>
                       )}
@@ -3015,8 +3027,8 @@ export function StudentPracticeExamPage() {
                                 borderRadius: 0,
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
-                                color: isSelected ? '#1E3A8A' : '#334155',
-                                backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
@@ -3028,11 +3040,11 @@ export function StudentPracticeExamPage() {
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => {}}
-                                  style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                                  style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
                                 />
                                 <span>{opt}</span>
                               </div>
-                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                              {isSelected && <Check size={14} color="var(--accent-primary)" />}
                             </div>
                           );
                         })}
@@ -3047,7 +3059,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     fontSize: 10.5,
                     fontWeight: 700,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     marginBottom: 4,
@@ -3068,8 +3080,8 @@ export function StudentPracticeExamPage() {
                     borderRadius: 0,
                     border:
                       activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                    backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    backgroundColor: activeDropdown === 'subject' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -3092,7 +3104,7 @@ export function StudentPracticeExamPage() {
                   </span>
                   <ChevronDown
                     size={14}
-                    color="#64748B"
+                    color="var(--text-muted)"
                     style={{
                       transform: activeDropdown === 'subject' ? 'rotate(180deg)' : 'none',
                       transition: 'transform 0.15s ease',
@@ -3108,7 +3120,7 @@ export function StudentPracticeExamPage() {
                       left: 0,
                       width: 250,
                       maxWidth: 'calc(100vw - 32px)',
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
                       borderRadius: 0,
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -3118,14 +3130,14 @@ export function StudentPracticeExamPage() {
                   >
                     {/* Action Bar */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                      <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                      <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                      <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                      <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
                     <div style={{ position: 'relative', marginBottom: 8 }}>
                       <Search
                         size={14}
-                        color="#94A3B8"
+                        color="var(--text-disabled)"
                         style={{ position: 'absolute', left: 10, top: 10 }}
                       />
                       <input
@@ -3142,7 +3154,7 @@ export function StudentPracticeExamPage() {
                           fontSize: 12,
                           outline: 'none',
                           boxSizing: 'border-box',
-                          backgroundColor: '#F8FAFC',
+                          backgroundColor: 'var(--bg-subtle)',
                         }}
                       />
                     </div>
@@ -3169,8 +3181,8 @@ export function StudentPracticeExamPage() {
                                 borderRadius: 0,
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
-                                color: isSelected ? '#1E3A8A' : '#334155',
-                                backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
@@ -3178,10 +3190,10 @@ export function StudentPracticeExamPage() {
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
                                 <span>{opt}</span>
                               </div>
-                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                              {isSelected && <Check size={14} color="var(--accent-primary)" />}
                             </div>
                           );
                         })}
@@ -3196,7 +3208,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     fontSize: 10.5,
                     fontWeight: 700,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     marginBottom: 4,
@@ -3217,8 +3229,8 @@ export function StudentPracticeExamPage() {
                     borderRadius: 0,
                     border:
                       activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                    backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    backgroundColor: activeDropdown === 'topic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -3241,7 +3253,7 @@ export function StudentPracticeExamPage() {
                   </span>
                   <ChevronDown
                     size={14}
-                    color="#64748B"
+                    color="var(--text-muted)"
                     style={{
                       transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
                       transition: 'transform 0.15s ease',
@@ -3257,7 +3269,7 @@ export function StudentPracticeExamPage() {
                       left: 0,
                       width: 260,
                       maxWidth: 'calc(100vw - 32px)',
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
                       borderRadius: 0,
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -3267,14 +3279,14 @@ export function StudentPracticeExamPage() {
                   >
                     {/* Action Bar */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                      <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                      <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                      <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                      <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
                     <div style={{ position: 'relative', marginBottom: 8 }}>
                       <Search
                         size={14}
-                        color="#94A3B8"
+                        color="var(--text-disabled)"
                         style={{ position: 'absolute', left: 10, top: 10 }}
                       />
                       <input
@@ -3291,7 +3303,7 @@ export function StudentPracticeExamPage() {
                           fontSize: 12,
                           outline: 'none',
                           boxSizing: 'border-box',
-                          backgroundColor: '#F8FAFC',
+                          backgroundColor: 'var(--bg-subtle)',
                         }}
                       />
                     </div>
@@ -3318,8 +3330,8 @@ export function StudentPracticeExamPage() {
                                 borderRadius: 0,
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
-                                color: isSelected ? '#1E3A8A' : '#334155',
-                                backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
@@ -3327,10 +3339,10 @@ export function StudentPracticeExamPage() {
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
                                 <span>{opt}</span>
                               </div>
-                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                              {isSelected && <Check size={14} color="var(--accent-primary)" />}
                             </div>
                           );
                         })}
@@ -3345,7 +3357,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     fontSize: 10.5,
                     fontWeight: 700,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     marginBottom: 4,
@@ -3366,8 +3378,8 @@ export function StudentPracticeExamPage() {
                     borderRadius: 0,
                     border:
                       activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                    backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    backgroundColor: activeDropdown === 'subtopic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -3390,7 +3402,7 @@ export function StudentPracticeExamPage() {
                   </span>
                   <ChevronDown
                     size={14}
-                    color="#64748B"
+                    color="var(--text-muted)"
                     style={{
                       transform: activeDropdown === 'subtopic' ? 'rotate(180deg)' : 'none',
                       transition: 'transform 0.15s ease',
@@ -3406,7 +3418,7 @@ export function StudentPracticeExamPage() {
                       left: 0,
                       width: 270,
                       maxWidth: 'calc(100vw - 32px)',
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
                       borderRadius: 0,
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -3416,14 +3428,14 @@ export function StudentPracticeExamPage() {
                   >
                     {/* Action Bar */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                      <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                      <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                      <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                      <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
                     <div style={{ position: 'relative', marginBottom: 8 }}>
                       <Search
                         size={14}
-                        color="#94A3B8"
+                        color="var(--text-disabled)"
                         style={{ position: 'absolute', left: 10, top: 10 }}
                       />
                       <input
@@ -3440,7 +3452,7 @@ export function StudentPracticeExamPage() {
                           fontSize: 12,
                           outline: 'none',
                           boxSizing: 'border-box',
-                          backgroundColor: '#F8FAFC',
+                          backgroundColor: 'var(--bg-subtle)',
                         }}
                       />
                     </div>
@@ -3467,8 +3479,8 @@ export function StudentPracticeExamPage() {
                                 borderRadius: 0,
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
-                                color: isSelected ? '#1E3A8A' : '#334155',
-                                backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
@@ -3476,10 +3488,10 @@ export function StudentPracticeExamPage() {
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
                                 <span>{opt}</span>
                               </div>
-                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                              {isSelected && <Check size={14} color="var(--accent-primary)" />}
                             </div>
                           );
                         })}
@@ -3494,7 +3506,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     fontSize: 10.5,
                     fontWeight: 700,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     marginBottom: 4,
@@ -3515,8 +3527,8 @@ export function StudentPracticeExamPage() {
                     borderRadius: 0,
                     border:
                       activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                    backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    backgroundColor: activeDropdown === 'difficulty' ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -3531,7 +3543,7 @@ export function StudentPracticeExamPage() {
                   <span>{gDifficulty ? gDifficulty : 'All Levels'}</span>
                   <ChevronDown
                     size={14}
-                    color="#64748B"
+                    color="var(--text-muted)"
                     style={{
                       transform: activeDropdown === 'difficulty' ? 'rotate(180deg)' : 'none',
                       transition: 'transform 0.15s ease',
@@ -3547,7 +3559,7 @@ export function StudentPracticeExamPage() {
                       left: 0,
                       width: 170,
                       maxWidth: 'calc(100vw - 32px)',
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
                       borderRadius: 0,
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -3573,8 +3585,8 @@ export function StudentPracticeExamPage() {
                             borderRadius: 0,
                             fontSize: 12.5,
                             fontWeight: isSelected ? 700 : 500,
-                            color: isSelected ? '#1E3A8A' : '#334155',
-                            backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                            color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            backgroundColor: isSelected ? 'var(--bg-subtle)' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -3582,7 +3594,7 @@ export function StudentPracticeExamPage() {
                           }}
                         >
                           <span>{opt}</span>
-                          {isSelected && <Check size={14} color="#1E3A8A" />}
+                          {isSelected && <Check size={14} color="var(--accent-primary)" />}
                         </div>
                       );
                     })}
@@ -3616,12 +3628,12 @@ export function StudentPracticeExamPage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Lightbulb size={16} color="#1E3A8A" />
+                <Lightbulb size={16} color="var(--accent-primary)" />
                 <span
                   style={{
                     fontSize: 13,
                     fontWeight: 800,
-                    color: '#1E3A8A',
+                    color: 'var(--accent-primary)',
                     textTransform: 'uppercase',
                   }}
                 >
@@ -3635,7 +3647,7 @@ export function StudentPracticeExamPage() {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#64748B',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: 4,
                 }}
@@ -3670,7 +3682,7 @@ export function StudentPracticeExamPage() {
           minHeight: 0,
           overflow: 'visible',
           position: 'relative',
-          backgroundColor: '#F8FAFC',
+          backgroundColor: 'var(--bg-subtle)',
           gap: !isTabletOrBelow && !isFocusMode ? 20 : 0,
           marginTop: isFocusMode || isTabletOrBelow ? 60 : 0,
           paddingTop: 12,
@@ -3726,7 +3738,7 @@ export function StudentPracticeExamPage() {
           <aside
             style={{
               width: 380,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               border: '1px solid #E2E8F0',
               borderRadius: 0,
               display: 'flex',
@@ -3767,8 +3779,8 @@ export function StudentPracticeExamPage() {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 990,
-            backgroundColor: '#172033',
-            color: '#FFFFFF',
+            backgroundColor: 'var(--deep-navy)',
+            color: 'var(--bg-card)',
             borderRadius: 0,
             padding: '10px 20px',
             display: 'flex',
@@ -3788,7 +3800,7 @@ export function StudentPracticeExamPage() {
                 height: 26,
                 borderRadius: 0,
                 backgroundColor: 'var(--primary-red)',
-                color: '#FFFFFF',
+                color: 'var(--bg-card)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -3813,7 +3825,7 @@ export function StudentPracticeExamPage() {
               borderRadius: 0,
               border: 'none',
               backgroundColor: 'var(--primary-red)',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
@@ -3859,7 +3871,7 @@ export function StudentPracticeExamPage() {
         >
           <div
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               borderRadius: 0,
               padding: 32,
               maxWidth: 420,
@@ -3869,11 +3881,11 @@ export function StudentPracticeExamPage() {
               border: '1px solid #E2E8F0',
             }}
           >
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: '0 0 8px 0' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--deep-navy)', margin: '0 0 8px 0' }}>
               Leave Practice Session?
             </h3>
 
-            <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.5, margin: '0 0 22px 0' }}>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: '0 0 22px 0' }}>
               Your current practice progress is temporarily saved in your browser. You can return
               anytime.
             </p>
@@ -3887,7 +3899,7 @@ export function StudentPracticeExamPage() {
                   height: 42,
                   borderRadius: 0,
                   border: '1.5px solid #CBD5E1',
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: 'var(--bg-card)',
                   color: '#475569',
                   fontSize: 13.5,
                   fontWeight: 700,
@@ -3910,7 +3922,7 @@ export function StudentPracticeExamPage() {
                   borderRadius: 0,
                   border: 'none',
                   backgroundColor: '#DC2626',
-                  color: '#FFFFFF',
+                  color: 'var(--bg-card)',
                   fontSize: 13.5,
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -3946,7 +3958,7 @@ export function StudentPracticeExamPage() {
             style={{
               width: '100%',
               maxWidth: 440,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               borderRadius: 0,
               padding: '32px 28px',
               border: '1.5px solid #E2E8F0',
@@ -3993,7 +4005,7 @@ export function StudentPracticeExamPage() {
               style={{
                 fontSize: 20,
                 fontWeight: 800,
-                color: '#172033',
+                color: 'var(--deep-navy)',
                 margin: '0 0 10px 0',
                 lineHeight: 1.3,
               }}
@@ -4001,7 +4013,7 @@ export function StudentPracticeExamPage() {
               No More Questions Available
             </h3>
 
-            <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.5, margin: '0 0 24px 0' }}>
+            <p style={{ fontSize: 13.5, color: 'var(--text-muted)', lineHeight: 1.5, margin: '0 0 24px 0' }}>
               You've completed all available practice questions for{' '}
               <strong>{gSubject || 'this subject'}</strong>. Try selecting a different subject or
               topic to continue practicing!
@@ -4019,8 +4031,8 @@ export function StudentPracticeExamPage() {
                   height: 46,
                   borderRadius: 0,
                   border: 'none',
-                  backgroundColor: '#1E3A8A',
-                  color: '#FFFFFF',
+                  backgroundColor: 'var(--accent-primary)',
+                  color: 'var(--bg-card)',
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -4035,7 +4047,7 @@ export function StudentPracticeExamPage() {
                   e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1E3A8A';
+                  e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
                 }}
               >
                 Select Another Subject &rsaquo;
@@ -4049,20 +4061,20 @@ export function StudentPracticeExamPage() {
                   height: 42,
                   borderRadius: 0,
                   border: '1.5px solid #E2E8F0',
-                  backgroundColor: '#FFFFFF',
-                  color: '#64748B',
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--text-muted)',
                   fontSize: 13.5,
                   fontWeight: 700,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F8FAFC';
-                  e.currentTarget.style.color = '#334155';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.color = '#64748B';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+                  e.currentTarget.style.color = 'var(--text-muted)';
                 }}
               >
                 Review Attempted Questions

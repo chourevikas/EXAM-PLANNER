@@ -1262,6 +1262,11 @@ class QuestionService:
         exam_code = exam.code if exam else None
         paper_set = exam.paper_set_code if exam else "SET_A"
 
+        # Manually delete dependent responses to prevent ForeignKeyViolationError on question_options cascade
+        from sqlalchemy import text
+        await self.session.execute(text("DELETE FROM user_question_responses WHERE question_id = :qid"), {"qid": q_id})
+        await self.session.execute(text("DELETE FROM exam_question_responses WHERE question_id = :qid"), {"qid": q_id})
+
         await self.session.delete(q)
         await self.session.commit()
 

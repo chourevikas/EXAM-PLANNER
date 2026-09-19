@@ -52,12 +52,13 @@ class SyllabusService:
         self.session = session
 
     async def get_complete_syllabus(
-        self, exam_id: Optional[int] = None
+        self, exam_id: Optional[int] = None, exam_name: Optional[str] = None
     ) -> CompleteSyllabusResponse:
         """
         Returns the complete Subject -> Topic -> Subtopic syllabus tree dynamically queried from the database.
         If exam_id is provided, returns the hierarchy for that exam's SyllabusVersion.
         If exam_id is None, aggregates across all subjects, topics, and subtopics in DB.
+        If exam_name is provided (and exam_id is None), aggregates across questions whose exam matches the name.
         """
         syl_ver = None
         exam = None
@@ -89,6 +90,12 @@ class SyllabusService:
         )
         if exam_id:
             active_subject_ids_stmt = active_subject_ids_stmt.where(Question.exam_id == exam_id)
+        elif exam_name:
+            exam_name_lower = exam_name.lower().replace(" ", "")
+            active_subject_ids_stmt = active_subject_ids_stmt.join(Exam, Question.exam_id == Exam.id).where(
+                func.replace(func.lower(Exam.name), " ", "").contains(exam_name_lower) |
+                func.replace(func.lower(Exam.code), " ", "").contains(exam_name_lower)
+            )
         active_subject_ids_stmt = active_subject_ids_stmt.distinct()
 
         if syl_ver:

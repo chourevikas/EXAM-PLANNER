@@ -577,14 +577,20 @@ export async function getUserCumulativeAggregateReport(userId?: number | string)
 const _examSyllabusCache = new Map<string, { data: any; timestamp: number }>();
 const EXAM_SYLLABUS_CACHE_TTL = 10 * 60 * 1000;
 
-export async function fetchMasterSyllabus(examId?: number | string): Promise<any> {
-  const cacheKey = examId ? `exam_${examId}` : 'master';
+export async function fetchMasterSyllabus(examId?: number | string, examName?: string): Promise<any> {
+  const cacheKey = examId ? `exam_${examId}` : (examName ? `exam_name_${examName}` : 'master');
   const cached = _examSyllabusCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < EXAM_SYLLABUS_CACHE_TTL) {
     return cached.data;
   }
   try {
-    const url = examId ? `${API_BASE_URL}/syllabus?exam_id=${encodeURIComponent(examId)}` : `${API_BASE_URL}/syllabus`;
+    let url = `${API_BASE_URL}/syllabus`;
+    const params = new URLSearchParams();
+    if (examId) params.append('exam_id', String(examId));
+    if (examName && examName !== 'All Exams') params.append('exam_name', examName);
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
     const response = await guardedFetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
