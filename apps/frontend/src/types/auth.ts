@@ -38,6 +38,10 @@ export interface User {
   is_verified?: boolean;
   timezone?: string;
   subscription_tier?: string;
+  phone?: string | null;
+  subscription_ends_at?: string | null;
+  subscription_days_remaining?: number | null;
+  admin_permissions?: string[] | null;
   free_questions_attempted?: number;
   current_streak?: number;
   total_xp?: number;

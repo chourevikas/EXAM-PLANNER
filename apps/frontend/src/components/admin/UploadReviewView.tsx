@@ -17,7 +17,6 @@ import {
   FileSpreadsheet,
   Layers,
   ClipboardCheck,
-  Activity,
   ArrowRight,
 
   ChevronRight,
@@ -922,14 +921,6 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
     return s.includes('PUBLISHED') || Boolean(e.questions_json_path && e.solutions_json_path);
   }).length;
 
-  const activeCount = pipelineExams.filter((e) => {
-    const s = (e.overall_status || e.status || '').toUpperCase();
-    const isStage1Running = (e.stage1_status === 'IN_PROGRESS' || Boolean(e.is_extracting)) && e.stage1_status !== 'COMPLETED';
-    const isStage2Running = e.stage2_status === 'IN_PROGRESS';
-    const isStage3Running = e.stage3_status === 'IN_PROGRESS';
-    return s.includes('PROCESSING') || s.includes('PARSING') || isStage1Running || isStage2Running || isStage3Running;
-  }).length;
-
   const pendingCount = pipelineExams.filter((e) => {
     const s = (e.status || '').toUpperCase();
     const isPublished = s.includes('PUBLISHED') || Boolean(e.questions_json_path && e.solutions_json_path);
@@ -1243,14 +1234,6 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
           value={totalExamsCount}
           supportingText="Extracted & cataloged"
           icon={<FileSpreadsheet size={17} color="var(--primary-red)" />}
-          isMobile={isMobile}
-        />
-        <MetricCard
-          title="Active Pipeline Tasks"
-          value={activeCount}
-          supportingText="Processing in background"
-          icon={<Activity size={17} color="var(--primary-red)" />}
-          isProcessing={activeCount > 0}
           isMobile={isMobile}
         />
         <MetricCard
@@ -1749,7 +1732,6 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
               >
                 <option value="ALL">All Stages</option>
                 <option value="prelims">Prelims</option>
-                <option value="mains">Mains</option>
               </select>
 
               <select

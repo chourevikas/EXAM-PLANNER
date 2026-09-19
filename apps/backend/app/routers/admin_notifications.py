@@ -20,7 +20,7 @@ from app.schemas.notification import (
     NotificationResponse,
     NotificationListResponse,
 )
-from app.core.deps import require_roles
+from app.core.deps import require_roles, require_admin_section
 from app.services.email_service import dispatch_broadcast_notification_to_all_users
 from app.config.logger import setup_logger
 
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/admin/notifications", tags=["Admin Notifications"])
 async def create_notification(
     payload: NotificationCreatePayload,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.notifications")),
 ):
     """
     Creates a new notification in draft status.
@@ -100,7 +100,7 @@ async def list_admin_notifications(
     limit: int = Query(default=10, ge=1, le=100),
     status_filter: Optional[str] = Query(default=None, alias="status"),
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.notifications")),
 ):
     """
     Returns a paginated list of all broadcast notifications, optionally filtered by status (draft, published, rejected).
@@ -179,7 +179,7 @@ async def list_admin_notifications(
 async def get_admin_notification_detail(
     notification_id: int,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.notifications")),
 ):
     noti = await session.get(Notification, notification_id)
     if not noti:
@@ -219,7 +219,7 @@ async def update_notification(
     notification_id: int,
     payload: NotificationUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.notifications")),
 ):
     noti = await session.get(Notification, notification_id)
     if not noti:
@@ -292,7 +292,7 @@ async def publish_notification(
     notification_id: int,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.notifications")),
 ):
     """
     Transitions notification status to 'published', sets published_at timestamp,
@@ -362,7 +362,7 @@ async def publish_notification(
 async def reject_notification(
     notification_id: int,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.notifications")),
 ):
     """
     Transitions notification status to 'rejected'.
@@ -420,7 +420,7 @@ async def reject_notification(
 async def delete_notification(
     notification_id: int,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.notifications")),
 ):
     noti = await session.get(Notification, notification_id)
     if not noti:
@@ -452,7 +452,7 @@ async def delete_notification(
 )
 async def upload_notification_attachment(
     file: UploadFile = File(...),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.notifications")),
 ):
     """
     Accepts file upload (PDF or document), saves into uploads/notifications/,

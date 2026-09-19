@@ -10,7 +10,13 @@ from app.db.session import get_async_session
 from app.db.models import Exam, LanguageCode, QuestionStatus
 from app.db.models.user import User, UserRole
 from app.core.languages import parse_language
-from app.core.deps import require_roles
+from app.core.deps import (
+    require_roles,
+    require_admin_section,
+    get_optional_user,
+    can_see_unpublished,
+    require_exam_question_visible,
+)
 from app.schemas.question import ExamReviewQuestionsResponse
 from app.schemas.syllabus import CompleteSyllabusResponse
 from app.schemas.question_integrity import ExamIntegrityQuestionsResponse
@@ -53,6 +59,7 @@ async def upload_exam_pdf(
     run_mode: Optional[str] = Form(default="auto", description="'celery', 'background', or 'auto'"),
     conflict_resolution: Optional[str] = Form(default="CHECK", description="'CHECK', 'OVERWRITE', or 'SKIP'"),
     session: AsyncSession = Depends(get_async_session),
+    _admin: User = Depends(require_admin_section("admin.upload")),
 ):
     """
     Uploads a Question Paper PDF and initiates Pipeline 1.
@@ -128,8 +135,11 @@ async def get_exam_questions_for_review(
     target_question_number: Optional[int] = Query(default=None, description="Jump to specific question number in paper"),
     target_question_id: Optional[Union[str, int]] = Query(default=None, description="Jump to specific question ID"),
     session: AsyncSession = Depends(get_async_session),
+    viewer: Optional[User] = Depends(get_optional_user),
 ):
     """
+    Students and anonymous visitors only get PUBLISHED questions; staff can see every status.
+
     Dedicated endpoint for user/admin review per question in an exam.
     Returns complete questions alongside full step-by-step solutions,
     core concepts, option distractor analyses (option explanations),
@@ -140,6 +150,9 @@ async def get_exam_questions_for_review(
         eid_int = int(exam_id)
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="Exam not found")
+
+    if not can_see_unpublished(viewer):
+        status = QuestionStatus.PUBLISHED
 
     lang_code = parse_language(language)
     from app.cache import get_cache, build_cache_key
@@ -177,7 +190,7 @@ async def get_exam_questions_for_review(
     return JSONResponse(content={})
 
 
-@router.get("/{exam_id}/question-artifact/{question_number}")
+@router.get("/{exam_id}/question-artifact/{question_number}", dependencies=[Depends(require_exam_question_visible)])
 async def get_question_artifact(
     exam_id: int | str,
     question_number: int,
@@ -232,7 +245,7 @@ async def get_question_artifact(
     )
 
 
-@router.get("/{exam_id}/question-db/{question_number}")
+@router.get("/{exam_id}/question-db/{question_number}", dependencies=[Depends(require_exam_question_visible)])
 async def get_question_from_db_fallback(
     exam_id: int | str,
     question_number: int,
@@ -343,7 +356,7 @@ async def get_question_from_db_fallback(
     return res_data
 
 
-@router.get("/{exam_id}/solution-artifact/{question_number}")
+@router.get("/{exam_id}/solution-artifact/{question_number}", dependencies=[Depends(require_exam_question_visible)])
 async def get_solution_artifact(
     exam_id: int | str,
     question_number: int,
@@ -396,7 +409,7 @@ async def get_solution_artifact(
     )
 
 
-@router.get("/{exam_id}/solution-db/{question_number}")
+@router.get("/{exam_id}/solution-db/{question_number}", dependencies=[Depends(require_exam_question_visible)])
 async def get_solution_from_db_fallback(
     exam_id: int,
     question_number: int,
@@ -561,7 +574,7 @@ async def get_solution_from_db_fallback(
 
 
 
-@router.get("/export-zip")
+@router.get("/export-zip", dependencies=[Depends(require_admin_section("admin.upload", "admin.review", "admin.question_bank"))])
 async def download_exam_export_zip(
     background_tasks: BackgroundTasks,
     exam_name: str = Query(
@@ -587,7 +600,7 @@ async def download_exam_export_zip(
     )
 
 
-@router.get("/{exam_name:path}/export-zip")
+@router.get("/{exam_name:path}/export-zip", dependencies=[Depends(require_admin_section("admin.upload", "admin.review", "admin.question_bank"))])
 async def download_exam_export_zip_path(
     exam_name: str,
     background_tasks: BackgroundTasks,
@@ -653,7 +666,7 @@ async def get_exam_detail(
 async def delete_exam_endpoint(
     exam_id: int | str,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload")),
 ):
     """
     Permanently deletes an exam and all associated data (questions, options,

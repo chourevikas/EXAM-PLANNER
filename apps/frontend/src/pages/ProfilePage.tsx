@@ -1069,7 +1069,7 @@ export function ProfilePage() {
             collapsed={sidebarCollapsed}
             mobileOpen={mobileOpen}
             onCloseMobile={() => setMobileOpen(false)}
-            onToggleSidebar={() => setSidebarCollapsed(prev => !prev)}
+            permissions={user?.admin_permissions}
           />
           <div
             style={{

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -7,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Bookmark,
+  Flag,
   Clock,
   Award,
   Lightbulb,
@@ -15,6 +17,7 @@ import {
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { ReportQuestionModal } from './ReportQuestionModal';
 import { getLanguageOption } from '../../constants/languages';
 
 interface ExamQuestionCardProps {
@@ -76,6 +79,8 @@ interface ExamQuestionCardProps {
   isRevealing?: boolean;
   onSelectOption: (optionId: number | string, optionLabel: string) => void;
   onToggleBookmark?: () => void;
+  /** Show the "Report a problem" button (signed-in students only). */
+  reportable?: boolean;
   onRevealAnswer?: () => void;
   onShowSolution?: () => void;
   onToggleSidebar?: () => void;
@@ -288,6 +293,7 @@ export function ExamQuestionCard({
   isRevealing = false,
   onSelectOption,
   onToggleBookmark,
+  reportable = false,
   onRevealAnswer,
   onShowSolution,
   onToggleSidebar,
@@ -297,6 +303,7 @@ export function ExamQuestionCard({
   solutionData,
 }: ExamQuestionCardProps) {
   const [showDetailedSolution, setShowDetailedSolution] = useState<boolean>(false);
+  const [showReport, setShowReport] = useState<boolean>(false);
 
   useEffect(() => {
     if (revealResult) {
@@ -704,8 +711,39 @@ export function ExamQuestionCard({
                 )}
               </div>
 
-              {/* Right: Bookmark Button */}
+              {/* Right: Report + Bookmark Buttons */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {reportable && (
+                  <button
+                    type="button"
+                    onClick={() => setShowReport(true)}
+                    title="Report a problem with this question"
+                    aria-label="Report a problem with this question"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--text-disabled)',
+                      transition: 'color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-red)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-disabled)')}
+                  >
+                    <Flag size={17} />
+                  </button>
+                )}
+                {showReport &&
+                  createPortal(
+                    <ReportQuestionModal
+                      questionId={(question as any).question_id ?? (question as any).id}
+                      onClose={() => setShowReport(false)}
+                    />,
+                    document.body
+                  )}
                 {onToggleBookmark && (
                   <button
                     type="button"

@@ -1343,6 +1343,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               </div>
             ) : activeQuestion ? (
               <ExamQuestionCard
+                reportable
                 question={activeQuestion}
                 questionIndex={currentQIndex}
                 totalQuestions={totalQuestions}

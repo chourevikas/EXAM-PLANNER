@@ -9,15 +9,15 @@ from app.hitl.review_service import HumanReviewService
 from app.db.models import LanguageCode, QuestionStatus
 from app.core.languages import parse_language
 from app.db.models.user import User, UserRole
-from app.core.deps import require_roles_or_permission
+from app.core.deps import require_admin_section_or_permission
 from app.schemas.question import ExamReviewQuestionsResponse
 from app.services.question_service import QuestionService
 
 
 router = APIRouter(prefix="/admin/review", tags=["Admin QA Review"])
 
-view_review = require_roles_or_permission([UserRole.ADMIN, UserRole.SUPER_ADMIN], "questions.review")
-manage_review = require_roles_or_permission([UserRole.ADMIN, UserRole.SUPER_ADMIN], "questions.review.manage")
+view_review = require_admin_section_or_permission("admin.review", "questions.review")
+manage_review = require_admin_section_or_permission("admin.review", "questions.review.manage")
 
 
 class OptionEditRequest(BaseModel):

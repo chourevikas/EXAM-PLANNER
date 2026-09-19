@@ -10,15 +10,21 @@ import {
   CheckCircle2,
   GraduationCap,
   Loader2,
+  Flag,
 } from 'lucide-react';
 import {
   fetchAdminOverviewStats,
   AdminOverviewStats,
 } from '../../services/adminService';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { AdminQuickSearch } from './AdminQuickSearch';
+import { canAccessView } from '../../constants/adminAccess';
+import { fetchReportedSummary } from '../../services/questionReportService';
 
 interface AdminOverviewViewProps {
   onNavigate: (view: string, extraData?: any) => void;
+  /** Granted admin sections; null/undefined = unrestricted. */
+  permissions?: string[] | null;
 }
 
 // ----------------------------------------------------------------------
@@ -493,11 +499,13 @@ function SubjectDistributionRow({
 // ----------------------------------------------------------------------
 // Main AdminOverviewView Component
 // ----------------------------------------------------------------------
-export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
+export function AdminOverviewView({ onNavigate, permissions }: AdminOverviewViewProps) {
   const { isMobile, isTabletOrBelow } = useBreakpoint();
   const [stats, setStats] = useState<AdminOverviewStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [reported, setReported] = useState<{ open_reports: number; open_questions: number } | null>(null);
+  const can = (view: string) => canAccessView(permissions, view);
 
   const loadOverviewStats = async () => {
     try {
@@ -515,6 +523,10 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
 
   useEffect(() => {
     loadOverviewStats();
+    if (canAccessView(permissions, 'reported-questions')) {
+      fetchReportedSummary().then(setReported).catch(() => setReported(null));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isDataLoading = loading && !stats;
@@ -604,7 +616,8 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           </button>
 
           {/* Primary Upload Exam Paper Button */}
-          <button
+          {can('upload') && (
+<button
             onClick={() => onNavigate('upload', 'UPLOAD_ONLY')}
             style={{
               display: 'inline-flex',
@@ -625,6 +638,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
             <Upload size={15} />
             <span>Upload Exam Paper</span>
           </button>
+)}
         </div>
       </div>
 
@@ -666,6 +680,9 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
         </div>
       )}
 
+      {/* Jump-to search (dashboard only) */}
+      <AdminQuickSearch permissions={permissions} onNavigate={onNavigate} />
+
       {/* 2. Top Metric Cards (2 Columns) */}
       <div
         style={{
@@ -682,7 +699,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           supportingText={stats?.metrics?.[0]?.badge || (isDataLoading ? 'Loading...' : 'Total papers in system')}
           icon={<FileText size={18} color="var(--primary-red)" />}
           isLoading={isDataLoading}
-          onClick={() => onNavigate('review')}
+          onClick={can('review') ? () => onNavigate('review') : undefined}
         />
 
         {/* Card 2: Questions Extracted -> Question Bank Catalog */}
@@ -692,8 +709,26 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           supportingText={stats?.metrics?.[1]?.badge || (isDataLoading ? 'Loading...' : 'Extracted questions')}
           icon={<Layers size={18} color="var(--primary-red)" />}
           isLoading={isDataLoading}
-          onClick={() => onNavigate('questions')}
+          onClick={can('questions') ? () => onNavigate('questions') : undefined}
         />
+
+        {/* Card 3: Reported Questions -> Reported Questions view */}
+        {can('reported-questions') && (
+          <MetricCard
+            title="Reported Questions"
+            value={String(reported?.open_questions ?? 0)}
+            supportingText={
+              reported
+                ? reported.open_reports === 0
+                  ? 'No open reports'
+                  : `${reported.open_reports} open report${reported.open_reports === 1 ? '' : 's'} from students`
+                : 'Loading...'
+            }
+            icon={<Flag size={18} color="var(--primary-red)" />}
+            isLoading={!reported}
+            onClick={() => onNavigate('reported-questions')}
+          />
+        )}
 
       </div>
 
@@ -736,7 +771,8 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               </div>
             </div>
 
-            <button
+            {can('upload') && (
+<button
               onClick={() => onNavigate('upload')}
               style={{
                 display: 'inline-flex',
@@ -756,6 +792,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               <span>View All</span>
               <ArrowRight size={14} />
             </button>
+)}
           </div>
 
           {/* Data Table */}

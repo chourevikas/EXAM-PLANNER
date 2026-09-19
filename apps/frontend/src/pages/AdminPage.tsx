@@ -4,6 +4,8 @@ import { AdminTopNav } from '../components/admin/AdminTopNav';
 import { fetchCurrentUser } from '../services/authService';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { Spinner } from '../components/common/Spinner';
+import { canAccessView, canOpenView } from '../constants/adminAccess';
+import { fetchReportedSummary } from '../services/questionReportService';
 
 /* Lazy-loaded View Components for instant initial load & smooth switching */
 const AdminOverviewView = lazy(() => import('../components/admin/AdminOverviewView').then(m => ({ default: m.AdminOverviewView })));
@@ -17,7 +19,27 @@ const TeacherRewardsView = lazy(() => import('../components/admin/views/TeacherR
 const CurrentAffairsManager = lazy(() => import('../components/admin/views/CurrentAffairsManager').then(m => ({ default: m.CurrentAffairsManager })));
 const ExamTypesManager = lazy(() => import('../components/admin/views/ExamTypesManager').then(m => ({ default: m.ExamTypesManager })));
 const NotificationsView = lazy(() => import('../components/admin/views/NotificationsView').then(m => ({ default: m.NotificationsView })));
+const ReportedQuestionsView = lazy(() => import('../components/admin/views/ReportedQuestionsView').then(m => ({ default: m.ReportedQuestionsView })));
+const TestimonialsView = lazy(() => import('../components/admin/views/TestimonialsView').then(m => ({ default: m.TestimonialsView })));
 const ThemeSettingsView = lazy(() => import('../components/admin/views/ThemeSettingsView').then(m => ({ default: m.ThemeSettingsView })));
+
+function NoAccessView({ onHome }: { onHome: () => void }) {
+  return (
+    <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+      <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--deep-navy)', margin: '0 0 8px' }}>No access to this section</h2>
+      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 20px' }}>
+        Your role does not include this part of the admin panel. Ask a super admin if you need it.
+      </p>
+      <button
+        type="button"
+        onClick={onHome}
+        style={{ padding: '9px 18px', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', background: 'var(--bg-card)', fontWeight: 600, cursor: 'pointer' }}
+      >
+        Back to dashboard
+      </button>
+    </div>
+  );
+}
 
 function AdminViewSkeleton() {
   return (
@@ -67,7 +89,23 @@ export function AdminPage() {
     }
   };
 
+  const permissions: string[] | null | undefined = user?.admin_permissions;
+
+  // Open-report count for the sidebar badge (only when this admin can see the section).
+  const [reportedCount, setReportedCount] = useState(0);
+  const refreshReportedCount = () => {
+    if (!canAccessView(permissions, 'reported-questions')) return;
+    fetchReportedSummary()
+      .then((s) => setReportedCount(s.open_questions))
+      .catch(() => {});
+  };
+  useEffect(() => {
+    refreshReportedCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, JSON.stringify(permissions)]);
+
   const handleNavigate = (view: string, extraData?: any) => {
+    if (!canOpenView(permissions, view)) return;
     startTransition(() => {
       setActiveView(view);
       if (extraData !== undefined) {
@@ -80,9 +118,10 @@ export function AdminPage() {
   };
 
   const renderView = () => {
+    if (!canOpenView(permissions, activeView)) return <NoAccessView onHome={() => handleNavigate('dashboard')} />;
     switch (activeView) {
       case 'dashboard':
-        return <AdminOverviewView onNavigate={handleNavigate} />;
+        return <AdminOverviewView onNavigate={handleNavigate} permissions={permissions} />;
       case 'ai-queue':
         return <UploadReviewView initialTab="PIPELINE_ONLY" onNavigate={handleNavigate} />;
       case 'upload':
@@ -113,10 +152,14 @@ export function AdminPage() {
         return <CurrentAffairsManager />;
       case 'notifications':
         return <NotificationsView />;
+      case 'testimonials':
+        return <TestimonialsView />;
+      case 'reported-questions':
+        return <ReportedQuestionsView onNavigate={handleNavigate} onChanged={refreshReportedCount} />;
       case 'theme':
         return <ThemeSettingsView />;
       default:
-        return <AdminOverviewView onNavigate={handleNavigate} />;
+        return <AdminOverviewView onNavigate={handleNavigate} permissions={permissions} />;
     }
   };
 
@@ -141,7 +184,8 @@ export function AdminPage() {
           collapsed={sidebarCollapsed}
           mobileOpen={mobileOpen}
           onCloseMobile={() => setMobileOpen(false)}
-          onToggleSidebar={handleToggleSidebar}
+          permissions={permissions}
+          reportedCount={reportedCount}
         />
 
         {/* Main Content Area */}

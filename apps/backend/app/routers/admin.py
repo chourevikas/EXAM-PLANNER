@@ -38,7 +38,7 @@ from app.schemas.platform_analytics import PlatformAnalyticsResponse
 from app.services.admin_service import AdminService
 
 from app.services.question_service import QuestionService
-from app.core.deps import require_roles
+from app.core.deps import require_roles, require_admin_section
 from app.config.logger import setup_logger
 
 logger = setup_logger("AdminRouter")
@@ -82,7 +82,7 @@ async def get_admin_overview_stats(
     summary="Get Live Question Catalog Subjects Directory",
 )
 async def get_question_catalog_subjects(
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.question_bank")),
 ):
     """
     Returns live aggregated catalog metrics (questions, pending reviews, subtopics)
@@ -279,7 +279,7 @@ async def get_system_diagnostics(
 async def get_platform_reports(
     time_range: str = Query("30d", description="Time window: 7d, 30d, 90d, 1y"),
     exam_filter: str = Query("ALL", description="Exam filter: ALL, UPSC_CSE, STATE_PSC"),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.analytics")),
 ):
     """
     Returns platform-wide candidate metrics, subject diagnostic performance,
@@ -660,7 +660,7 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
     summary="List All Exams with Pipeline Status & Question Metrics",
 )
 async def list_exam_pipeline_statuses(
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload", "admin.review", "admin.question_bank")),
 ):
     """
     Returns list of all exams with detailed 3-stage pipeline status, extracted question metrics,
@@ -853,7 +853,7 @@ async def _compute_stuck_pipelines(session: AsyncSession) -> list:
     summary="List Interrupted / Stuck Pipelines Requiring Admin Action",
 )
 async def list_stuck_pipelines(
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload")),
 ):
     """
     Returns any pipelines that were interrupted (e.g. server restart/reload, worker failure, or stopped mid-way)
@@ -883,7 +883,7 @@ async def resume_interrupted_pipeline(
     exam_id: str,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload")),
 ):
     """
     Resumes an interrupted pipeline for an exam in the background, immediately returning HTTP 200 in <10ms.
@@ -993,7 +993,7 @@ async def resume_interrupted_pipeline(
 async def dismiss_stuck_pipeline(
     exam_id: str,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload")),
 ):
     """Dismisses the interrupted status prompt for an exam."""
     from fastapi import HTTPException
@@ -1042,7 +1042,7 @@ async def get_exam_review_questions_admin(
     target_question_number: Optional[int] = Query(default=None, description="Jump to question number"),
     target_question_id: Optional[Union[str, int]] = Query(default=None, description="Jump to question ID"),
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.review", "admin.reported_questions", "admin.question_bank")),
 ):
     """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""
     from app.cache import get_cache, build_cache_key
@@ -1089,7 +1089,7 @@ async def get_exam_review_questions_admin(
 async def approve_and_publish_exam(
     exam_id: str,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload", "admin.review")),
 ):
     """
     Requirement 9, 10 & 11: Admin approves the exam paper after human review.
@@ -1261,7 +1261,7 @@ async def sync_exam_s3_artifacts(
         description="Sync target scope: 'MASTERS_ONLY' (both masters), 'QUESTIONS_MASTER', 'SOLUTIONS_MASTER', 'FULL_ALL'",
     ),
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload", "admin.review")),
 ):
     """
     Launches a background task to regenerate and upload consolidated exam_questions.json
@@ -1396,7 +1396,7 @@ async def sync_exam_s3_artifacts(
 async def get_exam_sync_status(
     exam_id: str,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload", "admin.review")),
 ):
     """
     Returns the current S3 sync status, whether a background sync task is currently running,
@@ -1498,7 +1498,7 @@ async def get_exam_sync_status(
 async def admin_create_question(
     payload: QuestionCreatePayload,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.review", "admin.reported_questions")),
 ):
     """
     Admin endpoint to create a new question or fill in a missing question for an exam.
@@ -1517,7 +1517,7 @@ async def admin_update_question(
     question_id: int,
     payload: QuestionUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.review", "admin.reported_questions")),
 ):
     """
     Admin endpoint to update question details.
@@ -1538,7 +1538,7 @@ async def admin_patch_question(
     question_id: int,
     payload: QuestionUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.review", "admin.reported_questions")),
 ):
     """
     Admin endpoint to partially update question details.
@@ -1561,7 +1561,7 @@ async def admin_upload_question_paper(
     stage: Optional[str] = Form(default="prelims"),
     set_code: Optional[str] = Form(default="SET_A"),
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload")),
 ):
     """
     Admin endpoint to upload a Question Paper PDF document for an examination.
@@ -1658,7 +1658,7 @@ async def admin_upload_answer_key(
     year: int = Form(...),
     stage: Optional[str] = Form(default="prelims"),
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload")),
 ):
     """
     Admin endpoint to upload an Answer Key PDF document for a specific examination year and set code.
@@ -1772,7 +1772,7 @@ async def admin_upload_answer_key(
 @router.post("/{exam_id}/approve-all-questions", summary="Approve and Verify All Questions for an Exam")
 async def approve_all_questions(
     exam_id: int,
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.review")),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -1791,7 +1791,7 @@ async def approve_all_questions(
 async def trigger_exam_translation(
     exam_id: int,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload", "admin.review")),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -1834,7 +1834,7 @@ async def trigger_exam_translation(
 @router.post("/exams/reconcile-translations", summary="Trigger Midnight Missing Translations Reconciliation")
 async def trigger_reconcile_translations(
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload")),
 ):
     """
     Manually trigger missing translations audit and reconciliation across all exams.

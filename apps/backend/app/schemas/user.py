@@ -27,6 +27,12 @@ class UserUpdate(BaseModel):
 
 
 class UserRead(UserBase):
+    # Responses must never fail on stored data: Clerk-synced placeholder addresses
+    # (e.g. user_x@clerk.local) use a reserved TLD that EmailStr rejects.
+    email: str
+    phone: Optional[str] = None
+    subscription_ends_at: Optional[datetime] = None
+    subscription_days_remaining: Optional[int] = None
     id: int
     status: UserStatus
     subscription_tier: SubscriptionTier

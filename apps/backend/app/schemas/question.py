@@ -21,9 +21,9 @@ class QuestionOptionPayload(BaseModel):
 
 
 class QuestionHierarchyLinkPayload(BaseModel):
-    subtopic_id: Optional[int | str] = None
-    topic_id: Optional[int | str] = None
-    subject_id: Optional[int | str] = None
+    subtopic_id: Optional[int] = None
+    topic_id: Optional[int] = None
+    subject_id: Optional[int] = None
     subject_name: Optional[str] = None
     topic_name: Optional[str] = None
     subtopic_name: Optional[str] = None
@@ -81,7 +81,7 @@ class QuestionUpdatePayload(BaseModel):
 
 
 class QuestionCreatePayload(BaseModel):
-    exam_id: int | str
+    exam_id: int
     question_number_in_paper: int
     question_text: str
     paper_set_code: Optional[str] = "SET_A"
@@ -101,10 +101,10 @@ class QuestionCreatePayload(BaseModel):
     subject_name: Optional[str] = None
     topic_name: Optional[str] = None
     subtopic_name: Optional[str] = None
-    subject_id: Optional[int | str] = None
-    topic_id: Optional[int | str] = None
-    subtopic_id: Optional[int | str] = None
-    subtopic_ids: Optional[List[int | str]] = None
+    subject_id: Optional[int] = None
+    topic_id: Optional[int] = None
+    subtopic_id: Optional[int] = None
+    subtopic_ids: Optional[List[int]] = None
     hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None
     blooms_level: Optional[BloomsLevel] = None
     cognitive_skill: Optional[str] = None

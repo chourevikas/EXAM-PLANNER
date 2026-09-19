@@ -4,7 +4,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
 from app.db.models.user import User, UserRole
-from app.core.deps import require_roles, require_roles_or_permission
+from app.core.deps import require_roles, require_roles_or_permission, require_admin_section_or_permission
 from app.schemas.teacher import (
     TeacherPointsSummaryOut,
     TeacherRewardOut,
@@ -18,7 +18,7 @@ teacher_router = APIRouter(prefix="/teacher", tags=["Teacher"])
 admin_teacher_router = APIRouter(prefix="/admin/teachers", tags=["Admin: Teacher Rewards"])
 
 teacher_only = require_roles([UserRole.TEACHER])
-manage_rewards = require_roles_or_permission([UserRole.ADMIN, UserRole.SUPER_ADMIN], "rewards.manage")
+manage_rewards = require_admin_section_or_permission("admin.teacher_rewards", "rewards.manage")
 
 
 @teacher_router.get("/points", response_model=TeacherPointsSummaryOut)

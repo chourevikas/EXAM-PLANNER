@@ -25,6 +25,7 @@ from app.db.models.user import (
     QuestionBookmark,
 )
 from app.db.models.exam_type import ExamType
+from app.db.models.question_report import QuestionReport
 from app.db.models.hierarchy import Exam, SyllabusVersion, Subject, Topic, Subtopic
 from app.db.models.passage import Passage, PassageTranslation
 from app.db.models.question import (

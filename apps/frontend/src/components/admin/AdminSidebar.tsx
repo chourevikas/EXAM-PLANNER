@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import {
-  Menu,
   LayoutDashboard,
   BookOpen,
   Upload,
@@ -10,12 +9,15 @@ import {
   BarChart2,
   Award,
   X,
+  MessageSquareQuote,
+  Flag,
   Globe,
   Sliders,
   Bell,
   Palette,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { canAccessView } from '../../constants/adminAccess';
 
 interface SidebarProps {
   activeView: string;
@@ -23,7 +25,10 @@ interface SidebarProps {
   collapsed: boolean;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
-  onToggleSidebar?: () => void;
+  /** Granted admin sections; null/undefined = unrestricted. */
+  permissions?: string[] | null;
+  /** Number of questions with open student reports (badge on the Reported Questions item). */
+  reportedCount?: number;
 }
 
 export function AdminSidebar({
@@ -32,7 +37,8 @@ export function AdminSidebar({
   collapsed,
   mobileOpen = false,
   onCloseMobile,
-  onToggleSidebar
+  permissions,
+  reportedCount = 0,
 }: SidebarProps) {
   const { isTabletOrBelow: isMobile } = useBreakpoint();
 
@@ -66,6 +72,7 @@ export function AdminSidebar({
     { icon: Sliders, label: 'Exam Types', id: 'exam-types' },
     { icon: ClipboardCheck, label: 'Question & Solution QA', id: 'review' },
     { icon: BookOpen, label: 'Question Bank Catalog', id: 'questions' },
+    { icon: Flag, label: 'Reported Questions', id: 'reported-questions' },
     // Mock Tests section removed from UI while keeping code intact
   ];
 
@@ -74,6 +81,7 @@ export function AdminSidebar({
     { icon: Award, label: 'Teacher Rewards', id: 'teacher-rewards' },
     { icon: Globe, label: 'Current Affairs', id: 'current-affairs' },
     { icon: Bell, label: 'Notifications', id: 'notifications' },
+    { icon: MessageSquareQuote, label: 'Testimonial Approvals', id: 'testimonials' },
     { icon: BarChart2, label: 'Reports & Analytics', id: 'analytics' },
     { icon: Palette, label: 'Theme', id: 'theme' },
   ];
@@ -113,6 +121,12 @@ function prefetchAdminView(viewId: string) {
       break;
     case 'analytics':
       import('./views/AnalyticsView');
+      break;
+    case 'reported-questions':
+      import('./views/ReportedQuestionsView');
+      break;
+    case 'testimonials':
+      import('./views/TestimonialsView');
       break;
     case 'theme':
       import('./views/ThemeSettingsView');
@@ -171,6 +185,24 @@ function prefetchAdminView(viewId: string) {
       >
         <Icon size={17} color={isActive ? 'var(--primary-red)' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
         {(!collapsed || isMobile) && <span>{item.label}</span>}
+        {item.id === 'reported-questions' && reportedCount > 0 && (!collapsed || isMobile) && (
+          <span
+            aria-label={`${reportedCount} open reports`}
+            style={{
+              marginLeft: 'auto',
+              minWidth: 20,
+              padding: '1px 7px',
+              borderRadius: 'var(--radius)',
+              background: 'var(--primary-red)',
+              color: '#fff',
+              fontSize: 11,
+              fontWeight: 700,
+              textAlign: 'center',
+            }}
+          >
+            {reportedCount}
+          </span>
+        )}
       </button>
     );
   };
@@ -199,7 +231,6 @@ function prefetchAdminView(viewId: string) {
           background: 'var(--deep-navy)',
           display: 'flex',
           flexDirection: 'column',
-          height: 'calc(100dvh - 60px)',
           position: 'fixed',
           top: 60,
           left: 0,
@@ -213,82 +244,9 @@ function prefetchAdminView(viewId: string) {
         role="navigation"
         aria-label="Admin Navigation"
       >
-        {/* Section Header with Hamburger Button */}
-        <div
-          style={{
-            padding: (collapsed && !isMobile) ? '14px 0' : '16px 16px 6px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: (collapsed && !isMobile) ? 'center' : 'space-between',
-          }}
-        >
-          {(!collapsed || isMobile) ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {onToggleSidebar && (
-                <button
-                  onClick={onToggleSidebar}
-                  className="touch-target"
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'rgba(255, 255, 255, 0.75)',
-                    cursor: 'pointer',
-                    padding: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 'var(--radius)',
-                    transition: 'color 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
-                  title="Toggle Sidebar Menu"
-                  aria-label="Toggle Sidebar Menu"
-                >
-                  <Menu size={18} />
-                </button>
-              )}
-              <span
-                style={{
-                  fontSize: 11,
-                  textTransform: 'uppercase',
-                  fontWeight: 700,
-                  color: 'rgba(255, 255, 255, 0.45)',
-                  letterSpacing: '0.08em',
-                  fontFamily: 'Inter, sans-serif'
-                }}
-              >
-                CORE PLATFORM
-              </span>
-            </div>
-          ) : (
-            onToggleSidebar && (
-              <button
-                onClick={onToggleSidebar}
-                className="touch-target"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'rgba(255, 255, 255, 0.75)',
-                  cursor: 'pointer',
-                  padding: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 'var(--radius)',
-                  transition: 'color 0.15s ease',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
-                title="Expand Sidebar Menu"
-                aria-label="Expand Sidebar Menu"
-              >
-                <Menu size={18} />
-              </button>
-            )
-          )}
-
-          {isMobile && onCloseMobile && (
+        {/* The top-nav hamburger toggles this sidebar; the drawer only needs a close button. */}
+        {isMobile && onCloseMobile && (
+          <div style={{ padding: '12px 12px 0 12px', display: 'flex', justifyContent: 'flex-end' }}>
             <button
               onClick={onCloseMobile}
               className="touch-target"
@@ -306,12 +264,12 @@ function prefetchAdminView(viewId: string) {
             >
               <X size={18} />
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Navigation Items List */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 10px', flex: 1, overflowY: 'auto' }}>
-          {coreNavItems.map(renderNavItem)}
+          {coreNavItems.filter((i) => canAccessView(permissions, i.id)).map(renderNavItem)}
 
           {(!collapsed || isMobile) && (
             <div
@@ -328,7 +286,7 @@ function prefetchAdminView(viewId: string) {
               MANAGEMENT & ANALYTICS
             </div>
           )}
-          {managementNavItems.map(renderNavItem)}
+          {managementNavItems.filter((i) => canAccessView(permissions, i.id)).map(renderNavItem)}
         </nav>
       </aside>
     </>

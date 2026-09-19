@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import select, desc
 from app.db.session import AsyncSession, get_async_session
-from app.core.deps import get_current_user, require_roles
+from app.core.deps import get_current_user, require_roles, require_admin_section
 from app.db.models.enums import UserRole
 from app.db.models.user import User
 from app.db.models.current_affairs import CurrentAffair
@@ -34,7 +34,7 @@ class CurrentAffairRead(BaseModel):
 async def create_current_affair(
     data: CurrentAffairCreate,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN]))
+    current_user: User = Depends(require_admin_section("admin.current_affairs"))
 ):
     affair = CurrentAffair(
         title=data.title,
@@ -74,7 +74,7 @@ async def update_current_affair(
     id: int,
     data: CurrentAffairCreate,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN]))
+    current_user: User = Depends(require_admin_section("admin.current_affairs"))
 ):
     affair = await session.get(CurrentAffair, id)
     if not affair:
@@ -99,7 +99,7 @@ async def update_current_affair(
 async def delete_current_affair(
     id: int,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN]))
+    current_user: User = Depends(require_admin_section("admin.current_affairs"))
 ):
     affair = await session.get(CurrentAffair, id)
     if not affair:
