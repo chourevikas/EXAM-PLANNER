@@ -170,7 +170,7 @@ const filterSelectStyle: React.CSSProperties = {
 };
 
 export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
-  const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const { isMobile, isSmallScreen, isTabletOrBelow } = useBreakpoint();
 
   // Navigation State: null = Directory View, SubjectItem = Selected Subject
   const [selectedSubject, setSelectedSubject] = useState<SubjectItem | null>(null);
@@ -195,6 +195,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
 
   // Tablet / mobile: whether the questions list panel is expanded
   const [listOpen, setListOpen] = useState<boolean>(true);
+  // Tablet / mobile: whether the filter bar is expanded
+  const [filtersOpen, setFiltersOpen] = useState<boolean>(true);
 
   // Question Filters inside Explore Workspace
   const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
@@ -267,6 +269,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
       setQuestionSearchQuery('');
       setSelectedQuestionIndex(0);
       setListOpen(true);
+      setFiltersOpen(true);
     }
   }, [selectedSubject]);
 
@@ -776,17 +779,20 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: isMobile ? 'flex-start' : 'center',
-                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isSmallScreen ? 'stretch' : 'center',
+                flexDirection: isSmallScreen ? 'column' : 'row',
+                flexWrap: 'wrap',
                 gap: 12,
               }}
             >
               <div
                 style={{
                   display: 'flex',
-                  alignItems: isMobile ? 'flex-start' : 'center',
-                  flexDirection: isMobile ? 'column' : 'row',
-                  gap: isMobile ? 8 : 14,
+                  alignItems: isSmallScreen ? 'flex-start' : 'center',
+                  flexDirection: isSmallScreen ? 'column' : 'row',
+                  gap: isSmallScreen ? 10 : 14,
+                  minWidth: 0,
+                  flex: isSmallScreen ? '0 0 auto' : '1 1 320px',
                 }}
               >
                 <button
@@ -811,11 +817,12 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   <span>Back to Question Bank</span>
                 </button>
 
-                <div>
+                <div style={{ minWidth: 0, width: isSmallScreen ? '100%' : undefined }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <h1
                       style={{
-                        fontSize: isMobile ? 18 : 22,
+                        fontSize: isSmallScreen ? 18 : 22,
+                        overflowWrap: 'anywhere',
                         fontWeight: 700,
                         color: '#172033',
                         margin: 0,
@@ -850,14 +857,14 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  width: isMobile ? '100%' : 'auto',
+                  width: isSmallScreen ? '100%' : 'auto',
                   flexWrap: 'wrap',
                 }}
               >
                 {/* Difficulty Distribution Pill */}
                 <div
                   style={{
-                    flex: isMobile ? 1 : 'none',
+                    flex: isSmallScreen ? 1 : 'none',
                     padding: '6px 10px',
                     backgroundColor: '#FAFAFA',
                     border: '1px solid #E2E8F0',
@@ -880,7 +887,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 {/* Subtopic Coverage Pill */}
                 <div
                   style={{
-                    flex: isMobile ? 1 : 'none',
+                    flex: isSmallScreen ? 1 : 'none',
                     padding: '6px 10px',
                     backgroundColor: '#FAFAFA',
                     border: '1px solid #E2E8F0',
@@ -902,11 +909,52 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
 
           </div>
 
+          {/* Filters toggle (tablet & mobile) */}
+          {isTabletOrBelow && (
+            <button
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                padding: '11px 14px',
+                marginBottom: filtersOpen ? 0 : 14,
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderBottom: filtersOpen ? '1px solid #F1F5F9' : '1px solid #E2E8F0',
+                borderRadius: 0,
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 700,
+                color: '#172033',
+              }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Filter size={15} color="var(--primary-red)" />
+                Filters
+                {hasActiveFilters && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 7px', backgroundColor: 'var(--primary-red)', color: '#FFFFFF' }}>
+                    Active
+                  </span>
+                )}
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#64748B' }}>
+                {filtersOpen ? 'Hide' : 'Show'}
+                {filtersOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+              </span>
+            </button>
+          )}
+
           {/* Filter Bar (top) */}
+          {(!isTabletOrBelow || filtersOpen) && (
           <div
             style={{
               background: '#FFFFFF',
               border: '1px solid #E2E8F0',
+              borderTop: isTabletOrBelow ? 'none' : '1px solid #E2E8F0',
               borderRadius: 0,
               padding: isMobile ? 12 : 16,
               marginBottom: 14,
@@ -1061,6 +1109,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
               </div>
             )}
           </div>
+          )}
 
           {/* Questions list toggle (tablet & mobile) */}
           {isTabletOrBelow && (
