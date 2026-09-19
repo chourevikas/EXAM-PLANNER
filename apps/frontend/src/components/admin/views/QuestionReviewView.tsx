@@ -24,6 +24,8 @@ import {
   Plus,
   CheckCheck,
   Trash2,
+  Menu,
+  X,
 } from 'lucide-react';
 import { Spinner } from '../../../components/common/Spinner';
 import {
@@ -220,6 +222,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   const [loadingQuestions, setLoadingQuestions] = useState<boolean>(false);
   const [questionStatusFilter, setQuestionStatusFilter] = useState<string>('ALL'); // ALL, PENDING, PUBLISHED, REJECTED
   const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
+  const [isNavigatorCollapsed, setIsNavigatorCollapsed] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const pageSize = 10;
@@ -1717,7 +1720,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       </div>
 
       {/* Main Split-Pane Workspace */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '330px 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isNavigatorCollapsed ? '48px 1fr' : '330px 1fr', gap: 20, transition: 'grid-template-columns 0.3s ease' }}>
         {/* LEFT COLUMN: Question Navigator */}
         <div
           style={{
@@ -1732,8 +1735,33 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
           }}
         >
+          {isNavigatorCollapsed ? (
+            <div style={{ padding: '14px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
+              <button
+                onClick={() => setIsNavigatorCollapsed(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: '#64748B' }}
+                title="Expand Navigator"
+              >
+                <Menu size={20} />
+              </button>
+              <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', marginTop: 20, fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: 1 }}>
+                QUESTION NAVIGATOR
+              </div>
+            </div>
+          ) : (
+            <>
           {/* Navigator Header */}
           <div style={{ padding: '14px 16px', borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFAFA' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', margin: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Question Navigator</h3>
+              <button
+                onClick={() => setIsNavigatorCollapsed(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Collapse Navigator"
+              >
+                <X size={16} />
+              </button>
+            </div>
             <div style={{ display: 'flex', gap: 4, backgroundColor: '#F1F5F9', padding: 3, borderRadius: 0 }}>
               {[
                 { id: 'ALL', label: `All (${reviewMetrics.total})` },
@@ -2035,6 +2063,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               </div>
             </div>
           </div>
+          </>
+          )}
         </div>
 
         {/* RIGHT COLUMN: Question Review Canvas */}
