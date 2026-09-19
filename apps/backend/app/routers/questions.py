@@ -8,7 +8,7 @@ from app.db.session import get_async_session
 from app.db.models import QuestionStatus, QuestionSourceType, DifficultyLevel
 from app.db.models.user import User, UserRole
 from app.core.languages import parse_language
-from app.core.deps import require_roles
+from app.core.deps import require_roles, require_admin_section, get_optional_user, can_see_unpublished, require_question_visible
 from app.schemas.question import (
     QuestionUpdatePayload,
     QuestionCreatePayload,
@@ -45,13 +45,19 @@ async def list_questions(
     page: int = Query(default=1, ge=1, description="Page number"),
     limit: int = Query(default=20, ge=1, le=100, description="Items per page"),
     session: AsyncSession = Depends(get_async_session),
+    viewer: Optional[User] = Depends(get_optional_user),
 ):
     """
+    Students and anonymous visitors are only ever served PUBLISHED questions; staff can filter by any status.
+
     Requirement 3: Endpoint to get all questions with multi-filtering based on subjects, topics, subtopics,
     exam type, exam year, exam set, stage, and exam name (case-insensitive substring match e.g. 'upsc'),
     with pagination ordered by question number in paper.
     By default, solution explanations are omitted (include_solutions=False) to protect test-taking integrity.
     """
+    if not can_see_unpublished(viewer):
+        status = QuestionStatus.PUBLISHED
+
     lang_code = parse_language(language)
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
@@ -229,6 +235,7 @@ async def get_syllabus_taxonomy(
 async def create_question(
     payload: QuestionCreatePayload,
     session: AsyncSession = Depends(get_async_session),
+    _admin: User = Depends(require_admin_section("admin.review", "admin.reported_questions")),
 ):
     """
     Creates a new question (or fills in a missing question) for an exam paper.
@@ -237,8 +244,8 @@ async def create_question(
     from app.cache import invalidate_question_cache, invalidate_exam_cache
     service = QuestionService(session)
     res = await service.create_question(payload=payload)
-    if res and res.id:
-        await invalidate_question_cache(str(res.id), str(payload.exam_id) if payload.exam_id else None)
+    if res and res.question_id:
+        await invalidate_question_cache(str(res.question_id), str(payload.exam_id) if payload.exam_id else None)
     if payload.exam_id:
         await invalidate_exam_cache(str(payload.exam_id))
     return res
@@ -308,7 +315,7 @@ async def list_recommended_questions(
     return JSONResponse(content=res)
 
 
-@router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID")
+@router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID", dependencies=[Depends(require_question_visible)])
 async def get_question(
     question_id: int | str,
     language: str = Query(default="en", description="Target Language"),
@@ -349,6 +356,7 @@ async def update_question(
     question_id: int | str,
     payload: QuestionUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
+    _admin: User = Depends(require_admin_section("admin.review", "admin.reported_questions")),
 ):
     """
     Requirement 8: Updates question text, options, translations, passage, explanation, metadata in DB
@@ -371,6 +379,7 @@ async def patch_question(
     question_id: int | str,
     payload: QuestionUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
+    _admin: User = Depends(require_admin_section("admin.review", "admin.reported_questions")),
 ):
     """
     Partially updates question text, options, translations, explanation, or metadata in DB
@@ -392,7 +401,7 @@ async def patch_question(
 async def delete_question(
     question_id: int | str,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.review", "admin.reported_questions")),
 ):
     """Deletes a question entity by ID. Admin/Super Admin only — permanently removes the question."""
     try:
@@ -407,7 +416,7 @@ async def delete_question(
     return None
 
 
-@router.get("/{question_id}/formatted/yaml", response_class=PlainTextResponse, summary="Export Question to YAML")
+@router.get("/{question_id}/formatted/yaml", response_class=PlainTextResponse, summary="Export Question to YAML", dependencies=[Depends(require_question_visible)])
 async def get_question_yaml_file(
     question_id: int | str, session: AsyncSession = Depends(get_async_session)
 ):
@@ -419,7 +428,7 @@ async def get_question_yaml_file(
     return await service.get_question_yaml_file(qid_int)
 
 
-@router.get("/{question_id}/formatted/markdown", response_class=PlainTextResponse, summary="Export Question to Markdown")
+@router.get("/{question_id}/formatted/markdown", response_class=PlainTextResponse, summary="Export Question to Markdown", dependencies=[Depends(require_question_visible)])
 async def get_question_markdown_file(
     question_id: int | str, session: AsyncSession = Depends(get_async_session)
 ):
@@ -431,7 +440,7 @@ async def get_question_markdown_file(
     return await service.get_question_markdown_file(qid_int)
 
 
-@router.get("/{question_id}/solution", summary="Get Full Solution & Distractor Analysis for a Question")
+@router.get("/{question_id}/solution", summary="Get Full Solution & Distractor Analysis for a Question", dependencies=[Depends(require_question_visible)])
 async def get_question_solution(
     question_id: int | str,
     language: str = Query(default="en", description="Target Language"),

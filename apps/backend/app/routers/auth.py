@@ -409,6 +409,16 @@ async def _build_user_out_response(
             if sync_data and background_tasks:
                 background_tasks.add_task(_sync_student_profile_bg, sync_data)
     
+    sub_info = {}
+    if current_user.role == UserRole.STUDENT:
+        from app.services.user_service import get_subscription_info
+        sub_info = await get_subscription_info(session, current_user.id)
+
+    admin_permissions = None
+    if current_user.role == UserRole.ADMIN:
+        from app.core.deps import effective_admin_permissions
+        admin_permissions = await effective_admin_permissions(session, current_user)
+
     return UserOut(
         id=current_user.id,
         full_name=current_user.full_name,
@@ -417,6 +427,10 @@ async def _build_user_out_response(
         status=current_user.status,
         subscription_tier=current_user.subscription_tier,
         profile_image=current_user.profile_image,
+        phone=current_user.phone,
+        subscription_ends_at=sub_info.get("subscription_ends_at"),
+        subscription_days_remaining=sub_info.get("subscription_days_remaining"),
+        admin_permissions=admin_permissions,
         preferred_language=getattr(current_user, "preferred_language", "en") or "en",
         free_questions_attempted=stats.get("free_questions_attempted", 0),
         total_questions_attempted=stats.get("total_questions_attempted", 0),
@@ -457,6 +471,8 @@ async def update_current_user(
             db_user.email = user_update.email
     if user_update.profile_image is not None:
         db_user.profile_image = user_update.profile_image
+    if user_update.phone is not None:
+        db_user.phone = user_update.phone.strip()[:32] or None
     if user_update.preferred_language is not None:
         from app.core.languages import normalize_language, is_supported_language
         if not is_supported_language(user_update.preferred_language):

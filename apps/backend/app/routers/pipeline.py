@@ -30,7 +30,7 @@ from app.config.filename_parser import (
     parse_question_paper_filename,
     parse_answer_key_filename,
 )
-from app.core.deps import require_roles
+from app.core.deps import require_roles, require_admin_section
 from app.db.models.user import User, UserRole
 from app.config.logger import setup_logger
 
@@ -88,7 +88,7 @@ class CheckDuplicateExamRequest(BaseModel):
 async def check_duplicate_exam(
     req: CheckDuplicateExamRequest,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload", "admin.review")),
 ):
     """Checks if an exam paper matching all 5 keys (case-insensitive) already exists in DB."""
     parsed_meta = {}
@@ -160,7 +160,7 @@ async def upload_question_paper(
     set_code: Optional[str] = Form(default="SET_A"),
     conflict_resolution: str = Form(default="CHECK"),
     db: AsyncSession = Depends(get_async_session),
-    _: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    _: User = Depends(require_admin_section("admin.upload", "admin.review")),
 ):
     """
     Uploads a Question Paper PDF and initiates Pipeline 1 (Question Extraction).
@@ -397,7 +397,7 @@ async def upload_question_paper(
 async def get_exam_questions_extraction_status(
     exam_identifier: str,
     db: AsyncSession = Depends(get_async_session),
-    _: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    _: User = Depends(require_admin_section("admin.upload", "admin.review")),
 ):
     """
     Fetches real-time status of extracted questions, missing questions, and review statuses
@@ -520,7 +520,7 @@ async def get_exam_questions_extraction_status(
 async def get_exam_pipeline_status(
     exam_identifier: str,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload", "admin.review")),
 ):
     """Fetches real-time status of all 3 pipelines using either canonical_exam_code or exam_id UUID."""
     exam_id_int = None
@@ -553,7 +553,7 @@ async def get_exam_pipeline_status(
 async def stop_pipeline_task(
     exam_id: str,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload", "admin.review")),
 ):
     """Stops/cancels any running background pipeline task for the given exam_id."""
     target_exam_id = parse_required_exam_id(exam_id)
@@ -597,7 +597,7 @@ async def stop_pipeline_task(
 async def restart_pipeline_task(
     exam_id: str,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload", "admin.review")),
 ):
     """Stops any existing task and restarts Document Extraction from scratch."""
     target_exam_id = parse_required_exam_id(exam_id)
@@ -649,7 +649,7 @@ async def restart_pipeline_task(
 async def retry_pipeline_task(
     exam_id: str,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.upload", "admin.review")),
 ):
     """Retries a stopped or failed document extraction task for the given exam_id."""
     target_exam_id = parse_required_exam_id(exam_id)

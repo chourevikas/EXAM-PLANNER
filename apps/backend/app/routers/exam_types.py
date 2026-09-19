@@ -4,7 +4,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
 from app.db.models.user import User, UserRole
-from app.core.deps import require_roles
+from app.core.deps import require_roles, require_admin_section
 from app.schemas.exam_type import (
     ExamTypeCreate,
     ExamTypeUpdate,
@@ -15,7 +15,7 @@ from app.cache import get_cache
 
 router = APIRouter(tags=["Exam Types"])
 
-admin_or_super = require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])
+admin_or_super = require_admin_section("admin.exam_types")
 
 
 # =========================================================================

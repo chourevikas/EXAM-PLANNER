@@ -122,6 +122,17 @@ td {
   border-radius: 0 !important;
 }
 
+/* Cards, panels and inputs that draw a border or shadow inline but never set a radius (so they
+   were square). :where() keeps specificity at zero: any explicit radius — inline (e.g. 50% for
+   avatars) or from a class — still wins. Table parts and app chrome stay square (see below). */
+:where(
+  [style*="border: 1px"]:not(table, thead, tbody, tr, th, td, aside, header, nav, footer),
+  [style*="border: 1.5px"]:not(table, thead, tbody, tr, th, td, aside, header, nav, footer),
+  [style*="box-shadow"]:not(table, thead, tbody, tr, th, td, aside, header, nav, footer)
+) {
+  border-radius: var(--radius);
+}
+
 /* Tables: rows/cells stay square, but the table and its wrapper round and clip so the
    shaded header row follows the rounded corners. */
 table {

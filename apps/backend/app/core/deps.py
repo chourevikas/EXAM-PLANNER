@@ -1,3 +1,4 @@
+from typing import Optional
 import asyncio
 import uuid
 import jwt
@@ -364,6 +365,160 @@ def require_roles_or_permission(allowed_roles: list[UserRole], permission_key: s
                 f"User role '{current_user.role}' is not authorized for this "
                 f"resource and lacks permission '{permission_key}'"
             ),
+        )
+
+    return checker
+
+
+# ── Student-facing question visibility ──────────────────────────────────────
+# Students (and anonymous visitors) are only served PUBLISHED questions. Staff (admins, teachers)
+# still see drafts, pending-review and unpublished questions so they can review and fix them.
+STAFF_ROLES = (UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER)
+
+
+async def get_optional_user(
+    request: Request,
+    token_oauth2: str | None = Depends(reusable_oauth2),
+    token_bearer: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    db_session: AsyncSession | None = Depends(get_async_session),
+) -> Optional[User]:
+    """Like get_current_user but returns None instead of raising when there is no valid login."""
+    try:
+        return await get_current_user(request, token_oauth2, token_bearer, db_session)
+    except HTTPException:
+        return None
+
+
+def can_see_unpublished(user: Optional[User]) -> bool:
+    return user is not None and user.role in STAFF_ROLES
+
+
+async def require_question_visible(
+    question_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    user: Optional[User] = Depends(get_optional_user),
+) -> None:
+    """Route dependency for /questions/{question_id}/...: 404 unless the question is published (staff exempt)."""
+    if can_see_unpublished(user):
+        return
+    from app.db.models.question import Question
+    from app.db.models.enums import QuestionStatus
+
+    not_found = HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+    try:
+        qid = int(question_id)
+    except (TypeError, ValueError):
+        raise not_found
+    current = (await session.exec(select(Question.status).where(Question.id == qid))).first()
+    if current != QuestionStatus.PUBLISHED:
+        raise not_found
+
+
+async def require_exam_question_visible(
+    exam_id: str,
+    question_number: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: Optional[User] = Depends(get_optional_user),
+) -> None:
+    """Route dependency for /exams/{exam_id}/...-{artifact|db}/{question_number}."""
+    if can_see_unpublished(user):
+        return
+    from app.db.models.question import Question
+    from app.db.models.enums import QuestionStatus
+
+    not_found = HTTPException(status_code=404, detail="Question not found.")
+    try:
+        eid = int(exam_id)
+    except (TypeError, ValueError):
+        raise not_found
+    current = (
+        await session.exec(
+            select(Question.status).where(Question.exam_id == eid, Question.question_number_in_paper == question_number)
+        )
+    ).first()
+    if current != QuestionStatus.PUBLISHED:
+        raise not_found
+
+
+# ── Admin section permissions ────────────────────────────────────────────────
+# Each admin-panel section has one permission key. SUPER_ADMIN always passes. An ADMIN with no
+# custom role is unrestricted (existing admins keep full access); an ADMIN with a custom role is
+# limited to the permissions that role was granted.
+ADMIN_SECTION_PERMISSIONS = {
+    "admin.upload": "Upload & Exam Pipeline",
+    "admin.exam_types": "Exam Types",
+    "admin.review": "Question & Solution QA",
+    "admin.question_bank": "Question Bank Catalog",
+    "admin.reported_questions": "Reported Questions",
+    "admin.users": "Users",
+    "admin.teacher_rewards": "Teacher Rewards",
+    "admin.current_affairs": "Current Affairs",
+    "admin.notifications": "Notifications",
+    "admin.testimonials": "Testimonial Approvals",
+    "admin.analytics": "Reports & Analytics",
+    "admin.theme": "Theme",
+}
+
+
+async def admin_section_access(
+    session: AsyncSession, current_user: User, section_key: str
+) -> bool:
+    if current_user.role == UserRole.SUPER_ADMIN:
+        return True
+    if current_user.role != UserRole.ADMIN:
+        return False
+    if current_user.custom_role_id is None:
+        return True
+    return await _user_has_permission(session, current_user, section_key)
+
+
+async def effective_admin_permissions(
+    session: AsyncSession, current_user: User
+) -> Optional[list[str]]:
+    """None = unrestricted; otherwise the admin section keys this user may use."""
+    if current_user.role != UserRole.ADMIN or current_user.custom_role_id is None:
+        return None
+    return [
+        key
+        for key in ADMIN_SECTION_PERMISSIONS
+        if await _user_has_permission(session, current_user, key)
+    ]
+
+
+def require_admin_section(*section_keys: str):
+    """Allow if the user may use ANY of the given admin sections (some endpoints serve two screens)."""
+
+    async def checker(
+        current_user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_async_session),
+    ) -> User:
+        for key in section_keys:
+            if await admin_section_access(session, current_user, key):
+                return current_user
+        names = ", ".join(ADMIN_SECTION_PERMISSIONS.get(k, k) for k in section_keys)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"You do not have access to this section ({names}).",
+        )
+
+    return checker
+
+
+def require_admin_section_or_permission(section_key: str, permission_key: str):
+    """Admins go through their section grant; other roles (e.g. teachers) use a fine-grained permission."""
+
+    async def checker(
+        current_user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_async_session),
+    ) -> User:
+        if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+            if await admin_section_access(session, current_user, section_key):
+                return current_user
+        elif await _user_has_permission(session, current_user, permission_key):
+            return current_user
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this resource.",
         )
 
     return checker

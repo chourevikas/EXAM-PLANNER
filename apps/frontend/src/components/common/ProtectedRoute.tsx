@@ -34,11 +34,11 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     }
 
     const handleAuthExpired = () => {
-      setToken(null);
-      setUserJson(null);
-      if (signOut) {
+      if (token && signOut) {
         signOut().catch((e: unknown) => console.warn('Clerk auto-signout error:', e));
       }
+      setToken(null);
+      setUserJson(null);
     };
 
     const handleAuthSuccess = () => {

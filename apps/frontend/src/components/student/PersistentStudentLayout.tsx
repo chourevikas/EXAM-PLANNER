@@ -40,6 +40,67 @@ function StudentContentFallback() {
   );
 }
 
+// Renewal reminder: shown when a paid subscription has 7 days or fewer left (or has just lapsed).
+function SubscriptionExpiryNotice({ user }: { user: any }) {
+  const days = user?.subscription_days_remaining;
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem('sub_notice_dismissed') === String(days);
+    } catch {
+      return false;
+    }
+  });
+
+  if (days === null || days === undefined || days > 7 || dismissed) return null;
+
+  const expired = days <= 0;
+  const message = expired
+    ? 'Your Premium subscription has ended. Renew to keep unlimited practice and analytics.'
+    : `Your Premium subscription ends in ${days} day${days === 1 ? '' : 's'}. Renew to avoid losing access.`;
+
+  return (
+    <div
+      role="status"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '10px 14px',
+        marginBottom: 16,
+        borderRadius: 'var(--radius)',
+        backgroundColor: expired ? '#fef2f2' : '#fffbeb',
+        border: `1px solid ${expired ? '#fecaca' : '#fde68a'}`,
+        color: expired ? '#b91c1c' : '#92400e',
+        fontSize: 13,
+        fontWeight: 600,
+      }}
+    >
+      <span>{message}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <a href="/pricing" style={{ color: 'inherit', textDecoration: 'underline', fontWeight: 700 }}>
+          Renew
+        </a>
+        <button
+          type="button"
+          aria-label="Dismiss"
+          onClick={() => {
+            try {
+              sessionStorage.setItem('sub_notice_dismissed', String(days));
+            } catch {
+              /* storage unavailable — dismiss for this render only */
+            }
+            setDismissed(true);
+          }}
+          style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
+        >
+          ×
+        </button>
+      </span>
+    </div>
+  );
+}
+
 export function PersistentStudentLayout() {
   const [user, setUser] = useState(() => {
     try {
@@ -130,6 +191,7 @@ export function PersistentStudentLayout() {
           {/* Main Content Area: Only swaps the child route */}
           <div className={contentAreaClass}>
             <main className="student-content-main">
+              <SubscriptionExpiryNotice user={user} />
               <React.Suspense fallback={<StudentContentFallback />}>
                 <Outlet />
               </React.Suspense>

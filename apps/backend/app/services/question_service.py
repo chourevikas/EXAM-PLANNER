@@ -185,6 +185,7 @@ class QuestionService:
             exclude_ids=exclude_ids,
             skip=0,
             limit=limit,
+            status=QuestionStatus.PUBLISHED,
         )
 
         # Fallback 1: Relax subtopic filter if 0 questions found
@@ -196,6 +197,7 @@ class QuestionService:
                 exclude_ids=exclude_ids,
                 skip=0,
                 limit=limit,
+                status=QuestionStatus.PUBLISHED,
             )
 
         # Fallback 2: Relax topic filter if 0 questions found (fetches questions from same subject)
@@ -206,6 +208,7 @@ class QuestionService:
                 exclude_ids=exclude_ids,
                 skip=0,
                 limit=limit,
+                status=QuestionStatus.PUBLISHED,
             )
 
         # Only relax exam filter if the user did NOT specify an explicit exam_name filter
@@ -215,6 +218,7 @@ class QuestionService:
                 exclude_ids=exclude_ids,
                 skip=0,
                 limit=limit,
+                status=QuestionStatus.PUBLISHED,
             )
 
         items = await self._build_light_recommendation_cards(questions, target_lang=language)
@@ -1017,12 +1021,26 @@ class QuestionService:
         self.session.add(new_qm)
 
         # Hierarchy
-        if payload.subtopic_id or payload.subtopic_ids or payload.hierarchy_links:
+        hierarchy_links = payload.hierarchy_links
+        if (
+            not (payload.subtopic_id or payload.subtopic_ids or hierarchy_links)
+            and (payload.subject_name or payload.topic_name or payload.subtopic_name)
+        ):
+            # Name-only mapping (e.g. the admin "Add Missing Question" form): resolve by name.
+            hierarchy_links = [
+                QuestionHierarchyLinkPayload(
+                    subject_name=payload.subject_name,
+                    topic_name=payload.topic_name,
+                    subtopic_name=payload.subtopic_name,
+                    is_primary=True,
+                )
+            ]
+        if payload.subtopic_id or payload.subtopic_ids or hierarchy_links:
             await self._save_hierarchy_links(
                 question_id=q.id,
                 subtopic_id=payload.subtopic_id,
                 subtopic_ids=payload.subtopic_ids,
-                hierarchy_links=payload.hierarchy_links,
+                hierarchy_links=hierarchy_links,
             )
 
         await self.session.commit()

@@ -3714,6 +3714,7 @@ export function StudentPracticeExamPage() {
 
         {/* Center Reading Canvas */}
         <ExamQuestionCard
+          reportable
           question={activeQuestion}
           questionIndex={currentQIndex}
           totalQuestions={totalQuestions}

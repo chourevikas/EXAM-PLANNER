@@ -10,7 +10,7 @@ from app.services.user_service import UserService
 from app.db.models.user import User, UserRole, QuestionBookmark
 from app.db.models.question import Question, QuestionTranslation
 from app.db.models.enums import LanguageCode
-from app.core.deps import get_current_user, require_roles
+from app.core.deps import get_current_user, require_roles, require_admin_section
 from app.cache import get_cache, build_cache_key, invalidate_user_cache
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -150,7 +150,7 @@ async def list_users(
     skip: int = 0,
     limit: int = 100,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.users")),
 ):
     cache = get_cache()
     cache_key = build_cache_key(
@@ -204,11 +204,36 @@ async def get_user(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
+    # A user may read their own record; anyone else needs Users access in the admin panel.
+    if str(current_user.id) != str(user_id):
+        from app.core.deps import admin_section_access
+        if not await admin_section_access(session, current_user, "admin.users"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to view this user.")
+
     cache = get_cache()
     cache_key = build_cache_key("users:detail", str(user_id))
+    # JSONResponse bypasses response_model, so secrets must be stripped by hand.
+    def _public(data: dict) -> dict:
+        return {k: v for k, v in data.items() if k != "password_hash"}
+
+    async def _with_subscription(data: dict) -> dict:
+        # Not cached: remaining days change daily.
+        from app.services.user_service import get_subscription_info
+        out = _public(data)
+        if data.get("id") is not None:
+            uid = int(data["id"])
+            out.update(await get_subscription_info(session, uid))
+            # The tier lives on StudentProfile, so it is absent from the raw user row.
+            from app.db.models.user import StudentProfile
+            prof = (
+                await session.exec(select(StudentProfile).where(StudentProfile.user_id == uid))
+            ).first()
+            out["subscription_tier"] = prof.subscription_tier.value if prof else "FREE"
+        return out
+
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
-        return JSONResponse(content=cached_data)
+        return JSONResponse(content=await _with_subscription(cached_data))
 
     from fastapi.encoders import jsonable_encoder
     user_service = UserService(session)
@@ -216,7 +241,7 @@ async def get_user(
     if user is not None:
         serialized = jsonable_encoder(user)
         await cache.set(cache_key, serialized, ttl_seconds=1800)
-        return JSONResponse(content=serialized)
+        return JSONResponse(content=await _with_subscription(serialized))
     return user
 
 
@@ -225,7 +250,7 @@ async def update_user(
     user_id: int | str,
     user_in: UserUpdate,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.users")),
 ):
     user_service = UserService(session)
     user = await user_service.update_user(user_id, user_in, current_user=current_user)

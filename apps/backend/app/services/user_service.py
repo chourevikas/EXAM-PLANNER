@@ -10,6 +10,31 @@ from app.core.security import get_password_hash
 from app.core.exceptions import UserAlreadyExistsException, BaseAppException
 
 
+async def get_subscription_info(session: AsyncSession, user_id: int) -> dict:
+    """Remaining time on the user's active paid subscription (display only)."""
+    from datetime import datetime, timezone
+    from app.db.models.subscription import UserSubscription, SubscriptionStatus
+
+    sub = (
+        await session.exec(
+            select(UserSubscription)
+            .where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.status == SubscriptionStatus.ACTIVE,
+            )
+            .order_by(UserSubscription.current_period_end.desc())
+        )
+    ).first()
+    if not sub:
+        return {"subscription_ends_at": None, "subscription_days_remaining": None}
+    end = sub.current_period_end
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    seconds = (end - datetime.now(timezone.utc)).total_seconds()
+    days = max(0, -(-int(seconds) // 86400)) if seconds > 0 else 0
+    return {"subscription_ends_at": end.isoformat(), "subscription_days_remaining": days}
+
+
 class UserService:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -77,7 +102,9 @@ class UserService:
         return new_user
 
     async def update_user(self, user_id: int | str, user_in: UserUpdate, current_user: Optional[User] = None) -> User:
-        user = await self.get_user_by_id(user_id)
+        # Must be a live, session-attached row: the cached copy returned by get_user_by_id is a
+        # detached User(**dict) with string timestamps, and session.add() on it emits an INSERT.
+        user = await self.user_repo.get_by_id(user_id)
         if not user:
             raise BaseAppException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
@@ -142,7 +169,7 @@ class UserService:
         return user
 
     async def delete_user(self, user_id: int | str) -> None:
-        user = await self.get_user_by_id(user_id)
+        user = await self.user_repo.get_by_id(user_id)
         if not user:
             raise BaseAppException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"

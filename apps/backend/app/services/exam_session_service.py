@@ -147,7 +147,7 @@ class ExamSessionService:
 
         q_stmt = (
             select(Question.id, Question.question_number_in_paper, Question.expected_time_seconds)
-            .where(Question.exam_id == exam.id, Question.status != QuestionStatus.REJECTED)
+            .where(Question.exam_id == exam.id, Question.status == QuestionStatus.PUBLISHED)
             .order_by(col(Question.question_number_in_paper))
         )
         q_res = await self.session.exec(q_stmt)

@@ -4,7 +4,6 @@ export const EXAM_OPTIONS = [
 
 export const PAPER_TYPE_OPTIONS = [
   { value: 'previous_year_question', label: 'Previous Year Question (PYQ)' },
-  { value: 'mock_test', label: 'Mock Test' },
 ] as const;
 
 const CURRENT_YEAR = new Date().getFullYear();

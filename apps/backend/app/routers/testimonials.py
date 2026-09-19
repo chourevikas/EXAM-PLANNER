@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_async_session
 from app.db.models.user import User, UserRole
 from app.db.models.testimonial import Testimonial, TestimonialStatus
-from app.core.deps import get_current_user, require_roles
+from app.core.deps import get_current_user, require_roles, require_admin_section
 
 router = APIRouter(prefix="/testimonials", tags=["Testimonials"])
 
@@ -138,7 +138,7 @@ async def submit_testimonial(
 @router.get("/admin/all", response_model=List[TestimonialOut])
 async def list_all_testimonials_for_admin(
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.testimonials")),
 ):
     from app.cache import get_cache
     from fastapi.encoders import jsonable_encoder
@@ -171,7 +171,7 @@ async def list_all_testimonials_for_admin(
 async def approve_testimonial(
     testimonial_id: int | str,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.testimonials")),
 ):
     try:
         tid = int(testimonial_id)
@@ -199,7 +199,7 @@ async def reject_testimonial(
     testimonial_id: int | str,
     payload: TestimonialRejectPayload,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.testimonials")),
 ):
     try:
         tid = int(testimonial_id)
@@ -226,7 +226,7 @@ async def reject_testimonial(
 async def delete_testimonial(
     testimonial_id: int | str,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
+    current_user: User = Depends(require_admin_section("admin.testimonials")),
 ):
     try:
         tid = int(testimonial_id)

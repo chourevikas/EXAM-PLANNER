@@ -3,20 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useClerk } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import {
-  Search,
   Bell,
   ChevronRight,
-  Upload,
   LogOut,
   CheckCheck,
   Activity,
   Cpu,
   ClipboardCheck,
-  CreditCard,
-  BarChart2,
-  BookOpen,
-  X,
-  Sliders,
   Menu,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -36,6 +29,8 @@ const breadcrumbMap: Record<string, string> = {
   'ai-queue': 'AI Processing Queue',
   review: 'Question Review',
   'mock-tests': 'Mock Tests',
+  testimonials: 'Testimonial Approvals',
+  'reported-questions': 'Reported Questions',
   resources: 'Learning Resources',
   users: 'Users Management',
   'teacher-rewards': 'Teacher Rewards',
@@ -90,10 +85,8 @@ const DEFAULT_ADMIN_NOTIFICATIONS: AdminNotificationItem[] = [
 export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: TopNavProps) {
   const navigate = useNavigate();
   const clerk = useClerk();
-  const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
   const [removingNotifIds, setRemovingNotifIds] = useState<Set<string>>(new Set());
@@ -250,16 +243,6 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
     }, 380);
   };
 
-  const quickSearchOptions = [
-    { label: 'Upload Question Paper', id: 'upload', icon: Upload },
-    { label: 'Exam Types Blueprint', id: 'exam-types', icon: Sliders },
-    { label: 'Question Bank Manager', id: 'questions', icon: BookOpen },
-    { label: 'AI Processing Queue', id: 'ai-queue', icon: Cpu },
-    { label: 'Question Review', id: 'review', icon: ClipboardCheck },
-    { label: 'Platform Analytics', id: 'analytics', icon: BarChart2 },
-    { label: 'Subscriptions Management', id: 'subscriptions', icon: CreditCard },
-  ].filter(opt => opt.label.toLowerCase().includes(searchQuery.toLowerCase()));
-
   return (
     <header
       ref={headerRef}
@@ -351,227 +334,8 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         )}
       </div>
 
-      {/* Center: Search Bar */}
-      {!isSmallScreen && (
-        <div
-          style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: 'var(--radius)',
-            padding: '5px 10px',
-            width: isMobile ? 140 : 250,
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            transition: 'width 0.2s'
-          }}
-        >
-          <Search size={14} color="rgba(255, 255, 255, 0.4)" />
-          <input
-            type="text"
-            placeholder={isMobile ? "Search..." : "Search questions, papers..."}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              outline: 'none',
-              fontSize: 12,
-              color: 'var(--bg-card)',
-              width: '100%'
-            }}
-          />
-          {!isMobile && (
-            <span
-              style={{
-                fontSize: 10,
-                color: 'rgba(255, 255, 255, 0.5)',
-                fontFamily: 'monospace',
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: 'var(--radius)',
-                padding: '1px 4px',
-                fontWeight: 600
-              }}
-            >
-              ⌘K
-            </span>
-          )}
-
-          {searchQuery.trim().length > 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 40,
-                left: 0,
-                width: '100%',
-                minWidth: 250,
-                backgroundColor: '#10213D',
-                borderRadius: 'var(--radius)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-                zIndex: 150,
-                padding: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2
-              }}
-            >
-              {quickSearchOptions.length > 0 ? (
-                quickSearchOptions.map(opt => {
-                  const OptIcon = opt.icon;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        onNavigate(opt.id);
-                        setSearchQuery('');
-                      }}
-                      className="touch-target"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '7px 10px',
-                        borderRadius: 'var(--radius)',
-                        border: 'none',
-                        background: 'transparent',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        textAlign: 'left'
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(59, 110, 168, 0.2)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                    >
-                      <OptIcon size={14} color="#3B6EA8" />
-                      <span>{opt.label}</span>
-                    </button>
-                  );
-                })
-              ) : (
-                <div style={{ padding: '8px', fontSize: 12, color: 'rgba(255, 255, 255, 0.4)', textAlign: 'center' }}>
-                  No matching views found
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Right: Search (mobile), Notifications & User Profile */}
+      {/* Right: Notifications & User Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, position: 'relative' }}>
-        {/* Mobile Search Icon */}
-        {isSmallScreen && (
-          <button
-            type="button"
-            onClick={() => setShowMobileSearch(true)}
-            className="touch-target center-content"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 'var(--radius)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: 'var(--bg-card)',
-            }}
-            aria-label="Open search"
-          >
-            <Search size={16} />
-          </button>
-        )}
-
-        {/* Mobile Search Modal */}
-        {isSmallScreen && showMobileSearch && (
-          <div
-            className="auth-modal-overlay"
-            onClick={() => setShowMobileSearch(false)}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div
-              className="auth-modal-card"
-              style={{ maxWidth: 440, padding: 16 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <Search size={16} color="var(--text-muted)" />
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Search admin views, questions..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid #E2E8F0',
-                    fontSize: 14,
-                    outline: 'none',
-                    backgroundColor: 'var(--bg-subtle)',
-                    minHeight: 40,
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowMobileSearch(false)}
-                  className="touch-target center-content"
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    padding: 6,
-                  }}
-                  aria-label="Close search"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 280, overflowY: 'auto' }}>
-                {quickSearchOptions.map(opt => {
-                  const OptIcon = opt.icon;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        onNavigate(opt.id);
-                        setSearchQuery('');
-                        setShowMobileSearch(false);
-                      }}
-                      className="touch-target"
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: 'var(--radius)',
-                        border: 'none',
-                        backgroundColor: 'var(--bg-subtle)',
-                        color: 'var(--deep-navy)',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        textAlign: 'left',
-                        minHeight: 44,
-                      }}
-                    >
-                      <OptIcon size={16} color="var(--accent-primary)" />
-                      <span>{opt.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => {

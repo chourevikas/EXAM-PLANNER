@@ -48,6 +48,11 @@ class UserOut(BaseModel):
     status: UserStatus
     subscription_tier: SubscriptionTier
     profile_image: Optional[str] = None
+    phone: Optional[str] = None
+    subscription_ends_at: Optional[datetime] = None
+    subscription_days_remaining: Optional[int] = None
+    # Admin panel sections this admin may use; None means unrestricted.
+    admin_permissions: Optional[list[str]] = None
     preferred_language: str = "en"
     free_questions_attempted: Optional[int] = 0
     total_questions_attempted: Optional[int] = 0

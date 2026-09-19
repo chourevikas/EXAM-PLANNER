@@ -466,146 +466,8 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
   return (
     <div>
       <div style={sectionStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <label style={{ ...labelStyle, marginBottom: 0 }}>Question Text</label>
-          <button
-            type="button"
-            onClick={() => setShowPassage((v) => !v)}
-            style={{ fontSize: 11.5, fontWeight: 600, color: showPassage ? '#DC2626' : 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            {showPassage ? '− Remove reading passage' : '+ Add reading passage'}
-          </button>
-        </div>
-        {showPassage && (
-          <textarea
-            rows={5}
-            value={passageText}
-            onChange={(e) => setPassageText(e.target.value)}
-            placeholder="Reading passage / reference context (if applicable)..."
-            style={{ ...textareaStyle, marginBottom: 10, backgroundColor: '#F8FAFC' }}
-          />
-        )}
-        <textarea
-          rows={8}
-          value={questionText}
-          onChange={(e) => setQuestionText(e.target.value)}
-          placeholder="Enter the full question statement..."
-          style={{ ...textareaStyle, minHeight: 160 }}
-        />
-      </div>
-
-      <div style={sectionStyle}>
-        <div style={sectionTitleStyle}>Options</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {options.map((opt, idx) => (
-            <div
-              key={opt.option_label || idx}
-              style={{
-                padding: 14,
-                backgroundColor: opt.is_correct ? '#F0FDF4' : 'var(--bg-card)',
-                border: opt.is_correct ? '1.5px solid #16A34A' : '1px solid #E2E8F0',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    backgroundColor: opt.is_correct ? 'var(--status-success)' : 'var(--text-secondary)',
-                    color: 'var(--bg-card)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: 13,
-                    flexShrink: 0,
-                  }}
-                >
-                  {opt.option_label}
-                </div>
-                <textarea
-                  rows={2}
-                  value={opt.option_text}
-                  onChange={(e) => setOption(idx, { option_text: e.target.value })}
-                  placeholder={`Option ${opt.option_label} text...`}
-                  style={{ ...textareaStyle, minHeight: 56, flex: 1, minWidth: 180, borderColor: opt.is_correct ? '#86EFAC' : '#CBD5E1' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setOptions((prev) => prev.map((o, i) => ({ ...o, is_correct: i === idx })))}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: opt.is_correct ? '#15803D' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    padding: '6px 12px',
-                    backgroundColor: opt.is_correct ? 'var(--status-success-bg)' : 'var(--bg-hover)',
-                    border: `1px solid ${opt.is_correct ? '#86EFAC' : 'var(--border-color)'}`,
-                    flexShrink: 0,
-                  }}
-                >
-                  {opt.is_correct ? '✓ Correct Answer' : 'Mark as Correct'}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={sectionStyle}>
-        <div style={sectionTitleStyle}>Detailed Solution</div>
-        <textarea
-          rows={12}
-          value={detailedSolution}
-          onChange={(e) => setDetailedSolution(e.target.value)}
-          placeholder="Step-by-step comprehensive solution..."
-          style={{ ...textareaStyle, minHeight: 220 }}
-        />
-      </div>
-
-      <div style={sectionStyle}>
-        <div style={sectionTitleStyle}>Reverse Logic Box</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-          Write the reasoning for every option in one place — why the correct answer holds, and why each
-          distractor is tempting but wrong. This is shown to students as a single combined explanation.
-        </div>
-        <textarea
-          rows={16}
-          value={reverseLogic}
-          onChange={(e) => setReverseLogic(e.target.value)}
-          placeholder={'Option A — ...\n\nOption B — ...\n\nOption C — ...\n\nOption D — ...'}
-          style={{ ...textareaStyle, minHeight: 300 }}
-        />
-      </div>
-
-      <div style={sectionStyle}>
-        <div style={sectionTitleStyle}>Common Traps</div>
-        <TextChipList
-          items={commonTraps}
-          onAdd={(v) => setCommonTraps((prev) => [...prev, v])}
-          onRemove={(idx) => setCommonTraps((prev) => prev.filter((_, i) => i !== idx))}
-          placeholder="Add a common trap or memory tip... (Enter to add)"
-          color={{ bg: 'var(--status-warning-bg)', border: '#FDE68A', text: 'var(--status-warning)' }}
-        />
-      </div>
-
-      <div style={sectionStyle}>
-        <div style={sectionTitleStyle}>Key Takeaways</div>
-        <TextChipList
-          items={keyTakeaways}
-          onAdd={(v) => setKeyTakeaways((prev) => [...prev, v])}
-          onRemove={(idx) => setKeyTakeaways((prev) => prev.filter((_, i) => i !== idx))}
-          placeholder="Add a key takeaway... (Enter to add)"
-          color={{ bg: '#DBEAFE', border: 'var(--accent-border)', text: '#1D4ED8' }}
-        />
-      </div>
-
-      <div style={sectionStyle}>
         <div style={sectionTitleStyle}>Classification</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 12 }}>
           <div>
             <label style={labelStyle}>Subject</label>
             <input type="text" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} style={inputStyle} />
@@ -619,7 +481,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
             <input type="text" value={subtopicName} onChange={(e) => setSubtopicName(e.target.value)} style={inputStyle} />
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12 }}>
           <div>
             <label style={labelStyle}>Difficulty</label>
             <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} style={{ ...inputStyle, backgroundColor: 'var(--bg-card)' }}>
@@ -758,6 +620,145 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
           </div>
         )}
       </div>
+
+      <div style={sectionStyle}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <label style={{ ...labelStyle, marginBottom: 0 }}>Question Text</label>
+          <button
+            type="button"
+            onClick={() => setShowPassage((v) => !v)}
+            style={{ fontSize: 11.5, fontWeight: 600, color: showPassage ? '#DC2626' : 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            {showPassage ? '− Remove reading passage' : '+ Add reading passage'}
+          </button>
+        </div>
+        {showPassage && (
+          <textarea
+            rows={5}
+            value={passageText}
+            onChange={(e) => setPassageText(e.target.value)}
+            placeholder="Reading passage / reference context (if applicable)..."
+            style={{ ...textareaStyle, marginBottom: 10, backgroundColor: '#F8FAFC' }}
+          />
+        )}
+        <textarea
+          rows={8}
+          value={questionText}
+          onChange={(e) => setQuestionText(e.target.value)}
+          placeholder="Enter the full question statement..."
+          style={{ ...textareaStyle, minHeight: 160 }}
+        />
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Options</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {options.map((opt, idx) => (
+            <div
+              key={opt.option_label || idx}
+              style={{
+                padding: 14,
+                backgroundColor: opt.is_correct ? '#F0FDF4' : 'var(--bg-card)',
+                border: opt.is_correct ? '1.5px solid #16A34A' : '1px solid #E2E8F0',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    backgroundColor: opt.is_correct ? 'var(--status-success)' : 'var(--text-secondary)',
+                    color: 'var(--bg-card)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    flexShrink: 0,
+                  }}
+                >
+                  {opt.option_label}
+                </div>
+                <textarea
+                  rows={2}
+                  value={opt.option_text}
+                  onChange={(e) => setOption(idx, { option_text: e.target.value })}
+                  placeholder={`Option ${opt.option_label} text...`}
+                  style={{ ...textareaStyle, minHeight: 56, flex: 1, minWidth: 180, borderColor: opt.is_correct ? '#86EFAC' : '#CBD5E1' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setOptions((prev) => prev.map((o, i) => ({ ...o, is_correct: i === idx })))}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: opt.is_correct ? '#15803D' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: '6px 12px',
+                    backgroundColor: opt.is_correct ? 'var(--status-success-bg)' : 'var(--bg-hover)',
+                    border: `1px solid ${opt.is_correct ? '#86EFAC' : 'var(--border-color)'}`,
+                    flexShrink: 0,
+                  }}
+                >
+                  {opt.is_correct ? '✓ Correct Answer' : 'Mark as Correct'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Detailed Solution</div>
+        <textarea
+          rows={12}
+          value={detailedSolution}
+          onChange={(e) => setDetailedSolution(e.target.value)}
+          placeholder="Step-by-step comprehensive solution..."
+          style={{ ...textareaStyle, minHeight: 220 }}
+        />
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Reverse Logic Box</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+          Write the reasoning for every option in one place — why the correct answer holds, and why each
+          distractor is tempting but wrong. This is shown to students as a single combined explanation.
+        </div>
+        <textarea
+          rows={16}
+          value={reverseLogic}
+          onChange={(e) => setReverseLogic(e.target.value)}
+          placeholder={'Option A — ...\n\nOption B — ...\n\nOption C — ...\n\nOption D — ...'}
+          style={{ ...textareaStyle, minHeight: 300 }}
+        />
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Common Traps</div>
+        <TextChipList
+          items={commonTraps}
+          onAdd={(v) => setCommonTraps((prev) => [...prev, v])}
+          onRemove={(idx) => setCommonTraps((prev) => prev.filter((_, i) => i !== idx))}
+          placeholder="Add a common trap or memory tip... (Enter to add)"
+          color={{ bg: 'var(--status-warning-bg)', border: '#FDE68A', text: 'var(--status-warning)' }}
+        />
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Key Takeaways</div>
+        <TextChipList
+          items={keyTakeaways}
+          onAdd={(v) => setKeyTakeaways((prev) => [...prev, v])}
+          onRemove={(idx) => setKeyTakeaways((prev) => prev.filter((_, i) => i !== idx))}
+          placeholder="Add a key takeaway... (Enter to add)"
+          color={{ bg: '#DBEAFE', border: 'var(--accent-border)', text: '#1D4ED8' }}
+        />
+      </div>
+
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         <button

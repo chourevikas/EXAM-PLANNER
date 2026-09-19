@@ -10,6 +10,7 @@ import {
   Calendar,
   Clock,
   Globe,
+  Phone,
   Edit3,
   CheckCircle,
   ShieldAlert,
@@ -87,12 +88,17 @@ export function CandidateDetailView({
     setFeedbackMsg(null);
 
     try {
-      const updated = await updateUserDetails(candidate.id, {
-        full_name: editFullName.trim() || undefined,
-        email: editEmail.trim() || undefined,
+      // Only send fields that changed: re-sending an unchanged placeholder email
+      // (e.g. user_x@clerk.local) would fail email validation on the server.
+      const nextName = editFullName.trim();
+      const nextEmail = editEmail.trim();
+      const payload: Parameters<typeof updateUserDetails>[1] = {
         status: editStatus,
         subscription_tier: editTier,
-      });
+      };
+      if (nextName && nextName !== candidate.full_name) payload.full_name = nextName;
+      if (nextEmail && nextEmail !== candidate.email) payload.email = nextEmail;
+      const updated = await updateUserDetails(candidate.id, payload);
 
       onUpdateCandidate(updated);
       setFeedbackMsg({ type: 'success', text: 'Candidate details updated successfully.' });
@@ -141,6 +147,17 @@ export function CandidateDetailView({
       setRefreshing(false);
     }
   };
+
+  // Remaining subscription time, shown as days with an approximate month count.
+  const formatRemaining = (days?: number | null) => {
+    if (days === null || days === undefined) return null;
+    if (days <= 0) return 'Expired';
+    if (days < 60) return `${days} day${days === 1 ? '' : 's'} left`;
+    return `${days} days left (~${Math.round(days / 30)} months)`;
+  };
+  const remainingDays = candidate.subscription_days_remaining;
+  const remainingLabel = formatRemaining(remainingDays);
+  const remainingIsLow = remainingDays !== null && remainingDays !== undefined && remainingDays <= 7;
 
   const formatDate = (iso?: string | null) => {
     if (!iso) return 'N/A';
@@ -389,6 +406,11 @@ export function CandidateDetailView({
                 <span style={{ fontFamily: 'var(--font-mono)' }}>{candidate.email}</span>
               </div>
 
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
+                <Phone size={14} color="var(--primary-red)" />
+                <span style={{ fontFamily: 'var(--font-mono)' }}>{candidate.phone || 'Mobile number not provided'}</span>
+              </div>
+
               {/* Status & Badges */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                 <span
@@ -457,7 +479,7 @@ export function CandidateDetailView({
           Learning Metrics & Engagement
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 16 }}>
           {/* Current Streak */}
           <div
             style={{
@@ -675,6 +697,32 @@ export function CandidateDetailView({
                 : 'Standard candidate tier with daily free questions limit and essential performance tracking.'}
             </div>
           </div>
+
+          {remainingLabel && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: '10px 14px',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                flexWrap: 'wrap',
+                backgroundColor: remainingIsLow ? '#fef2f2' : '#f0fdf4',
+                border: `1px solid ${remainingIsLow ? '#fecaca' : '#bbf7d0'}`,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Clock size={13} />
+                Subscription time remaining
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: remainingIsLow ? '#dc2626' : '#15803d' }}>
+                {remainingLabel}
+                {candidate.subscription_ends_at && remainingDays ? ` · ends ${formatDate(candidate.subscription_ends_at)}` : ''}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Account System Details Card */}
@@ -747,6 +795,16 @@ export function CandidateDetailView({
               </div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)' }}>
                 {candidate.preferred_language === 'hi' ? 'Hindi (hi)' : 'English (en)'}
+              </div>
+            </div>
+
+            <div style={{ padding: 12, borderRadius: 8, backgroundColor: 'var(--bg-subtle)', border: '1px solid #e2e8f0', gridColumn: '1 / -1' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                <Phone size={12} />
+                <span>Mobile No.</span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)', fontFamily: 'var(--font-mono)' }}>
+                {candidate.phone || 'Not provided'}
               </div>
             </div>
           </div>
