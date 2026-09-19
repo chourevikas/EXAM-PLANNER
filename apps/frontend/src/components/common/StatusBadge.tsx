@@ -93,7 +93,7 @@ export function StatusBadge({
       break;
 
     case 'revision':
-      bg = '#DCFCE7';
+      bg = 'var(--status-success-bg)';
       color = '#15803D';
       border = '1px solid #BBF7D0';
       icon = <RefreshCw size={size === 'sm' ? 12 : size === 'lg' ? 16 : 14} color="#15803D" />;

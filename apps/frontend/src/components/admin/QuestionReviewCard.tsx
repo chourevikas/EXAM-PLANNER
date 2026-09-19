@@ -107,12 +107,12 @@ const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: 11.5,
   fontWeight: 700,
-  color: '#475569',
+  color: 'var(--text-secondary)',
   marginBottom: 4,
 };
 
 const sectionStyle: React.CSSProperties = {
-  backgroundColor: '#FFFFFF',
+  backgroundColor: 'var(--bg-card)',
   border: '1px solid #E2E8F0',
   padding: '16px 18px',
   marginBottom: 16,
@@ -121,7 +121,7 @@ const sectionStyle: React.CSSProperties = {
 const sectionTitleStyle: React.CSSProperties = {
   fontSize: 13.5,
   fontWeight: 700,
-  color: '#172033',
+  color: 'var(--deep-navy)',
   marginBottom: 12,
 };
 
@@ -213,7 +213,7 @@ function TextChipList({
         <button
           type="button"
           onClick={submit}
-          style={{ padding: '8px 14px', fontSize: 12.5, fontWeight: 700, border: 'none', backgroundColor: color.text, color: '#FFFFFF', cursor: 'pointer' }}
+          style={{ padding: '8px 14px', fontSize: 12.5, fontWeight: 700, border: 'none', backgroundColor: color.text, color: 'var(--bg-card)', cursor: 'pointer' }}
         >
           Add
         </button>
@@ -247,7 +247,7 @@ function TextChipList({
           ))}
         </div>
       ) : (
-        <div style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>None added yet.</div>
+        <div style={{ fontSize: 12, color: 'var(--text-disabled)', fontStyle: 'italic' }}>None added yet.</div>
       )}
     </div>
   );
@@ -345,9 +345,9 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
             gap: 10,
             padding: '10px 14px',
             border: '1px solid #E2E8F0',
-            backgroundColor: '#F8FAFC',
+            backgroundColor: 'var(--bg-subtle)',
             fontSize: 12.5,
-            color: '#475569',
+            color: 'var(--text-secondary)',
             marginBottom: 16,
           }}
         >
@@ -368,8 +368,8 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
               fontSize: 12.5,
               fontWeight: 600,
               border: '1px solid #CBD5E1',
-              backgroundColor: '#FFFFFF',
-              color: '#172033',
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--deep-navy)',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -384,8 +384,8 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
         <AdminQuestionPublicationCard question={question} questionNumber={question.question_number_in_paper} style={{ marginBottom: 16 }} />
 
         {(commonTrapsList.length > 0 || keyTakeawaysList.length > 0) && (
-          <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', padding: '14px 18px', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
+          <div style={{ backgroundColor: 'var(--status-warning-bg)', border: '1px solid #FDE68A', padding: '14px 18px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--status-warning)', marginBottom: 8 }}>
               <AlertTriangle size={15} />
               Points to Remember
             </div>
@@ -464,7 +464,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
           <button
             type="button"
             onClick={() => setShowPassage((v) => !v)}
-            style={{ fontSize: 11.5, fontWeight: 600, color: showPassage ? '#DC2626' : '#2563EB', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ fontSize: 11.5, fontWeight: 600, color: showPassage ? '#DC2626' : 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             {showPassage ? '− Remove reading passage' : '+ Add reading passage'}
           </button>
@@ -475,7 +475,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
             value={passageText}
             onChange={(e) => setPassageText(e.target.value)}
             placeholder="Reading passage / reference context (if applicable)..."
-            style={{ ...inputStyle, marginBottom: 10, backgroundColor: '#F8FAFC' }}
+            style={{ ...inputStyle, marginBottom: 10, backgroundColor: 'var(--bg-subtle)' }}
           />
         )}
         <textarea
@@ -495,7 +495,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
               key={opt.option_label || idx}
               style={{
                 padding: 14,
-                backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
+                backgroundColor: opt.is_correct ? '#F0FDF4' : 'var(--bg-card)',
                 border: opt.is_correct ? '1.5px solid #16A34A' : '1px solid #E2E8F0',
               }}
             >
@@ -504,8 +504,8 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
                   style={{
                     width: 28,
                     height: 28,
-                    backgroundColor: opt.is_correct ? '#16A34A' : '#475569',
-                    color: '#FFFFFF',
+                    backgroundColor: opt.is_correct ? 'var(--status-success)' : 'var(--text-secondary)',
+                    color: 'var(--bg-card)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -521,7 +521,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
                   value={opt.option_text}
                   onChange={(e) => setOption(idx, { option_text: e.target.value })}
                   placeholder={`Option ${opt.option_label} text...`}
-                  style={{ ...inputStyle, flex: 1, minWidth: 180, borderColor: opt.is_correct ? '#86EFAC' : '#CBD5E1' }}
+                  style={{ ...inputStyle, flex: 1, minWidth: 180, borderColor: opt.is_correct ? '#86EFAC' : 'var(--border-color)' }}
                 />
                 <button
                   type="button"
@@ -532,11 +532,11 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
                     gap: 6,
                     fontSize: 12,
                     fontWeight: 700,
-                    color: opt.is_correct ? '#15803D' : '#64748B',
+                    color: opt.is_correct ? '#15803D' : 'var(--text-muted)',
                     cursor: 'pointer',
                     padding: '6px 12px',
-                    backgroundColor: opt.is_correct ? '#DCFCE7' : '#F1F5F9',
-                    border: `1px solid ${opt.is_correct ? '#86EFAC' : '#E2E8F0'}`,
+                    backgroundColor: opt.is_correct ? 'var(--status-success-bg)' : 'var(--bg-hover)',
+                    border: `1px solid ${opt.is_correct ? '#86EFAC' : 'var(--border-color)'}`,
                     flexShrink: 0,
                   }}
                 >
@@ -561,7 +561,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
 
       <div style={sectionStyle}>
         <div style={sectionTitleStyle}>Reverse Logic Box</div>
-        <div style={{ fontSize: 12, color: '#64748B', marginBottom: 10 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
           Write the reasoning for every option in one place — why the correct answer holds, and why each
           distractor is tempting but wrong. This is shown to students as a single combined explanation.
         </div>
@@ -581,7 +581,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
           onAdd={(v) => setCommonTraps((prev) => [...prev, v])}
           onRemove={(idx) => setCommonTraps((prev) => prev.filter((_, i) => i !== idx))}
           placeholder="Add a common trap or memory tip... (Enter to add)"
-          color={{ bg: '#FEF3C7', border: '#FDE68A', text: '#B45309' }}
+          color={{ bg: 'var(--status-warning-bg)', border: '#FDE68A', text: 'var(--status-warning)' }}
         />
       </div>
 
@@ -592,7 +592,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
           onAdd={(v) => setKeyTakeaways((prev) => [...prev, v])}
           onRemove={(idx) => setKeyTakeaways((prev) => prev.filter((_, i) => i !== idx))}
           placeholder="Add a key takeaway... (Enter to add)"
-          color={{ bg: '#DBEAFE', border: '#BFDBFE', text: '#1D4ED8' }}
+          color={{ bg: '#DBEAFE', border: 'var(--accent-border)', text: '#1D4ED8' }}
         />
       </div>
 
@@ -615,7 +615,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           <div>
             <label style={labelStyle}>Difficulty</label>
-            <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} style={{ ...inputStyle, backgroundColor: '#FFFFFF' }}>
+            <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} style={{ ...inputStyle, backgroundColor: 'var(--bg-card)' }}>
               <option value="EASY">EASY</option>
               <option value="MEDIUM">MEDIUM</option>
               <option value="HARD">HARD</option>
@@ -645,7 +645,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
             gap: 6,
             fontSize: 12,
             fontWeight: 600,
-            color: '#475569',
+            color: 'var(--text-secondary)',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
@@ -662,7 +662,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
             {hierarchyLinks.map((h, idx) => {
               const pct = h.relevance_percentage ?? 100;
               return (
-                <div key={idx} style={{ border: '1px solid #E2E8F0', padding: 10, backgroundColor: '#F8FAFC' }}>
+                <div key={idx} style={{ border: '1px solid #E2E8F0', padding: 10, backgroundColor: 'var(--bg-subtle)' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 8 }}>
                     <input
                       type="text"
@@ -700,7 +700,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
                     />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#64748B' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
                       <input
                         type="radio"
                         name="primary-concept"
@@ -713,7 +713,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
                       <button
                         type="button"
                         onClick={() => setHierarchyLinks((prev) => prev.filter((_, i) => i !== idx))}
-                        style={{ border: 'none', background: 'none', color: '#EF4444', cursor: 'pointer', padding: 2 }}
+                        style={{ border: 'none', background: 'none', color: 'var(--primary-red)', cursor: 'pointer', padding: 2 }}
                         title="Remove"
                       >
                         <Trash2 size={13} />
@@ -739,8 +739,8 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
                 padding: '5px 10px',
                 fontSize: 11.5,
                 fontWeight: 700,
-                color: '#2563EB',
-                backgroundColor: '#EFF6FF',
+                color: 'var(--accent-primary)',
+                backgroundColor: 'var(--accent-bg)',
                 border: '1px solid #BFDBFE',
                 cursor: 'pointer',
               }}
@@ -757,7 +757,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
           type="button"
           onClick={onCancelEdit}
           disabled={saving}
-          style={{ padding: '9px 16px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          style={{ padding: '9px 16px', border: '1px solid #CBD5E1', backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
         >
           Cancel
         </button>
@@ -765,7 +765,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
           type="button"
           onClick={() => onSave(buildPayload(false), false)}
           disabled={saving}
-          style={{ padding: '9px 16px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#172033', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          style={{ padding: '9px 16px', border: '1px solid #CBD5E1', backgroundColor: 'var(--bg-card)', color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
         >
           Save Draft
         </button>
@@ -776,8 +776,8 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
           style={{
             padding: '9px 18px',
             border: 'none',
-            backgroundColor: '#16A34A',
-            color: '#FFFFFF',
+            backgroundColor: 'var(--status-success)',
+            color: 'var(--bg-card)',
             fontSize: 13,
             fontWeight: 600,
             cursor: 'pointer',

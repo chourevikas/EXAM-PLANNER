@@ -9,7 +9,7 @@ export function StudentMetricCardSkeleton({ showProgress = false }: StudentMetri
   return (
     <div
       style={{
-        background: '#FFFFFF',
+        background: 'var(--bg-card)',
         border: '1px solid #E2E8F0',
         borderRadius: 0,
         position: 'relative',

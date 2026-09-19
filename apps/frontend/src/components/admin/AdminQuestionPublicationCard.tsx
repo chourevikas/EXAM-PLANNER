@@ -196,7 +196,7 @@ export function AdminQuestionPublicationCard({
     <div
       className={className}
       style={{
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'var(--bg-card)',
         fontFamily: "'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', sans-serif",
         color: '#111827',
         fontSize: '14.5px',
@@ -223,7 +223,7 @@ export function AdminQuestionPublicationCard({
           border: '1px solid #FEF08A',
         }}
       >
-        <span style={{ color: '#1E3A8A' }}>Q{qNum}.</span>
+        <span style={{ color: 'var(--accent-primary)' }}>Q{qNum}.</span>
 
         <span style={{ color: '#9A3412' }}>
           [Subject: {subject}]
@@ -246,17 +246,17 @@ export function AdminQuestionPublicationCard({
       {question.passage_text && question.passage_text.trim() && (
         <div
           style={{
-            backgroundColor: '#F8FAFC',
+            backgroundColor: 'var(--bg-subtle)',
             borderLeft: '4px solid #94A3B8',
             padding: '12px 18px',
             marginBottom: '16px',
             fontSize: '14px',
-            color: '#334155',
+            color: 'var(--text-secondary)',
             lineHeight: 1.65,
             fontStyle: 'italic',
           }}
         >
-          <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', marginBottom: '4px', fontStyle: 'normal' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px', fontStyle: 'normal' }}>
             Reference Context / Passage
           </div>
           {question.passage_text}
@@ -268,7 +268,7 @@ export function AdminQuestionPublicationCard({
         style={{
           fontSize: '15.5px',
           fontWeight: 700,
-          color: '#0F172A',
+          color: 'var(--deep-navy)',
           lineHeight: 1.55,
           marginBottom: '14px',
         }}
@@ -296,14 +296,14 @@ export function AdminQuestionPublicationCard({
               alignItems: 'baseline',
               gap: '10px',
               fontSize: '14.5px',
-              color: '#0F172A',
+              color: 'var(--deep-navy)',
             }}
           >
             <span
               style={{
                 fontWeight: 700,
                 minWidth: '28px',
-                color: '#0F172A',
+                color: 'var(--deep-navy)',
               }}
             >
               ({formatOptionKey(opt.option_label)})
@@ -333,7 +333,7 @@ export function AdminQuestionPublicationCard({
           style={{
             fontSize: '15px',
             fontWeight: 700,
-            color: '#1E3A8A',
+            color: 'var(--accent-primary)',
             marginBottom: '10px',
           }}
         >
@@ -354,13 +354,13 @@ export function AdminQuestionPublicationCard({
                   color: '#1E293B',
                 }}
               >
-                <span style={{ color: '#0F172A', fontWeight: 700, fontSize: '15px', userSelect: 'none' }}>•</span>
+                <span style={{ color: 'var(--deep-navy)', fontWeight: 700, fontSize: '15px', userSelect: 'none' }}>•</span>
                 <div style={{ flex: 1 }}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
                       p: ({ node, ...props }) => <span {...props} />,
-                      strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: '#0F172A' }} {...props} />,
+                      strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: 'var(--deep-navy)' }} {...props} />,
                     }}
                   >
                     {bullet}
@@ -370,7 +370,7 @@ export function AdminQuestionPublicationCard({
             ))}
           </div>
         ) : (
-          <div style={{ fontSize: '13.5px', fontStyle: 'italic', color: '#64748B' }}>
+          <div style={{ fontSize: '13.5px', fontStyle: 'italic', color: 'var(--text-muted)' }}>
             No detailed solution recorded yet. Click &apos;Edit Question&apos; to add one.
           </div>
         )}
@@ -389,7 +389,7 @@ export function AdminQuestionPublicationCard({
           style={{
             fontSize: '14.5px',
             fontWeight: 700,
-            color: '#1E3A8A',
+            color: 'var(--accent-primary)',
             marginBottom: '14px',
             display: 'flex',
             alignItems: 'center',
@@ -422,7 +422,7 @@ export function AdminQuestionPublicationCard({
                   color: '#1E293B',
                 }}
               >
-                <span style={{ fontWeight: 700, color: '#0F172A' }}>
+                <span style={{ fontWeight: 700, color: 'var(--deep-navy)' }}>
                   Option ({formatOptionKey(opt.option_label)}):{' '}
                 </span>
 
@@ -436,7 +436,7 @@ export function AdminQuestionPublicationCard({
                           remarkPlugins={[remarkGfm]}
                           components={{
                             p: ({ node, ...props }) => <span {...props} />,
-                            strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: '#0F172A' }} {...props} />,
+                            strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: 'var(--deep-navy)' }} {...props} />,
                           }}
                         >
                           {parsed.whyTempting}
@@ -452,7 +452,7 @@ export function AdminQuestionPublicationCard({
                           remarkPlugins={[remarkGfm]}
                           components={{
                             p: ({ node, ...props }) => <span {...props} />,
-                            strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: '#0F172A' }} {...props} />,
+                            strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: 'var(--deep-navy)' }} {...props} />,
                           }}
                         >
                           {parsed.whatsTrue}
@@ -465,13 +465,13 @@ export function AdminQuestionPublicationCard({
                     remarkPlugins={[remarkGfm]}
                     components={{
                       p: ({ node, ...props }) => <span {...props} />,
-                      strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: '#0F172A' }} {...props} />,
+                      strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: 'var(--deep-navy)' }} {...props} />,
                     }}
                   >
                     {parsed.rawText}
                   </ReactMarkdown>
                 ) : (
-                  <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>
+                  <span style={{ fontStyle: 'italic', color: 'var(--text-disabled)' }}>
                     No distractor analysis specified for this option. Click &apos;Edit Question&apos; to add one.
                   </span>
                 )}

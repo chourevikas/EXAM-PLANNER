@@ -116,13 +116,13 @@ export function QuestionSolutionMarkdownCard({
           marginTop: 20,
           padding: '24px',
           borderRadius: 0,
-          backgroundColor: '#F8FAFC',
+          backgroundColor: 'var(--bg-subtle)',
           border: '1px solid #E2E8F0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 12,
-          color: '#64748B',
+          color: 'var(--text-muted)',
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
       >
@@ -243,7 +243,7 @@ export function QuestionSolutionMarkdownCard({
         marginTop: 20,
         borderRadius: 0,
         border: '1px solid #E2E8F0',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'var(--bg-card)',
         boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.06)',
         overflow: 'visible',
         fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -253,8 +253,8 @@ export function QuestionSolutionMarkdownCard({
       <div
         style={{
           padding: '16px 20px',
-          backgroundColor: isUserCorrect ? '#F0FDF4' : isUserCorrect === false ? '#FEF2F2' : '#F8FAFC',
-          borderBottom: `1px solid ${isUserCorrect ? '#DCFCE7' : isUserCorrect === false ? '#FEE2E2' : '#E2E8F0'}`,
+          backgroundColor: isUserCorrect ? '#F0FDF4' : isUserCorrect === false ? '#FEF2F2' : 'var(--bg-subtle)',
+          borderBottom: `1px solid ${isUserCorrect ? 'var(--status-success-bg)' : isUserCorrect === false ? 'var(--primary-red-bg)' : 'var(--border-color)'}`,
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
@@ -269,11 +269,11 @@ export function QuestionSolutionMarkdownCard({
                 width: 32,
                 height: 32,
                 borderRadius: 0,
-                backgroundColor: '#DCFCE7',
+                backgroundColor: 'var(--status-success-bg)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#16A34A',
+                color: 'var(--status-success)',
               }}
             >
               <CheckCircle2 size={20} />
@@ -284,7 +284,7 @@ export function QuestionSolutionMarkdownCard({
                 width: 32,
                 height: 32,
                 borderRadius: 0,
-                backgroundColor: '#FEE2E2',
+                backgroundColor: 'var(--primary-red-bg)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -316,7 +316,7 @@ export function QuestionSolutionMarkdownCard({
                 style={{
                   fontSize: 16,
                   fontWeight: 700,
-                  color: isUserCorrect ? '#15803D' : isUserCorrect === false ? '#B91C1C' : '#172033',
+                  color: isUserCorrect ? '#15803D' : isUserCorrect === false ? '#B91C1C' : 'var(--deep-navy)',
                 }}
               >
                 Option ({correctLabel}) is Correct
@@ -327,7 +327,7 @@ export function QuestionSolutionMarkdownCard({
                 </span>
               )}
             </div>
-            <span style={{ fontSize: 12, color: '#64748B' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               Comprehensive Solution & Distractor Evaluation
             </span>
           </div>
@@ -359,8 +359,8 @@ export function QuestionSolutionMarkdownCard({
                 borderRadius: 0,
                 fontSize: 11,
                 fontWeight: 600,
-                backgroundColor: '#F1F5F9',
-                color: '#475569',
+                backgroundColor: 'var(--bg-hover)',
+                color: 'var(--text-secondary)',
                 border: '1px solid #E2E8F0',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -386,7 +386,7 @@ export function QuestionSolutionMarkdownCard({
               gap: 6,
               fontSize: 14,
               fontWeight: 700,
-              color: '#172033',
+              color: 'var(--deep-navy)',
               marginBottom: 10,
             }}
           >
@@ -397,7 +397,7 @@ export function QuestionSolutionMarkdownCard({
             style={{
               borderRadius: 0,
               border: '1px solid #F1F5F9',
-              backgroundColor: '#FAFAFA',
+              backgroundColor: 'var(--bg-subtle)',
               overflow: 'hidden',
             }}
           >
@@ -406,7 +406,7 @@ export function QuestionSolutionMarkdownCard({
               style={{
                 fontSize: 14,
                 lineHeight: 1.7,
-                color: '#172033',
+                color: 'var(--deep-navy)',
                 padding: '16px 18px',
               }}
             >
@@ -429,7 +429,7 @@ export function QuestionSolutionMarkdownCard({
                     gap: 6,
                     fontSize: 12,
                     fontWeight: 700,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                     padding: '10px 0 8px',
@@ -438,7 +438,7 @@ export function QuestionSolutionMarkdownCard({
                   <Target size={13} style={{ color: 'var(--primary-red)' }} />
                   Option-by-Option Reasoning
                 </div>
-                <div className="prose prose-slate max-w-none text-slate-800" style={{ fontSize: 13.5, lineHeight: 1.6, color: '#334155' }}>
+                <div className="prose prose-slate max-w-none text-slate-800" style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{reverseLogic}</ReactMarkdown>
                 </div>
               </div>
@@ -456,7 +456,7 @@ export function QuestionSolutionMarkdownCard({
                     gap: 6,
                     fontSize: 12,
                     fontWeight: 700,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                     padding: '10px 0 8px',
@@ -488,27 +488,27 @@ export function QuestionSolutionMarkdownCard({
                           style={{
                             fontSize: 13.5,
                             fontWeight: 700,
-                            color: isOptionCorrect ? '#16A34A' : '#334155',
+                            color: isOptionCorrect ? 'var(--status-success)' : 'var(--text-secondary)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: 6,
                           }}
                         >
                           {isOptionCorrect ? (
-                            <CheckCircle2 size={16} style={{ color: '#16A34A' }} />
+                            <CheckCircle2 size={16} style={{ color: 'var(--status-success)' }} />
                           ) : (
                             <span
                               style={{
                                 width: 20,
                                 height: 20,
                                 borderRadius: 0,
-                                backgroundColor: '#E2E8F0',
+                                backgroundColor: 'var(--border-color)',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 fontSize: 11,
                                 fontWeight: 700,
-                                color: '#475569',
+                                color: 'var(--text-secondary)',
                               }}
                             >
                               {item.label || String.fromCharCode(65 + idx)}
@@ -516,7 +516,7 @@ export function QuestionSolutionMarkdownCard({
                           )}
                           Option ({item.label || String.fromCharCode(65 + idx)})
                           {item.text && (
-                            <span style={{ fontWeight: 500, color: '#475569' }}>
+                            <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>
                               — {item.text}
                             </span>
                           )}
@@ -528,8 +528,8 @@ export function QuestionSolutionMarkdownCard({
                             fontWeight: 700,
                             padding: '2px 8px',
                             borderRadius: 0,
-                            backgroundColor: isOptionCorrect ? '#DCFCE7' : '#F1F5F9',
-                            color: isOptionCorrect ? '#15803D' : '#64748B',
+                            backgroundColor: isOptionCorrect ? 'var(--status-success-bg)' : 'var(--bg-hover)',
+                            color: isOptionCorrect ? '#15803D' : 'var(--text-muted)',
                             flexShrink: 0,
                           }}
                         >
@@ -540,11 +540,11 @@ export function QuestionSolutionMarkdownCard({
                       </div>
 
                       {item.distractor_analysis ? (
-                        <p style={{ margin: 0, fontSize: 13, color: '#334155', lineHeight: 1.5 }}>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                           {item.distractor_analysis}
                         </p>
                       ) : (
-                        <p style={{ margin: 0, fontSize: 13, color: '#64748B', fontStyle: 'italic' }}>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
                           {isOptionCorrect
                             ? item.text ? `✓ "${item.text}" — This is the correct answer.` : '✓ This option is correct.'
                             : item.text ? `✗ "${item.text}" — This option is incorrect.` : '✗ This option is incorrect.'}
@@ -597,13 +597,13 @@ export function QuestionSolutionMarkdownCard({
       <div
         style={{
           padding: '12px 20px',
-          backgroundColor: '#F8FAFC',
+          backgroundColor: 'var(--bg-subtle)',
           borderTop: '1px solid #F1F5F9',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           fontSize: 12,
-          color: '#94A3B8',
+          color: 'var(--text-disabled)',
         }}
       >
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>

@@ -24,7 +24,7 @@ import {
 
 const CONTENT_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   video:   { label: 'Video', icon: Video, color: '#DC2626', bg: '#FEF2F2' },
-  pdf:     { label: 'PDF', icon: FileText, color: '#2563EB', bg: '#EFF6FF' },
+  pdf:     { label: 'PDF', icon: FileText, color: 'var(--accent-primary)', bg: 'var(--accent-bg)' },
   article: { label: 'Article', icon: Globe, color: '#059669', bg: '#ECFDF5' },
   other:   { label: 'Announcement', icon: Package, color: '#7C3AED', bg: '#F5F3FF' },
 };
@@ -210,7 +210,7 @@ function NotificationDetail({ id, onBack }: { id: number; onBack: () => void }) 
           }}>
             <Icon size={13} /> {cfg.label}
           </span>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#F8FAFC', lineHeight: 1.3 }}>{notif.title}</h1>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--bg-subtle)', lineHeight: 1.3 }}>{notif.title}</h1>
           <p style={{ margin: '8px 0 0', fontSize: 13, color: 'rgba(248,250,252,0.55)' }}>
             {notif.createdBy && `By ${notif.createdBy} · `}
             Published {formatDate(notif.publishedAt || notif.createdAt)}

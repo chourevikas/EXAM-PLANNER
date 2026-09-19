@@ -13,7 +13,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   const location = useLocation();
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('access_token'));
   const [userJson, setUserJson] = useState<string | null>(() => localStorage.getItem('user'));
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, signOut } = useAuth();
   const [isCheckingRecovery, setIsCheckingRecovery] = useState<boolean>(() => !localStorage.getItem('access_token') && !isSignedIn);
 
   useEffect(() => {
@@ -35,13 +35,16 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     const handleAuthExpired = () => {
       setToken(null);
       setUserJson(null);
+      if (signOut) {
+        signOut().catch((e: unknown) => console.warn('Clerk auto-signout error:', e));
+      }
     };
 
     window.addEventListener('auth_expired', handleAuthExpired);
     return () => {
       window.removeEventListener('auth_expired', handleAuthExpired);
     };
-  }, [token, isSignedIn]);
+  }, [token, isSignedIn, signOut]);
 
   if (!isLoaded || isCheckingRecovery) return null;
 

@@ -54,7 +54,7 @@ export function RecommendedQuestionCard({
               maxWidth: 640,
               maxHeight: '85vh',
               overflowY: 'auto',
-              background: '#FFFFFF',
+              background: 'var(--bg-card)',
               border: '1px solid #E2E8F0',
               borderRadius: 8,
               padding: 24,
@@ -65,10 +65,10 @@ export function RecommendedQuestionCard({
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ flex: 1, paddingRight: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
-                  <Lightbulb size={16} color="#1E3A8A" />
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#172033' }}>Solution &amp; Explanation</span>
+                  <Lightbulb size={16} color="var(--accent-primary)" />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)' }}>Solution &amp; Explanation</span>
                 </div>
-                <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.45, margin: 0 }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.45, margin: 0 }}>
                   {(() => {
                     const displayQuestionText = getQuestionText(rec, language || 'en');
                     return displayQuestionText
@@ -87,7 +87,7 @@ export function RecommendedQuestionCard({
                   borderRadius: 6,
                   cursor: 'pointer',
                   padding: 6,
-                  color: '#64748B',
+                  color: 'var(--text-muted)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -112,9 +112,9 @@ export function RecommendedQuestionCard({
 
       <div
         style={{
-          backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
+          backgroundColor: isExpanded ? 'var(--bg-card)' : 'var(--bg-subtle)',
           border: '1px solid',
-          borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
+          borderColor: isExpanded ? 'var(--border-color)' : 'var(--border-color)',
           borderRadius: 6,
           transition: 'all 0.15s ease',
           boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
@@ -126,7 +126,7 @@ export function RecommendedQuestionCard({
           style={{ cursor: 'pointer', padding: '10px 12px' }}
           onMouseEnter={(e) => {
             if (!isExpanded) {
-              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.backgroundColor = 'var(--bg-card)';
               e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
             }
           }}
@@ -152,8 +152,8 @@ export function RecommendedQuestionCard({
                 fontWeight: 700,
                 padding: '2px 6px',
                 borderRadius: 3,
-                backgroundColor: '#F1F5F9',
-                color: '#334155',
+                backgroundColor: 'var(--bg-hover)',
+                color: 'var(--text-secondary)',
                 textTransform: 'uppercase',
               }}
             >
@@ -176,7 +176,7 @@ export function RecommendedQuestionCard({
             {(() => {
               const d = (rec.difficulty || 'MEDIUM').toUpperCase();
               const bg = d === 'EASY' ? '#ECFDF5' : d === 'HARD' ? '#FEF2F2' : '#FFFBEB';
-              const text = d === 'EASY' ? '#047857' : d === 'HARD' ? '#B91C1C' : '#B45309';
+              const text = d === 'EASY' ? '#047857' : d === 'HARD' ? '#B91C1C' : 'var(--status-warning)';
               const border = d === 'EASY' ? '#A7F3D0' : d === 'HARD' ? '#FECACA' : '#FDE68A';
               return (
                 <span
@@ -200,8 +200,8 @@ export function RecommendedQuestionCard({
                 fontWeight: 600,
                 padding: '2px 6px',
                 borderRadius: 3,
-                backgroundColor: '#F8FAFC',
-                color: '#64748B',
+                backgroundColor: 'var(--bg-subtle)',
+                color: 'var(--text-muted)',
                 border: '1px solid #E2E8F0',
               }}
             >
@@ -228,7 +228,7 @@ export function RecommendedQuestionCard({
                 marginLeft: 'auto',
                 transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                 transition: '0.2s',
-                color: '#94A3B8',
+                color: 'var(--text-disabled)',
               }}
             />
           </div>
@@ -236,7 +236,7 @@ export function RecommendedQuestionCard({
             style={{
               fontSize: 12,
               fontWeight: 700,
-              color: '#172033',
+              color: 'var(--deep-navy)',
               lineHeight: 1.35,
             }}
           >
@@ -271,7 +271,7 @@ export function RecommendedQuestionCard({
                 const showResult = !!answeredOptId;
 
                 let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
-                let bgStyle = '#FFFFFF';
+                let bgStyle = 'var(--bg-card)';
 
                 if (showResult) {
                   if (isCorrect) {
@@ -301,7 +301,7 @@ export function RecommendedQuestionCard({
                       backgroundColor: bgStyle,
                       borderRadius: 4,
                       fontSize: 11.5,
-                      color: '#334155',
+                      color: 'var(--text-secondary)',
                       cursor: answeredOptId ? 'default' : 'pointer',
                       display: 'flex',
                       alignItems: 'flex-start',
@@ -320,7 +320,7 @@ export function RecommendedQuestionCard({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: isSelected ? '#1E3A8A' : '#FFF',
+                        backgroundColor: isSelected ? 'var(--accent-primary)' : '#FFF',
                       }}
                     >
                       {isSelected && (
@@ -337,7 +337,7 @@ export function RecommendedQuestionCard({
                     <span
                       style={{
                         fontWeight: 800,
-                        color: showResult && isCorrect ? '#047857' : '#475569',
+                        color: showResult && isCorrect ? '#047857' : 'var(--text-secondary)',
                       }}
                     >
                       {opt.option_label}.
@@ -360,8 +360,8 @@ export function RecommendedQuestionCard({
                     padding: '7px 14px',
                     borderRadius: 4,
                     border: '1px solid #CBD5E1',
-                    backgroundColor: '#FFFFFF',
-                    color: '#334155',
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--text-secondary)',
                     fontSize: 11.5,
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -371,7 +371,7 @@ export function RecommendedQuestionCard({
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  <Lightbulb size={13} color="#64748B" />
+                  <Lightbulb size={13} color="var(--text-muted)" />
                   <span>View Explanation</span>
                 </button>
               </div>

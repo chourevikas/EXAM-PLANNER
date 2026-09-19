@@ -353,7 +353,7 @@ export function ProfilePage() {
               gap: 8,
               padding: '12px 20px',
               backgroundColor: 'var(--primary-red)',
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               borderRadius: 0,
               textDecoration: 'none',
               fontSize: 14,
@@ -772,7 +772,7 @@ export function ProfilePage() {
                     padding: '10px 20px',
                     borderRadius: 0,
                     backgroundColor: 'var(--primary-red)',
-                    color: '#ffffff',
+                    color: 'var(--bg-card)',
                     fontSize: 14,
                     fontWeight: 700,
                     textDecoration: 'none',
@@ -963,7 +963,7 @@ export function ProfilePage() {
                   borderRadius: 0,
                   border: 'none',
                   backgroundColor: twoFactor ? '#3A8B53' : 'var(--bg-subtle)',
-                  color: twoFactor ? '#ffffff' : 'var(--text-muted)',
+                  color: twoFactor ? 'var(--bg-card)' : 'var(--text-muted)',
                   fontSize: 12,
                   fontWeight: 700,
                   cursor: 'pointer'
@@ -985,7 +985,7 @@ export function ProfilePage() {
               borderRadius: 0,
               border: 'none',
               backgroundColor: 'var(--primary-red)',
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               fontSize: 14,
               fontWeight: 700,
               cursor: 'pointer',
@@ -1014,7 +1014,7 @@ export function ProfilePage() {
 
   if (isSuperAdmin) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: '#172033', overflowX: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: 'var(--deep-navy)', overflowX: 'hidden' }}>
         <SuperAdminTopNav
           activeTab={'all_users' as any}
           onNavigate={() => navigate('/super-admin')}
@@ -1055,7 +1055,7 @@ export function ProfilePage() {
 
   if (isAdmin) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: 'Inter, sans-serif', color: '#172033', overflowX: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: 'Inter, sans-serif', color: 'var(--deep-navy)', overflowX: 'hidden' }}>
         <AdminTopNav
           user={user}
           activeView="dashboard"

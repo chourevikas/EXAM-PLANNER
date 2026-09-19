@@ -139,7 +139,7 @@ function prefetchAdminView(viewId: string) {
           prefetchAdminView(item.id);
           if (!isActive) {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.color = 'var(--bg-card)';
           }
         }}
         title={collapsed && !isMobile ? item.label : undefined}
@@ -154,7 +154,7 @@ function prefetchAdminView(viewId: string) {
           background: isActive ? 'rgba(var(--primary-red-rgb), 0.15)' : 'transparent',
           border: 'none',
           borderLeft: isActive && (!collapsed || isMobile) ? '3px solid var(--primary-red)' : '3px solid transparent',
-          color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
+          color: isActive ? 'var(--bg-card)' : 'rgba(255, 255, 255, 0.65)',
           cursor: 'pointer',
           fontSize: 13.5,
           fontFamily: 'Inter, sans-serif',
@@ -199,7 +199,7 @@ function prefetchAdminView(viewId: string) {
         style={{
           width: isMobile ? 260 : (collapsed ? 68 : 240),
           minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          background: '#172033',
+          background: 'var(--deep-navy)',
           display: 'flex',
           flexDirection: 'column',
           height: 'calc(100dvh - 60px)',
@@ -243,7 +243,7 @@ function prefetchAdminView(viewId: string) {
                     borderRadius: 0,
                     transition: 'color 0.15s ease',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
                   onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
                   title="Toggle Sidebar Menu"
                   aria-label="Toggle Sidebar Menu"
@@ -281,7 +281,7 @@ function prefetchAdminView(viewId: string) {
                   borderRadius: 0,
                   transition: 'color 0.15s ease',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
                 title="Expand Sidebar Menu"
                 aria-label="Expand Sidebar Menu"

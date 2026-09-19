@@ -111,7 +111,7 @@ export function PricingPage() {
             style={{
               padding: '8px 20px', borderRadius: 0, border: 'none',
               backgroundColor: billingCycle === 'annual' ? 'var(--accent-primary)' : 'transparent',
-              color: billingCycle === 'annual' ? '#ffffff' : 'var(--text-muted)',
+              color: billingCycle === 'annual' ? 'var(--bg-card)' : 'var(--text-muted)',
               fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
               display: 'flex', alignItems: 'center', gap: 8,
               boxShadow: billingCycle === 'annual' ? '0 4px 12px var(--shadow-color-accent)' : 'none'
@@ -216,7 +216,7 @@ export function PricingPage() {
             onClick={() => setShowCheckout(true)}
             style={{
               marginTop: 32, padding: '16px', borderRadius: 0, border: 'none',
-              backgroundColor: 'var(--accent-primary)', color: '#ffffff', fontSize: 15, fontWeight: 700,
+              backgroundColor: 'var(--accent-primary)', color: 'var(--bg-card)', fontSize: 15, fontWeight: 700,
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               boxShadow: '0 6px 20px var(--shadow-color-accent)', transition: 'transform 0.2s'
             }}
@@ -238,7 +238,7 @@ export function PricingPage() {
           <div style={{
             backgroundColor: '#0f1e3c', borderRadius: 0, border: '1px solid rgba(255, 255, 255, 0.12)',
             boxShadow: '0 24px 60px rgba(0,0,0,0.5)', width: '100%', maxWidth: 540, padding: 32,
-            position: 'relative', color: '#ffffff'
+            position: 'relative', color: 'var(--bg-card)'
           }}>
             {/* Close Button */}
             <button
@@ -301,7 +301,7 @@ export function PricingPage() {
                       style={{
                         width: '100%', padding: '10px 12px', borderRadius: 0,
                         border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.06)',
-                        color: '#ffffff', fontSize: 13, outline: 'none', boxSizing: 'border-box'
+                        color: 'var(--bg-card)', fontSize: 13, outline: 'none', boxSizing: 'border-box'
                       }}
                     />
                   </div>
@@ -337,7 +337,7 @@ export function PricingPage() {
                           padding: '10px', borderRadius: 0,
                           border: `1px solid ${paymentMethod === method.id ? '#60a5fa' : 'rgba(255,255,255,0.1)'}`,
                           backgroundColor: paymentMethod === method.id ? 'rgba(var(--primary-red-rgb), 0.2)' : 'rgba(255,255,255,0.04)',
-                          color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                          color: 'var(--bg-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
                         }}
                       >
@@ -362,7 +362,7 @@ export function PricingPage() {
                       style={{
                         width: '100%', padding: '10px 12px', borderRadius: 0,
                         border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.08)',
-                        color: '#ffffff', fontSize: 13, outline: 'none', boxSizing: 'border-box'
+                        color: 'var(--bg-card)', fontSize: 13, outline: 'none', boxSizing: 'border-box'
                       }}
                     />
                   </div>
@@ -374,7 +374,7 @@ export function PricingPage() {
                   disabled={isProcessing}
                   style={{
                     width: '100%', padding: '16px', borderRadius: 0, border: 'none',
-                    backgroundColor: 'var(--primary-red)', color: '#ffffff', fontSize: 15, fontWeight: 700,
+                    backgroundColor: 'var(--primary-red)', color: 'var(--bg-card)', fontSize: 15, fontWeight: 700,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     boxShadow: '0 4px 16px rgba(var(--primary-red-rgb), 0.4)'
                   }}

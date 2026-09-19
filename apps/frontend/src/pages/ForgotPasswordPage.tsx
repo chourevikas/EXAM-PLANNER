@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
       <div style={{
         width: '100%',
         maxWidth: 440,
-        background: '#FFFFFF',
+        background: 'var(--bg-card)',
         border: '1px solid #E2E8F0',
         boxShadow: '0 20px 60px rgba(15, 23, 42, 0.08)',
         padding: '40px 36px',
@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
                 <path d="M10 2L2 7V18H8V13H12V18H18V7L10 2Z" fill="white" />
               </svg>
             </div>
-            <span style={{ fontSize: 18, fontWeight: 800, color: '#172033', letterSpacing: '-0.02em' }}>
+            <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--deep-navy)', letterSpacing: '-0.02em' }}>
               ExamPlanner
             </span>
           </div>
@@ -84,14 +84,14 @@ export default function ForgotPasswordPage() {
                 justifyContent: 'center',
                 margin: '0 auto 16px',
               }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--status-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: '#172033', margin: '0 0 8px' }}>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--deep-navy)', margin: '0 0 8px' }}>
                 Check your email
               </h1>
-              <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
                 If <strong>{email}</strong> is registered with ExamPlanner, you'll receive a password reset link shortly.
               </p>
             </>
@@ -113,10 +113,10 @@ export default function ForgotPasswordPage() {
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
               </div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: '#172033', margin: '0 0 8px' }}>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--deep-navy)', margin: '0 0 8px' }}>
                 Forgot your password?
               </h1>
-              <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
                 Enter your registered email and we'll send you a secure reset link.
               </p>
             </>
@@ -150,16 +150,16 @@ export default function ForgotPasswordPage() {
                   height: 46,
                   padding: '0 14px',
                   border: error ? '2px solid var(--primary-red)' : '1.5px solid #E2E8F0',
-                  background: '#FAFAFA',
+                  background: 'var(--bg-subtle)',
                   fontSize: 14,
-                  color: '#172033',
+                  color: 'var(--deep-navy)',
                   outline: 'none',
                   boxSizing: 'border-box',
                   transition: 'border-color 0.15s ease',
                   fontFamily: 'inherit',
                 }}
                 onFocus={(e) => { if (!error) e.target.style.borderColor = 'var(--primary-red)'; }}
-                onBlur={(e) => { if (!error) e.target.style.borderColor = '#E2E8F0'; }}
+                onBlur={(e) => { if (!error) e.target.style.borderColor = 'var(--border-color)'; }}
               />
             </div>
 
@@ -184,9 +184,9 @@ export default function ForgotPasswordPage() {
                 width: '100%',
                 height: 48,
                 background: loading || !email.trim()
-                  ? '#E2E8F0'
+                  ? 'var(--border-color)'
                   : 'linear-gradient(135deg, var(--primary-red), #C01019)',
-                color: loading || !email.trim() ? '#94A3B8' : '#FFFFFF',
+                color: loading || !email.trim() ? 'var(--text-disabled)' : 'var(--bg-card)',
                 border: 'none',
                 fontSize: 14,
                 fontWeight: 700,
@@ -216,7 +216,7 @@ export default function ForgotPasswordPage() {
 
         {sent && (
           <div style={{ marginTop: 24 }}>
-            <p style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 16 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 16 }}>
               Didn't receive it? Check your spam folder or{' '}
               <button
                 onClick={() => { setSent(false); setEmail(''); }}
@@ -243,7 +243,7 @@ export default function ForgotPasswordPage() {
           borderTop: '1px solid #F1F5F9',
           textAlign: 'center',
           fontSize: 13,
-          color: '#64748B',
+          color: 'var(--text-muted)',
         }}>
           <Link to="/signin" style={{ color: 'var(--primary-red)', fontWeight: 600, textDecoration: 'none' }}>
             ← Back to Sign In

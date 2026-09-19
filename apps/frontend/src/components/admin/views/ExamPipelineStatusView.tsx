@@ -205,8 +205,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             borderRadius: 0,
             fontSize: 11.5,
             fontWeight: 600,
-            backgroundColor: '#FEF3C7',
-            color: '#B45309',
+            backgroundColor: 'var(--status-warning-bg)',
+            color: 'var(--status-warning)',
             border: '1px solid #FDE68A',
           }}
         >
@@ -227,7 +227,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             borderRadius: 0,
             fontSize: 11.5,
             fontWeight: 600,
-            backgroundColor: '#DCFCE7',
+            backgroundColor: 'var(--status-success-bg)',
             color: '#15803D',
             border: '1px solid #BBF7D0',
           }}
@@ -247,8 +247,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             borderRadius: 0,
             fontSize: 11.5,
             fontWeight: 600,
-            backgroundColor: '#FEF3C7',
-            color: '#B45309',
+            backgroundColor: 'var(--status-warning-bg)',
+            color: 'var(--status-warning)',
             border: '1px solid #FDE68A',
           }}
         >
@@ -307,8 +307,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
     }
     if (exam.status.toUpperCase().includes('PUBLISHED') || approvingId === exam.id) {
       return (
-        <span style={{ fontSize: 12, fontWeight: 500, color: '#64748B', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <Loader2 size={13} className="animate-spin" color="#64748B" /> Generating Artifacts...
+        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <Loader2 size={13} className="animate-spin" color="var(--text-muted)" /> Generating Artifacts...
         </span>
       );
     }
@@ -326,7 +326,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             padding: '12px 16px',
             borderRadius: 0,
             backgroundColor: '#3A8B53',
-            color: '#FFFFFF',
+            color: 'var(--bg-card)',
             fontWeight: 500,
             fontSize: 13.5,
             display: 'flex',
@@ -357,7 +357,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
         }}
       >
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.02em' }}>
             Exam Pipeline
           </h1>
           <p style={{ fontSize: 14, color: '#667085', marginTop: 4, margin: '4px 0 0 0' }}>
@@ -376,8 +376,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             fontSize: 13,
             fontWeight: 500,
             borderRadius: 0,
-            background: '#FFFFFF',
-            color: '#172033',
+            background: 'var(--bg-card)',
+            color: 'var(--deep-navy)',
             border: '1px solid #E4E7EC',
             cursor: isLoading ? 'not-allowed' : 'pointer',
           }}
@@ -413,9 +413,9 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
               padding: '8px 12px 8px 36px',
               borderRadius: 0,
               border: '1px solid #E4E7EC',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               fontSize: 13.5,
-              color: '#172033',
+              color: 'var(--deep-navy)',
               outline: 'none',
               height: 40,
               boxSizing: 'border-box',
@@ -432,8 +432,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             border: '1px solid #E4E7EC',
             fontSize: 13,
             fontWeight: 500,
-            color: '#172033',
-            backgroundColor: '#FFFFFF',
+            color: 'var(--deep-navy)',
+            backgroundColor: 'var(--bg-card)',
             outline: 'none',
             height: 40,
             boxSizing: 'border-box',
@@ -454,8 +454,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             border: '1px solid #E4E7EC',
             fontSize: 13,
             fontWeight: 500,
-            color: '#172033',
-            backgroundColor: '#FFFFFF',
+            color: 'var(--deep-navy)',
+            backgroundColor: 'var(--bg-card)',
             outline: 'none',
             height: 40,
             boxSizing: 'border-box',
@@ -470,7 +470,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
       {/* 3. Pipeline Summary Block (Horizontal compact strip) */}
       <div
         style={{
-          background: '#FFFFFF',
+          background: 'var(--bg-card)',
           border: '1px solid #E4E7EC',
           borderRadius: 0,
           padding: '14px 20px',
@@ -482,7 +482,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
         }}
       >
         <div style={{ paddingRight: 16, borderRight: '1px solid #E4E7EC' }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: '#172033', lineHeight: 1.1 }}>{totalExams}</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--deep-navy)', lineHeight: 1.1 }}>{totalExams}</div>
           <div style={{ fontSize: 12, color: '#667085', marginTop: 2, fontWeight: 500 }}>Total Exams</div>
         </div>
 
@@ -492,7 +492,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
         </div>
 
         <div style={{ paddingRight: 16, borderRight: '1px solid #E4E7EC' }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: '#B45309', lineHeight: 1.1 }}>{pendingCount}</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--status-warning)', lineHeight: 1.1 }}>{pendingCount}</div>
           <div style={{ fontSize: 12, color: '#667085', marginTop: 2, fontWeight: 500 }}>Pending Review</div>
         </div>
 
@@ -529,7 +529,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
               fontSize: 12,
               fontWeight: 600,
               color: '#B42318',
-              background: '#FFFFFF',
+              background: 'var(--bg-card)',
               border: '1px solid #FECDCA',
               borderRadius: 0,
               cursor: 'pointer',
@@ -543,7 +543,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
       {/* 4. Main Pipeline Table */}
       <div
         style={{
-          background: '#FFFFFF',
+          background: 'var(--bg-card)',
           border: '1px solid #E4E7EC',
           borderRadius: 0,
           boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
@@ -575,7 +575,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             }}
           >
             <FileSpreadsheet size={32} color="#667085" style={{ marginBottom: 8 }} />
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#172033' }}>No exam papers found</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--deep-navy)' }}>No exam papers found</div>
             <div style={{ fontSize: 13, color: '#667085', marginTop: 4 }}>
               Try adjusting your search query or status filter.
             </div>
@@ -622,7 +622,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F7F7F5')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      <td style={{ padding: '14px 16px', fontWeight: 600, color: '#172033', maxWidth: 260 }}>
+                      <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--deep-navy)', maxWidth: 260 }}>
                         <div>{cleanExamTitle(exam.name)}</div>
                         <div style={{ fontSize: 11, color: '#667085', fontWeight: 400, marginTop: 2 }}>
                           {exam.source_year ? `Year ${exam.source_year}` : ''}
@@ -634,7 +634,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                       </td>
 
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: '#172033', marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--deep-navy)', marginBottom: 4 }}>
                           <span>{pct}%</span>
                         </div>
                         <div style={{ height: 5, background: '#F2F4F7', borderRadius: 0, overflow: 'hidden' }}>
@@ -649,7 +649,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                         </div>
                       </td>
 
-                      <td style={{ padding: '14px 16px', color: '#172033', fontWeight: 500 }}>
+                      <td style={{ padding: '14px 16px', color: 'var(--deep-navy)', fontWeight: 500 }}>
                         {ext} / {total}
                       </td>
 
@@ -672,8 +672,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                             padding: '4px 10px',
                             fontSize: 12.5,
                             fontWeight: 500,
-                            color: '#172033',
-                            background: '#FFFFFF',
+                            color: 'var(--deep-navy)',
+                            background: 'var(--bg-card)',
                             border: '1px solid #E4E7EC',
                             borderRadius: 0,
                             cursor: 'pointer',
@@ -715,7 +715,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
               bottom: 0,
               width: 440,
               maxWidth: '90vw',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.12)',
               zIndex: 200,
               display: 'flex',
@@ -737,7 +737,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#667085', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                   EXAM DETAILS
                 </div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: '4px 0 0 0' }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--deep-navy)', margin: '4px 0 0 0' }}>
                   {cleanExamTitle(selectedExam.name)}
                 </h2>
                 <div style={{ fontSize: 12, color: '#667085', marginTop: 2 }}>
@@ -775,7 +775,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                   EXTRACTION PROGRESS
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, fontWeight: 600, color: '#172033', marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, fontWeight: 600, color: 'var(--deep-navy)', marginBottom: 6 }}>
                   <span>{selectedExam.extracted_questions_count} / {selectedExam.total_questions || 100} questions</span>
                   <span>{Math.min(100, Math.round((selectedExam.extracted_questions_count / (selectedExam.total_questions || 100)) * 100))}%</span>
                 </div>
@@ -801,19 +801,19 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Year</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.source_year}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--deep-navy)', marginTop: 2 }}>{selectedExam.source_year}</div>
                   </div>
                   <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Stage</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.stage}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--deep-navy)', marginTop: 2 }}>{selectedExam.stage}</div>
                   </div>
                   <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Subject Code</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.subject_code}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--deep-navy)', marginTop: 2 }}>{selectedExam.subject_code}</div>
                   </div>
                   <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Year</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.source_year}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--deep-navy)', marginTop: 2 }}>{selectedExam.source_year}</div>
                   </div>
                 </div>
               </div>
@@ -834,7 +834,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   </div>
                   <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Missing Questions</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: selectedExam.is_extracting ? '#2563EB' : (selectedExam.missing_questions_count > 0 ? '#B42318' : '#667085'), marginTop: 2 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: selectedExam.is_extracting ? 'var(--accent-primary)' : (selectedExam.missing_questions_count > 0 ? '#B42318' : '#667085'), marginTop: 2 }}>
                       {selectedExam.is_extracting ? 'In Extraction' : `${selectedExam.missing_questions_count} Missing`}
                     </div>
                   </div>
@@ -882,8 +882,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                         padding: '10px 16px',
                         borderRadius: 0,
                         border: '1px solid #E2E8F0',
-                        backgroundColor: '#F1F5F9',
-                        color: '#94A3B8',
+                        backgroundColor: 'var(--bg-hover)',
+                        color: 'var(--text-disabled)',
                         fontWeight: 600,
                         fontSize: 13.5,
                         display: 'flex',
@@ -913,8 +913,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                           padding: '9px 14px',
                           borderRadius: 0,
                           border: '1px solid #CBD5E1',
-                          backgroundColor: '#FFFFFF',
-                          color: '#172033',
+                          backgroundColor: 'var(--bg-card)',
+                          color: 'var(--deep-navy)',
                           fontWeight: 600,
                           fontSize: 13,
                           display: 'flex',
@@ -938,7 +938,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                           padding: '10px 14px',
                           borderRadius: 0,
                           border: '1px solid #BBF7D0',
-                          backgroundColor: '#DCFCE7',
+                          backgroundColor: 'var(--status-success-bg)',
                           color: '#15803D',
                           fontWeight: 600,
                           fontSize: 13.5,
@@ -958,8 +958,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                           padding: '10px 16px',
                           borderRadius: 0,
                           border: '1px solid #CBD5E1',
-                          backgroundColor: '#94A3B8',
-                          color: '#FFFFFF',
+                          backgroundColor: 'var(--text-disabled)',
+                          color: 'var(--bg-card)',
                           fontWeight: 600,
                           fontSize: 13.5,
                           display: 'flex',
@@ -981,8 +981,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                           padding: '10px 16px',
                           borderRadius: 0,
                           border: 'none',
-                          backgroundColor: selectedExam.extracted_questions_count === 0 ? '#94A3B8' : '#12233F',
-                          color: '#FFFFFF',
+                          backgroundColor: selectedExam.extracted_questions_count === 0 ? 'var(--text-disabled)' : '#12233F',
+                          color: 'var(--bg-card)',
                           fontWeight: 600,
                           fontSize: 13.5,
                           display: 'flex',
@@ -1004,7 +1004,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                         padding: '9px 14px',
                         borderRadius: 0,
                         border: '1px solid #FECACA',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--bg-card)',
                         color: '#DC2626',
                         fontWeight: 600,
                         fontSize: 13,
@@ -1046,7 +1046,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             style={{
               width: '100%',
               maxWidth: 'min(480px, calc(100vw - 24px))',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               borderRadius: 0,
               boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.25)',
               padding: 24,
@@ -1058,7 +1058,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   width: 40,
                   height: 40,
                   borderRadius: 0,
-                  backgroundColor: '#FEE2E2',
+                  backgroundColor: 'var(--primary-red-bg)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1067,16 +1067,16 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                 <AlertCircle size={22} color="#DC2626" />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#172033' }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--deep-navy)' }}>
                   Delete Exam Paper
                 </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: 12.5, color: '#64748B' }}>
+                <p style={{ margin: '2px 0 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
                   This action is permanent and cannot be undone.
                 </p>
               </div>
             </div>
 
-            <p style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.5, margin: '0 0 20px 0' }}>
+            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 20px 0' }}>
               Are you sure you want to delete <strong>{cleanExamTitle(examToDelete.name)}</strong>?
               <span style={{ display: 'block', color: '#DC2626', fontWeight: 600, marginTop: 8 }}>
                 ⚠️ Warning: all {examToDelete.extracted_questions_count} extracted question(s), options, solutions,
@@ -1091,9 +1091,9 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                 disabled={deletingExam}
                 style={{
                   padding: '8px 16px',
-                  backgroundColor: '#F1F5F9',
+                  backgroundColor: 'var(--bg-hover)',
                   border: '1px solid #CBD5E1',
-                  color: '#334155',
+                  color: 'var(--text-secondary)',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -1110,7 +1110,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   padding: '8px 18px',
                   backgroundColor: '#DC2626',
                   border: 'none',
-                  color: '#FFFFFF',
+                  color: 'var(--bg-card)',
                   fontSize: 13,
                   fontWeight: 700,
                   cursor: deletingExam ? 'not-allowed' : 'pointer',

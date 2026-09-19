@@ -7,7 +7,7 @@ export function PerformanceAnalyticsSkeleton() {
       {/* Overview Grid Skeletons */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} style={{ padding: 20, backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0' }}>
+          <div key={i} style={{ padding: 20, backgroundColor: 'var(--bg-card)', border: '1px solid #E2E8F0' }}>
             <SkeletonText lines={1} fontSize={12} width="50%" />
             <SkeletonBox height={32} width="80%" style={{ marginTop: 8 }} />
           </div>
@@ -15,7 +15,7 @@ export function PerformanceAnalyticsSkeleton() {
       </div>
 
       {/* Large Chart Area Skeleton */}
-      <div style={{ padding: 24, backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ padding: 24, backgroundColor: 'var(--bg-card)', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <SkeletonText lines={1} fontSize={18} width="160px" />
@@ -34,11 +34,11 @@ export function PerformanceAnalyticsSkeleton() {
       
       {/* Lower Details Skeleton */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        <div style={{ padding: 24, backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0' }}>
+        <div style={{ padding: 24, backgroundColor: 'var(--bg-card)', border: '1px solid #E2E8F0' }}>
            <SkeletonText lines={1} fontSize={16} width="40%" style={{ marginBottom: 16 }} />
            <SkeletonText lines={5} fontSize={14} gap={12} />
         </div>
-        <div style={{ padding: 24, backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0' }}>
+        <div style={{ padding: 24, backgroundColor: 'var(--bg-card)', border: '1px solid #E2E8F0' }}>
            <SkeletonText lines={1} fontSize={16} width="40%" style={{ marginBottom: 16 }} />
            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
              {Array.from({ length: 4 }).map((_, i) => (

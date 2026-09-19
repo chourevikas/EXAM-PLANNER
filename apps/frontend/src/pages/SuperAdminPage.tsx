@@ -365,7 +365,7 @@ export function SuperAdminPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: '#172033', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: 'var(--deep-navy)', overflowX: 'hidden' }}>
       {/* Full-Width Top Header (fixed at top: 0) */}
       <SuperAdminTopNav
         activeTab={activeTab}
@@ -462,7 +462,7 @@ export function SuperAdminPage() {
                     fontWeight: 600,
                     marginBottom: 24,
                     background: toastMessage.isError ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                    color: toastMessage.isError ? '#ef4444' : '#3A8B53',
+                    color: toastMessage.isError ? 'var(--primary-red)' : '#3A8B53',
                     border: `1px solid ${toastMessage.isError ? 'rgba(var(--primary-red-rgb), 0.35)' : 'rgba(16, 185, 129, 0.35)'}`,
                     display: 'flex',
                     alignItems: 'center',

@@ -172,7 +172,7 @@ export function ExamTypesManager() {
             right: 24,
             zIndex: 99999,
             backgroundColor: toast.type === 'success' ? '#166534' : '#991B1B',
-            color: '#FFFFFF',
+            color: 'var(--bg-card)',
             padding: '12px 20px',
             borderRadius: 0,
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
@@ -220,7 +220,7 @@ export function ExamTypesManager() {
               <Sliders size={20} color="var(--primary-red)" />
             </div>
             <div>
-              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.015em' }}>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--bg-card)', letterSpacing: '-0.015em' }}>
                 Exam Types & Scoring Blueprints
               </h1>
               <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'rgba(255, 255, 255, 0.7)' }}>
@@ -238,7 +238,7 @@ export function ExamTypesManager() {
               borderRadius: 0,
               backgroundColor: 'rgba(255, 255, 255, 0.1)',
               border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
@@ -258,7 +258,7 @@ export function ExamTypesManager() {
               borderRadius: 0,
               backgroundColor: 'var(--primary-red)',
               border: 'none',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
@@ -283,38 +283,38 @@ export function ExamTypesManager() {
           marginBottom: 24,
         }}
       >
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', padding: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid #E2E8F0', padding: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Registered Exam Types
           </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: '#172033', marginTop: 8 }}>
+          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--deep-navy)', marginTop: 8 }}>
             {examTypes.length}
           </div>
-          <div style={{ fontSize: 12, color: '#16A34A', marginTop: 4, fontWeight: 600 }}>
+          <div style={{ fontSize: 12, color: 'var(--status-success)', marginTop: 4, fontWeight: 600 }}>
             {examTypes.filter((e) => e.is_active).length} active in system
           </div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', padding: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid #E2E8F0', padding: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Primary Reference Type
           </div>
           <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary-red)', marginTop: 8 }}>
             UPSC
           </div>
-          <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
             100 Questions • 120 Mins • +2.0 / -0.66
           </div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', padding: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid #E2E8F0', padding: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Linked Exam Papers
           </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: '#172033', marginTop: 8 }}>
+          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--deep-navy)', marginTop: 8 }}>
             {examTypes.reduce((acc, curr) => acc + (curr.exams_count || 0), 0)}
           </div>
-          <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
             Configured with foreign key integrity
           </div>
         </div>
@@ -323,7 +323,7 @@ export function ExamTypesManager() {
       {/* Search & Filter Bar */}
       <div
         style={{
-          background: '#FFFFFF',
+          background: 'var(--bg-card)',
           border: '1px solid #E2E8F0',
           padding: '16px 20px',
           marginBottom: 20,
@@ -332,7 +332,7 @@ export function ExamTypesManager() {
           gap: 12,
         }}
       >
-        <Search size={16} color="#64748B" />
+        <Search size={16} color="var(--text-muted)" />
         <input
           type="text"
           placeholder="Search exam types by code (upsc, mpsc) or name..."
@@ -343,13 +343,13 @@ export function ExamTypesManager() {
             border: 'none',
             outline: 'none',
             fontSize: 13.5,
-            color: '#172033',
+            color: 'var(--deep-navy)',
           }}
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery('')}
-            style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
           >
             <X size={16} />
           </button>
@@ -357,15 +357,15 @@ export function ExamTypesManager() {
       </div>
 
       {/* Exam Types Table */}
-      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
         {loading ? (
           <div style={{ padding: 60, textAlign: 'center' }}>
             <Spinner size={32} label="Loading examination types…" />
           </div>
         ) : filteredExamTypes.length === 0 ? (
-          <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>
-            <Layers size={40} style={{ margin: '0 auto 12px auto', color: '#94A3B8' }} />
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#172033' }}>No Exam Types Found</div>
+          <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
+            <Layers size={40} style={{ margin: '0 auto 12px auto', color: 'var(--text-disabled)' }} />
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--deep-navy)' }}>No Exam Types Found</div>
             <p style={{ fontSize: 13, marginTop: 4 }}>
               Click "Add Exam Type" above to configure a new examination type blueprint.
             </p>
@@ -374,26 +374,26 @@ export function ExamTypesManager() {
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '0.04em' }}>
+              <tr style={{ backgroundColor: 'var(--bg-subtle)', borderBottom: '1px solid #E2E8F0' }}>
+                <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                   TYPE CODE & NAME
                 </th>
-                <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '0.04em' }}>
+                <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                   DURATION
                 </th>
-                <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '0.04em' }}>
+                <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                   QUESTIONS & MARKS
                 </th>
-                <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '0.04em' }}>
+                <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                   SCORING SCHEME
                 </th>
-                <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '0.04em' }}>
+                <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                   LINKED PAPERS
                 </th>
-                <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '0.04em' }}>
+                <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                   STATUS
                 </th>
-                <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textAlign: 'right' }}>
+                <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', textAlign: 'right' }}>
                   ACTIONS
                 </th>
               </tr>
@@ -403,8 +403,8 @@ export function ExamTypesManager() {
                 <tr
                   key={item.id}
                   style={{ borderBottom: '1px solid #E2E8F0', transition: 'background-color 150ms ease-out' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FFFFFF')}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-subtle)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-card)')}
                 >
                   <td style={{ padding: '16px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -412,7 +412,7 @@ export function ExamTypesManager() {
                         style={{
                           padding: '3px 8px',
                           backgroundColor: '#1E293B',
-                          color: '#FFFFFF',
+                          color: 'var(--bg-card)',
                           fontSize: 11.5,
                           fontWeight: 700,
                           fontFamily: 'monospace',
@@ -421,28 +421,28 @@ export function ExamTypesManager() {
                       >
                         {item.type.toUpperCase()}
                       </span>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: '#172033' }}>{item.name}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--deep-navy)' }}>{item.name}</div>
                     </div>
                     {item.description && (
-                      <div style={{ fontSize: 12, color: '#64748B', marginTop: 4, maxWidth: 360 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, maxWidth: 360 }}>
                         {item.description}
                       </div>
                     )}
                   </td>
 
-                  <td style={{ padding: '16px 16px', fontSize: 13, color: '#334155' }}>
+                  <td style={{ padding: '16px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                      <Clock size={14} color="#64748B" />
+                      <Clock size={14} color="var(--text-muted)" />
                       <span>{item.total_duration} minutes</span>
                     </div>
-                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                       ({(item.total_duration / 60).toFixed(1)} hrs)
                     </div>
                   </td>
 
                   <td style={{ padding: '16px 16px', fontSize: 13 }}>
-                    <div style={{ fontWeight: 700, color: '#172033' }}>{item.number_of_questions} Questions</div>
-                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{item.total_marks} Total Marks</div>
+                    <div style={{ fontWeight: 700, color: 'var(--deep-navy)' }}>{item.number_of_questions} Questions</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{item.total_marks} Total Marks</div>
                   </td>
 
                   <td style={{ padding: '16px 16px', fontSize: 13 }}>
@@ -450,7 +450,7 @@ export function ExamTypesManager() {
                       <span
                         style={{
                           padding: '2px 8px',
-                          backgroundColor: '#DCFCE7',
+                          backgroundColor: 'var(--status-success-bg)',
                           color: '#15803D',
                           fontSize: 12,
                           fontWeight: 700,
@@ -462,7 +462,7 @@ export function ExamTypesManager() {
                       <span
                         style={{
                           padding: '2px 8px',
-                          backgroundColor: '#FEE2E2',
+                          backgroundColor: 'var(--primary-red-bg)',
                           color: '#B91C1C',
                           fontSize: 12,
                           fontWeight: 700,
@@ -478,8 +478,8 @@ export function ExamTypesManager() {
                     <span
                       style={{
                         padding: '3px 10px',
-                        backgroundColor: '#F1F5F9',
-                        color: '#334155',
+                        backgroundColor: 'var(--bg-hover)',
+                        color: 'var(--text-secondary)',
                         fontSize: 12,
                         fontWeight: 600,
                         borderRadius: 0,
@@ -498,16 +498,16 @@ export function ExamTypesManager() {
                         padding: '3px 8px',
                         fontSize: 12,
                         fontWeight: 600,
-                        backgroundColor: item.is_active ? '#F0FDF4' : '#F8FAFC',
-                        color: item.is_active ? '#15803D' : '#94A3B8',
-                        border: `1px solid ${item.is_active ? '#DCFCE7' : '#E2E8F0'}`,
+                        backgroundColor: item.is_active ? '#F0FDF4' : 'var(--bg-subtle)',
+                        color: item.is_active ? '#15803D' : 'var(--text-disabled)',
+                        border: `1px solid ${item.is_active ? 'var(--status-success-bg)' : 'var(--border-color)'}`,
                       }}
                     >
                       <span
                         style={{
                           width: 6,
                           height: 6,
-                          backgroundColor: item.is_active ? '#16A34A' : '#94A3B8',
+                          backgroundColor: item.is_active ? 'var(--status-success)' : 'var(--text-disabled)',
                         }}
                       />
                       {item.is_active ? 'Active' : 'Inactive'}
@@ -521,9 +521,9 @@ export function ExamTypesManager() {
                         title="Edit Exam Type Blueprint"
                         style={{
                           padding: '6px 10px',
-                          backgroundColor: '#FFFFFF',
+                          backgroundColor: 'var(--bg-card)',
                           border: '1px solid #CBD5E1',
-                          color: '#172033',
+                          color: 'var(--deep-navy)',
                           fontSize: 12,
                           fontWeight: 600,
                           cursor: 'pointer',
@@ -541,7 +541,7 @@ export function ExamTypesManager() {
                         title="Delete Exam Type"
                         style={{
                           padding: '6px 10px',
-                          backgroundColor: '#FFFFFF',
+                          backgroundColor: 'var(--bg-card)',
                           border: '1px solid #FECACA',
                           color: '#DC2626',
                           fontSize: 12,
@@ -584,7 +584,7 @@ export function ExamTypesManager() {
             style={{
               width: '100%',
               maxWidth: 'min(620px, calc(100vw - 24px))',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               borderRadius: 0,
               boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.25)',
               overflow: 'hidden',
@@ -595,8 +595,8 @@ export function ExamTypesManager() {
           >
             <div
               style={{
-                backgroundColor: '#172033',
-                color: '#FFFFFF',
+                backgroundColor: 'var(--deep-navy)',
+                color: 'var(--bg-card)',
                 padding: '18px 24px',
                 display: 'flex',
                 alignItems: 'center',
@@ -611,7 +611,7 @@ export function ExamTypesManager() {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#FFFFFF', cursor: 'pointer', padding: 4 }}
+                style={{ background: 'none', border: 'none', color: 'var(--bg-card)', cursor: 'pointer', padding: 4 }}
               >
                 <X size={18} />
               </button>
@@ -620,7 +620,7 @@ export function ExamTypesManager() {
             <form onSubmit={handleFormSubmit} style={{ padding: 24 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--deep-navy)', marginBottom: 6 }}>
                     Type Code <span style={{ color: 'var(--primary-red)' }}>*</span>
                   </label>
                   <input
@@ -643,7 +643,7 @@ export function ExamTypesManager() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--deep-navy)', marginBottom: 6 }}>
                     Examination Name <span style={{ color: 'var(--primary-red)' }}>*</span>
                   </label>
                   <input
@@ -667,7 +667,7 @@ export function ExamTypesManager() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Duration (Minutes)
                   </label>
                   <input
@@ -688,7 +688,7 @@ export function ExamTypesManager() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Question Count
                   </label>
                   <input
@@ -709,7 +709,7 @@ export function ExamTypesManager() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Total Marks
                   </label>
                   <input
@@ -780,7 +780,7 @@ export function ExamTypesManager() {
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   Description (Optional)
                 </label>
                 <textarea
@@ -802,7 +802,7 @@ export function ExamTypesManager() {
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#172033' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)' }}>
                   <input
                     type="checkbox"
                     checked={formData.is_active}
@@ -819,9 +819,9 @@ export function ExamTypesManager() {
                   onClick={() => setIsModalOpen(false)}
                   style={{
                     padding: '9px 18px',
-                    backgroundColor: '#F1F5F9',
+                    backgroundColor: 'var(--bg-hover)',
                     border: '1px solid #CBD5E1',
-                    color: '#334155',
+                    color: 'var(--text-secondary)',
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -837,7 +837,7 @@ export function ExamTypesManager() {
                     padding: '9px 22px',
                     backgroundColor: 'var(--primary-red)',
                     border: 'none',
-                    color: '#FFFFFF',
+                    color: 'var(--bg-card)',
                     fontSize: 13,
                     fontWeight: 700,
                     cursor: modalSubmitting ? 'not-allowed' : 'pointer',
@@ -874,7 +874,7 @@ export function ExamTypesManager() {
             style={{
               width: '100%',
               maxWidth: 'min(480px, calc(100vw - 24px))',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               borderRadius: 0,
               boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.25)',
               padding: 24,
@@ -886,7 +886,7 @@ export function ExamTypesManager() {
                   width: 40,
                   height: 40,
                   borderRadius: 0,
-                  backgroundColor: '#FEE2E2',
+                  backgroundColor: 'var(--primary-red-bg)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -895,16 +895,16 @@ export function ExamTypesManager() {
                 <AlertCircle size={22} color="#DC2626" />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#172033' }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--deep-navy)' }}>
                   Delete Exam Type
                 </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: 12.5, color: '#64748B' }}>
+                <p style={{ margin: '2px 0 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
                   This action is permanent and cannot be undone.
                 </p>
               </div>
             </div>
 
-            <p style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.5, margin: '0 0 20px 0' }}>
+            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 20px 0' }}>
               Are you sure you want to delete <strong>{deletingExamType.name}</strong> (<code>{deletingExamType.type}</code>)?
               {(deletingExamType.exams_count || 0) > 0 && (
                 <span style={{ display: 'block', color: '#DC2626', fontWeight: 600, marginTop: 8 }}>
@@ -919,9 +919,9 @@ export function ExamTypesManager() {
                 onClick={() => setDeletingExamType(null)}
                 style={{
                   padding: '8px 16px',
-                  backgroundColor: '#F1F5F9',
+                  backgroundColor: 'var(--bg-hover)',
                   border: '1px solid #CBD5E1',
-                  color: '#334155',
+                  color: 'var(--text-secondary)',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -938,7 +938,7 @@ export function ExamTypesManager() {
                   padding: '8px 18px',
                   backgroundColor: '#DC2626',
                   border: 'none',
-                  color: '#FFFFFF',
+                  color: 'var(--bg-card)',
                   fontSize: 13,
                   fontWeight: 700,
                   cursor: deleteSubmitting ? 'not-allowed' : 'pointer',

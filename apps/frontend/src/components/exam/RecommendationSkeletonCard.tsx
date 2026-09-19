@@ -2,7 +2,7 @@ export function RecommendationSkeletonCard() {
   return (
     <div
       style={{
-        backgroundColor: '#F8FAFC',
+        backgroundColor: 'var(--bg-subtle)',
         border: '1px solid #E2E8F0',
         borderRadius: 6,
         padding: 12,

@@ -86,7 +86,7 @@ const aiBadgePendingStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: 6,
   padding: '4px 12px',
-  backgroundColor: '#FEF3C7',
+  backgroundColor: 'var(--status-warning-bg)',
   border: '1px solid #FDE68A',
   borderRadius: 0,
   color: '#D97706',
@@ -160,7 +160,7 @@ const emptyStateCTAStyle: React.CSSProperties = {
   padding: '14px 28px',
   borderRadius: 0,
   backgroundColor: 'var(--primary-red)',
-  color: '#ffffff',
+  color: 'var(--bg-card)',
   border: 'none',
   fontSize: 14,
   fontWeight: 700,
@@ -209,7 +209,7 @@ const viewReportBtnStyle: React.CSSProperties = {
   padding: '8px 16px',
   borderRadius: 0,
   backgroundColor: 'var(--primary-red)',
-  color: '#ffffff',
+  color: 'var(--bg-card)',
   border: 'none',
   fontSize: 12.5,
   fontWeight: 700,
@@ -257,7 +257,7 @@ const progressBarOuterStyle: React.CSSProperties = {
   marginTop: 6,
 };
 
-const evalLabelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: '#64748b' };
+const evalLabelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' };
 
 const errorBannerStyle: React.CSSProperties = {
   padding: '20px 24px',
@@ -275,7 +275,7 @@ const errorBannerStyle: React.CSSProperties = {
 
 const errorBannerContentStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 240 };
 const errorBannerTextStyle: React.CSSProperties = { fontSize: 13.5, lineHeight: 1.5 };
-const errorBannerLabelStyle: React.CSSProperties = { color: '#ef4444' };
+const errorBannerLabelStyle: React.CSSProperties = { color: 'var(--primary-red)' };
 
 const retryBtnStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -284,7 +284,7 @@ const retryBtnStyle: React.CSSProperties = {
   padding: '10px 20px',
   borderRadius: 0,
   backgroundColor: 'var(--primary-red)',
-  color: '#ffffff',
+  color: 'var(--bg-card)',
   border: 'none',
   fontSize: 13,
   fontWeight: 700,
@@ -316,7 +316,7 @@ const noReportIconStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  color: '#ef4444',
+  color: 'var(--primary-red)',
   fontSize: 28,
 };
 
@@ -340,7 +340,7 @@ const practiceExamBtnStyle: React.CSSProperties = {
   borderRadius: 0,
   border: 'none',
   backgroundColor: 'var(--accent-primary, var(--primary-red))',
-  color: '#ffffff',
+  color: 'var(--bg-card)',
   fontSize: 13.5,
   fontWeight: 700,
   cursor: 'pointer',
@@ -1144,7 +1144,7 @@ export function AnalyticsPage() {
                             borderRadius: 0,
                             border: pageNum === historyPage ? '1px solid var(--primary-red)' : '1px solid var(--border-default)',
                             backgroundColor: pageNum === historyPage ? 'var(--primary-red)' : 'var(--bg-subtle)',
-                            color: pageNum === historyPage ? '#ffffff' : 'var(--text-primary)',
+                            color: pageNum === historyPage ? 'var(--bg-card)' : 'var(--text-primary)',
                             cursor: 'pointer',
                             fontSize: 12,
                             fontWeight: 700,
@@ -1259,7 +1259,7 @@ export function AnalyticsPage() {
               }}
             >
               <div style={errorBannerContentStyle}>
-                <AlertCircle size={24} color="#ef4444" style={{ flexShrink: 0 }} />
+                <AlertCircle size={24} color="var(--primary-red)" style={{ flexShrink: 0 }} />
                 <div style={errorBannerTextStyle}>
                   <strong style={errorBannerLabelStyle}>Evaluation Notice: </strong>
                   <span>{error}</span>

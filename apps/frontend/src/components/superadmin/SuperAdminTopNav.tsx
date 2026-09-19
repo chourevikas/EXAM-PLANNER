@@ -82,7 +82,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
         right: 0,
         width: '100%',
         zIndex: 130,
-        background: '#172033',
+        background: 'var(--deep-navy)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         display: 'flex',
         alignItems: 'center',
@@ -122,7 +122,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
                 background: 'transparent',
                 border: 'none',
                 outline: 'none',
-                color: '#ffffff',
+                color: 'var(--bg-card)',
                 fontSize: 13,
                 width: '100%',
               }}
@@ -162,7 +162,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
         borderRadius: 0,
         border: '1px solid rgba(255, 255, 255, 0.25)',
         background: 'rgba(255, 255, 255, 0.1)',
-        color: '#ffffff',
+        color: 'var(--bg-card)',
         cursor: 'pointer',
         transition: 'all 0.15s ease',
       }}
@@ -173,7 +173,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
       }}
     >
-      <User size={14} color="#ffffff" />
+      <User size={14} color="var(--bg-card)" />
       <span>Admin Profile</span>
     </button>
 
@@ -206,7 +206,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               fontSize: 15,
               fontWeight: 800,
               flexShrink: 0,
@@ -223,7 +223,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
                 border: '1px solid #E2E8F0',
                 fontSize: 14,
                 outline: 'none',
-                backgroundColor: '#F8FAFC',
+                backgroundColor: 'var(--bg-subtle)',
                 minHeight: 40,
               }}
             />
@@ -234,7 +234,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#64748B',
+                color: 'var(--text-muted)',
                 cursor: 'pointer',
                 padding: 6,
               }}
@@ -264,8 +264,8 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
                     padding: '10px 12px',
                     borderRadius: 0,
                     border: 'none',
-                    backgroundColor: '#F8FAFC',
-                    color: '#172033',
+                    backgroundColor: 'var(--bg-subtle)',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -293,7 +293,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
           borderRadius: 0,
           backgroundColor: 'var(--primary-red)',
           border: '1.5px solid rgba(255, 255, 255, 0.25)',
-          color: '#ffffff',
+          color: 'var(--bg-card)',
           fontSize: 13,
           fontWeight: 700,
           display: 'flex',
@@ -318,7 +318,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
               right: 0,
               width: 250,
             }),
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--bg-card)',
             borderRadius: 0,
             border: '1px solid #E2E8F0',
             boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
@@ -330,10 +330,10 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
           }}
         >
           <div style={{ paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--deep-navy)' }}>
               {user.full_name || 'Super Administrator'}
             </div>
-            <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>
+            <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
               {user.email || 'superadmin@examplanner.com'}
             </div>
           </div>

@@ -334,7 +334,7 @@ export function MockTestsView() {
     switch (status) {
       case 'Published':
         return (
-          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 0, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #BBF7D0', display: 'inline-block' }}>
+          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 0, backgroundColor: 'var(--status-success-bg)', color: '#15803D', border: '1px solid #BBF7D0', display: 'inline-block' }}>
             Published
           </span>
         );
@@ -370,7 +370,7 @@ export function MockTestsView() {
             bottom: 24,
             right: 24,
             backgroundColor: '#12233F',
-            color: '#FFFFFF',
+            color: 'var(--bg-card)',
             padding: '12px 20px',
             borderRadius: 0,
             boxShadow: '0 4px 12px rgba(16,24,40,0.15)',
@@ -399,7 +399,7 @@ export function MockTestsView() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.02em' }}>
             Mock Tests
           </h1>
           <p style={{ fontSize: 14, color: '#667085', marginTop: 4, margin: '4px 0 0 0' }}>
@@ -421,7 +421,7 @@ export function MockTestsView() {
             borderRadius: 0,
             border: 'none',
             backgroundColor: '#12233F',
-            color: '#FFFFFF',
+            color: 'var(--bg-card)',
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
@@ -437,7 +437,7 @@ export function MockTestsView() {
 
       {/* SUBTLE TEXTUAL SUMMARY (Simple text with muted separators) */}
       <div style={{ fontSize: 13.5, color: '#667085', marginBottom: 20 }}>
-        <strong style={{ color: '#172033', fontWeight: 600 }}>{mockTests.length} mock tests</strong>
+        <strong style={{ color: 'var(--deep-navy)', fontWeight: 600 }}>{mockTests.length} mock tests</strong>
         <span> · {publishedCount} published · {draftCount} drafts · {scheduledCount} scheduled</span>
       </div>
 
@@ -467,9 +467,9 @@ export function MockTestsView() {
               padding: '8px 12px 8px 36px',
               borderRadius: 0,
               border: '1px solid #E4E7EC',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               fontSize: 13.5,
-              color: '#172033',
+              color: 'var(--deep-navy)',
               outline: 'none',
               height: 40,
               boxSizing: 'border-box',
@@ -492,8 +492,8 @@ export function MockTestsView() {
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
-              color: '#172033',
-              backgroundColor: '#FFFFFF',
+              color: 'var(--deep-navy)',
+              backgroundColor: 'var(--bg-card)',
               outline: 'none',
               height: 40,
               boxSizing: 'border-box',
@@ -519,8 +519,8 @@ export function MockTestsView() {
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
-              color: '#172033',
-              backgroundColor: '#FFFFFF',
+              color: 'var(--deep-navy)',
+              backgroundColor: 'var(--bg-card)',
               outline: 'none',
               height: 40,
               boxSizing: 'border-box',
@@ -545,8 +545,8 @@ export function MockTestsView() {
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
-              color: '#172033',
-              backgroundColor: '#FFFFFF',
+              color: 'var(--deep-navy)',
+              backgroundColor: 'var(--bg-card)',
               outline: 'none',
               height: 40,
               boxSizing: 'border-box',
@@ -569,8 +569,8 @@ export function MockTestsView() {
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
-              color: '#172033',
-              backgroundColor: '#FFFFFF',
+              color: 'var(--deep-navy)',
+              backgroundColor: 'var(--bg-card)',
               outline: 'none',
               height: 40,
               boxSizing: 'border-box',
@@ -586,7 +586,7 @@ export function MockTestsView() {
       {/* MAIN CONTENT TABLE */}
       <div
         style={{
-          background: '#FFFFFF',
+          background: 'var(--bg-card)',
           border: '1px solid #E4E7EC',
           borderRadius: 0,
           boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
@@ -595,7 +595,7 @@ export function MockTestsView() {
       >
         {paginatedTests.length === 0 ? (
           <div style={{ padding: '48px 24px', textAlign: 'center', color: '#667085' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#172033', marginBottom: 4 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--deep-navy)', marginBottom: 4 }}>
               No mock tests found
             </div>
             <div style={{ fontSize: 13, color: '#667085', marginBottom: 16 }}>
@@ -613,7 +613,7 @@ export function MockTestsView() {
                 borderRadius: 0,
                 border: 'none',
                 backgroundColor: '#12233F',
-                color: '#FFFFFF',
+                color: 'var(--bg-card)',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -660,7 +660,7 @@ export function MockTestsView() {
                   >
                     {/* TEST TITLE & SECONDARY METADATA */}
                     <td style={{ padding: '14px 16px', maxWidth: 320 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#172033' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--deep-navy)' }}>
                         {test.title}
                       </div>
                       <div style={{ fontSize: 12, color: '#667085', marginTop: 2 }}>
@@ -669,7 +669,7 @@ export function MockTestsView() {
                     </td>
 
                     {/* EXAM */}
-                    <td style={{ padding: '14px 16px', fontWeight: 500, color: '#172033' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: 500, color: 'var(--deep-navy)' }}>
                       {test.exam} ({test.year})
                     </td>
 
@@ -679,7 +679,7 @@ export function MockTestsView() {
                     </td>
 
                     {/* QUESTIONS */}
-                    <td style={{ padding: '14px 16px', fontWeight: 600, color: '#172033' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--deep-navy)' }}>
                       {test.questions}
                     </td>
 
@@ -689,7 +689,7 @@ export function MockTestsView() {
                     </td>
 
                     {/* ATTEMPTS */}
-                    <td style={{ padding: '14px 16px', fontWeight: 600, color: '#172033', fontFamily: 'monospace', fontSize: 13 }}>
+                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--deep-navy)', fontFamily: 'monospace', fontSize: 13 }}>
                       {test.attempts.toLocaleString()}
                     </td>
 
@@ -709,8 +709,8 @@ export function MockTestsView() {
                           padding: '5px 12px',
                           fontSize: 12.5,
                           fontWeight: 500,
-                          color: '#172033',
-                          background: '#FFFFFF',
+                          color: 'var(--deep-navy)',
+                          background: 'var(--bg-card)',
                           border: '1px solid #E4E7EC',
                           borderRadius: 0,
                           cursor: 'pointer',
@@ -725,9 +725,9 @@ export function MockTestsView() {
                           e.currentTarget.style.color = '#3B6EA8';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#FFFFFF';
+                          e.currentTarget.style.backgroundColor = 'var(--bg-card)';
                           e.currentTarget.style.borderColor = '#E4E7EC';
-                          e.currentTarget.style.color = '#172033';
+                          e.currentTarget.style.color = 'var(--deep-navy)';
                         }}
                       >
                         <span>Manage</span>
@@ -767,8 +767,8 @@ export function MockTestsView() {
                 padding: '5px 10px',
                 borderRadius: 0,
                 border: '1px solid #E4E7EC',
-                background: '#FFFFFF',
-                color: currentPage === 1 ? '#94A3B8' : '#172033',
+                background: 'var(--bg-card)',
+                color: currentPage === 1 ? 'var(--text-disabled)' : 'var(--deep-navy)',
                 cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
                 fontSize: 12.5,
                 display: 'flex',
@@ -787,8 +787,8 @@ export function MockTestsView() {
                   padding: '5px 10px',
                   borderRadius: 0,
                   border: '1px solid #E4E7EC',
-                  background: currentPage === pg ? '#12233F' : '#FFFFFF',
-                  color: currentPage === pg ? '#FFFFFF' : '#172033',
+                  background: currentPage === pg ? '#12233F' : 'var(--bg-card)',
+                  color: currentPage === pg ? 'var(--bg-card)' : 'var(--deep-navy)',
                   cursor: 'pointer',
                   fontSize: 12.5,
                   fontWeight: currentPage === pg ? 600 : 400,
@@ -805,8 +805,8 @@ export function MockTestsView() {
                 padding: '5px 10px',
                 borderRadius: 0,
                 border: '1px solid #E4E7EC',
-                background: '#FFFFFF',
-                color: currentPage === totalPages ? '#94A3B8' : '#172033',
+                background: 'var(--bg-card)',
+                color: currentPage === totalPages ? 'var(--text-disabled)' : 'var(--deep-navy)',
                 cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
                 fontSize: 12.5,
                 display: 'flex',
@@ -839,7 +839,7 @@ export function MockTestsView() {
               width: '100%',
               maxWidth: 480,
               height: '100%',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               borderLeft: '1px solid #E4E7EC',
               boxShadow: '-4px 0 16px rgba(16,24,40,0.08)',
               display: 'flex',
@@ -856,7 +856,7 @@ export function MockTestsView() {
                   {renderStatusBadge(selectedTest.status)}
                   <span style={{ fontSize: 12, color: '#667085', fontFamily: 'monospace' }}>{selectedTest.id}</span>
                 </div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: 0, lineHeight: 1.3 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, lineHeight: 1.3 }}>
                   {selectedTest.title}
                 </h2>
               </div>
@@ -874,28 +874,28 @@ export function MockTestsView() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
               <div style={{ padding: 12, borderRadius: 0, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>Examination</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#172033', marginTop: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)', marginTop: 4 }}>
                   {selectedTest.exam} ({selectedTest.year})
                 </div>
               </div>
 
               <div style={{ padding: 12, borderRadius: 0, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>Test Type</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#172033', marginTop: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)', marginTop: 4 }}>
                   {selectedTest.type}
                 </div>
               </div>
 
               <div style={{ padding: 12, borderRadius: 0, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>Questions</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#172033', marginTop: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)', marginTop: 4 }}>
                   {selectedTest.questions} Qs
                 </div>
               </div>
 
               <div style={{ padding: 12, borderRadius: 0, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>Duration</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#172033', marginTop: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)', marginTop: 4 }}>
                   {selectedTest.duration} minutes
                 </div>
               </div>
@@ -903,7 +903,7 @@ export function MockTestsView() {
 
             {/* Test Rules & Scoring Information */}
             <div style={{ marginBottom: 24 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, color: '#172033', margin: '0 0 12px 0' }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--deep-navy)', margin: '0 0 12px 0' }}>
                 Scoring & Evaluation Rules
               </h3>
 
@@ -917,7 +917,7 @@ export function MockTestsView() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #F2F4F7' }}>
                   <span>Marks Per Question:</span>
-                  <strong style={{ color: '#172033' }}>+{selectedTest.marksPerQuestion.toFixed(1)}</strong>
+                  <strong style={{ color: 'var(--deep-navy)' }}>+{selectedTest.marksPerQuestion.toFixed(1)}</strong>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #F2F4F7' }}>
@@ -929,7 +929,7 @@ export function MockTestsView() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #F2F4F7' }}>
                   <span>Total Student Attempts:</span>
-                  <strong style={{ color: '#172033', fontFamily: 'monospace' }}>
+                  <strong style={{ color: 'var(--deep-navy)', fontFamily: 'monospace' }}>
                     {selectedTest.attempts.toLocaleString()}
                   </strong>
                 </div>
@@ -939,7 +939,7 @@ export function MockTestsView() {
             {/* Included Subjects */}
             {selectedTest.subjects && (
               <div style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 600, color: '#172033', margin: '0 0 8px 0' }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--deep-navy)', margin: '0 0 8px 0' }}>
                   Syllabus Coverage
                 </h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -978,8 +978,8 @@ export function MockTestsView() {
                   fontWeight: 600,
                   borderRadius: 0,
                   border: '1px solid #E4E7EC',
-                  backgroundColor: '#FFFFFF',
-                  color: '#172033',
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--deep-navy)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -999,8 +999,8 @@ export function MockTestsView() {
                   fontWeight: 600,
                   borderRadius: 0,
                   border: '1px solid #E4E7EC',
-                  backgroundColor: '#FFFFFF',
-                  color: '#172033',
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--deep-navy)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -1054,7 +1054,7 @@ export function MockTestsView() {
         >
           <div
             style={{
-              background: '#FFFFFF',
+              background: 'var(--bg-card)',
               borderRadius: 0,
               border: '1px solid #E4E7EC',
               width: '100%',
@@ -1068,7 +1068,7 @@ export function MockTestsView() {
             {/* Modal Header & Step Indicator */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: 0 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--deep-navy)', margin: 0 }}>
                   Create Mock Test
                 </h2>
                 <div style={{ fontSize: 12.5, color: '#667085', marginTop: 2 }}>
@@ -1135,7 +1135,7 @@ export function MockTestsView() {
                         fontSize: 13.5,
                         outline: 'none',
                         height: 40,
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--bg-card)',
                       }}
                     >
                       <option value="UPSC">UPSC Civil Services</option>
@@ -1160,7 +1160,7 @@ export function MockTestsView() {
                         fontSize: 13.5,
                         outline: 'none',
                         height: 40,
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--bg-card)',
                       }}
                     >
                       <option value={2026}>2026</option>
@@ -1184,7 +1184,7 @@ export function MockTestsView() {
                       fontSize: 13.5,
                       outline: 'none',
                       height: 40,
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: 'var(--bg-card)',
                     }}
                   >
                     <option value="Full Length">Full Length Mock (100+ Qs)</option>
@@ -1234,7 +1234,7 @@ export function MockTestsView() {
                       fontSize: 13.5,
                       outline: 'none',
                       height: 40,
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: 'var(--bg-card)',
                     }}
                   >
                     <option value="General Studies (Full Syllabus)">General Studies (Full Syllabus)</option>
@@ -1293,7 +1293,7 @@ export function MockTestsView() {
                 </div>
 
                 <div style={{ padding: 14, border: '1px solid #E4E7EC', borderRadius: 0, backgroundColor: '#F7F7F5' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: '#172033' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'var(--deep-navy)' }}>
                     <input
                       type="checkbox"
                       checked={newTestForm.negativeMarking}
@@ -1319,7 +1319,7 @@ export function MockTestsView() {
                           border: '1px solid #E4E7EC',
                           fontSize: 13,
                           outline: 'none',
-                          backgroundColor: '#FFFFFF',
+                          backgroundColor: 'var(--bg-card)',
                         }}
                       />
                     </div>
@@ -1332,7 +1332,7 @@ export function MockTestsView() {
             {createStep === 4 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ padding: 16, borderRadius: 0, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, color: '#172033', margin: '0 0 12px 0' }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)', margin: '0 0 12px 0' }}>
                     Test Configuration Summary
                   </h3>
 
@@ -1360,7 +1360,7 @@ export function MockTestsView() {
                       fontSize: 13.5,
                       outline: 'none',
                       height: 40,
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: 'var(--bg-card)',
                     }}
                   >
                     <option value="Draft">Draft (Hidden from students)</option>
@@ -1380,8 +1380,8 @@ export function MockTestsView() {
                   padding: '8px 16px',
                   fontSize: 13,
                   fontWeight: 500,
-                  color: createStep === 1 ? '#94A3B8' : '#172033',
-                  background: '#FFFFFF',
+                  color: createStep === 1 ? 'var(--text-disabled)' : 'var(--deep-navy)',
+                  background: 'var(--bg-card)',
                   border: '1px solid #E4E7EC',
                   borderRadius: 0,
                   cursor: createStep === 1 ? 'not-allowed' : 'pointer',
@@ -1397,7 +1397,7 @@ export function MockTestsView() {
                     padding: '8px 20px',
                     fontSize: 13,
                     fontWeight: 600,
-                    color: '#FFFFFF',
+                    color: 'var(--bg-card)',
                     background: '#12233F',
                     border: 'none',
                     borderRadius: 0,
@@ -1413,7 +1413,7 @@ export function MockTestsView() {
                     padding: '8px 20px',
                     fontSize: 13,
                     fontWeight: 600,
-                    color: '#FFFFFF',
+                    color: 'var(--bg-card)',
                     background: '#12233F',
                     border: 'none',
                     borderRadius: 0,

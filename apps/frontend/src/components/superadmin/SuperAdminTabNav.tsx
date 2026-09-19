@@ -50,7 +50,7 @@ export function SuperAdminTabNav({ activeTab, onTabChange, pendingCount, pending
               background: isActive
                 ? 'linear-gradient(135deg, #0F1D38 0%, #1B3864 100%)'
                 : 'transparent',
-              color: isActive ? '#ffffff' : 'var(--text-muted)',
+              color: isActive ? 'var(--bg-card)' : 'var(--text-muted)',
               fontWeight: isActive ? 700 : 500,
               fontSize: 14,
               cursor: 'pointer',
@@ -81,7 +81,7 @@ export function SuperAdminTabNav({ activeTab, onTabChange, pendingCount, pending
               <span
                 style={{
                   background: isActive ? '#F47B35' : 'rgba(249, 115, 22, 0.15)',
-                  color: isActive ? '#ffffff' : '#F47B35',
+                  color: isActive ? 'var(--bg-card)' : '#F47B35',
                   fontSize: 11,
                   fontWeight: 800,
                   padding: '2px 8px',

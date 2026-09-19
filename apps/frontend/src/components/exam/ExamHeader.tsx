@@ -51,7 +51,7 @@ export function ExamHeader({
   const isCriticalTime = timeLeft < 120; // < 2 mins
   const isLowTime = timeLeft < 600; // < 10 mins
 
-  const timerColor = isCriticalTime ? '#FCA5A5' : isLowTime ? '#FDE68A' : '#FFFFFF';
+  const timerColor = isCriticalTime ? 'var(--primary-red-border)' : isLowTime ? '#FDE68A' : 'var(--bg-card)';
 
   const formatTime = (secs: number) => {
     const h = Math.floor(secs / 3600);
@@ -237,7 +237,7 @@ export function ExamHeader({
             backgroundColor: 'rgba(255, 255, 255, 0.08)',
             border: '1px solid rgba(255, 255, 255, 0.22)',
             padding: '4px 8px',
-            color: '#FFFFFF',
+            color: 'var(--bg-card)',
             flexShrink: 0,
             transition: 'border-color 0.2s ease',
           }}
@@ -250,7 +250,7 @@ export function ExamHeader({
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               fontSize: 'clamp(11px, 2vw, 12.5px)',
               fontWeight: 600,
               outline: 'none',
@@ -264,7 +264,7 @@ export function ExamHeader({
               <option
                 key={lang.code}
                 value={lang.code}
-                style={{ background: '#172033', color: '#FFFFFF' }}
+                style={{ background: 'var(--deep-navy)', color: 'var(--bg-card)' }}
               >
                 {lang.nativeName} ({lang.name})
               </option>
@@ -285,7 +285,7 @@ export function ExamHeader({
               borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               cursor: 'pointer',
               flexShrink: 0,
               transition: 'all 0.15s ease',
@@ -312,7 +312,7 @@ export function ExamHeader({
               borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               cursor: 'pointer',
               flexShrink: 0,
               fontSize: 11.5,
@@ -339,7 +339,7 @@ export function ExamHeader({
               borderRadius: 0,
               border: `1px solid ${focusMode ? 'rgba(var(--primary-red-rgb), 0.5)' : 'rgba(255, 255, 255, 0.25)'}`,
               backgroundColor: focusMode ? 'rgba(var(--primary-red-rgb), 0.18)' : 'rgba(255, 255, 255, 0.09)',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               fontSize: 'clamp(11.5px, 2.5vw, 12.5px)',
               fontWeight: 600,
               cursor: 'pointer',
@@ -363,7 +363,7 @@ export function ExamHeader({
               borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               fontSize: 'clamp(11.5px, 2.5vw, 12.5px)',
               fontWeight: 600,
               cursor: isSubmitting ? 'not-allowed' : 'pointer',

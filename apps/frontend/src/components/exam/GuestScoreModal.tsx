@@ -105,7 +105,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             width: '100%',
             maxWidth: 460,
             maxHeight: '90vh',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--bg-card)',
             borderRadius: 0, // Extra rounded bubbly corners
             padding: '32px 28px',
             border: '2px solid #E2E8F0',
@@ -132,8 +132,8 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               height: 32,
               borderRadius: 0,
               border: '1.5px solid #E2E8F0',
-              backgroundColor: '#FFFFFF',
-              color: '#64748B',
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-muted)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -141,12 +141,12 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               transition: 'all 0.18s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#F8FAFC';
-              e.currentTarget.style.color = '#172033';
+              e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
+              e.currentTarget.style.color = 'var(--deep-navy)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#FFFFFF';
-              e.currentTarget.style.color = '#64748B';
+              e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+              e.currentTarget.style.color = 'var(--text-muted)';
             }}
           >
             <X size={16} strokeWidth={2.2} />
@@ -185,7 +185,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               height: 60,
               borderRadius: 0,
               background: 'linear-gradient(135deg, var(--primary-red) 0%, var(--primary-red) 100%)',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -206,7 +206,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               gap: 6,
               padding: '5px 14px',
               borderRadius: 0, // Bubbly pill shape
-              backgroundColor: '#F8FAFC',
+              backgroundColor: 'var(--bg-subtle)',
               border: '1.5px solid #BFDBFE',
               marginBottom: 10,
             }}
@@ -220,9 +220,9 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             </span>
           </div>
 
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: '#172033', margin: '0 0 18px 0', letterSpacing: '-0.02em' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--deep-navy)', margin: '0 0 18px 0', letterSpacing: '-0.02em' }}>
             {scoreData.topicName}
-            {scoreData.subtopicName ? <span style={{ fontWeight: 600, color: '#64748B' }}> · {scoreData.subtopicName}</span> : ''}
+            {scoreData.subtopicName ? <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}> · {scoreData.subtopicName}</span> : ''}
           </h2>
 
           {/* Bubbly Hero Score Bubble */}
@@ -240,9 +240,9 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               Your Score
             </div>
 
-            <div style={{ fontSize: 46, fontWeight: 900, color: '#172033', lineHeight: 1, letterSpacing: '-0.04em' }}>
+            <div style={{ fontSize: 46, fontWeight: 900, color: 'var(--deep-navy)', lineHeight: 1, letterSpacing: '-0.04em' }}>
               {scoreData.score}{' '}
-              <span style={{ fontSize: 22, color: '#64748B', fontWeight: 700 }}>/ {scoreData.totalMarksPossible}</span>
+              <span style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 700 }}>/ {scoreData.totalMarksPossible}</span>
             </div>
 
             {/* Dynamic Accuracy Pill */}
@@ -308,7 +308,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             {/* Skipped Stat Card */}
             <div
               style={{
-                backgroundColor: '#F8FAFC',
+                backgroundColor: 'var(--bg-subtle)',
                 padding: '12px 8px',
                 borderRadius: 0,
                 border: '2px solid #E2E8F0',
@@ -317,11 +317,11 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                 alignItems: 'center',
               }}
             >
-              <MinusCircle size={16} style={{ color: '#64748B', marginBottom: 2 }} />
-              <div style={{ fontSize: 11, color: '#475569', fontWeight: 800, textTransform: 'uppercase' }}>
+              <MinusCircle size={16} style={{ color: 'var(--text-muted)', marginBottom: 2 }} />
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase' }}>
                 Skipped
               </div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#334155', marginTop: 2 }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-secondary)', marginTop: 2 }}>
                 {scoreData.unattemptedCount}
               </div>
             </div>
@@ -362,7 +362,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                   borderRadius: 0,
                   border: 'none',
                   backgroundColor: 'var(--primary-red)',
-                  color: '#FFFFFF',
+                  color: 'var(--bg-card)',
                   fontSize: 14,
                   fontWeight: 800,
                   cursor: 'pointer',
@@ -395,8 +395,8 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                   padding: '0 18px',
                   borderRadius: 0,
                   border: '2px solid #CBD5E1',
-                  backgroundColor: '#FFFFFF',
-                  color: '#475569',
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--text-secondary)',
                   fontSize: 13.5,
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -406,11 +406,11 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                   transition: 'all 0.18s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                   e.currentTarget.style.transform = 'scale(1.02)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-card)';
                   e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
@@ -428,7 +428,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                 padding: '11px 16px',
                 borderRadius: 0,
                 border: '1px solid #CBD5E1',
-                backgroundColor: '#F8FAFC',
+                backgroundColor: 'var(--bg-subtle)',
                 color: '#1E293B',
                 fontSize: 13,
                 fontWeight: 700,
@@ -440,10 +440,10 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                 transition: 'background-color 0.15s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#F1F5F9';
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#F8FAFC';
+                e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
               }}
             >
               <span>Review Questions & Solutions on This Page</span>
@@ -451,7 +451,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
 
             {!isLoggedIn && (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                <span style={{ fontSize: 12, color: '#64748B' }}>Already registered?</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Already registered?</span>
                 <button
                   type="button"
                   onClick={() => handleOpenAuth('login')}
@@ -481,7 +481,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                 gap: 6,
                 background: 'none',
                 border: 'none',
-                color: '#64748B',
+                color: 'var(--text-muted)',
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: 'pointer',

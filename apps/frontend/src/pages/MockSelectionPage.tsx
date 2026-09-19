@@ -45,7 +45,7 @@ export function MockSelectionPage() {
 
   // Dynamic 3-level taxonomy & exam state
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
-  const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE']);
+  const [availableExams, setAvailableExams] = useState<string[]>([]);
   const [yearOptions, setYearOptions] = useState<string[]>([]);
   const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
 
@@ -336,7 +336,7 @@ export function MockSelectionPage() {
   };
 
   const selectAllExams = () => {
-    setSelectedExamsList([...(availableExams.length > 0 ? availableExams : ['UPSC CSE'])]);
+    setSelectedExamsList([...(availableExams)]);
   };
 
   const toggleYearFilter = (yearName: string) => {
@@ -463,7 +463,7 @@ export function MockSelectionPage() {
           marginBottom: 36,
           padding: '28px 32px',
           borderRadius: 0,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: 'var(--bg-card)',
           border: '1px solid #E5E7EB',
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
         }}
@@ -477,16 +477,16 @@ export function MockSelectionPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#FFFFFF',
+            color: 'var(--bg-card)',
             boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
           }}>
-            <Zap size={22} fill="#FFFFFF" color="#FFFFFF" />
+            <Zap size={22} fill="var(--bg-card)" color="var(--bg-card)" />
           </div>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: 0 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--deep-navy)', margin: 0 }}>
               Instant Practice Test Generator
             </h2>
-            <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0 0' }}>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
               Select your target subject, topic, and subtopic to launch a custom practice test.
             </p>
           </div>
@@ -496,7 +496,7 @@ export function MockSelectionPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
             {/* Filter 1: Target Exam (multi-select) */}
             <div style={{ position: 'relative' }} data-dropdown-container>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Target Exam
               </label>
               {/* --- Multi-select Exam Dropdown --- */}
@@ -509,8 +509,8 @@ export function MockSelectionPage() {
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
                   border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#FAFAFC',
-                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  backgroundColor: activeDropdown === 'exam' ? 'var(--bg-card)' : '#FAFAFC',
+                  color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
                   boxShadow: activeDropdown === 'exam' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
@@ -526,7 +526,7 @@ export function MockSelectionPage() {
                 </span>
                 <ChevronDown
                   size={14}
-                  color="#64748B"
+                  color="var(--text-muted)"
                   style={{
                     transform: activeDropdown === 'exam' ? 'rotate(180deg)' : 'none',
                     transition: 'transform 0.15s ease',
@@ -543,7 +543,7 @@ export function MockSelectionPage() {
                     left: 0,
                     width: 240,
                     maxWidth: 'calc(100vw - 32px)',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
                     borderRadius: 0,
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -552,8 +552,8 @@ export function MockSelectionPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                    <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                    <button type="button" onClick={() => toggleExamFilter('All Exams')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleExamFilter('All Exams')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
                   <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -565,8 +565,8 @@ export function MockSelectionPage() {
                         borderRadius: 0,
                         fontSize: 12.5,
                         fontWeight: selectedExamsList.length === 0 ? 700 : 500,
-                        color: selectedExamsList.length === 0 ? '#1E3A8A' : '#334155',
-                        backgroundColor: selectedExamsList.length === 0 ? '#F1F5F9' : 'transparent',
+                        color: selectedExamsList.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                        backgroundColor: selectedExamsList.length === 0 ? 'var(--bg-hover)' : 'transparent',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -578,15 +578,15 @@ export function MockSelectionPage() {
                           type="checkbox"
                           checked={selectedExamsList.length === 0}
                           onChange={() => {}}
-                          style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                          style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
                         />
                         <span>All Exams</span>
                       </div>
-                      {selectedExamsList.length === 0 && <Check size={14} color="#1E3A8A" />}
+                      {selectedExamsList.length === 0 && <Check size={14} color="var(--accent-primary)" />}
                     </div>
 
                     {/* Individual exam options */}
-                    {(availableExams.length > 0 ? availableExams : ['UPSC CSE']).map((opt) => {
+                    {(availableExams).map((opt) => {
                       const isSelected = selectedExamsList.includes(opt);
                       return (
                         <div
@@ -597,8 +597,8 @@ export function MockSelectionPage() {
                             borderRadius: 0,
                             fontSize: 12.5,
                             fontWeight: isSelected ? 700 : 500,
-                            color: isSelected ? '#1E3A8A' : '#334155',
-                            backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                            color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -610,11 +610,11 @@ export function MockSelectionPage() {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => {}}
-                              style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                              style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
                             />
                             <span>{opt}</span>
                           </div>
-                          {isSelected && <Check size={14} color="#1E3A8A" />}
+                          {isSelected && <Check size={14} color="var(--accent-primary)" />}
                         </div>
                       );
                     })}
@@ -625,7 +625,7 @@ export function MockSelectionPage() {
 
             {/* Filter 2: Target / PYQ Year */}
             <div style={{ position: 'relative' }} data-dropdown-container>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Target / PYQ Year
               </label>
               <button
@@ -637,8 +637,8 @@ export function MockSelectionPage() {
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
                   border: activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#FAFAFC',
-                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  backgroundColor: activeDropdown === 'year' ? 'var(--bg-card)' : '#FAFAFC',
+                  color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
                   boxShadow: activeDropdown === 'year' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
@@ -654,7 +654,7 @@ export function MockSelectionPage() {
                 </span>
                 <ChevronDown
                   size={14}
-                  color="#64748B"
+                  color="var(--text-muted)"
                   style={{
                     transform: activeDropdown === 'year' ? 'rotate(180deg)' : 'none',
                     transition: 'transform 0.15s ease',
@@ -671,7 +671,7 @@ export function MockSelectionPage() {
                     left: 0,
                     width: 250,
                     maxWidth: 'calc(100vw - 32px)',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
                     borderRadius: 0,
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -680,12 +680,12 @@ export function MockSelectionPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                    <button type="button" onClick={selectAllYears} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                    <button type="button" onClick={() => toggleYearFilter('All Years')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    <button type="button" onClick={selectAllYears} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleYearFilter('All Years')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
                   <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
-                    <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                    <Search size={14} color="var(--text-disabled)" style={{ position: 'absolute', left: 10, top: 10 }} />
                     <input
                       type="text"
                       autoFocus
@@ -700,7 +700,7 @@ export function MockSelectionPage() {
                         fontSize: 12,
                         outline: 'none',
                         boxSizing: 'border-box',
-                        backgroundColor: '#F8FAFC',
+                        backgroundColor: 'var(--bg-subtle)',
                       }}
                     />
                   </div>
@@ -715,8 +715,8 @@ export function MockSelectionPage() {
                           borderRadius: 0,
                           fontSize: 12.5,
                           fontWeight: selectedYearsList.length === 0 ? 700 : 500,
-                          color: selectedYearsList.length === 0 ? '#1E3A8A' : '#334155',
-                          backgroundColor: selectedYearsList.length === 0 ? '#F1F5F9' : 'transparent',
+                          color: selectedYearsList.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                          backgroundColor: selectedYearsList.length === 0 ? 'var(--bg-hover)' : 'transparent',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -728,11 +728,11 @@ export function MockSelectionPage() {
                             type="checkbox"
                             checked={selectedYearsList.length === 0}
                             onChange={() => {}}
-                            style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                            style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
                           />
                           <span>{yearOptions[0] || 'All Years'}</span>
                         </div>
-                        {selectedYearsList.length === 0 && <Check size={14} color="#1E3A8A" />}
+                        {selectedYearsList.length === 0 && <Check size={14} color="var(--accent-primary)" />}
                       </div>
                     )}
 
@@ -750,8 +750,8 @@ export function MockSelectionPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
-                              color: isSelected ? '#1E3A8A' : '#334155',
-                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                              color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                              backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -763,11 +763,11 @@ export function MockSelectionPage() {
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => {}}
-                                style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                                style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
                               />
                               <span>{opt}</span>
                             </div>
-                            {isSelected && <Check size={14} color="#1E3A8A" />}
+                            {isSelected && <Check size={14} color="var(--accent-primary)" />}
                           </div>
                         );
                       })}
@@ -778,7 +778,7 @@ export function MockSelectionPage() {
 
             {/* Filter 3: Subject Focus */}
             <div style={{ position: 'relative' }} data-dropdown-container>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Subject Focus
               </label>
               <button
@@ -790,8 +790,8 @@ export function MockSelectionPage() {
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
                   border: activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#FAFAFC',
-                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  backgroundColor: activeDropdown === 'subject' ? 'var(--bg-card)' : '#FAFAFC',
+                  color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
                   boxShadow: activeDropdown === 'subject' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
@@ -807,7 +807,7 @@ export function MockSelectionPage() {
                 </span>
                 <ChevronDown
                   size={14}
-                  color="#64748B"
+                  color="var(--text-muted)"
                   style={{
                     transform: activeDropdown === 'subject' ? 'rotate(180deg)' : 'none',
                     transition: 'transform 0.15s ease',
@@ -824,7 +824,7 @@ export function MockSelectionPage() {
                     left: 0,
                     width: 250,
                     maxWidth: 'calc(100vw - 32px)',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
                     borderRadius: 0,
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -833,12 +833,12 @@ export function MockSelectionPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                    <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                    <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
                   <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
-                    <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                    <Search size={14} color="var(--text-disabled)" style={{ position: 'absolute', left: 10, top: 10 }} />
                     <input
                       type="text"
                       autoFocus
@@ -853,7 +853,7 @@ export function MockSelectionPage() {
                         fontSize: 12,
                         outline: 'none',
                         boxSizing: 'border-box',
-                        backgroundColor: '#F8FAFC',
+                        backgroundColor: 'var(--bg-subtle)',
                       }}
                     />
                   </div>
@@ -872,8 +872,8 @@ export function MockSelectionPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
-                              color: isSelected ? '#1E3A8A' : '#334155',
-                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                              color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                              backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -881,10 +881,10 @@ export function MockSelectionPage() {
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
                               <span>{formatEnum(opt)}</span>
                             </div>
-                            {isSelected && <Check size={14} color="#1E3A8A" />}
+                            {isSelected && <Check size={14} color="var(--accent-primary)" />}
                           </div>
                         );
                       })}
@@ -895,7 +895,7 @@ export function MockSelectionPage() {
 
             {/* Filter 4: Topic Focus */}
             <div style={{ position: 'relative' }} data-dropdown-container>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Topic Focus
               </label>
               <button
@@ -907,8 +907,8 @@ export function MockSelectionPage() {
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
                   border: activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#FAFAFC',
-                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  backgroundColor: activeDropdown === 'topic' ? 'var(--bg-card)' : '#FAFAFC',
+                  color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
                   boxShadow: activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
@@ -924,7 +924,7 @@ export function MockSelectionPage() {
                 </span>
                 <ChevronDown
                   size={14}
-                  color="#64748B"
+                  color="var(--text-muted)"
                   style={{
                     transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
                     transition: 'transform 0.15s ease',
@@ -941,7 +941,7 @@ export function MockSelectionPage() {
                     left: 0,
                     width: 260,
                     maxWidth: 'calc(100vw - 32px)',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
                     borderRadius: 0,
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -950,12 +950,12 @@ export function MockSelectionPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                    <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                    <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
                   <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
-                    <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                    <Search size={14} color="var(--text-disabled)" style={{ position: 'absolute', left: 10, top: 10 }} />
                     <input
                       type="text"
                       autoFocus
@@ -970,7 +970,7 @@ export function MockSelectionPage() {
                         fontSize: 12,
                         outline: 'none',
                         boxSizing: 'border-box',
-                        backgroundColor: '#F8FAFC',
+                        backgroundColor: 'var(--bg-subtle)',
                       }}
                     />
                   </div>
@@ -989,8 +989,8 @@ export function MockSelectionPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
-                              color: isSelected ? '#1E3A8A' : '#334155',
-                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                              color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                              backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -998,10 +998,10 @@ export function MockSelectionPage() {
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
                               <span>{formatEnum(opt)}</span>
                             </div>
-                            {isSelected && <Check size={14} color="#1E3A8A" />}
+                            {isSelected && <Check size={14} color="var(--accent-primary)" />}
                           </div>
                         );
                       })}
@@ -1012,7 +1012,7 @@ export function MockSelectionPage() {
 
             {/* Filter 5: Subtopic Focus */}
             <div style={{ position: 'relative' }} data-dropdown-container>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Subtopic Focus
               </label>
               <button
@@ -1024,8 +1024,8 @@ export function MockSelectionPage() {
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
                   border: activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#FAFAFC',
-                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  backgroundColor: activeDropdown === 'subtopic' ? 'var(--bg-card)' : '#FAFAFC',
+                  color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
                   boxShadow: activeDropdown === 'subtopic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
@@ -1041,7 +1041,7 @@ export function MockSelectionPage() {
                 </span>
                 <ChevronDown
                   size={14}
-                  color="#64748B"
+                  color="var(--text-muted)"
                   style={{
                     transform: activeDropdown === 'subtopic' ? 'rotate(180deg)' : 'none',
                     transition: 'transform 0.15s ease',
@@ -1058,7 +1058,7 @@ export function MockSelectionPage() {
                     left: 0,
                     width: 270,
                     maxWidth: 'calc(100vw - 32px)',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
                     borderRadius: 0,
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -1067,12 +1067,12 @@ export function MockSelectionPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                    <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                    <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
                   <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
-                    <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                    <Search size={14} color="var(--text-disabled)" style={{ position: 'absolute', left: 10, top: 10 }} />
                     <input
                       type="text"
                       autoFocus
@@ -1087,7 +1087,7 @@ export function MockSelectionPage() {
                         fontSize: 12,
                         outline: 'none',
                         boxSizing: 'border-box',
-                        backgroundColor: '#F8FAFC',
+                        backgroundColor: 'var(--bg-subtle)',
                       }}
                     />
                   </div>
@@ -1106,8 +1106,8 @@ export function MockSelectionPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
-                              color: isSelected ? '#1E3A8A' : '#334155',
-                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                              color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                              backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -1115,10 +1115,10 @@ export function MockSelectionPage() {
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
                               <span>{formatEnum(opt)}</span>
                             </div>
-                            {isSelected && <Check size={14} color="#1E3A8A" />}
+                            {isSelected && <Check size={14} color="var(--accent-primary)" />}
                           </div>
                         );
                       })}
@@ -1129,7 +1129,7 @@ export function MockSelectionPage() {
 
             {/* Filter 6: Difficulty */}
             <div style={{ position: 'relative' }} data-dropdown-container>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Difficulty
               </label>
               <button
@@ -1141,8 +1141,8 @@ export function MockSelectionPage() {
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
                   border: activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#FAFAFC',
-                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  backgroundColor: activeDropdown === 'difficulty' ? 'var(--bg-card)' : '#FAFAFC',
+                  color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
                   boxShadow: activeDropdown === 'difficulty' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
@@ -1154,7 +1154,7 @@ export function MockSelectionPage() {
                 </span>
                 <ChevronDown
                   size={14}
-                  color="#64748B"
+                  color="var(--text-muted)"
                   style={{
                     transform: activeDropdown === 'difficulty' ? 'rotate(180deg)' : 'none',
                     transition: 'transform 0.15s ease',
@@ -1171,7 +1171,7 @@ export function MockSelectionPage() {
                     left: 0,
                     width: 180,
                     maxWidth: 'calc(100vw - 32px)',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
                     borderRadius: 0,
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
@@ -1193,8 +1193,8 @@ export function MockSelectionPage() {
                           borderRadius: 0,
                           fontSize: 12.5,
                           fontWeight: isSelected ? 700 : 500,
-                          color: isSelected ? '#1E3A8A' : '#334155',
-                          backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                          color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                          backgroundColor: isSelected ? 'var(--bg-subtle)' : 'transparent',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -1202,7 +1202,7 @@ export function MockSelectionPage() {
                         }}
                       >
                         <span>{opt === 'All Levels' ? 'All Levels' : formatEnum(opt)}</span>
-                        {isSelected && <Check size={14} color="#1E3A8A" />}
+                        {isSelected && <Check size={14} color="var(--accent-primary)" />}
                       </div>
                     );
                   })}
@@ -1216,7 +1216,7 @@ export function MockSelectionPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             paddingTop: 20, borderTop: '1px dashed #E2E8F0', flexWrap: 'wrap', gap: 12
           }}>
-            <div style={{ fontSize: 12, color: '#64748B' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {selectedSubjectsList.length > 0 && (
                 <span>
                   <strong>{selectedSubjectsList.length}</strong> subject{selectedSubjectsList.length > 1 ? 's' : ''} filtered
@@ -1231,12 +1231,12 @@ export function MockSelectionPage() {
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 padding: '12px 24px', borderRadius: 0,
                 background: 'linear-gradient(135deg, #4F46E5 0%, var(--primary-red) 100%)',
-                color: '#FFFFFF', fontWeight: 700, fontSize: 14, border: 'none',
+                color: 'var(--bg-card)', fontWeight: 700, fontSize: 14, border: 'none',
                 cursor: 'pointer', boxShadow: '0 4px 14px rgba(var(--primary-red-rgb), 0.35)',
                 transition: 'transform 0.15s ease, boxShadow 0.15s ease',
               }}
             >
-              <PlayCircle size={18} fill="#FFFFFF" color="var(--primary-red)" />
+              <PlayCircle size={18} fill="var(--bg-card)" color="var(--primary-red)" />
               <span>Start Practice Test</span>
               <ArrowRight size={16} />
             </button>
@@ -1249,10 +1249,10 @@ export function MockSelectionPage() {
       <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: 0 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--deep-navy)', margin: 0 }}>
             Full-Length & Curated Test Series
           </h2>
-          <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0 0' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
             Attempt structured tests or revisit your previous attempts.
           </p>
         </div>
@@ -1267,7 +1267,7 @@ export function MockSelectionPage() {
             padding: '6px 12px',
             borderRadius: 0,
             border: '1px solid #F8FAFC',
-            backgroundColor: '#F8FAFC',
+            backgroundColor: 'var(--bg-subtle)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4
@@ -1279,7 +1279,7 @@ export function MockSelectionPage() {
 
       {/* Test Series Cards Grid */}
       {isLoading ? (
-        <div style={{ padding: 48, textAlign: 'center', color: '#64748B' }}>
+        <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
           <div className="spinner" style={{ marginBottom: 12 }} />
           Loading test series archive...
         </div>
@@ -1295,9 +1295,9 @@ export function MockSelectionPage() {
                 onMouseEnter={() => setHoveredMock(mock.id)}
                 onMouseLeave={() => setHoveredMock(null)}
                 style={{
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: 'var(--bg-card)',
                   borderRadius: 0,
-                  border: `1px solid ${hoveredMock === mock.id ? 'var(--primary-red)' : isCompleted ? '#A7F3D0' : '#E2E8F0'}`,
+                  border: `1px solid ${hoveredMock === mock.id ? 'var(--primary-red)' : isCompleted ? '#A7F3D0' : 'var(--border-color)'}`,
                   padding: '24px',
                   boxShadow: hoveredMock === mock.id
                     ? '0 8px 24px rgba(15, 23, 42, 0.08)'
@@ -1317,7 +1317,7 @@ export function MockSelectionPage() {
                       fontWeight: 700,
                       padding: '3px 8px',
                       borderRadius: 0,
-                      backgroundColor: '#F8FAFC',
+                      backgroundColor: 'var(--bg-subtle)',
                       color: 'var(--primary-red)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.04em'
@@ -1335,12 +1335,12 @@ export function MockSelectionPage() {
                   </div>
 
                   {/* Title */}
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#172033', margin: '0 0 8px 0' }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--deep-navy)', margin: '0 0 8px 0' }}>
                     {mock.title}
                   </h3>
 
                   {/* Questions & Duration */}
-                  <div style={{ fontSize: 13, color: '#64748B', marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
                     {mock.totalQuestions} Questions &nbsp;•&nbsp; {mock.duration}
                   </div>
 
@@ -1350,7 +1350,7 @@ export function MockSelectionPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: '#EA580C', marginBottom: 6 }}>
                         <span>65% Completed</span>
                       </div>
-                      <div style={{ width: '100%', height: 6, borderRadius: 0, backgroundColor: '#F1F5F9', overflow: 'hidden' }}>
+                      <div style={{ width: '100%', height: 6, borderRadius: 0, backgroundColor: 'var(--bg-hover)', overflow: 'hidden' }}>
                         <div style={{ width: '65%', height: '100%', backgroundColor: '#F47B35', borderRadius: 0 }} />
                       </div>
                     </div>
@@ -1397,7 +1397,7 @@ export function MockSelectionPage() {
                           height: 40,
                           borderRadius: 0,
                           backgroundColor: '#3A8B53',
-                          color: '#FFFFFF',
+                          color: 'var(--bg-card)',
                           fontWeight: 700,
                           fontSize: 13,
                           textDecoration: 'none',
@@ -1408,7 +1408,7 @@ export function MockSelectionPage() {
                           boxSizing: 'border-box'
                         }}
                       >
-                        <PlayCircle size={15} fill="#FFFFFF" color="#3A8B53" /> Retake Test
+                        <PlayCircle size={15} fill="var(--bg-card)" color="#3A8B53" /> Retake Test
                       </Link>
 
                       <Link
@@ -1417,9 +1417,9 @@ export function MockSelectionPage() {
                           padding: '0 16px',
                           height: 40,
                           borderRadius: 0,
-                          backgroundColor: '#FFFFFF',
+                          backgroundColor: 'var(--bg-card)',
                           border: '1px solid #E2E8F0',
-                          color: '#334155',
+                          color: 'var(--text-secondary)',
                           fontWeight: 600,
                           fontSize: 13,
                           textDecoration: 'none',
@@ -1440,7 +1440,7 @@ export function MockSelectionPage() {
                         height: 40,
                         borderRadius: 0,
                         backgroundColor: 'var(--primary-red)',
-                        color: '#FFFFFF',
+                        color: 'var(--bg-card)',
                         fontWeight: 700,
                         fontSize: 13,
                         textDecoration: 'none',
@@ -1452,7 +1452,7 @@ export function MockSelectionPage() {
                         boxShadow: '0 2px 6px rgba(var(--primary-red-rgb), 0.25)'
                       }}
                     >
-                      <PlayCircle size={15} fill="#FFFFFF" color="var(--primary-red)" /> Start Test
+                      <PlayCircle size={15} fill="var(--bg-card)" color="var(--primary-red)" /> Start Test
                     </Link>
                   )}
                 </div>

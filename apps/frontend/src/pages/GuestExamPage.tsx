@@ -65,7 +65,7 @@ export function GuestExamPage() {
     Record<string, Record<string, string[]>>
   >({});
   const [allYearsData, setAllYearsData] = useState<any>(null);
-  const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE']);
+  const [availableExams, setAvailableExams] = useState<string[]>([]);
 
   const selectedExamsList = useMemo(() => {
     return parseTaxonomyParam(gExam, availableExams.length > 0 ? availableExams : []);
@@ -88,17 +88,7 @@ export function GuestExamPage() {
       const maxYear = Math.max(...availableYearsList);
       return ['All Years', ...sorted.map((y) => `${y} PYQs`)];
     }
-    return [
-      'All Years',
-      '2024 PYQs',
-      '2023 PYQs',
-      '2022 PYQs',
-      '2021 PYQs',
-      '2020 PYQs',
-      '2019 PYQs',
-      '2018 PYQs',
-      '2017 PYQs',
-    ];
+    return ['All Years'];
   }, [availableYearsList]);
 
   const selectedYearsList = useMemo(() => {
@@ -883,7 +873,7 @@ export function GuestExamPage() {
               negative_marks: item.negative_marks || 0.66,
               expected_time_seconds: item.expected_time_seconds || 60,
               source_year: item.source_year || item.exam_year || gYear,
-              exam_name: item.exam_name || gExam || 'UPSC CSE',
+              exam_name: item.exam_name || gExam,
             } as any;
           });
 
@@ -1021,7 +1011,7 @@ export function GuestExamPage() {
           topic_name: topName,
           subtopic_name: subtopName,
           concept_name: primaryH.concept_name || '',
-          exam_name: q.exam_name || (gExam && !gExam.startsWith('All Exams') ? gExam : 'UPSC CSE'),
+          exam_name: q.exam_name || (gExam && !gExam.startsWith('All Exams') ? gExam : ''),
           source_year:
             q.source_year ||
             (gYear && gYear.replace(/\D/g, '') ? Number(gYear.replace(/\D/g, '')) : 2023),
@@ -2251,7 +2241,7 @@ export function GuestExamPage() {
                           gap: 2,
                         }}
                       >
-                        {['All Exams', ...(availableExams.length > 0 ? availableExams : ['UPSC CSE'])]
+                        {['All Exams', ...(availableExams)]
                           .map((opt) => {
                             const isSelected = opt === 'All Exams' ? selectedExamsList.length === 0 : selectedExamsList.includes(opt);
                             return (
@@ -3266,7 +3256,7 @@ export function GuestExamPage() {
                           gap: 2,
                         }}
                       >
-                        {['All Exams', ...(availableExams.length > 0 ? availableExams : ['UPSC CSE'])]
+                        {['All Exams', ...(availableExams)]
                           .map((opt) => {
                             const isSelected = opt === 'All Exams' ? selectedExamsList.length === 0 : selectedExamsList.includes(opt);
                             return (

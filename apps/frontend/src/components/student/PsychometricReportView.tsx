@@ -373,10 +373,10 @@ export function PsychometricReportView({
     [];
 
   const cardStyle: React.CSSProperties = {
-    backgroundColor: isDark ? '#131f37' : '#ffffff',
+    backgroundColor: isDark ? '#131f37' : 'var(--bg-card)',
     borderRadius: 0,
     padding: 24,
-    border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
+    border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'var(--border-color)'}`,
     boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 2px 8px rgba(0,0,0,0.03)',
   };
 
@@ -386,7 +386,7 @@ export function PsychometricReportView({
     const cleanLabel = (rawStatus || '').replace(/_/g, ' ');
 
     if (s.includes('UNATTEMPTED')) {
-      return { bg: 'rgba(148, 163, 184, 0.15)', color: '#64748b', border: 'rgba(148, 163, 184, 0.35)', label: 'Unattempted' };
+      return { bg: 'rgba(148, 163, 184, 0.15)', color: 'var(--text-muted)', border: 'rgba(148, 163, 184, 0.35)', label: 'Unattempted' };
     }
 
     if (
@@ -421,8 +421,8 @@ export function PsychometricReportView({
         <button
           onClick={() => toggleInfo(key)}
           style={{
-            background: isOpen ? 'var(--primary-red)' : isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9',
-            color: isOpen ? '#ffffff' : isDark ? '#94a3b8' : '#64748b',
+            background: isOpen ? 'var(--primary-red)' : isDark ? 'rgba(255,255,255,0.08)' : 'var(--bg-hover)',
+            color: isOpen ? 'var(--bg-card)' : isDark ? 'var(--text-disabled)' : 'var(--text-muted)',
             border: 'none',
             borderRadius: 0,
             padding: '3px 10px',
@@ -446,11 +446,11 @@ export function PsychometricReportView({
               marginTop: 10,
               padding: 12,
               borderRadius: 0,
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.9)' : '#f8fafc',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.9)' : 'var(--bg-subtle)',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
               fontSize: 12,
               lineHeight: 1.5,
-              color: isDark ? '#e2e8f0' : '#334155',
+              color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
             }}
           >
             <div style={{ marginBottom: 6 }}>
@@ -969,7 +969,7 @@ export function PsychometricReportView({
     const hasQuestions = node.question_numbers && node.question_numbers.length > 0;
     const isLeaf = !hasChildren;
 
-    const accColor = node.accuracy >= 85 ? '#3A8B53' : node.accuracy >= 70 ? '#10b981' : node.accuracy >= 50 ? '#F2B623' : node.accuracy >= 30 ? '#F47B35' : '#ef4444';
+    const accColor = node.accuracy >= 85 ? '#3A8B53' : node.accuracy >= 70 ? 'var(--status-success)' : node.accuracy >= 50 ? '#F2B623' : node.accuracy >= 30 ? '#F47B35' : 'var(--primary-red)';
 
     return (
       <div key={nodeId} style={{ marginBottom: 4 }}>
@@ -981,29 +981,29 @@ export function PsychometricReportView({
             justifyContent: 'space-between',
             padding: '10px 14px',
             marginLeft: level * 20,
-            backgroundColor: level === 0 ? (isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc') : 'transparent',
-            border: level === 0 ? `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}` : 'none',
-            borderBottom: level > 0 ? `1px dashed ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}` : undefined,
+            backgroundColor: level === 0 ? (isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-subtle)') : 'transparent',
+            border: level === 0 ? `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}` : 'none',
+            borderBottom: level > 0 ? `1px dashed ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}` : undefined,
             borderRadius: 0,
             cursor: hasChildren ? 'pointer' : 'default',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {hasChildren ? (
-              isExpanded ? <ChevronDown size={16} color="#64748b" /> : <ChevronRight size={16} color="#64748b" />
+              isExpanded ? <ChevronDown size={16} color="var(--text-muted)" /> : <ChevronRight size={16} color="var(--text-muted)" />
             ) : (
               <div style={{ width: 16 }} />
             )}
             <span style={{
               fontSize: level === 0 ? 14 : level === 1 ? 13 : 12,
               fontWeight: level === 0 ? 800 : level === 1 ? 700 : 600,
-              color: isDark ? '#e2e8f0' : '#1e293b'
+              color: isDark ? 'var(--border-color)' : '#1e293b'
             }}>
               {node.name || 'Unnamed Node'}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 12, color: '#64748b' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {node.correct || 0} / {node.total || 0}
             </span>
             <span style={{
@@ -1039,9 +1039,9 @@ export function PsychometricReportView({
                   padding: '4px 8px',
                   fontSize: 11,
                   fontWeight: 700,
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-                  color: isDark ? '#cbd5e1' : '#475569',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-hover)',
+                  color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
                   borderRadius: 0,
                   cursor: 'pointer'
                 }}
@@ -1088,10 +1088,10 @@ export function PsychometricReportView({
           >
             <Brain size={14} /> Full 12-Matrix Diagnostic Platform
           </div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 6px 0', color: isDark ? '#ffffff' : '#172033' }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 6px 0', color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
             {metadata?.exam_attempt?.exam_name || 'UPSC Civil Services Examination'}
           </h1>
-          <p style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.7)' : '#64748b', margin: 0 }}>
+          <p style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', margin: 0 }}>
             Candidate: <strong>{metadata?.candidate?.full_name || 'Candidate'}</strong> • Attempt Date:{' '}
             {metadata?.exam_attempt?.attempt_date ? new Date(metadata.exam_attempt.attempt_date).toLocaleDateString() : 'Today'}
           </p>
@@ -1101,37 +1101,37 @@ export function PsychometricReportView({
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <div
             style={{
-              backgroundColor: isDark ? 'rgba(15,23,42,0.6)' : '#ffffff',
+              backgroundColor: isDark ? 'rgba(15,23,42,0.6)' : 'var(--bg-card)',
               padding: '10px 18px',
               borderRadius: 0,
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
               textAlign: 'center',
             }}
           >
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Net Marks</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Net Marks</div>
             <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--primary-red)' }}>
               {metadata?.exam_attempt?.total_score_awarded !== undefined
                 ? metadata.exam_attempt.total_score_awarded.toFixed(2)
                 : (metadata?.exam_attempt as any)?.total_score !== undefined
                   ? Number((metadata?.exam_attempt as any)?.total_score).toFixed(2)
                   : '0.00'}
-              <span style={{ fontSize: 12, color: '#64748b' }}> / {metadata?.exam_attempt?.max_possible_score || 200}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> / {metadata?.exam_attempt?.max_possible_score || 200}</span>
             </div>
           </div>
 
           <div
             style={{
-              backgroundColor: isDark ? 'rgba(15,23,42,0.6)' : '#ffffff',
+              backgroundColor: isDark ? 'rgba(15,23,42,0.6)' : 'var(--bg-card)',
               padding: '10px 18px',
               borderRadius: 0,
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
               textAlign: 'center',
             }}
           >
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>ICRS Index</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>ICRS Index</div>
             <div style={{ fontSize: 20, fontWeight: 900, color: '#3A8B53' }}>
               {icrs?.icrs_score || 82}
-              <span style={{ fontSize: 12, color: '#64748b' }}> / 100</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> / 100</span>
             </div>
           </div>
 
@@ -1141,7 +1141,7 @@ export function PsychometricReportView({
               padding: '10px 16px',
               borderRadius: 0,
               border: hasAiInsight ? '1px solid #A7F3D0' : '1px solid #FDE68A',
-              backgroundColor: hasAiInsight ? '#ECFDF5' : '#FEF3C7',
+              backgroundColor: hasAiInsight ? '#ECFDF5' : 'var(--status-warning-bg)',
               textAlign: 'center',
               display: 'flex',
               flexDirection: 'column',
@@ -1166,7 +1166,7 @@ export function PsychometricReportView({
         style={{
           display: 'flex',
           gap: 10,
-          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
           paddingBottom: 12,
           overflowX: 'auto',
         }}
@@ -1197,8 +1197,8 @@ export function PsychometricReportView({
                 padding: '10px 18px',
                 borderRadius: 0,
                 border: 'none',
-                backgroundColor: isActive ? 'var(--primary-red)' : isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-                color: isActive ? '#ffffff' : isDark ? '#94a3b8' : '#64748b',
+                backgroundColor: isActive ? 'var(--primary-red)' : isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-hover)',
+                color: isActive ? 'var(--bg-card)' : isDark ? 'var(--text-disabled)' : 'var(--text-muted)',
                 fontWeight: 700,
                 fontSize: 13.5,
                 cursor: 'pointer',
@@ -1217,10 +1217,10 @@ export function PsychometricReportView({
                     borderRadius: 2,
                     backgroundColor: hasAiInsight
                       ? (isActive ? 'rgba(255,255,255,0.25)' : '#ECFDF5')
-                      : (isActive ? 'rgba(255,255,255,0.25)' : '#FEF3C7'),
+                      : (isActive ? 'rgba(255,255,255,0.25)' : 'var(--status-warning-bg)'),
                     color: hasAiInsight
-                      ? (isActive ? '#FFFFFF' : '#059669')
-                      : (isActive ? '#FFFFFF' : '#D97706'),
+                      ? (isActive ? 'var(--bg-card)' : '#059669')
+                      : (isActive ? 'var(--bg-card)' : '#D97706'),
                   }}
                 >
                   {hasAiInsight ? 'READY' : 'GENERATING'}
@@ -1272,21 +1272,21 @@ export function PsychometricReportView({
                       <Award size={14} />
                       {upscBench.benchmark_status || (isAboveCutoff ? (isPractice ? 'Qualifying Practice Standard' : 'Clearing Qualifying Cutoff') : (isPractice ? 'Practice Revision Recommended' : 'Near Cutoff Benchmark'))}
                     </div>
-                    <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#172033' }}>
+                    <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 4px 0', color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       {isPractice ? 'Practice Session Diagnostic Summary' : 'Executive UPSC Prelims Diagnostic Summary'}
                     </h2>
-                    <p style={{ fontSize: 13, color: isDark ? '#94a3b8' : '#64748b', margin: 0 }}>
+                    <p style={{ fontSize: 13, color: isDark ? 'var(--text-disabled)' : 'var(--text-muted)', margin: 0 }}>
                       Comprehensive marks accounting, qualifying benchmark margin, and error breakdown.
                     </p>
                   </div>
 
-                  <div style={{ padding: '10px 18px', borderRadius: 0, backgroundColor: isDark ? 'rgba(15, 23, 42, 0.6)' : '#ffffff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'}`, textAlign: 'right' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                  <div style={{ padding: '10px 18px', borderRadius: 0, backgroundColor: isDark ? 'rgba(15, 23, 42, 0.6)' : 'var(--bg-card)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`, textAlign: 'right' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                       {isPractice ? 'Practice Mastery Benchmark' : 'UPSC Cutoff Benchmark'}
                     </div>
                     <div style={{ fontSize: 18, fontWeight: 900, color: isAboveCutoff ? '#3A8B53' : '#F2B623' }}>
                       {cutoffMargin >= 0 ? `+${cutoffMargin}` : cutoffMargin} Marks
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}> vs {cutoffTarget.toFixed(1)} {isPractice ? 'Target' : 'Cutoff'}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}> vs {cutoffTarget.toFixed(1)} {isPractice ? 'Target' : 'Cutoff'}</span>
                     </div>
                   </div>
                 </div>
@@ -1297,23 +1297,23 @@ export function PsychometricReportView({
                       <CheckCircle2 size={16} /> Marks Earned (+)
                     </div>
                     <div style={{ fontSize: 24, fontWeight: 900, color: '#3A8B53', marginTop: 4 }}>+{posMarks}</div>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>{corrCount} correct answers</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{corrCount} correct answers</div>
                   </div>
 
                   <div style={{ padding: 14, borderRadius: 0, backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.1)' : '#fef2f2', border: '1px solid rgba(var(--primary-red-rgb), 0.25)' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary-red)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <AlertTriangle size={16} /> Negative Marks Lost (-)
                     </div>
-                    <div style={{ fontSize: 24, fontWeight: 900, color: '#ef4444', marginTop: 4 }}>-{negMarks}</div>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>{incCount} incorrect selections</div>
+                    <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--primary-red)', marginTop: 4 }}>-{negMarks}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{incCount} incorrect selections</div>
                   </div>
 
-                  <div style={{ padding: 14, borderRadius: 0, backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.1)' : '#F8FAFC', border: '1px solid rgba(var(--primary-red-rgb), 0.25)' }}>
+                  <div style={{ padding: 14, borderRadius: 0, backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.1)' : 'var(--bg-subtle)', border: '1px solid rgba(var(--primary-red-rgb), 0.25)' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary-red)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Zap size={16} /> Net Final Score
                     </div>
                     <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--primary-red)', marginTop: 4 }}>{netMarks.toFixed(2)}</div>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Out of {maxPossibleScore.toFixed(2)} Marks</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Out of {maxPossibleScore.toFixed(2)} Marks</div>
                   </div>
 
                   <div style={{ padding: 14, borderRadius: 0, backgroundColor: isDark ? 'rgba(139,92,246,0.1)' : '#faf5ff', border: '1px solid rgba(139,92,246,0.25)' }}>
@@ -1321,28 +1321,28 @@ export function PsychometricReportView({
                       <Target size={16} /> Accuracy & Coverage
                     </div>
                     <div style={{ fontSize: 24, fontWeight: 900, color: '#8b5cf6', marginTop: 4 }}>{attemptAccPct}%</div>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>{attemptedCount}/{totalCount} questions attempted ({coveragePct}%)</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{attemptedCount}/{totalCount} questions attempted ({coveragePct}%)</div>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
-                  <div style={{ padding: 12, borderRadius: 0, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}` }}>
+                  <div style={{ padding: 12, borderRadius: 0, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'var(--bg-card)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'}` }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: '#3A8B53', marginBottom: 4 }}>🟢 Top Marks Drivers</div>
-                    <div style={{ fontSize: 12.5, color: isDark ? '#e2e8f0' : '#334155' }}>
+                    <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                       {corrCount > 0 ? `Secured +${posMarks} positive marks across ${corrCount} accurate concept selections.` : 'No positive mark drivers recorded in this attempt.'}
                     </div>
                   </div>
 
-                  <div style={{ padding: 12, borderRadius: 0, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}` }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#ef4444', marginBottom: 4 }}>🔴 Primary Marks Leakage</div>
-                    <div style={{ fontSize: 12.5, color: isDark ? '#e2e8f0' : '#334155' }}>
+                  <div style={{ padding: 12, borderRadius: 0, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'var(--bg-card)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'}` }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--primary-red)', marginBottom: 4 }}>🔴 Primary Marks Leakage</div>
+                    <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                       {incCount > 0 ? `Lost -${negMarks} marks to negative penalty across ${incCount} incorrect distractor choices.` : 'Zero marks leaked to negative penalty.'}
                     </div>
                   </div>
 
-                  <div style={{ padding: 12, borderRadius: 0, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}` }}>
+                  <div style={{ padding: 12, borderRadius: 0, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'var(--bg-card)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'}` }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--primary-red)', marginBottom: 4 }}>⚡ Attempt Coverage & Pacing</div>
-                    <div style={{ fontSize: 12.5, color: isDark ? '#e2e8f0' : '#334155' }}>
+                    <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                       {coveragePct < 50.0 ? `Attempted ${coveragePct}% of the paper. Focus on syllabus breadth to attempt 80+ questions on test day.` : `Solid attempt volume covering ${coveragePct}% of the exam.`}
                     </div>
                   </div>
@@ -1373,7 +1373,7 @@ export function PsychometricReportView({
                       fontSize: 11,
                       fontWeight: 900,
                       color: 'var(--primary-red)',
-                      backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.15)' : '#F8FAFC',
+                      backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.15)' : 'var(--bg-subtle)',
                       padding: '3px 8px',
                       borderRadius: 0,
                       textTransform: 'uppercase',
@@ -1382,16 +1382,16 @@ export function PsychometricReportView({
                     Metric 01
                   </span>
                   <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       Overall Exam Readiness
                     </h3>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Qualification Target Benchmark</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Qualification Target Benchmark</div>
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--primary-red)' }}>
-                    {icrs?.icrs_score !== undefined ? icrs.icrs_score : 75} <span style={{ fontSize: 13, color: '#64748b' }}>/ 100</span>
+                    {icrs?.icrs_score !== undefined ? icrs.icrs_score : 75} <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/ 100</span>
                   </div>
                   {(() => {
                     const b = getBadgeStyle(icrs?.readiness_label || icrs?.classification || 'Competitive Benchmark Ready');
@@ -1414,7 +1414,7 @@ export function PsychometricReportView({
                 </div>
               </div>
 
-              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+              <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                 Cutoff Buffer: <strong>{icrs?.cutoff_margin !== undefined ? `${icrs.cutoff_margin > 0 ? '+' : ''}${icrs.cutoff_margin} Marks` : 'On Qualifying Track'}</strong> • Readiness Band: <strong>{icrs?.readiness_label || 'Competitive'}</strong>
               </div>
 
@@ -1427,7 +1427,7 @@ export function PsychometricReportView({
                   border: `1px solid ${isDark ? 'rgba(var(--primary-red-rgb), 0.2)' : 'rgba(var(--primary-red-rgb), 0.15)'}`,
                   borderLeftWidth: 3,
                   fontSize: 12.5,
-                  color: isDark ? '#cbd5e1' : '#334155',
+                  color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                   lineHeight: 1.5,
                 }}
               >
@@ -1468,10 +1468,10 @@ export function PsychometricReportView({
                     Metric 02
                   </span>
                   <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       Knowledge Depth & Mastery
                     </h3>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Conceptual Command Across Difficulty</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Conceptual Command Across Difficulty</div>
                   </div>
                 </div>
 
@@ -1495,7 +1495,7 @@ export function PsychometricReportView({
                 </div>
               </div>
 
-              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+              <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                 Estimated Percentile: <strong>{irt?.percentile_rank ?? 50.0}%</strong> • Mastery Status: <strong style={{ color: '#3A8B53' }}>{irt?.ability_label || 'Competent'}</strong>
               </div>
 
@@ -1508,7 +1508,7 @@ export function PsychometricReportView({
                   border: `1px solid ${isDark ? 'rgba(16,185,129,0.2)' : 'rgba(16,185,129,0.15)'}`,
                   borderLeftWidth: 3,
                   fontSize: 12.5,
-                  color: isDark ? '#cbd5e1' : '#334155',
+                  color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                   lineHeight: 1.5,
                 }}
               >
@@ -1549,10 +1549,10 @@ export function PsychometricReportView({
                     Metric 03
                   </span>
                   <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       Guessing Risk & Confidence
                     </h3>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Educated Eliminations vs Blind Guesses</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Educated Eliminations vs Blind Guesses</div>
                   </div>
                 </div>
 
@@ -1584,7 +1584,7 @@ export function PsychometricReportView({
                 </div>
               </div>
 
-              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+              <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                 Instinct Profile: <strong>{gti?.label || 'Controlled Risk'}</strong> • Discipline Threshold: <strong>Target &lt; 20%</strong>
               </div>
 
@@ -1597,7 +1597,7 @@ export function PsychometricReportView({
                   border: `1px solid ${isDark ? 'rgba(245,158,11,0.2)' : 'rgba(245,158,11,0.15)'}`,
                   borderLeftWidth: 3,
                   fontSize: 12.5,
-                  color: isDark ? '#cbd5e1' : '#334155',
+                  color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                   lineHeight: 1.5,
                 }}
               >
@@ -1638,10 +1638,10 @@ export function PsychometricReportView({
                     Metric 04
                   </span>
                   <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       Elimination Accuracy
                     </h3>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Accuracy on 50:50 Pruned Choices</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Accuracy on 50:50 Pruned Choices</div>
                   </div>
                 </div>
 
@@ -1673,7 +1673,7 @@ export function PsychometricReportView({
                 </div>
               </div>
 
-              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+              <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                 Elimination Rating: <strong>{oeei?.elimination_rating || 'High Precision'}</strong> • Target: <strong>&gt; 70% Conversion</strong>
               </div>
 
@@ -1686,7 +1686,7 @@ export function PsychometricReportView({
                   border: `1px solid ${isDark ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.15)'}`,
                   borderLeftWidth: 3,
                   fontSize: 12.5,
-                  color: isDark ? '#cbd5e1' : '#334155',
+                  color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                   lineHeight: 1.5,
                 }}
               >
@@ -1727,10 +1727,10 @@ export function PsychometricReportView({
                     Metric 05
                   </span>
                   <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       Cognitive Stamina
                     </h3>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Focus & Precision Across Duration</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Focus & Precision Across Duration</div>
                   </div>
                 </div>
 
@@ -1759,7 +1759,7 @@ export function PsychometricReportView({
                 </div>
               </div>
 
-              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+              <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                 Endurance Profile: <strong>{satoi?.stamina_label || 'Stable Focus'}</strong> • Late Exam Stability: <strong>Maintained</strong>
               </div>
 
@@ -1772,7 +1772,7 @@ export function PsychometricReportView({
                   border: `1px solid ${isDark ? 'rgba(6,182,212,0.2)' : 'rgba(6,182,212,0.15)'}`,
                   borderLeftWidth: 3,
                   fontSize: 12.5,
-                  color: isDark ? '#cbd5e1' : '#334155',
+                  color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                   lineHeight: 1.5,
                 }}
               >
@@ -1813,16 +1813,16 @@ export function PsychometricReportView({
                     Metric 06
                   </span>
                   <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       Pacing & Speed Management
                     </h3>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Time Allocation & Velocity per Question (Telemetry Calibrated)</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Time Allocation & Velocity per Question (Telemetry Calibrated)</div>
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ fontSize: 24, fontWeight: 900, color: '#ec4899' }}>
-                    ~{pacing?.avg_time_per_question_sec ? Math.round(pacing.avg_time_per_question_sec) : 60}s <span style={{ fontSize: 13, color: '#64748b' }}>/ question</span>
+                    ~{pacing?.avg_time_per_question_sec ? Math.round(pacing.avg_time_per_question_sec) : 60}s <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/ question</span>
                   </div>
                   {(() => {
                     const b = getBadgeStyle(pacing?.pacing_classification || pacing?.pacing_status || 'BALANCED_PACING');
@@ -1845,7 +1845,7 @@ export function PsychometricReportView({
                 </div>
               </div>
 
-              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+              <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                 Time Utilization: <strong>{pacing?.time_utilization_pct || 90}% of Duration</strong> • Benchmark Pace: <strong>60–72s / question</strong>
               </div>
 
@@ -1858,7 +1858,7 @@ export function PsychometricReportView({
                   border: `1px solid ${isDark ? 'rgba(236,72,153,0.2)' : 'rgba(236,72,153,0.15)'}`,
                   borderLeftWidth: 3,
                   fontSize: 12.5,
-                  color: isDark ? '#cbd5e1' : '#334155',
+                  color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                   lineHeight: 1.5,
                 }}
               >
@@ -1908,16 +1908,16 @@ export function PsychometricReportView({
                           Metric 07
                         </span>
                         <div>
-                          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                             Answer Changing Impact
                           </h3>
-                          <div style={{ fontSize: 11.5, color: '#64748b' }}>Outcome & Marks Impact of Changing Options</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Outcome & Marks Impact of Changing Options</div>
                         </div>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ fontSize: 24, fontWeight: 900, color: netImpact >= 0 ? '#3A8B53' : '#ef4444' }}>
-                          {netImpact >= 0 ? `+${netImpact}` : netImpact} Marks <span style={{ fontSize: 13, color: '#64748b' }}>Net Impact</span>
+                        <div style={{ fontSize: 24, fontWeight: 900, color: netImpact >= 0 ? '#3A8B53' : 'var(--primary-red)' }}>
+                          {netImpact >= 0 ? `+${netImpact}` : netImpact} Marks <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Net Impact</span>
                         </div>
                         <span
                           style={{
@@ -1935,8 +1935,8 @@ export function PsychometricReportView({
                       </div>
                     </div>
 
-                    <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
-                      Changed: <strong>{totalSwitches} questions</strong> (Right→Wrong: <strong style={{ color: '#ef4444' }}>{negSwitches}</strong>, Wrong→Right: <strong style={{ color: '#3A8B53' }}>{posSwitches}</strong>, Wrong→Wrong: <strong style={{ color: '#F2B623' }}>{wrongToWrong}</strong>)
+                    <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
+                      Changed: <strong>{totalSwitches} questions</strong> (Right→Wrong: <strong style={{ color: 'var(--primary-red)' }}>{negSwitches}</strong>, Wrong→Right: <strong style={{ color: '#3A8B53' }}>{posSwitches}</strong>, Wrong→Wrong: <strong style={{ color: '#F2B623' }}>{wrongToWrong}</strong>)
                     </div>
 
                     <div
@@ -1948,7 +1948,7 @@ export function PsychometricReportView({
                         border: `1px solid ${isDark ? 'rgba(244,63,94,0.2)' : 'rgba(244,63,94,0.15)'}`,
                         borderLeftWidth: 3,
                         fontSize: 12.5,
-                        color: isDark ? '#cbd5e1' : '#334155',
+                        color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                         lineHeight: 1.5,
                       }}
                     >
@@ -2011,16 +2011,16 @@ export function PsychometricReportView({
                           Metric 08
                         </span>
                         <div>
-                          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                             Trap Resistance
                           </h3>
-                          <div style={{ fontSize: 11.5, color: '#64748b' }}>Distractor & Extreme Keyword Avoidance (Closeness Score Evaluated)</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Distractor & Extreme Keyword Avoidance (Closeness Score Evaluated)</div>
                         </div>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ fontSize: 24, fontWeight: 900, color: '#a855f7' }}>
-                          {trapResistancePct} <span style={{ fontSize: 13, color: '#64748b' }}>/ 100 Resistance</span>
+                          {trapResistancePct} <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/ 100 Resistance</span>
                         </div>
                         <span
                           style={{
@@ -2038,7 +2038,7 @@ export function PsychometricReportView({
                       </div>
                     </div>
 
-                    <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+                    <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                       Near-Miss Distractors: <strong>{nearMiss}</strong> • Statement Traps: <strong>{cogTraps} Detected</strong> • Traps Deflected: <strong>{totalQCount - totalTrapsFallen} / {totalQCount}</strong>
                     </div>
 
@@ -2051,7 +2051,7 @@ export function PsychometricReportView({
                         border: `1px solid ${isDark ? 'rgba(168,85,247,0.2)' : 'rgba(168,85,247,0.15)'}`,
                         borderLeftWidth: 3,
                         fontSize: 12.5,
-                        color: isDark ? '#cbd5e1' : '#334155',
+                        color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                         lineHeight: 1.5,
                       }}
                     >
@@ -2085,7 +2085,7 @@ export function PsychometricReportView({
                     style={{
                       fontSize: 11,
                       fontWeight: 900,
-                      color: '#ef4444',
+                      color: 'var(--primary-red)',
                       backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.15)' : '#fef2f2',
                       padding: '3px 8px',
                       borderRadius: 0,
@@ -2095,10 +2095,10 @@ export function PsychometricReportView({
                     Metric 09
                   </span>
                   <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       Priority Syllabus Focus
                     </h3>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>High-Yield Action Areas</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>High-Yield Action Areas</div>
                   </div>
                 </div>
 
@@ -2109,7 +2109,7 @@ export function PsychometricReportView({
                     padding: '3px 10px',
                     borderRadius: 0,
                     backgroundColor: 'rgba(var(--primary-red-rgb), 0.15)',
-                    color: '#ef4444',
+                    color: 'var(--primary-red)',
                     border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                   }}
                 >
@@ -2131,7 +2131,7 @@ export function PsychometricReportView({
 
                 return (
                   <>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: weakSpotsList.length > 0 ? '#ef4444' : '#3A8B53' }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: weakSpotsList.length > 0 ? 'var(--primary-red)' : '#3A8B53' }}>
                       {urgentLabel}
                     </div>
 
@@ -2144,11 +2144,11 @@ export function PsychometricReportView({
                         border: `1px solid ${isDark ? 'rgba(var(--primary-red-rgb), 0.2)' : 'rgba(var(--primary-red-rgb), 0.15)'}`,
                         borderLeftWidth: 3,
                         fontSize: 12.5,
-                        color: isDark ? '#cbd5e1' : '#334155',
+                        color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                         lineHeight: 1.5,
                       }}
                     >
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', marginBottom: 2 }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--primary-red)', textTransform: 'uppercase', marginBottom: 2 }}>
                         💡 Mentor's Diagnostic Context
                       </div>
                       {aiInsights.critical_vulnerabilities?.[0] || 'Focus on high-yield revision tasks listed below to maximize your score.'}
@@ -2166,10 +2166,10 @@ export function PsychometricReportView({
               {/* Visualizer 1: Per-Question Pacing Velocity Curve */}
               <div style={cardStyle}>
                 <div style={{ marginBottom: 14 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#172033' }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                     ⚡ Pacing & Time Allocation Curve per Question
                   </h3>
-                  <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
                     Tracks actual time spent (seconds) on each question compared against the 60s benchmark pace.
                   </p>
                 </div>
@@ -2188,13 +2188,13 @@ export function PsychometricReportView({
                       })}
                       margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                      <XAxis dataKey="qNum" tick={{ fontSize: 10, fill: '#64748b' }} interval={Math.max(0, Math.floor(questionsList.length / 10))} />
-                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} unit="s" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'} />
+                      <XAxis dataKey="qNum" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} interval={Math.max(0, Math.floor(questionsList.length / 10))} />
+                      <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} unit="s" />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: isDark ? '#172033' : '#ffffff',
-                          borderColor: isDark ? '#334155' : '#cbd5e1',
+                          backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-card)',
+                          borderColor: isDark ? 'var(--text-secondary)' : 'var(--border-color)',
                           borderRadius: 0,
                           fontSize: 12,
                         }}
@@ -2211,10 +2211,10 @@ export function PsychometricReportView({
               {/* Visualizer 2: Cognitive Stamina & Endurance Fatigue Curve (Quartiles) */}
               <div style={cardStyle}>
                 <div style={{ marginBottom: 14 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#172033' }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                     🔋 Cognitive Stamina & Accuracy Across Test Quartiles
                   </h3>
-                  <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
                     Compares precision across all 4 quarters of the paper to identify late-exam mental fatigue.
                   </p>
                 </div>
@@ -2244,13 +2244,13 @@ export function PsychometricReportView({
                       })()}
                       margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                      <XAxis dataKey="quartile" tick={{ fontSize: 11, fill: '#64748b' }} />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'} />
+                      <XAxis dataKey="quartile" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} unit="%" />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: isDark ? '#172033' : '#ffffff',
-                          borderColor: isDark ? '#334155' : '#cbd5e1',
+                          backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-card)',
+                          borderColor: isDark ? 'var(--text-secondary)' : 'var(--border-color)',
                           borderRadius: 0,
                           fontSize: 12,
                         }}
@@ -2277,7 +2277,7 @@ export function PsychometricReportView({
             style={{
               padding: '16px 20px',
               borderRadius: 0,
-              backgroundColor: hasAiInsight ? '#ECFDF5' : '#FEF3C7',
+              backgroundColor: hasAiInsight ? '#ECFDF5' : 'var(--status-warning-bg)',
               border: `1px solid ${hasAiInsight ? '#A7F3D0' : '#FDE68A'}`,
               display: 'flex',
               alignItems: 'center',
@@ -2288,7 +2288,7 @@ export function PsychometricReportView({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {hasAiInsight ? (
-                <div style={{ padding: 8, backgroundColor: '#D1FAE5', color: '#059669' }}>
+                <div style={{ padding: 8, backgroundColor: 'var(--status-success-bg)', color: '#059669' }}>
                   
                 </div>
               ) : (
@@ -2302,7 +2302,7 @@ export function PsychometricReportView({
                     ? (isCumulative ? '✨ Longitudinal Strategic Diagnostic: Ready & Synthesized' : '✨ Cognitive Diagnostic & Revision Plan: Ready')
                     : '⏳ Mentorship Engine: Synthesizing Cognitive Insights & Tasks...'}
                 </div>
-                <div style={{ fontSize: 12.5, color: hasAiInsight ? '#047857' : '#B45309' }}>
+                <div style={{ fontSize: 12.5, color: hasAiInsight ? '#047857' : 'var(--status-warning)' }}>
                   {hasAiInsight
                     ? (isCumulative
                         ? 'Deep longitudinal evaluation across all attempts with custom strategic study tasks.'
@@ -2319,7 +2319,7 @@ export function PsychometricReportView({
                   fontWeight: 800,
                   padding: '4px 12px',
                   backgroundColor: '#059669',
-                  color: '#FFFFFF',
+                  color: 'var(--bg-card)',
                   letterSpacing: '0.04em',
                 }}
               >
@@ -2358,7 +2358,7 @@ export function PsychometricReportView({
                       fontSize: 19,
                       fontWeight: 800,
                       margin: 0,
-                      color: isDark ? '#ffffff' : '#172033',
+                      color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                     }}
                   >
                     {isCumulative ? 'Longitudinal Strategic Master Evaluation' : 'Cognitive Diagnostic Report'}
@@ -2382,7 +2382,7 @@ export function PsychometricReportView({
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 12.5, color: isDark ? '#94a3b8' : '#64748b' }}>
+                <div style={{ fontSize: 12.5, color: isDark ? 'var(--text-disabled)' : 'var(--text-muted)' }}>
                   Structured Psychometric Evaluation & Behavioral Diagnostic Analysis
                 </div>
               </div>
@@ -2455,7 +2455,7 @@ export function PsychometricReportView({
                   style={{
                     fontSize: 14,
                     fontWeight: 700,
-                    color: isDark ? '#ffffff' : '#172033',
+                    color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                     marginBottom: 8,
                     lineHeight: 1.45,
                   }}
@@ -2465,7 +2465,7 @@ export function PsychometricReportView({
                 <div
                   style={{
                     fontSize: 13,
-                    color: isDark ? '#cbd5e1' : '#334155',
+                    color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                     lineHeight: 1.55,
                   }}
                 >
@@ -2508,7 +2508,7 @@ export function PsychometricReportView({
                       margin: 0,
                       paddingLeft: 18,
                       fontSize: 12.5,
-                      color: isDark ? '#e2e8f0' : '#166534',
+                      color: isDark ? 'var(--border-color)' : '#166534',
                       lineHeight: 1.55,
                     }}
                   >
@@ -2533,7 +2533,7 @@ export function PsychometricReportView({
                     style={{
                       fontSize: 13,
                       fontWeight: 800,
-                      color: '#ef4444',
+                      color: 'var(--primary-red)',
                       marginBottom: 10,
                       display: 'flex',
                       alignItems: 'center',
@@ -2547,7 +2547,7 @@ export function PsychometricReportView({
                       margin: 0,
                       paddingLeft: 18,
                       fontSize: 12.5,
-                      color: isDark ? '#e2e8f0' : '#991b1b',
+                      color: isDark ? 'var(--border-color)' : '#991b1b',
                       lineHeight: 1.55,
                     }}
                   >
@@ -2594,7 +2594,7 @@ export function PsychometricReportView({
                   <div
                     style={{
                       fontSize: 12.5,
-                      color: isDark ? '#cbd5e1' : '#334155',
+                      color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                       lineHeight: 1.55,
                     }}
                   >
@@ -2628,7 +2628,7 @@ export function PsychometricReportView({
                   <div
                     style={{
                       fontSize: 12.5,
-                      color: isDark ? '#cbd5e1' : '#334155',
+                      color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                       lineHeight: 1.55,
                     }}
                   >
@@ -2712,7 +2712,7 @@ export function PsychometricReportView({
                             fontSize: 19,
                             fontWeight: 800,
                             margin: 0,
-                            color: isDark ? '#ffffff' : '#172033',
+                            color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                           }}
                         >
                           Mentor-Recommended Study Plan Tasks ({rawTasksList.length} Action Items)
@@ -2730,7 +2730,7 @@ export function PsychometricReportView({
                           {rawTasksList.length} Priorities
                         </span>
                       </div>
-                      <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
                         Targeted study interventions generated from your test errors. Click to add or remove from your personal study planner.
                       </div>
                     </div>
@@ -2741,7 +2741,7 @@ export function PsychometricReportView({
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
-                        color: isDark ? '#94a3b8' : '#64748b',
+                        color: isDark ? 'var(--text-disabled)' : 'var(--text-muted)',
                       }}
                     >
                       {rawTasksList.length - unaddedCount}/{rawTasksList.length} Scheduled
@@ -2757,7 +2757,7 @@ export function PsychometricReportView({
                           padding: '8px 16px',
                           borderRadius: 0,
                           backgroundColor: 'var(--primary-red)',
-                          color: '#ffffff',
+                          color: 'var(--bg-card)',
                           border: 'none',
                           fontSize: 12.5,
                           fontWeight: 800,
@@ -2808,7 +2808,7 @@ export function PsychometricReportView({
                     const isAdding = isAddingTask[taskId];
 
                     const priorityColor =
-                      t.priority === 'CRITICAL' ? '#ef4444' : t.priority === 'HIGH' ? '#f59e0b' : '#3b82f6';
+                      t.priority === 'CRITICAL' ? 'var(--primary-red)' : t.priority === 'HIGH' ? 'var(--status-warning)' : 'var(--accent-primary)';
 
                     return (
                       <div
@@ -2816,8 +2816,8 @@ export function PsychometricReportView({
                         style={{
                           padding: 18,
                           borderRadius: 0,
-                          backgroundColor: isDark ? '#1a2234' : '#ffffff',
-                          border: `1px solid ${isAdded ? '#10b981' : isDark ? '#334155' : '#e2e8f0'}`,
+                          backgroundColor: isDark ? '#1a2234' : 'var(--bg-card)',
+                          border: `1px solid ${isAdded ? 'var(--status-success)' : isDark ? 'var(--text-secondary)' : 'var(--border-color)'}`,
                           display: 'flex',
                           flexDirection: 'column',
                           justifyContent: 'space-between',
@@ -2839,12 +2839,12 @@ export function PsychometricReportView({
                             >
                               {formatEnum(t.priority || 'HIGH')}
                             </span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
                               ⏱️ {t.allocated_time_minutes || 30} mins
                             </span>
                           </div>
 
-                          <h4 style={{ fontSize: 14.5, fontWeight: 800, color: isDark ? '#ffffff' : '#172033', margin: '0 0 4px 0' }}>
+                          <h4 style={{ fontSize: 14.5, fontWeight: 800, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)', margin: '0 0 4px 0' }}>
                             {t.title}
                           </h4>
                           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary-red)', marginBottom: 8 }}>
@@ -2852,13 +2852,13 @@ export function PsychometricReportView({
                           </div>
 
                           {t.reasoning && (
-                            <p style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569', margin: '0 0 10px 0', lineHeight: 1.45 }}>
+                            <p style={{ fontSize: 12, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)', margin: '0 0 10px 0', lineHeight: 1.45 }}>
                               💡 {t.reasoning}
                             </p>
                           )}
 
                           {t.action_checklist && t.action_checklist.length > 0 && (
-                            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: isDark ? '#94a3b8' : '#64748b', lineHeight: 1.4 }}>
+                            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: isDark ? 'var(--text-disabled)' : 'var(--text-muted)', lineHeight: 1.4 }}>
                               {t.action_checklist.map((item: string, cIdx: number) => (
                                 <li key={cIdx}>{item}</li>
                               ))}
@@ -2866,7 +2866,7 @@ export function PsychometricReportView({
                           )}
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTop: `1px solid ${isDark ? '#334155' : '#f1f5f9'}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTop: `1px solid ${isDark ? 'var(--text-secondary)' : 'var(--bg-hover)'}` }}>
                           <button
                             disabled={isAdded || isAdding}
                             onClick={() => handleScheduleSingleTask(t)}
@@ -2876,8 +2876,8 @@ export function PsychometricReportView({
                               gap: 6,
                               padding: '6px 12px',
                               borderRadius: 0,
-                              backgroundColor: isAdded ? '#10b981' : 'var(--primary-red)',
-                              color: '#ffffff',
+                              backgroundColor: isAdded ? 'var(--status-success)' : 'var(--primary-red)',
+                              color: 'var(--bg-card)',
                               border: 'none',
                               fontSize: 12,
                               fontWeight: 700,
@@ -2906,8 +2906,8 @@ export function PsychometricReportView({
                               padding: '6px 10px',
                               borderRadius: 0,
                               backgroundColor: isDone ? 'rgba(16,185,129,0.15)' : 'transparent',
-                              color: isDone ? '#10b981' : '#64748b',
-                              border: `1px solid ${isDone ? '#10b981' : '#cbd5e1'}`,
+                              color: isDone ? 'var(--status-success)' : 'var(--text-muted)',
+                              border: `1px solid ${isDone ? 'var(--status-success)' : 'var(--border-color)'}`,
                               fontSize: 11.5,
                               fontWeight: 700,
                               cursor: 'pointer',
@@ -2966,12 +2966,12 @@ export function PsychometricReportView({
               gap: 10,
               padding: '12px 18px',
               borderRadius: 0,
-              backgroundColor: isDark ? '#131f37' : '#ffffff',
-              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
+              backgroundColor: isDark ? '#131f37' : 'var(--bg-card)',
+              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'var(--border-color)'}`,
               flexWrap: 'wrap',
             }}
           >
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Filter size={14} /> Filter Aggregates by Exam Modality:
             </span>
 
@@ -2996,9 +2996,9 @@ export function PsychometricReportView({
                       ? 'var(--primary-red)'
                       : isDark
                         ? 'rgba(255,255,255,0.05)'
-                        : '#f1f5f9',
-                    color: isSelected ? '#ffffff' : isDark ? '#cbd5e1' : '#475569',
-                    border: `1px solid ${isSelected ? 'var(--primary-red)' : isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                        : 'var(--bg-hover)',
+                    color: isSelected ? 'var(--bg-card)' : isDark ? 'var(--border-color)' : 'var(--text-secondary)',
+                    border: `1px solid ${isSelected ? 'var(--primary-red)' : isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -3038,17 +3038,17 @@ export function PsychometricReportView({
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary-red)' }}>Exam Preparedness (ICRS)</span>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: deltas.icrs_delta >= 0 ? '#3A8B53' : '#ef4444' }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: deltas.icrs_delta >= 0 ? '#3A8B53' : 'var(--primary-red)' }}>
                       {deltas.icrs_delta >= 0 ? `+${deltas.icrs_delta}` : `${deltas.icrs_delta}`} Δ
                     </span>
                   </div>
                   <div style={{ fontSize: 24, fontWeight: 900, margin: '4px 0' }}>
                     {dispIcrs} / 100
                   </div>
-                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
                     Status: <strong>{dispIcrs >= 75 ? 'Qualifying Ready' : dispIcrs >= 55 ? 'Developing Competence' : 'Foundational Revision'}</strong>
                   </div>
-                  <div style={{ width: '100%', height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', borderRadius: 0, overflow: 'hidden' }}>
+                  <div style={{ width: '100%', height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(100, dispIcrs)}%`, height: '100%', backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
                   </div>
                 </div>
@@ -3057,17 +3057,17 @@ export function PsychometricReportView({
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: '#3A8B53' }}>Concept Mastery (IRT Ability)</span>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: deltas.irt_theta_delta >= 0 ? '#3A8B53' : '#ef4444' }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: deltas.irt_theta_delta >= 0 ? '#3A8B53' : 'var(--primary-red)' }}>
                       {deltas.irt_theta_delta >= 0 ? `+${deltas.irt_theta_delta}` : `${deltas.irt_theta_delta}`} Δ
                     </span>
                   </div>
                   <div style={{ fontSize: 24, fontWeight: 900, margin: '4px 0' }}>
                     {dispIrt >= 0 ? `+${Number(dispIrt).toFixed(2)} θ` : `${Number(dispIrt).toFixed(2)} θ`}
                   </div>
-                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
                     Percentile: <strong>Top {Math.max(1, Math.round(100 - (50 + dispIrt * 22)))}% Competency</strong>
                   </div>
-                  <div style={{ width: '100%', height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', borderRadius: 0, overflow: 'hidden' }}>
+                  <div style={{ width: '100%', height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(100, Math.max(10, 50 + dispIrt * 22))}%`, height: '100%', backgroundColor: '#3A8B53', borderRadius: 0 }} />
                   </div>
                 </div>
@@ -3076,17 +3076,17 @@ export function PsychometricReportView({
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: '#F2B623' }}>Guessing Control (GTI)</span>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: deltas.gti_delta <= 0 ? '#3A8B53' : '#ef4444' }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: deltas.gti_delta <= 0 ? '#3A8B53' : 'var(--primary-red)' }}>
                       {deltas.gti_delta <= 0 ? `${(deltas.gti_delta * 100).toFixed(1)}% (Safer)` : `+${(deltas.gti_delta * 100).toFixed(1)}%`}
                     </span>
                   </div>
                   <div style={{ fontSize: 24, fontWeight: 900, margin: '4px 0' }}>
                     {(Number(dispGti) * 100).toFixed(1)}% Impulse Rate
                   </div>
-                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
                     Classification: <strong>{dispGti <= 0.22 ? 'Controlled Calculated Risk' : 'Impulsive Guesswork'}</strong>
                   </div>
-                  <div style={{ width: '100%', height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', borderRadius: 0, overflow: 'hidden' }}>
+                  <div style={{ width: '100%', height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(100, Number(dispGti) * 100)}%`, height: '100%', backgroundColor: '#F2B623', borderRadius: 0 }} />
                   </div>
                 </div>
@@ -3095,17 +3095,17 @@ export function PsychometricReportView({
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: '#8b5cf6' }}>Elimination Precision (OEEI)</span>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: deltas.oeei_delta >= 0 ? '#3A8B53' : '#ef4444' }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: deltas.oeei_delta >= 0 ? '#3A8B53' : 'var(--primary-red)' }}>
                       {deltas.oeei_delta >= 0 ? `+${(deltas.oeei_delta * 100).toFixed(1)}%` : `${(deltas.oeei_delta * 100).toFixed(1)}%`}
                     </span>
                   </div>
                   <div style={{ fontSize: 24, fontWeight: 900, margin: '4px 0' }}>
                     {(Number(dispOeei) * 100).toFixed(1)}% Conversion
                   </div>
-                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
                     Efficiency: <strong>{dispOeei >= 0.70 ? 'High Analytical Conversion' : 'Moderate Pruning'}</strong>
                   </div>
-                  <div style={{ width: '100%', height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', borderRadius: 0, overflow: 'hidden' }}>
+                  <div style={{ width: '100%', height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(100, Number(dispOeei) * 100)}%`, height: '100%', backgroundColor: '#8b5cf6', borderRadius: 0 }} />
                   </div>
                 </div>
@@ -3114,17 +3114,17 @@ export function PsychometricReportView({
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: '#06b6d4' }}>Exam Stamina (SATOI)</span>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: deltas.satoi_delta >= 0 ? '#3A8B53' : '#ef4444' }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: deltas.satoi_delta >= 0 ? '#3A8B53' : 'var(--primary-red)' }}>
                       {deltas.satoi_delta >= 0 ? `+${deltas.satoi_delta}` : `${deltas.satoi_delta}`} Δ
                     </span>
                   </div>
                   <div style={{ fontSize: 24, fontWeight: 900, margin: '4px 0' }}>
                     {dispSatoi} / 100 Balance
                   </div>
-                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
                     Fatigue Risk: <strong>{dispSatoi >= 80 ? 'Optimal Cognitive Stamina' : 'Moderate Fatigue Dropoff'}</strong>
                   </div>
-                  <div style={{ width: '100%', height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', borderRadius: 0, overflow: 'hidden' }}>
+                  <div style={{ width: '100%', height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(100, dispSatoi)}%`, height: '100%', backgroundColor: '#06b6d4', borderRadius: 0 }} />
                   </div>
                 </div>
@@ -3139,22 +3139,22 @@ export function PsychometricReportView({
             </h3>
             <div style={{ display: 'flex', gap: 30, flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Full-Length Mock Tests Completed</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Full-Length Mock Tests Completed</div>
                 <div style={{ fontSize: 24, fontWeight: 800 }}>{timelineData.length || userProfile.total_tests_given || 1} Tests</div>
               </div>
               <div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Total Item Responses Analyzed</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Total Item Responses Analyzed</div>
                 <div style={{ fontSize: 24, fontWeight: 800 }}>
                   {userProfile.total_questions_answered ||
                     questionsList.filter((q) => getQuestionState(q).isAtt).length ||
                     14}{' '}
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#64748b' }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>
                     Attempted / {questionsList.length || 100} Total
                   </span>
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Longitudinal Competency Band</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Longitudinal Competency Band</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#3A8B53' }}>
                   {userProfile.cumulative_icrs_score >= 80
                     ? 'Prelims Ready Benchmark'
@@ -3173,24 +3173,24 @@ export function PsychometricReportView({
                 {/* Chart 1: Exam Score & Accuracy Evolution */}
                 <div style={cardStyle}>
                   <div style={{ marginBottom: 14 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       📈 Score & Accuracy Progression Across Exams
                     </h3>
-                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
                       Tracks your net score and precision percentage across each evaluated exam session.
                     </p>
                   </div>
                   <div style={{ height: 260, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
-                        <YAxis yAxisId="left" domain={[0, 'auto']} tick={{ fontSize: 11, fill: '#64748b' }} unit="m" />
-                        <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                        <YAxis yAxisId="left" domain={[0, 'auto']} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} unit="m" />
+                        <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} unit="%" />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: isDark ? '#172033' : '#ffffff',
-                            borderColor: isDark ? '#334155' : '#cbd5e1',
+                            backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-card)',
+                            borderColor: isDark ? 'var(--text-secondary)' : 'var(--border-color)',
                             borderRadius: 0,
                             fontSize: 12,
                           }}
@@ -3211,23 +3211,23 @@ export function PsychometricReportView({
                 {/* Chart 2: Cognitive Readiness (ICRS) & Latent Ability Progression */}
                 <div style={cardStyle}>
                   <div style={{ marginBottom: 14 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       🧠 Integrated Cognitive Readiness (ICRS) Evolution
                     </h3>
-                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
                       Longitudinal readiness metric combining IRT ability, elimination discipline, and pacing.
                     </p>
                   </div>
                   <div style={{ height: 260, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="/100" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} unit="/100" />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: isDark ? '#172033' : '#ffffff',
-                            borderColor: isDark ? '#334155' : '#cbd5e1',
+                            backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-card)',
+                            borderColor: isDark ? 'var(--text-secondary)' : 'var(--border-color)',
                             borderRadius: 0,
                             fontSize: 12,
                           }}
@@ -3248,23 +3248,23 @@ export function PsychometricReportView({
                 {/* Chart 3: Tactical Elimination (OEEI) vs Guessing Risk (GTI) */}
                 <div style={cardStyle}>
                   <div style={{ marginBottom: 14 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       🎯 Tactical Elimination (OEEI) vs Guessing Impulse (GTI)
                     </h3>
-                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
                       Higher elimination conversion (OEEI) and lower impulse guesswork (GTI) signify elite exam temperament.
                     </p>
                   </div>
                   <div style={{ height: 260, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} unit="%" />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: isDark ? '#172033' : '#ffffff',
-                            borderColor: isDark ? '#334155' : '#cbd5e1',
+                            backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-card)',
+                            borderColor: isDark ? 'var(--text-secondary)' : 'var(--border-color)',
                             borderRadius: 0,
                             fontSize: 12,
                           }}
@@ -3285,23 +3285,23 @@ export function PsychometricReportView({
                 {/* Chart 4: Latent Knowledge Ability (IRT 3PL Theta) */}
                 <div style={cardStyle}>
                   <div style={{ marginBottom: 14 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#172033' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                       ⚡ IRT Latent Ability (θ) Curve Progression
                     </h3>
-                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
                       Item Response Theory latent skill calibrated across item discrimination (a), difficulty (b), and guessing floor (c).
                     </p>
                   </div>
                   <div style={{ height: 260, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
-                        <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[-1, 3]} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} domain={[-1, 3]} />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: isDark ? '#172033' : '#ffffff',
-                            borderColor: isDark ? '#334155' : '#cbd5e1',
+                            backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-card)',
+                            borderColor: isDark ? 'var(--text-secondary)' : 'var(--border-color)',
                             borderRadius: 0,
                             fontSize: 12,
                           }}
@@ -3327,18 +3327,18 @@ export function PsychometricReportView({
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
-                      <tr style={{ borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`, textAlign: 'left' }}>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>#</th>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>Exam Paper</th>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>Date</th>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>Score</th>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>Accuracy</th>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>ICRS</th>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>IRT θ</th>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>GTI (Impulse)</th>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>OEEI (Elimination)</th>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>SATOI (Stamina)</th>
-                        <th style={{ padding: '10px 12px', color: '#64748b' }}>Pacing</th>
+                      <tr style={{ borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`, textAlign: 'left' }}>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>#</th>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Exam Paper</th>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Date</th>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Score</th>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Accuracy</th>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>ICRS</th>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>IRT θ</th>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>GTI (Impulse)</th>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>OEEI (Elimination)</th>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>SATOI (Stamina)</th>
+                        <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Pacing</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3354,17 +3354,17 @@ export function PsychometricReportView({
                             <tr
                               key={item.attempt_id || globalIdx}
                               style={{
-                                borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`,
+                                borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'var(--bg-hover)'}`,
                                 backgroundColor: globalIdx % 2 === 0 ? 'transparent' : isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
                               }}
                             >
                               <td style={{ padding: '10px 12px', fontWeight: 800, color: 'var(--primary-red)' }}>{item.attempt_number || globalIdx + 1}</td>
                               <td style={{ padding: '10px 12px', fontWeight: 700 }}>{item.exam_name}</td>
-                              <td style={{ padding: '10px 12px', color: '#64748b' }}>{item.date_formatted || item.date}</td>
+                              <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{item.date_formatted || item.date}</td>
                               <td style={{ padding: '10px 12px', fontWeight: 800 }}>
-                                {item.total_score} <span style={{ fontSize: 11, color: '#64748b' }}>/ {item.max_possible_score}</span>
+                                {item.total_score} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ {item.max_possible_score}</span>
                               </td>
-                              <td style={{ padding: '10px 12px', fontWeight: 700, color: item.accuracy_percentage >= 65 ? '#3A8B53' : item.accuracy_percentage >= 50 ? '#F2B623' : '#ef4444' }}>
+                              <td style={{ padding: '10px 12px', fontWeight: 700, color: item.accuracy_percentage >= 65 ? '#3A8B53' : item.accuracy_percentage >= 50 ? '#F2B623' : 'var(--primary-red)' }}>
                                 {item.accuracy_percentage}%
                               </td>
                               <td style={{ padding: '10px 12px', fontWeight: 800, color: '#8b5cf6' }}>{item.icrs_score}/100</td>
@@ -3401,11 +3401,11 @@ export function PsychometricReportView({
                         flexWrap: 'wrap',
                         gap: 10,
                         paddingTop: 12,
-                        borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                        borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'}`,
                       }}
                     >
-                      <div style={{ fontSize: 12, color: '#64748b' }}>
-                        Showing <strong style={{ color: isDark ? '#ffffff' : '#172033' }}>{startItem} - {endItem}</strong> of <strong style={{ color: isDark ? '#ffffff' : '#172033' }}>{timelineData.length}</strong> exams
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        Showing <strong style={{ color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>{startItem} - {endItem}</strong> of <strong style={{ color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>{timelineData.length}</strong> exams
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -3415,9 +3415,9 @@ export function PsychometricReportView({
                           style={{
                             padding: '5px 12px',
                             borderRadius: 0,
-                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                            backgroundColor: matrixPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
-                            color: matrixPage <= 1 ? '#64748b' : isDark ? '#ffffff' : '#172033',
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
+                            backgroundColor: matrixPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-subtle)',
+                            color: matrixPage <= 1 ? 'var(--text-muted)' : isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                             cursor: matrixPage <= 1 ? 'not-allowed' : 'pointer',
                             fontSize: 12,
                             fontWeight: 700,
@@ -3434,9 +3434,9 @@ export function PsychometricReportView({
                             style={{
                               padding: '5px 10px',
                               borderRadius: 0,
-                              border: pageNum === matrixPage ? '1px solid var(--primary-red)' : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                              backgroundColor: pageNum === matrixPage ? 'var(--primary-red)' : isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
-                              color: pageNum === matrixPage ? '#ffffff' : isDark ? '#ffffff' : '#172033',
+                              border: pageNum === matrixPage ? '1px solid var(--primary-red)' : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
+                              backgroundColor: pageNum === matrixPage ? 'var(--primary-red)' : isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-subtle)',
+                              color: pageNum === matrixPage ? 'var(--bg-card)' : isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                               cursor: 'pointer',
                               fontSize: 12,
                               fontWeight: 700,
@@ -3452,9 +3452,9 @@ export function PsychometricReportView({
                           style={{
                             padding: '5px 12px',
                             borderRadius: 0,
-                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                            backgroundColor: matrixPage >= totalPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
-                            color: matrixPage >= totalPages ? '#64748b' : isDark ? '#ffffff' : '#172033',
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
+                            backgroundColor: matrixPage >= totalPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-subtle)',
+                            color: matrixPage >= totalPages ? 'var(--text-muted)' : isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                             cursor: matrixPage >= totalPages ? 'not-allowed' : 'pointer',
                             fontSize: 12,
                             fontWeight: 700,
@@ -3528,14 +3528,14 @@ export function PsychometricReportView({
                           border:
                             questionFilter === f.id
                               ? '1px solid var(--primary-red)'
-                              : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                              : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
                           backgroundColor:
                             questionFilter === f.id
                               ? 'var(--primary-red)'
                               : isDark
                                 ? 'rgba(255,255,255,0.04)'
-                                : '#ffffff',
-                          color: questionFilter === f.id ? '#ffffff' : isDark ? '#cbd5e1' : '#475569',
+                                : 'var(--bg-card)',
+                          color: questionFilter === f.id ? 'var(--bg-card)' : isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                           fontSize: 13,
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -3547,9 +3547,9 @@ export function PsychometricReportView({
                   </div>
 
                   {filteredQuestions.length > questionPageSize && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748b' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
                       <span>
-                        Showing <strong style={{ color: isDark ? '#ffffff' : '#172033' }}>{startQuestionIdx + 1}-{Math.min(startQuestionIdx + questionPageSize, filteredQuestions.length)}</strong> of <strong style={{ color: isDark ? '#ffffff' : '#172033' }}>{filteredQuestions.length}</strong>
+                        Showing <strong style={{ color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>{startQuestionIdx + 1}-{Math.min(startQuestionIdx + questionPageSize, filteredQuestions.length)}</strong> of <strong style={{ color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>{filteredQuestions.length}</strong>
                       </span>
                       <button
                         disabled={validQuestionPage <= 1}
@@ -3557,9 +3557,9 @@ export function PsychometricReportView({
                         style={{
                           padding: '5px 12px',
                           borderRadius: 0,
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                          backgroundColor: validQuestionPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-                          color: validQuestionPage <= 1 ? '#64748b' : isDark ? '#ffffff' : '#172033',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
+                          backgroundColor: validQuestionPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-card)',
+                          color: validQuestionPage <= 1 ? 'var(--text-muted)' : isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                           cursor: validQuestionPage <= 1 ? 'not-allowed' : 'pointer',
                           fontSize: 12,
                           fontWeight: 700,
@@ -3576,9 +3576,9 @@ export function PsychometricReportView({
                         style={{
                           padding: '5px 12px',
                           borderRadius: 0,
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                          backgroundColor: validQuestionPage >= totalQuestionPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-                          color: validQuestionPage >= totalQuestionPages ? '#64748b' : isDark ? '#ffffff' : '#172033',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
+                          backgroundColor: validQuestionPage >= totalQuestionPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-card)',
+                          color: validQuestionPage >= totalQuestionPages ? 'var(--text-muted)' : isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                           cursor: validQuestionPage >= totalQuestionPages ? 'not-allowed' : 'pointer',
                           fontSize: 12,
                           fontWeight: 700,
@@ -3606,8 +3606,8 @@ export function PsychometricReportView({
                     const cardBorderColor = state.isCorr
                       ? '#3A8B53'
                       : state.isInc
-                        ? '#ef4444'
-                        : '#94a3b8';
+                        ? 'var(--primary-red)'
+                        : 'var(--text-disabled)';
 
                     return (
                       <div
@@ -3637,7 +3637,7 @@ export function PsychometricReportView({
                                 fontSize: 14,
                                 fontWeight: 900,
                                 color: 'var(--primary-red)',
-                                backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.15)' : '#F8FAFC',
+                                backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.15)' : 'var(--bg-subtle)',
                                 padding: '4px 10px',
                                 borderRadius: 0,
                               }}
@@ -3650,12 +3650,12 @@ export function PsychometricReportView({
                                 style={{
                                   fontSize: 14,
                                   fontWeight: 700,
-                                  color: isDark ? '#ffffff' : '#172033',
+                                  color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                                 }}
                               >
                                 {q.topic || q.topic_name || q.meaningful_name || `Question #${qNum}`}
                               </div>
-                              <div style={{ fontSize: 11, color: '#64748b' }}>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                                 Time Spent: {q.time_taken_seconds || 60}s
                               </div>
                             </div>
@@ -3680,8 +3680,8 @@ export function PsychometricReportView({
                                 color: state.isCorr
                                   ? '#3A8B53'
                                   : state.isInc
-                                    ? '#ef4444'
-                                    : '#94a3b8',
+                                    ? 'var(--primary-red)'
+                                    : 'var(--text-disabled)',
                               }}
                             >
                               {state.isCorr ? (
@@ -3701,9 +3701,9 @@ export function PsychometricReportView({
                             </span>
 
                             {isExpanded ? (
-                              <ChevronUp size={18} color="#64748b" />
+                              <ChevronUp size={18} color="var(--text-muted)" />
                             ) : (
-                              <ChevronDown size={18} color="#64748b" />
+                              <ChevronDown size={18} color="var(--text-muted)" />
                             )}
                           </div>
                         </div>
@@ -3714,7 +3714,7 @@ export function PsychometricReportView({
                             style={{
                               marginTop: 20,
                               paddingTop: 16,
-                              borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'
+                              borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'
                                 }`,
                               display: 'flex',
                               flexDirection: 'column',
@@ -3729,13 +3729,13 @@ export function PsychometricReportView({
                                 gap: 10,
                                 padding: '12px 16px',
                                 borderRadius: 0,
-                                backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
-                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
+                                backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'var(--bg-subtle)',
+                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'var(--border-color)'}`,
                               }}
                             >
                               {/* 1. Time Score & Pacing */}
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>⏱️ Time Score & Pacing</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>⏱️ Time Score & Pacing</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                   {(() => {
                                     const pBadge = q.pacing_efficiency || q.time_window || 'OPTIMAL';
@@ -3746,7 +3746,7 @@ export function PsychometricReportView({
                                         <span style={{ padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 800, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
                                           {q.pacing_efficiency || b.label}
                                         </span>
-                                        <span style={{ fontSize: 11.5, fontWeight: 700, color: isDark ? '#cbd5e1' : '#334155' }}>
+                                        <span style={{ fontSize: 11.5, fontWeight: 700, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                                           {q.time_taken_seconds || 60}s / {q.expected_time_seconds || 60}s ({speedIdx}% Speed)
                                         </span>
                                       </>
@@ -3757,12 +3757,12 @@ export function PsychometricReportView({
 
                               {/* 2. FSRS Topic Retention & Memory */}
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>🧠 FSRS Concept Memory</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>🧠 FSRS Concept Memory</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                   <span style={{ padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 800, backgroundColor: 'rgba(16,185,129,0.15)', color: '#3A8B53', border: '1px solid rgba(16,185,129,0.35)' }}>
                                     {q.fsrs_retention_pct || 75}% Retention
                                   </span>
-                                  <span style={{ fontSize: 11.5, fontWeight: 600, color: '#64748b' }}>
+                                  <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted)' }}>
                                     Stability: <strong>{q.fsrs_stability_days ? `${q.fsrs_stability_days} Days` : '3.0 Days'}</strong>
                                   </span>
                                 </div>
@@ -3770,7 +3770,7 @@ export function PsychometricReportView({
 
                               {/* 3. OSRI (Answer Revision Safety) */}
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>🔄 OSRI Answer Revision</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>🔄 OSRI Answer Revision</span>
                                 <div>
                                   {(() => {
                                     const isSwitched = q.is_option_switched;
@@ -3790,8 +3790,8 @@ export function PsychometricReportView({
                                               ? 'rgba(var(--primary-red-rgb), 0.15)'
                                               : isDark
                                                 ? 'rgba(255,255,255,0.06)'
-                                                : '#e2e8f0',
-                                          color: isPositive ? '#3A8B53' : isNegative ? '#ef4444' : '#64748b',
+                                                : 'var(--border-color)',
+                                          color: isPositive ? '#3A8B53' : isNegative ? 'var(--primary-red)' : 'var(--text-muted)',
                                           border: isPositive
                                             ? '1px solid rgba(16,185,129,0.35)'
                                             : isNegative
@@ -3809,7 +3809,7 @@ export function PsychometricReportView({
                               {/* 5. Distractor Trap Classification */}
                               {q.distractor_classification || q.closeness_classification ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                  <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>🎯 Distractor Trap Analysis</span>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>🎯 Distractor Trap Analysis</span>
                                   <div>
                                     {(() => {
                                       const dClass = q.distractor_classification || q.closeness_classification;
@@ -3832,11 +3832,11 @@ export function PsychometricReportView({
                                   fontSize: 14.5,
                                   fontWeight: 600,
                                   lineHeight: 1.6,
-                                  color: isDark ? '#ffffff' : '#172033',
-                                  backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                                  color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
+                                  backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'var(--bg-subtle)',
                                   padding: 16,
                                   borderRadius: 0,
-                                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'
+                                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'var(--border-color)'
                                     }`,
                                 }}
                               >
@@ -3854,7 +3854,7 @@ export function PsychometricReportView({
                                     fontSize: 12,
                                     fontWeight: 700,
                                     textTransform: 'uppercase',
-                                    color: '#64748b',
+                                    color: 'var(--text-muted)',
                                   }}
                                 >
                                   Options & Choices
@@ -3892,13 +3892,13 @@ export function PsychometricReportView({
                                     }
                                   }
 
-                                  let optBorder = isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0';
-                                  let optBg = isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc';
+                                  let optBorder = isDark ? 'rgba(255,255,255,0.06)' : 'var(--border-color)';
+                                  let optBg = isDark ? 'rgba(255,255,255,0.02)' : 'var(--bg-subtle)';
                                   if (isSelected && isOptCorrect) {
                                     optBorder = '#3A8B53';
                                     optBg = isDark ? 'rgba(16,185,129,0.12)' : '#ecfdf5';
                                   } else if (isSelected && !isOptCorrect) {
-                                    optBorder = '#ef4444';
+                                    optBorder = 'var(--primary-red)';
                                     optBg = isDark ? 'rgba(var(--primary-red-rgb), 0.12)' : '#fef2f2';
                                   } else if (isOptCorrect) {
                                     optBorder = '#3A8B53';
@@ -3940,8 +3940,8 @@ export function PsychometricReportView({
                                               color: isOptCorrect
                                                 ? '#3A8B53'
                                                 : isSelected
-                                                  ? '#ef4444'
-                                                  : '#64748b',
+                                                  ? 'var(--primary-red)'
+                                                  : 'var(--text-muted)',
                                             }}
                                           >
                                             {optLabel}.
@@ -3971,8 +3971,8 @@ export function PsychometricReportView({
                                                 fontWeight: 800,
                                                 padding: '2px 8px',
                                                 borderRadius: 0,
-                                                backgroundColor: isOptCorrect ? '#3A8B53' : '#ef4444',
-                                                color: '#ffffff',
+                                                backgroundColor: isOptCorrect ? '#3A8B53' : 'var(--primary-red)',
+                                                color: 'var(--bg-card)',
                                               }}
                                             >
                                               Your Choice
@@ -3986,7 +3986,7 @@ export function PsychometricReportView({
                                                 padding: '2px 8px',
                                                 borderRadius: 0,
                                                 backgroundColor: '#3A8B53',
-                                                color: '#ffffff',
+                                                color: 'var(--bg-card)',
                                               }}
                                             >
                                               Correct Option
@@ -4006,9 +4006,9 @@ export function PsychometricReportView({
                                             color: isOptCorrect
                                               ? (isDark ? '#86efac' : '#166534')
                                               : isSelected
-                                                ? (isDark ? '#fca5a5' : '#991b1b')
-                                                : '#64748b',
-                                            borderLeft: `2px solid ${isOptCorrect ? '#3A8B53' : isSelected ? '#ef4444' : (isDark ? '#475569' : '#cbd5e1')}`,
+                                                ? (isDark ? 'var(--primary-red-border)' : '#991b1b')
+                                                : 'var(--text-muted)',
+                                            borderLeft: `2px solid ${isOptCorrect ? '#3A8B53' : isSelected ? 'var(--primary-red)' : (isDark ? 'var(--text-secondary)' : 'var(--border-color)')}`,
                                           }}
                                         >
                                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -4078,7 +4078,7 @@ export function PsychometricReportView({
                                     </span>
                                   </div>
 
-                                  <div style={{ color: isDark ? '#e2e8f0' : '#451a03', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                  <div style={{ color: isDark ? 'var(--border-color)' : '#451a03', display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     <div>
                                       <strong>Trap / Choice Classification:</strong>{' '}
                                       <span style={{ color: '#d97706', fontWeight: 600 }}>
@@ -4088,7 +4088,7 @@ export function PsychometricReportView({
 
                                     {state.isUnatt ? (
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                                        <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#78350f' }}>
+                                        <div style={{ fontSize: 12.5, color: isDark ? 'var(--border-color)' : '#78350f' }}>
                                           You left this question unattempted. Below is why each incorrect option is a distractor trap and why Option ({correctOptLabel}) is correct:
                                         </div>
                                         {optionsList.map((opt: any, optIdx: number) => {
@@ -4115,10 +4115,10 @@ export function PsychometricReportView({
                                                 border: `1px solid ${isCorrectOpt ? '#3A8B53' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(var(--primary-red-rgb), 0.2)')}`,
                                               }}
                                             >
-                                              <div style={{ fontWeight: 700, fontSize: 12.5, color: isCorrectOpt ? '#3A8B53' : '#ef4444', marginBottom: 2 }}>
+                                              <div style={{ fontWeight: 700, fontSize: 12.5, color: isCorrectOpt ? '#3A8B53' : 'var(--primary-red)', marginBottom: 2 }}>
                                                 Option {optLabel}: {isCorrectOpt ? '🟢 Correct Answer' : '🔴 Incorrect Distractor Trap'}
                                               </div>
-                                              <div style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569' }}>
+                                              <div style={{ fontSize: 12, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)' }}>
                                                 {optDistText ? (
                                                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{optDistText}</ReactMarkdown>
                                                 ) : isCorrectOpt ? (
@@ -4163,8 +4163,8 @@ export function PsychometricReportView({
                                       borderRadius: 0,
                                       backgroundColor: isDark
                                         ? 'rgba(255,255,255,0.03)'
-                                        : '#f8fafc',
-                                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'
+                                        : 'var(--bg-subtle)',
+                                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'
                                         }`,
                                     }}
                                   >
@@ -4172,7 +4172,7 @@ export function PsychometricReportView({
                                       style={{
                                         fontSize: 12,
                                         fontWeight: 800,
-                                        color: '#64748b',
+                                        color: 'var(--text-muted)',
                                         textTransform: 'uppercase',
                                         marginBottom: 6,
                                       }}
@@ -4182,7 +4182,7 @@ export function PsychometricReportView({
                                     <div
                                       style={{
                                         fontSize: 13.5,
-                                        color: isDark ? '#e2e8f0' : '#334155',
+                                        color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                                         lineHeight: 1.6,
                                       }}
                                     >
@@ -4222,7 +4222,7 @@ export function PsychometricReportView({
                                     <div
                                       style={{
                                         fontSize: 13,
-                                        color: isDark ? '#e2e8f0' : '#78350f',
+                                        color: isDark ? 'var(--border-color)' : '#78350f',
                                         lineHeight: 1.5,
                                       }}
                                     >
@@ -4265,12 +4265,12 @@ export function PsychometricReportView({
                       gap: 12,
                       padding: 16,
                       borderRadius: 0,
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'var(--bg-card)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'}`,
                     }}
                   >
-                    <div style={{ fontSize: 13, color: '#64748b' }}>
-                      Page <strong style={{ color: isDark ? '#ffffff' : '#172033' }}>{validQuestionPage}</strong> of <strong style={{ color: isDark ? '#ffffff' : '#172033' }}>{totalQuestionPages}</strong> ({filteredQuestions.length} Total Questions)
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                      Page <strong style={{ color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>{validQuestionPage}</strong> of <strong style={{ color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>{totalQuestionPages}</strong> ({filteredQuestions.length} Total Questions)
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -4283,9 +4283,9 @@ export function PsychometricReportView({
                         style={{
                           padding: '6px 14px',
                           borderRadius: 0,
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                          backgroundColor: validQuestionPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-                          color: validQuestionPage <= 1 ? '#64748b' : isDark ? '#ffffff' : '#172033',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
+                          backgroundColor: validQuestionPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-card)',
+                          color: validQuestionPage <= 1 ? 'var(--text-muted)' : isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                           cursor: validQuestionPage <= 1 ? 'not-allowed' : 'pointer',
                           fontSize: 12,
                           fontWeight: 700,
@@ -4305,7 +4305,7 @@ export function PsychometricReportView({
                           const showEllipsis = prev && pageNum - prev > 1;
                           return (
                             <React.Fragment key={`qpage_${pageNum}`}>
-                              {showEllipsis && <span style={{ padding: '0 4px', color: '#64748b' }}>...</span>}
+                              {showEllipsis && <span style={{ padding: '0 4px', color: 'var(--text-muted)' }}>...</span>}
                               <button
                                 onClick={() => {
                                   setQuestionPage(pageNum);
@@ -4314,9 +4314,9 @@ export function PsychometricReportView({
                                 style={{
                                   padding: '6px 12px',
                                   borderRadius: 0,
-                                  border: pageNum === validQuestionPage ? '1px solid var(--primary-red)' : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                                  backgroundColor: pageNum === validQuestionPage ? 'var(--primary-red)' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-                                  color: pageNum === validQuestionPage ? '#ffffff' : isDark ? '#ffffff' : '#172033',
+                                  border: pageNum === validQuestionPage ? '1px solid var(--primary-red)' : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
+                                  backgroundColor: pageNum === validQuestionPage ? 'var(--primary-red)' : isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-card)',
+                                  color: pageNum === validQuestionPage ? 'var(--bg-card)' : isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                                   cursor: 'pointer',
                                   fontSize: 12,
                                   fontWeight: 700,
@@ -4337,9 +4337,9 @@ export function PsychometricReportView({
                         style={{
                           padding: '6px 14px',
                           borderRadius: 0,
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                          backgroundColor: validQuestionPage >= totalQuestionPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-                          color: validQuestionPage >= totalQuestionPages ? '#64748b' : isDark ? '#ffffff' : '#172033',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
+                          backgroundColor: validQuestionPage >= totalQuestionPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : 'var(--bg-card)',
+                          color: validQuestionPage >= totalQuestionPages ? 'var(--text-muted)' : isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
                           cursor: validQuestionPage >= totalQuestionPages ? 'not-allowed' : 'pointer',
                           fontSize: 12,
                           fontWeight: 700,
@@ -4378,7 +4378,7 @@ export function PsychometricReportView({
                 <h3 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 4px 0' }}>
                   Syllabus Performance & Cognitive Matrix
                 </h3>
-                <div style={{ fontSize: 12, color: '#64748b' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   Multi-level breakdown across Subjects, Topics, and Subtopics with Pacing Velocity, Strong/Weak Zones, Bloom Thinking Levels, and Memory Retention.
                 </div>
               </div>
@@ -4388,9 +4388,9 @@ export function PsychometricReportView({
                   style={{
                     padding: '6px 14px',
                     borderRadius: 0,
-                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1'}`,
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f8fafc',
-                    color: isDark ? '#e2e8f0' : '#334155',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'var(--border-color)'}`,
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'var(--bg-subtle)',
+                    color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -4403,9 +4403,9 @@ export function PsychometricReportView({
                   style={{
                     padding: '6px 14px',
                     borderRadius: 0,
-                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1'}`,
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f8fafc',
-                    color: isDark ? '#e2e8f0' : '#334155',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'var(--border-color)'}`,
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'var(--bg-subtle)',
+                    color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -4421,8 +4421,8 @@ export function PsychometricReportView({
               style={{
                 padding: '10px 16px',
                 borderRadius: 0,
-                backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
+                backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'var(--bg-subtle)',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'var(--border-color)'}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -4433,17 +4433,17 @@ export function PsychometricReportView({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 700, color: '#64748b' }}>Mastery Zones:</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Mastery Zones:</span>
                 <span style={{ color: '#3A8B53', fontWeight: 700 }}>🟢 Mastered (≥85%)</span>
                 <span style={{ color: 'var(--primary-red)', fontWeight: 700 }}>🔵 Strong (70–84%)</span>
                 <span style={{ color: '#F2B623', fontWeight: 700 }}>🟡 Competent (50–69%)</span>
                 <span style={{ color: '#F47B35', fontWeight: 700 }}>🟠 Needs Practice (30–49%)</span>
-                <span style={{ color: '#ef4444', fontWeight: 700 }}>🔴 Critical Gap (&lt;30%)</span>
+                <span style={{ color: 'var(--primary-red)', fontWeight: 700 }}>🔴 Critical Gap (&lt;30%)</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontWeight: 700, color: '#64748b' }}>Pacing:</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Pacing:</span>
                 <span style={{ color: '#3A8B53', fontWeight: 700 }}>⚡ Optimal (0.7x–1.35x)</span>
-                <span style={{ color: '#ef4444', fontWeight: 700 }}>⏳ Bottleneck (&gt;1.35x)</span>
+                <span style={{ color: 'var(--primary-red)', fontWeight: 700 }}>⏳ Bottleneck (&gt;1.35x)</span>
                 <span style={{ color: '#8b5cf6', fontWeight: 700 }}>💨 Rapid (&lt;0.7x)</span>
               </div>
             </div>
@@ -4453,7 +4453,7 @@ export function PsychometricReportView({
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <Layers size={18} color="var(--primary-red)" />
-                <h4 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                <h4 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
                   Subject & Topic Hierarchy Breakdown
                 </h4>
               </div>

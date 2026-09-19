@@ -58,7 +58,7 @@ export function StudentPracticeExamPage() {
 
   // Master Syllabus Taxonomy & Available Exams state fetched directly from live APIs
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
-  const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE']);
+  const [availableExams, setAvailableExams] = useState<string[]>([]);
   const [yearOptions, setYearOptions] = useState<string[]>(['All Years']);
 
   const selectedYearsList = useMemo(() => {
@@ -641,7 +641,7 @@ export function StudentPracticeExamPage() {
               negative_marks: item.negative_marks || 0.66,
               expected_time_seconds: item.expected_time_seconds || 60,
               source_year: item.source_year || item.exam_year || gYear,
-              exam_name: item.exam_name || gExam || 'UPSC CSE',
+              exam_name: item.exam_name || gExam,
             } as any;
           });
 
@@ -959,7 +959,7 @@ export function StudentPracticeExamPage() {
           topic_name: topName,
           subtopic_name: subtopName,
           concept_name: primaryH.concept_name || '',
-          exam_name: q.exam_name || (gExam && !gExam.startsWith('All Exams') ? gExam : 'UPSC CSE'),
+          exam_name: q.exam_name || (gExam && !gExam.startsWith('All Exams') ? gExam : ''),
           source_year:
             q.source_year ||
             (gYear && gYear.replace(/\D/g, '') ? Number(gYear.replace(/\D/g, '')) : 2023),
@@ -1823,7 +1823,7 @@ export function StudentPracticeExamPage() {
                     <span
                       style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                      {gExam || 'UPSC CSE'}
+                      {gExam}
                     </span>
                     <ChevronDown
                       size={14}
@@ -1851,7 +1851,7 @@ export function StudentPracticeExamPage() {
                         zIndex: 100,
                       }}
                     >
-                      {(availableExams.length > 0 ? availableExams : ['UPSC CSE']).map(
+                      {(availableExams).map(
                         (opt) => (
                           <div
                             key={opt}
@@ -2779,7 +2779,7 @@ export function StudentPracticeExamPage() {
                   <span
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
-                    {gExam || 'UPSC CSE'}
+                    {gExam}
                   </span>
                   <ChevronDown
                     size={14}
@@ -2807,7 +2807,7 @@ export function StudentPracticeExamPage() {
                       zIndex: 100,
                     }}
                   >
-                    {(availableExams.length > 0 ? availableExams : ['UPSC CSE']).map(
+                    {(availableExams).map(
                       (opt) => (
                         <div
                           key={opt}
@@ -3913,7 +3913,7 @@ export function StudentPracticeExamPage() {
                   borderRadius: 0,
                   border: '1.5px solid #CBD5E1',
                   backgroundColor: 'var(--bg-card)',
-                  color: '#475569',
+                  color: 'var(--text-secondary)',
                   fontSize: 13.5,
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -4000,7 +4000,7 @@ export function StudentPracticeExamPage() {
             <div
               style={{
                 display: 'inline-block',
-                backgroundColor: '#FEF3C7',
+                backgroundColor: 'var(--status-warning-bg)',
                 color: '#92400E',
                 fontSize: 11,
                 fontWeight: 800,

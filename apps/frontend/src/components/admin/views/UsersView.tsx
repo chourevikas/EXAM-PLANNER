@@ -152,14 +152,14 @@ export function UsersView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 8, background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.25)' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 8, background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))', color: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.25)' }}>
               <Users size={22} />
             </div>
             <div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.02em' }}>
                 Candidate Directory & Profiles
               </h2>
-              <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                 Monitor candidates, inspect individual learning metrics, and review comprehensive student profiles.
               </p>
             </div>
@@ -184,56 +184,56 @@ export function UsersView() {
 
       {/* Analytics Metric Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 8, background: '#F8FAFC', color: 'var(--primary-red)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 8, background: 'var(--bg-subtle)', color: 'var(--primary-red)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Users size={20} />
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Total Candidates</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#172033', fontFamily: 'var(--font-display)' }}>{totalCount}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Total Candidates</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--deep-navy)', fontFamily: 'var(--font-display)' }}>{totalCount}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
           <div style={{ width: 44, height: 44, borderRadius: 8, background: '#ecfdf5', color: '#3A8B53', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <CheckCircle size={20} />
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Active Candidates</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Active Candidates</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#3A8B53', fontFamily: 'var(--font-display)' }}>{activeCount}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
           <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <XCircle size={20} />
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Suspended Accounts</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Suspended Accounts</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#dc2626', fontFamily: 'var(--font-display)' }}>{suspendedCount}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
           <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fffbe8', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Crown size={20} />
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Premium Members</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Premium Members</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#d97706', fontFamily: 'var(--font-display)' }}>{premiumCount}</div>
           </div>
         </div>
       </div>
 
       {/* Main Table Container */}
-      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 0, boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid #e2e8f0', borderRadius: 10, padding: 0, boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
 
         {/* Controls Toolbar: Search & Filters */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', gap: 16, flexWrap: 'wrap' }}>
 
           {/* Search Box */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', borderRadius: 6, padding: '8px 14px', border: '1px solid #cbd5e1', width: isMobile ? '100%' : 320, maxWidth: '100%', boxSizing: 'border-box' }}>
-            <Search size={16} color="#94a3b8" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: 'var(--bg-subtle)', borderRadius: 6, padding: '8px 14px', border: '1px solid #cbd5e1', width: isMobile ? '100%' : 320, maxWidth: '100%', boxSizing: 'border-box' }}>
+            <Search size={16} color="var(--text-disabled)" />
             <input
               type="text"
               placeholder="Search candidate name or email..."
@@ -244,12 +244,12 @@ export function UsersView() {
                 background: 'transparent',
                 outline: 'none',
                 fontSize: 13,
-                color: '#172033',
+                color: 'var(--deep-navy)',
                 width: '100%'
               }}
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}>
+              <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--text-disabled)', cursor: 'pointer', padding: 0 }}>
                 <X size={14} />
               </button>
             )}
@@ -257,7 +257,7 @@ export function UsersView() {
 
           {/* Filter Dropdowns */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               <Filter size={14} />
               <span>Status Filter:</span>
             </div>
@@ -267,10 +267,10 @@ export function UsersView() {
               value={accessFilter}
               onChange={(e) => setAccessFilter(e.target.value)}
               style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: 'var(--bg-card)',
                 border: '1px solid #cbd5e1',
                 borderRadius: 6,
-                color: '#172033',
+                color: 'var(--deep-navy)',
                 padding: '7px 12px',
                 fontSize: 12,
                 outline: 'none',
@@ -296,7 +296,7 @@ export function UsersView() {
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', minWidth: 680, borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                <tr style={{ background: 'var(--bg-subtle)', borderBottom: '2px solid #e2e8f0' }}>
                   {['Candidate Profile', 'Role', 'Subscription Plan', 'Access Status', 'Actions'].map((h, idx) => (
                     <th
                       key={h}
@@ -304,7 +304,7 @@ export function UsersView() {
                         padding: '14px 18px',
                         fontSize: 11,
                         fontWeight: 800,
-                        color: '#475569',
+                        color: 'var(--text-secondary)',
                         fontFamily: 'var(--font-mono)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.06em',
@@ -321,10 +321,10 @@ export function UsersView() {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+                    <td colSpan={5} style={{ padding: 60, textAlign: 'center', color: 'var(--text-disabled)', fontSize: 14 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                        <Users size={36} color="#cbd5e1" />
-                        <span style={{ fontWeight: 600, color: '#64748b' }}>No candidate accounts found matching your search.</span>
+                        <Users size={36} color="var(--border-color)" />
+                        <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>No candidate accounts found matching your search.</span>
                       </div>
                     </td>
                   </tr>
@@ -337,7 +337,7 @@ export function UsersView() {
                       <tr
                         key={u.id}
                         style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.15s ease' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-subtle)')}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
                         {/* Candidate Profile: Avatar, Name & Email */}
@@ -352,7 +352,7 @@ export function UsersView() {
                               height: 40,
                               borderRadius: 8,
                               background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))',
-                              color: '#ffffff',
+                              color: 'var(--bg-card)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -375,11 +375,11 @@ export function UsersView() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 14, fontWeight: 700, color: '#172033', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                                   {getCandidateDisplayName(u)}
                                 </span>
                                 {(!u.full_name || u.full_name === 'Clerk Sync User') && (
-                                  <span style={{ fontSize: 10, fontWeight: 600, color: '#b45309', backgroundColor: '#fef3c7', padding: '1px 6px', borderRadius: 4, border: '1px solid #fde68a', flexShrink: 0 }}>
+                                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--status-warning)', backgroundColor: 'var(--status-warning-bg)', padding: '1px 6px', borderRadius: 4, border: '1px solid #fde68a', flexShrink: 0 }}>
                                     Clerk Account
                                   </span>
                                 )}
@@ -387,7 +387,7 @@ export function UsersView() {
                                   <CheckCircle size={14} color="#3A8B53" title="Verified Candidate" />
                                 )}
                               </div>
-                              <span style={{ fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                                 {u.email}
                               </span>
                             </div>
@@ -417,11 +417,11 @@ export function UsersView() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 5,
-                            background: isPremium ? '#fffbe8' : '#f8fafc',
-                            color: isPremium ? '#b45309' : '#64748b',
+                            background: isPremium ? '#fffbe8' : 'var(--bg-subtle)',
+                            color: isPremium ? 'var(--status-warning)' : 'var(--text-muted)',
                             padding: '5px 12px',
                             borderRadius: 6,
-                            border: `1px solid ${isPremium ? '#fde68a' : '#e2e8f0'}`
+                            border: `1px solid ${isPremium ? '#fde68a' : 'var(--border-color)'}`
                           }}>
                             {isPremium && <Crown size={13} color="#d97706" />}
                             {isPremium ? 'PREMIUM PRO' : 'FREE TIER'}
@@ -442,7 +442,7 @@ export function UsersView() {
                             alignItems: 'center',
                             gap: 6
                           }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: isAccessAllowed ? '#3A8B53' : '#ef4444' }} />
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: isAccessAllowed ? '#3A8B53' : 'var(--primary-red)' }} />
                             {isAccessAllowed ? 'Active' : 'Suspended'}
                           </span>
                         </td>
@@ -458,8 +458,8 @@ export function UsersView() {
                               padding: '7px 14px',
                               borderRadius: 6,
                               border: '1px solid #cbd5e1',
-                              backgroundColor: '#ffffff',
-                              color: '#172033',
+                              backgroundColor: 'var(--bg-card)',
+                              color: 'var(--deep-navy)',
                               fontSize: 12,
                               fontWeight: 700,
                               cursor: 'pointer',
@@ -467,14 +467,14 @@ export function UsersView() {
                               boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#F8FAFC';
+                              e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                               e.currentTarget.style.borderColor = '#93c5fd';
                               e.currentTarget.style.color = 'var(--primary-red)';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = '#ffffff';
-                              e.currentTarget.style.borderColor = '#cbd5e1';
-                              e.currentTarget.style.color = '#172033';
+                              e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+                              e.currentTarget.style.borderColor = 'var(--border-color)';
+                              e.currentTarget.style.color = 'var(--deep-navy)';
                             }}
                           >
                             <span>View Profile</span>
@@ -490,7 +490,7 @@ export function UsersView() {
             </table>
 
             {/* Table Footer Summary Bar with Interactive Pagination Controls */}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderBottomLeftRadius: 10, borderBottomRightRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#64748b' }}>
+            <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: 'var(--bg-subtle)', borderBottomLeftRadius: 10, borderBottomRightRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, fontSize: 12, color: 'var(--text-muted)' }}>
               <div>
                 Showing <strong>{filteredUsers.length > 0 ? startIndex + 1 : 0}</strong> to <strong>{endIndex}</strong> of <strong>{filteredUsers.length}</strong> candidate accounts
               </div>
@@ -507,8 +507,8 @@ export function UsersView() {
                     padding: '6px 12px',
                     borderRadius: 6,
                     border: '1px solid #cbd5e1',
-                    backgroundColor: currentPage === 1 ? '#f1f5f9' : '#ffffff',
-                    color: currentPage === 1 ? '#94a3b8' : '#172033',
+                    backgroundColor: currentPage === 1 ? 'var(--bg-hover)' : 'var(--bg-card)',
+                    color: currentPage === 1 ? 'var(--text-disabled)' : 'var(--deep-navy)',
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
@@ -519,7 +519,7 @@ export function UsersView() {
                   <span>Previous</span>
                 </button>
 
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#172033', padding: '0 8px', fontFamily: 'var(--font-mono)' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--deep-navy)', padding: '0 8px', fontFamily: 'var(--font-mono)' }}>
                   Page {currentPage} of {totalPages}
                 </span>
 
@@ -533,8 +533,8 @@ export function UsersView() {
                     padding: '6px 12px',
                     borderRadius: 6,
                     border: '1px solid #cbd5e1',
-                    backgroundColor: currentPage >= totalPages ? '#f1f5f9' : '#ffffff',
-                    color: currentPage >= totalPages ? '#94a3b8' : '#172033',
+                    backgroundColor: currentPage >= totalPages ? 'var(--bg-hover)' : 'var(--bg-card)',
+                    color: currentPage >= totalPages ? 'var(--text-disabled)' : 'var(--deep-navy)',
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',

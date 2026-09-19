@@ -69,12 +69,12 @@ export function RecommendedQuestionsPanel({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 7, height: 7, borderRadius: 0, backgroundColor: '#1E3A8A' }} />
+              <div style={{ width: 7, height: 7, borderRadius: 0, backgroundColor: 'var(--accent-primary)' }} />
               <span
                 style={{
                   fontSize: 10.5,
                   fontWeight: 800,
-                  color: '#1E3A8A',
+                  color: 'var(--accent-primary)',
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
                 }}
@@ -86,8 +86,8 @@ export function RecommendedQuestionsPanel({
               style={{
                 fontSize: 10,
                 fontWeight: 700,
-                color: '#475569',
-                backgroundColor: '#F1F5F9',
+                color: 'var(--text-secondary)',
+                backgroundColor: 'var(--bg-hover)',
                 padding: '1px 6px',
                 borderRadius: 0,
               }}
@@ -96,7 +96,7 @@ export function RecommendedQuestionsPanel({
             </span>
           </div>
           {subtitle && (
-            <p style={{ fontSize: 11.5, color: '#64748B', margin: '0 0 8px 0', lineHeight: 1.35 }}>
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '0 0 8px 0', lineHeight: 1.35 }}>
               {subtitle}
             </p>
           )}
@@ -110,19 +110,19 @@ export function RecommendedQuestionsPanel({
                 gap: 6,
                 flexWrap: 'wrap',
                 padding: '6px 8px',
-                backgroundColor: '#F8FAFC',
+                backgroundColor: 'var(--bg-subtle)',
                 border: '1px solid #E2E8F0',
                 borderRadius: 4,
                 marginTop: 6,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 2 }}>
-                <SlidersHorizontal size={11} color="#64748B" />
+                <SlidersHorizontal size={11} color="var(--text-muted)" />
                 <span
                   style={{
                     fontSize: 10,
                     fontWeight: 700,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                   }}
@@ -145,8 +145,8 @@ export function RecommendedQuestionsPanel({
                       padding: '3px 8px',
                       borderRadius: 4,
                       border: isActive ? '1px solid #1E3A8A' : '1px solid #CBD5E1',
-                      backgroundColor: isActive ? '#EFF6FF' : '#FFFFFF',
-                      color: isActive ? '#1E3A8A' : '#64748B',
+                      backgroundColor: isActive ? 'var(--accent-bg)' : 'var(--bg-card)',
+                      color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
                       fontSize: 10.5,
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -161,8 +161,8 @@ export function RecommendedQuestionsPanel({
                         fontWeight: 800,
                         padding: '1px 5px',
                         borderRadius: 3,
-                        backgroundColor: isActive ? '#1E3A8A' : '#94A3B8',
-                        color: '#FFFFFF',
+                        backgroundColor: isActive ? 'var(--accent-primary)' : 'var(--text-disabled)',
+                        color: 'var(--bg-card)',
                         letterSpacing: '0.04em',
                         lineHeight: 1.2,
                       }}
@@ -189,7 +189,7 @@ export function RecommendedQuestionsPanel({
             <div
               style={{
                 fontSize: 11.5,
-                color: '#94A3B8',
+                color: 'var(--text-disabled)',
                 textAlign: 'center',
                 padding: '16px 8px',
                 lineHeight: 1.4,

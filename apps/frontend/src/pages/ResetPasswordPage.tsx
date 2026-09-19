@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
 
   const passwordStrength = (() => {
     if (password.length === 0) return null;
-    if (password.length < 6) return { label: 'Too short', color: '#EF4444', width: '25%' };
+    if (password.length < 6) return { label: 'Too short', color: 'var(--primary-red)', width: '25%' };
     if (password.length < 8) return { label: 'Weak', color: '#F97316', width: '50%' };
     if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) return { label: 'Fair', color: '#EAB308', width: '70%' };
     return { label: 'Strong', color: '#22C55E', width: '100%' };
@@ -67,7 +67,7 @@ export default function ResetPasswordPage() {
       <div style={{
         width: '100%',
         maxWidth: 440,
-        background: '#FFFFFF',
+        background: 'var(--bg-card)',
         border: '1px solid #E2E8F0',
         boxShadow: '0 20px 60px rgba(15, 23, 42, 0.08)',
         padding: '40px 36px',
@@ -84,7 +84,7 @@ export default function ResetPasswordPage() {
                 <path d="M10 2L2 7V18H8V13H12V18H18V7L10 2Z" fill="white" />
               </svg>
             </div>
-            <span style={{ fontSize: 18, fontWeight: 800, color: '#172033', letterSpacing: '-0.02em' }}>ExamPlanner</span>
+            <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--deep-navy)', letterSpacing: '-0.02em' }}>ExamPlanner</span>
           </div>
 
           {success ? (
@@ -94,12 +94,12 @@ export default function ResetPasswordPage() {
                 border: '2px solid #86EFAC', borderRadius: '50%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
               }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--status-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: '#172033', margin: '0 0 8px' }}>Password reset!</h1>
-              <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--deep-navy)', margin: '0 0 8px' }}>Password reset!</h1>
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
                 Your password has been updated. Redirecting you to sign in…
               </p>
             </>
@@ -114,8 +114,8 @@ export default function ResetPasswordPage() {
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               </div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: '#172033', margin: '0 0 8px' }}>Set a new password</h1>
-              <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--deep-navy)', margin: '0 0 8px' }}>Set a new password</h1>
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
                 Choose a strong password for your ExamPlanner account.
               </p>
             </>
@@ -145,20 +145,20 @@ export default function ResetPasswordPage() {
                   disabled={!token}
                   style={{
                     width: '100%', height: 46, padding: '0 44px 0 14px',
-                    border: '1.5px solid #E2E8F0', background: '#FAFAFA',
-                    fontSize: 14, color: '#172033', outline: 'none',
+                    border: '1.5px solid #E2E8F0', background: 'var(--bg-subtle)',
+                    fontSize: 14, color: 'var(--deep-navy)', outline: 'none',
                     boxSizing: 'border-box', fontFamily: 'inherit',
                     transition: 'border-color 0.15s ease',
                   }}
                   onFocus={(e) => { e.target.style.borderColor = 'var(--primary-red)'; }}
-                  onBlur={(e) => { e.target.style.borderColor = '#E2E8F0'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border-color)'; }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   style={{
                     position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#94A3B8',
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-disabled)',
                   }}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
@@ -173,7 +173,7 @@ export default function ResetPasswordPage() {
               {/* Strength bar */}
               {passwordStrength && (
                 <div style={{ marginTop: 6 }}>
-                  <div style={{ height: 3, background: '#E2E8F0', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: 3, background: 'var(--border-color)', borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', width: passwordStrength.width,
                       background: passwordStrength.color,
@@ -209,13 +209,13 @@ export default function ResetPasswordPage() {
                   border: confirmPassword && confirmPassword !== password
                     ? '1.5px solid var(--primary-red)'
                     : '1.5px solid #E2E8F0',
-                  background: '#FAFAFA', fontSize: 14, color: '#172033',
+                  background: 'var(--bg-subtle)', fontSize: 14, color: 'var(--deep-navy)',
                   outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
                   transition: 'border-color 0.15s ease',
                 }}
                 onFocus={(e) => { e.target.style.borderColor = 'var(--primary-red)'; }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = confirmPassword && confirmPassword !== password ? 'var(--primary-red)' : '#E2E8F0';
+                  e.target.style.borderColor = confirmPassword && confirmPassword !== password ? 'var(--primary-red)' : 'var(--border-color)';
                 }}
               />
               {confirmPassword && confirmPassword !== password && (
@@ -242,9 +242,9 @@ export default function ResetPasswordPage() {
               style={{
                 width: '100%', height: 48,
                 background: loading || !token || !password || !confirmPassword
-                  ? '#E2E8F0'
+                  ? 'var(--border-color)'
                   : 'linear-gradient(135deg, var(--primary-red), #C01019)',
-                color: loading || !token || !password || !confirmPassword ? '#94A3B8' : '#FFFFFF',
+                color: loading || !token || !password || !confirmPassword ? 'var(--text-disabled)' : 'var(--bg-card)',
                 border: 'none', fontSize: 14, fontWeight: 700,
                 cursor: loading || !token ? 'not-allowed' : 'pointer',
                 letterSpacing: '0.02em', transition: 'all 0.15s ease',
@@ -269,7 +269,7 @@ export default function ResetPasswordPage() {
             <Link to="/signin" style={{
               display: 'inline-block', padding: '12px 28px',
               background: 'linear-gradient(135deg, var(--primary-red), #C01019)',
-              color: '#FFFFFF', fontWeight: 700, fontSize: 14,
+              color: 'var(--bg-card)', fontWeight: 700, fontSize: 14,
               textDecoration: 'none', letterSpacing: '0.02em',
             }}>
               Go to Sign In
@@ -280,7 +280,7 @@ export default function ResetPasswordPage() {
         <div style={{
           marginTop: 28, paddingTop: 20,
           borderTop: '1px solid #F1F5F9',
-          textAlign: 'center', fontSize: 13, color: '#64748B',
+          textAlign: 'center', fontSize: 13, color: 'var(--text-muted)',
         }}>
           <Link to="/signin" style={{ color: 'var(--primary-red)', fontWeight: 600, textDecoration: 'none' }}>
             ← Back to Sign In

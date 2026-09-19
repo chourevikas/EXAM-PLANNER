@@ -272,7 +272,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         right: 0,
         width: '100%',
         zIndex: 100,
-        background: '#172033',
+        background: 'var(--deep-navy)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         display: 'flex',
         justifyContent: 'space-between',
@@ -291,7 +291,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -330,7 +330,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               style={{
                 fontWeight: 700,
                 fontSize: 15,
-                color: '#ffffff',
+                color: 'var(--bg-card)',
                 letterSpacing: '-0.01em',
                 fontFamily: 'Inter, sans-serif'
               }}
@@ -345,7 +345,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
             <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: 400 }}>Admin</span>
             <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
-            <span style={{ color: '#ffffff', fontWeight: 600 }}>
+            <span style={{ color: 'var(--bg-card)', fontWeight: 600 }}>
               {currentViewLabel}
             </span>
           </div>
@@ -379,7 +379,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               background: 'transparent',
               outline: 'none',
               fontSize: 12,
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               width: '100%'
             }}
           />
@@ -478,7 +478,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: '#ffffff',
+              color: 'var(--bg-card)',
             }}
             aria-label="Open search"
           >
@@ -500,7 +500,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               onClick={(e) => e.stopPropagation()}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <Search size={16} color="#64748B" />
+                <Search size={16} color="var(--text-muted)" />
                 <input
                   type="text"
                   autoFocus
@@ -514,7 +514,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                     border: '1px solid #E2E8F0',
                     fontSize: 14,
                     outline: 'none',
-                    backgroundColor: '#F8FAFC',
+                    backgroundColor: 'var(--bg-subtle)',
                     minHeight: 40,
                   }}
                 />
@@ -525,7 +525,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     cursor: 'pointer',
                     padding: 6,
                   }}
@@ -551,8 +551,8 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                         padding: '10px 12px',
                         borderRadius: 0,
                         border: 'none',
-                        backgroundColor: '#F8FAFC',
-                        color: '#172033',
+                        backgroundColor: 'var(--bg-subtle)',
+                        color: 'var(--deep-navy)',
                         fontSize: 13,
                         fontWeight: 600,
                         cursor: 'pointer',
@@ -563,7 +563,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                         minHeight: 44,
                       }}
                     >
-                      <OptIcon size={16} color="#1E3A8A" />
+                      <OptIcon size={16} color="var(--accent-primary)" />
                       <span>{opt.label}</span>
                     </button>
                   );
@@ -591,7 +591,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               transition: 'all 0.15s ease'
             }}
             title="Notifications"
@@ -607,7 +607,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   width: 6,
                   height: 6,
                   borderRadius: 0,
-                  backgroundColor: '#ef4444'
+                  backgroundColor: 'var(--primary-red)'
                 }}
               />
             )}
@@ -623,7 +623,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   right: 0,
                   width: 320,
                 }),
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--bg-card)',
                 borderRadius: 0,
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
@@ -636,9 +636,9 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>System Alerts</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)' }}>System Alerts</span>
                   {notifications.length > 0 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 0, backgroundColor: '#F8FAFC', color: 'var(--primary-red)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 0, backgroundColor: 'var(--bg-subtle)', color: 'var(--primary-red)' }}>
                       {notifications.length} New
                     </span>
                   )}
@@ -650,7 +650,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: isClearingNotifications ? '#94A3B8' : '#64748B',
+                      color: isClearingNotifications ? 'var(--text-disabled)' : 'var(--text-muted)',
                       fontSize: 11,
                       cursor: isClearingNotifications ? 'default' : 'pointer',
                       display: 'flex',
@@ -662,7 +662,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                       if (!isClearingNotifications) e.currentTarget.style.color = 'var(--primary-red)';
                     }}
                     onMouseLeave={(e) => {
-                      if (!isClearingNotifications) e.currentTarget.style.color = '#64748B';
+                      if (!isClearingNotifications) e.currentTarget.style.color = 'var(--text-muted)';
                     }}
                     title="Clear all system alerts"
                   >
@@ -701,10 +701,10 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                       <CheckCheck size={20} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#172033' }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--deep-navy)' }}>
                         You are all checked up!
                       </span>
-                      <span style={{ fontSize: 12, color: '#64748B', maxWidth: 220, margin: '0 auto', lineHeight: 1.4 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 220, margin: '0 auto', lineHeight: 1.4 }}>
                         No new system alerts right now. You're completely up to date.
                       </span>
                     </div>
@@ -722,7 +722,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                         style={{
                           padding: 10,
                           borderRadius: 0,
-                          backgroundColor: '#F8FAFC',
+                          backgroundColor: 'var(--bg-subtle)',
                           border: '1px solid #E2E8F0',
                           borderLeft: '3px solid var(--primary-red)',
                           display: 'flex',
@@ -734,19 +734,19 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                           animationDelay: isClearingNotifications ? `${idx * 40}ms` : undefined,
                         }}
                         onMouseEnter={(e) => {
-                          if (!isClearingNotifications && !isRemoving) e.currentTarget.style.backgroundColor = '#F1F5F9';
+                          if (!isClearingNotifications && !isRemoving) e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
                         }}
                         onMouseLeave={(e) => {
-                          if (!isClearingNotifications && !isRemoving) e.currentTarget.style.backgroundColor = '#F8FAFC';
+                          if (!isClearingNotifications && !isRemoving) e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                         }}
                       >
                         <div style={{ padding: 6, borderRadius: 0, backgroundColor: item.bg || 'rgba(59, 110, 168, 0.15)', color: item.color || '#3B6EA8', flexShrink: 0 }}>
                           <ItemIcon size={14} />
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#172033', marginBottom: 2 }}>{item.title}</div>
-                          <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.3 }}>{item.desc}</div>
-                          <div style={{ fontSize: 10.5, color: '#94A3B8', marginTop: 3 }}>{item.time}</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--deep-navy)', marginBottom: 2 }}>{item.title}</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.3 }}>{item.desc}</div>
+                          <div style={{ fontSize: 10.5, color: 'var(--text-disabled)', marginTop: 3 }}>{item.time}</div>
                         </div>
                       </div>
                     );
@@ -777,7 +777,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               cursor: 'pointer',
               fontSize: 12,
               fontWeight: 700,
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               padding: 0
             }}
             title="User Menu"
@@ -796,7 +796,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   right: 0,
                   width: 230,
                 }),
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--bg-card)',
                 borderRadius: 0,
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
@@ -808,10 +808,10 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               }}
             >
               <div style={{ paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)' }}>
                   {user?.full_name || 'System Administrator'}
                 </div>
-                <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
                   {user?.email || 'admin@examplanner.com'}
                 </div>
               </div>

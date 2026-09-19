@@ -23,7 +23,7 @@ export function WorkflowSection() {
       id="how-it-works"
       className="landing-section-padding"
       style={{
-        background: '#172033',
+        background: 'var(--deep-navy)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -61,13 +61,13 @@ export function WorkflowSection() {
           </div>
           <h2
             className="section-heading"
-            style={{ fontWeight: 800, color: '#F8FAFC', marginBottom: 16 }}
+            style={{ fontWeight: 800, color: 'var(--bg-subtle)', marginBottom: 16 }}
           >
             How the Adaptive Platform Works
           </h2>
           <p
             className="section-subheading"
-            style={{ color: '#94A3B8', maxWidth: 480, margin: '0 auto' }}
+            style={{ color: 'var(--text-disabled)', maxWidth: 480, margin: '0 auto' }}
           >
             Five precision steps from your first session to exam-day readiness.
           </p>
@@ -142,7 +142,7 @@ export function WorkflowSection() {
                   style={{
                     fontSize: 15,
                     fontWeight: 700,
-                    color: '#F8FAFC',
+                    color: 'var(--bg-subtle)',
                     marginBottom: 8,
                   }}
                 >
@@ -151,7 +151,7 @@ export function WorkflowSection() {
                 <div
                   style={{
                     fontSize: 13,
-                    color: '#94A3B8',
+                    color: 'var(--text-disabled)',
                     lineHeight: 1.65,
                     maxWidth: 155,
                   }}
@@ -217,11 +217,11 @@ export function WorkflowSection() {
                     STEP {s.n}
                   </div>
                   <div
-                    style={{ fontSize: 'clamp(14px, 3vw, 16px)', fontWeight: 700, color: '#F8FAFC', marginBottom: 4 }}
+                    style={{ fontSize: 'clamp(14px, 3vw, 16px)', fontWeight: 700, color: 'var(--bg-subtle)', marginBottom: 4 }}
                   >
                     {s.title}
                   </div>
-                  <div style={{ fontSize: 'clamp(12.5px, 2.5vw, 14px)', color: '#94A3B8', lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 'clamp(12.5px, 2.5vw, 14px)', color: 'var(--text-disabled)', lineHeight: 1.6 }}>
                     {s.desc}
                   </div>
                 </div>

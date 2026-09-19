@@ -58,7 +58,7 @@ function MetricCard({
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       title={onClick ? `Open ${title}` : undefined}
       style={{
-        background: '#FFFFFF',
+        background: 'var(--bg-card)',
         border: isHovered && onClick ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
         borderRadius: 0,
         position: 'relative',
@@ -98,7 +98,7 @@ function MetricCard({
             style={{
               fontSize: 13.5,
               fontWeight: 600,
-              color: isHovered && onClick ? 'var(--primary-red)' : '#172033',
+              color: isHovered && onClick ? 'var(--primary-red)' : 'var(--deep-navy)',
               letterSpacing: '-0.01em',
               transition: 'color 150ms ease',
             }}
@@ -109,7 +109,7 @@ function MetricCard({
             <ArrowRight
               size={13}
               style={{
-                color: isHovered ? 'var(--primary-red)' : '#94A3B8',
+                color: isHovered ? 'var(--primary-red)' : 'var(--text-disabled)',
                 transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
                 transition: 'all 150ms ease',
                 opacity: isHovered ? 1 : 0.6,
@@ -124,7 +124,7 @@ function MetricCard({
             width: 34,
             height: 34,
             borderRadius: 0,
-            backgroundColor: '#F8FAFC',
+            backgroundColor: 'var(--bg-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -144,7 +144,7 @@ function MetricCard({
             style={{
               height: 32,
               width: 56,
-              backgroundColor: '#E2E8F0',
+              backgroundColor: 'var(--border-color)',
               borderRadius: 4,
               animation: 'pulse 1.5s ease-in-out infinite',
               marginBottom: 4,
@@ -155,7 +155,7 @@ function MetricCard({
             style={{
               fontSize: 32,
               fontWeight: 700,
-              color: isHovered ? accentColor : '#172033',
+              color: isHovered ? accentColor : 'var(--deep-navy)',
               lineHeight: 1.05,
               letterSpacing: '-0.025em',
               transition: 'color 200ms ease-out',
@@ -169,7 +169,7 @@ function MetricCard({
           style={{
             fontSize: 12.5,
             fontWeight: 500,
-            color: '#64748B',
+            color: 'var(--text-muted)',
             marginTop: 4,
           }}
         >
@@ -178,7 +178,7 @@ function MetricCard({
               style={{
                 height: 14,
                 width: 96,
-                backgroundColor: '#F1F5F9',
+                backgroundColor: 'var(--bg-hover)',
                 borderRadius: 3,
                 animation: 'pulse 1.5s ease-in-out infinite',
               }}
@@ -194,7 +194,7 @@ function MetricCard({
             style={{
               height: 4,
               width: '100%',
-              backgroundColor: '#F1F5F9',
+              backgroundColor: 'var(--bg-hover)',
               borderRadius: 0,
               marginTop: 10,
               overflow: 'hidden',
@@ -244,7 +244,7 @@ function TableRowItem({
       onMouseLeave={() => setHovered(false)}
       style={{
         borderBottom: isLast ? 'none' : '1px solid #E2E8F0',
-        backgroundColor: hovered ? '#F8FAFC' : '#FFFFFF',
+        backgroundColor: hovered ? 'var(--bg-subtle)' : 'var(--bg-card)',
         transition: 'background-color 150ms ease-out',
       }}
     >
@@ -256,10 +256,10 @@ function TableRowItem({
           transition: 'border-left 150ms ease-out',
         }}
       >
-        <div style={{ fontWeight: 600, fontSize: 13.5, color: '#172033', lineHeight: 1.3 }}>
+        <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--deep-navy)', lineHeight: 1.3 }}>
           {primaryTitle}
         </div>
-        <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
           {secondaryTitle}
         </div>
       </td>
@@ -272,8 +272,8 @@ function TableRowItem({
             padding: '3px 9px',
             fontSize: 12.5,
             fontWeight: 600,
-            color: '#172033',
-            backgroundColor: '#F1F5F9',
+            color: 'var(--deep-navy)',
+            backgroundColor: 'var(--bg-hover)',
             borderRadius: 0,
           }}
         >
@@ -282,7 +282,7 @@ function TableRowItem({
       </td>
 
       {/* UPLOADED */}
-      <td style={{ padding: '14px 16px', color: '#64748B', fontSize: 13, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+      <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
         {paper.date}
       </td>
 
@@ -299,7 +299,7 @@ function TableRowItem({
             border: '1px solid #DCFCE7',
           }}
         >
-          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#16A34A' }} />
+          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: 'var(--status-success)' }} />
           <span style={{ fontSize: 12.5, fontWeight: 600, color: '#15803D' }}>
             {paper.confidence || 99}% confidence
           </span>
@@ -328,8 +328,8 @@ function TableRowItem({
                   padding: '5px 12px',
                   fontSize: 12,
                   fontWeight: 600,
-                  color: '#94A3B8',
-                  background: '#F1F5F9',
+                  color: 'var(--text-disabled)',
+                  background: 'var(--bg-hover)',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
                   cursor: 'not-allowed',
@@ -364,8 +364,8 @@ function TableRowItem({
                   padding: '5px 14px',
                   fontSize: 12.5,
                   fontWeight: 600,
-                  color: hovered ? 'var(--primary-red)' : '#172033',
-                  background: '#FFFFFF',
+                  color: hovered ? 'var(--primary-red)' : 'var(--deep-navy)',
+                  background: 'var(--bg-card)',
                   border: hovered ? '1px solid #93C5FD' : '1px solid #E2E8F0',
                   borderRadius: 0,
                   cursor: 'pointer',
@@ -382,10 +382,10 @@ function TableRowItem({
             <span
               style={{
                 fontSize: 12,
-                color: '#64748B',
+                color: 'var(--text-muted)',
                 fontWeight: 500,
                 padding: '4px 8px',
-                background: '#F1F5F9',
+                background: 'var(--bg-hover)',
                 border: '1px solid #E2E8F0',
               }}
             >
@@ -419,7 +419,7 @@ function SubjectDistributionRow({
       style={{
         padding: '8px 10px',
         borderRadius: 0,
-        backgroundColor: hovered ? '#F8FAFC' : 'transparent',
+        backgroundColor: hovered ? 'var(--bg-subtle)' : 'transparent',
         transition: 'all 150ms ease-out',
         position: 'relative',
         cursor: 'pointer',
@@ -432,12 +432,12 @@ function SubjectDistributionRow({
           alignItems: 'center',
           fontSize: 13,
           fontWeight: hovered ? 600 : 500,
-          color: hovered ? '#172033' : '#172033',
+          color: hovered ? 'var(--deep-navy)' : 'var(--deep-navy)',
           marginBottom: 6,
         }}
       >
         <span>{subject}</span>
-        <span style={{ color: hovered ? 'var(--primary-red)' : '#64748B', fontWeight: 600, fontSize: 12.5 }}>
+        <span style={{ color: hovered ? 'var(--primary-red)' : 'var(--text-muted)', fontWeight: 600, fontSize: 12.5 }}>
           {count} · {percent}%
         </span>
       </div>
@@ -446,7 +446,7 @@ function SubjectDistributionRow({
       <div
         style={{
           height: hovered ? 7 : 5,
-          backgroundColor: '#F1F5F9',
+          backgroundColor: 'var(--bg-hover)',
           borderRadius: 0,
           overflow: 'hidden',
           transition: 'height 150ms ease-out',
@@ -469,8 +469,8 @@ function SubjectDistributionRow({
           style={{
             marginTop: 6,
             fontSize: 11.5,
-            color: '#334155',
-            backgroundColor: '#FFFFFF',
+            color: 'var(--text-secondary)',
+            backgroundColor: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
             borderRadius: 0,
             padding: '4px 8px',
@@ -481,7 +481,7 @@ function SubjectDistributionRow({
           }}
         >
           <span>
-            <strong style={{ color: '#172033' }}>{subject}</strong>: {count} extracted questions
+            <strong style={{ color: 'var(--deep-navy)' }}>{subject}</strong>: {count} extracted questions
           </span>
           <span style={{ color: 'var(--primary-red)', fontWeight: 600 }}>{percent}% of current dataset</span>
         </div>
@@ -544,7 +544,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               style={{
                 fontSize: 26,
                 fontWeight: 700,
-                color: '#FFFFFF',
+                color: 'var(--bg-card)',
                 margin: 0,
                 letterSpacing: '-0.02em',
               }}
@@ -592,14 +592,14 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               fontWeight: 500,
               borderRadius: 0,
               background: 'rgba(255, 255, 255, 0.12)',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               border: '1px solid rgba(255, 255, 255, 0.25)',
               cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'all 0.15s ease',
             }}
             title="Refresh Database Statistics"
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} color="#FFFFFF" />
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} color="var(--bg-card)" />
             <span>Refresh</span>
           </button>
 
@@ -615,7 +615,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               fontWeight: 600,
               borderRadius: 0,
               background: 'var(--primary-red)',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               border: '1px solid var(--primary-red)',
               cursor: 'pointer',
               boxShadow: '0 2px 8px rgba(var(--primary-red-rgb), 0.3)',
@@ -655,7 +655,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               fontSize: 12,
               fontWeight: 600,
               color: '#B42318',
-              background: '#FFFFFF',
+              background: 'var(--bg-card)',
               border: '1px solid #FECDCA',
               borderRadius: 0,
               cursor: 'pointer',
@@ -708,7 +708,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
         {/* Left Column: Recent Exam Paper Uploads Table */}
         <div
           style={{
-            background: '#FFFFFF',
+            background: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
             borderRadius: 0,
             padding: isMobile ? '16px' : '24px',
@@ -727,10 +727,10 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 4, height: 22, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
               <div>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.01em' }}>
                   Recent Exam Paper Uploads
                 </h2>
-                <p style={{ fontSize: 13, color: '#64748B', margin: '2px 0 0 0' }}>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Latest question papers processed through the extraction pipeline.
                 </p>
               </div>
@@ -770,20 +770,20 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               }}
             >
               <thead>
-                <tr style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFAFA' }}>
-                  <th style={{ padding: '10px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                <tr style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: 'var(--bg-subtle)' }}>
+                  <th style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, letterSpacing: '0.04em' }}>
                     EXAM PAPER
                   </th>
-                  <th style={{ padding: '10px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, letterSpacing: '0.04em' }}>
                     QUESTIONS
                   </th>
-                  <th style={{ padding: '10px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, letterSpacing: '0.04em' }}>
                     UPLOADED
                   </th>
-                  <th style={{ padding: '10px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, letterSpacing: '0.04em' }}>
                     STATUS / CONFIDENCE
                   </th>
-                  <th style={{ padding: '10px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em', textAlign: 'right' }}>
+                  <th style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, letterSpacing: '0.04em', textAlign: 'right' }}>
                     ACTION
                   </th>
                 </tr>
@@ -793,26 +793,26 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
                   Array.from({ length: 3 }).map((_, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #E2E8F0' }}>
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ height: 16, width: 140, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite', marginBottom: 6 }} />
-                        <div style={{ height: 12, width: 90, backgroundColor: '#F8FAFC', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                        <div style={{ height: 16, width: 140, backgroundColor: 'var(--bg-hover)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite', marginBottom: 6 }} />
+                        <div style={{ height: 12, width: 90, backgroundColor: 'var(--bg-subtle)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
                       </td>
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ height: 20, width: 36, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                        <div style={{ height: 20, width: 36, backgroundColor: 'var(--bg-hover)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
                       </td>
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ height: 14, width: 70, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                        <div style={{ height: 14, width: 70, backgroundColor: 'var(--bg-hover)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
                       </td>
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ height: 22, width: 110, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                        <div style={{ height: 22, width: 110, backgroundColor: 'var(--bg-hover)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                        <div style={{ height: 26, width: 60, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite', marginLeft: 'auto' }} />
+                        <div style={{ height: 26, width: 60, backgroundColor: 'var(--bg-hover)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite', marginLeft: 'auto' }} />
                       </td>
                     </tr>
                   ))
                 ) : papersList.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: '32px 16px', textAlign: 'center', color: '#64748B', fontSize: 13.5 }}>
+                    <td colSpan={5} style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13.5 }}>
                       No exam papers uploaded yet. Click &quot;Upload Exam Paper&quot; above to get started.
                     </td>
                   </tr>
@@ -834,7 +834,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
         {/* Right Column: Question Distribution Card */}
         <div
           style={{
-            background: '#FFFFFF',
+            background: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
             borderRadius: 0,
             padding: 24,
@@ -846,11 +846,11 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           {/* Section Title with Vertical Accent */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.01em' }}>
               Question Distribution
             </h2>
           </div>
-          <p style={{ fontSize: 13, color: '#64748B', margin: '2px 0 16px 0' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0 16px 0' }}>
             Extracted question breakdown by subject category.
           </p>
 
@@ -859,14 +859,14 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               Array.from({ length: 4 }).map((_, idx) => (
                 <div key={idx} style={{ padding: '8px 10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ height: 14, width: 120, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                    <div style={{ height: 14, width: 40, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                    <div style={{ height: 14, width: 120, backgroundColor: 'var(--bg-hover)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                    <div style={{ height: 14, width: 40, backgroundColor: 'var(--bg-hover)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
                   </div>
-                  <div style={{ height: 5, backgroundColor: '#F1F5F9', borderRadius: 0 }} />
+                  <div style={{ height: 5, backgroundColor: 'var(--bg-hover)', borderRadius: 0 }} />
                 </div>
               ))
             ) : subjectsList.length === 0 ? (
-              <div style={{ padding: '24px 0', textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                 No subject distribution data available yet.
               </div>
             ) : (

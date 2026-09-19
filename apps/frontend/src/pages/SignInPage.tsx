@@ -62,7 +62,7 @@ export function SignInPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#F5F7FB', fontFamily: "'Manrope', -apple-system, system-ui, sans-serif" }}>
-      <header style={{ padding: '20px 48px', borderBottom: '1px solid #E2E8F0', background: '#FFFFFF' }}>
+      <header style={{ padding: '20px 48px', borderBottom: '1px solid #E2E8F0', background: 'var(--bg-card)' }}>
         <Link to="/" style={{ textDecoration: 'none' }}>
           <Logo />
         </Link>
@@ -71,7 +71,7 @@ export function SignInPage() {
       <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px' }}>
         <div
           style={{
-            background: '#FFFFFF',
+            background: 'var(--bg-card)',
             borderRadius: 0,
             padding: '36px 32px 32px 32px',
             width: '100%',
@@ -82,10 +82,10 @@ export function SignInPage() {
           }}
         >
           <div style={{ marginBottom: 26, textAlign: 'left' }}>
-            <h1 style={{ fontSize: 30, fontWeight: 700, color: '#172033', marginBottom: 6, letterSpacing: '-0.025em', fontFamily: "'Manrope', sans-serif" }}>
+            <h1 style={{ fontSize: 30, fontWeight: 700, color: 'var(--deep-navy)', marginBottom: 6, letterSpacing: '-0.025em', fontFamily: "'Manrope', sans-serif" }}>
               Welcome back
             </h1>
-            <p style={{ fontSize: 15, color: '#64748B', margin: 0, fontWeight: 400, lineHeight: '1.45' }}>
+            <p style={{ fontSize: 15, color: 'var(--text-muted)', margin: 0, fontWeight: 400, lineHeight: '1.45' }}>
               Sign in to access your student dashboard
             </p>
           </div>
@@ -132,7 +132,7 @@ export function SignInPage() {
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13.5, fontWeight: 500, color: '#172033', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 13.5, fontWeight: 500, color: 'var(--deep-navy)', marginBottom: 6 }}>
                 Email address
               </label>
               <input
@@ -145,12 +145,12 @@ export function SignInPage() {
                   width: '100%',
                   height: 52,
                   borderRadius: 0,
-                  backgroundColor: '#F8FAFC',
+                  backgroundColor: 'var(--bg-subtle)',
                   border: '1px solid #E2E8F0',
                   padding: '0 16px',
                   fontSize: 14.5,
                   fontWeight: 400,
-                  color: '#172033',
+                  color: 'var(--deep-navy)',
                   outline: 'none',
                   boxSizing: 'border-box',
                   transition: 'all 0.15s ease',
@@ -159,18 +159,18 @@ export function SignInPage() {
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = '#334EAC';
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(51, 78, 172, 0.12)';
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-card)';
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
                   e.currentTarget.style.boxShadow = 'none';
-                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                 }}
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: 13.5, fontWeight: 500, color: '#172033', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 13.5, fontWeight: 500, color: 'var(--deep-navy)', marginBottom: 6 }}>
                 Password
               </label>
               <div style={{ position: 'relative' }}>
@@ -184,12 +184,12 @@ export function SignInPage() {
                     width: '100%',
                     height: 52,
                     borderRadius: 0,
-                    backgroundColor: '#F8FAFC',
+                    backgroundColor: 'var(--bg-subtle)',
                     border: '1px solid #E2E8F0',
                     padding: '0 44px 0 16px',
                     fontSize: 14.5,
                     fontWeight: 400,
-                    color: '#172033',
+                    color: 'var(--deep-navy)',
                     outline: 'none',
                     boxSizing: 'border-box',
                     transition: 'all 0.15s ease',
@@ -198,12 +198,12 @@ export function SignInPage() {
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = '#334EAC';
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(51, 78, 172, 0.12)';
-                    e.currentTarget.style.backgroundColor = '#FFFFFF';
+                    e.currentTarget.style.backgroundColor = 'var(--bg-card)';
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#E2E8F0';
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
                     e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.backgroundColor = '#F8FAFC';
+                    e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                   }}
                 />
                 <button
@@ -217,7 +217,7 @@ export function SignInPage() {
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -238,7 +238,7 @@ export function SignInPage() {
                 height: 52,
                 borderRadius: 0,
                 backgroundColor: '#334EAC',
-                color: '#FFFFFF',
+                color: 'var(--bg-card)',
                 fontSize: 15,
                 fontWeight: 600,
                 border: 'none',
@@ -283,10 +283,10 @@ export function SignInPage() {
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                background: '#FFFFFF',
+                background: 'var(--bg-card)',
                 padding: '0 12px',
                 fontSize: 12,
-                color: '#64748B',
+                color: 'var(--text-muted)',
                 fontWeight: 500,
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
@@ -302,9 +302,9 @@ export function SignInPage() {
               width: '100%',
               height: 52,
               borderRadius: 0,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               border: '1px solid #E2E8F0',
-              color: '#172033',
+              color: 'var(--deep-navy)',
               fontSize: 14.5,
               fontWeight: 600,
               cursor: 'pointer',
@@ -332,19 +332,19 @@ export function SignInPage() {
               }
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#F8FAFC';
-              e.currentTarget.style.borderColor = '#CBD5E1';
+              e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
+              e.currentTarget.style.borderColor = 'var(--border-color)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#FFFFFF';
-              e.currentTarget.style.borderColor = '#E2E8F0';
+              e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+              e.currentTarget.style.borderColor = 'var(--border-color)';
             }}
           >
             <Ico.Google />
             <span>Continue with Google</span>
           </button>
 
-          <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: '#64748B', fontWeight: 400 }}>
+          <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>
             Don't have an account?{' '}
             <Link
               to="/signup"

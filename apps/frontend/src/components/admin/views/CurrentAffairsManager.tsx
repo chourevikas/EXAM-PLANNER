@@ -119,7 +119,7 @@ export function CurrentAffairsManager() {
           padding: '12px 16px', 
           borderRadius: 6, 
           marginBottom: 24, 
-          backgroundColor: message.type === 'success' ? '#D1FAE5' : '#FEE2E2',
+          backgroundColor: message.type === 'success' ? 'var(--status-success-bg)' : 'var(--primary-red-bg)',
           color: message.type === 'success' ? '#065F46' : '#991B1B',
           border: `1px solid ${message.type === 'success' ? '#34D399' : '#F87171'}`,
           fontWeight: 500
@@ -205,7 +205,7 @@ export function CurrentAffairsManager() {
                 <td style={{ padding: 12 }}>{a.title}</td>
                 <td style={{ padding: 12 }}>{a.topic || '-'}</td>
                 <td style={{ padding: 12, display: 'flex', gap: 12 }}>
-                  <button onClick={() => handleEdit(a)} style={{ color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Edit</button>
+                  <button onClick={() => handleEdit(a)} style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Edit</button>
                   {confirmDeleteId === a.id ? (
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <span style={{ fontSize: 13, color: '#6B7280' }}>Are you sure?</span>

@@ -126,7 +126,7 @@ export function AboutUsPage() {
             style={{
               fontSize: 'clamp(22px, 3.5vw, 32px)',
               fontWeight: 700,
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               lineHeight: 1.5,
               fontStyle: 'italic',
               margin: 0,
@@ -165,7 +165,7 @@ export function AboutUsPage() {
                   style={{
                     width: 36, height: 36, flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: 'var(--accent-primary)', color: '#ffffff',
+                    backgroundColor: 'var(--accent-primary)', color: 'var(--bg-card)',
                     fontSize: 14, fontWeight: 800,
                   }}
                 >

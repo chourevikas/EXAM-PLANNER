@@ -21,7 +21,7 @@ const BADGE_DEFAULT_STYLE: React.CSSProperties = { color: '#D97706', background:
 const CARD_BASE_STYLE: React.CSSProperties = {
   border: '1px solid #E2E8F0',
   borderRadius: 12,
-  background: '#FFFFFF',
+  background: 'var(--bg-card)',
   boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
   transition: 'transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease',
 };
@@ -50,7 +50,7 @@ const DELETE_BTN_BASE_STYLE: React.CSSProperties = {
   gap: 6,
   background: 'transparent',
   border: 'none',
-  color: '#EF4444',
+  color: 'var(--primary-red)',
   fontSize: 13,
   fontWeight: 600,
   padding: '6px 10px',
@@ -63,7 +63,7 @@ const SKELETON_WRAPPER_STYLE: React.CSSProperties = {
   padding: 20,
   border: '1px solid #E2E8F0',
   borderRadius: 12,
-  background: '#FFFFFF',
+  background: 'var(--bg-card)',
   display: 'flex',
   flexDirection: 'column',
   gap: 12,
@@ -71,7 +71,7 @@ const SKELETON_WRAPPER_STYLE: React.CSSProperties = {
 
 const TITLE_BASE_STYLE: React.CSSProperties = {
   fontWeight: 800,
-  color: '#0F172A',
+  color: 'var(--deep-navy)',
   letterSpacing: '-0.02em',
   margin: 0,
   display: 'flex',
@@ -82,7 +82,7 @@ const TITLE_BASE_STYLE: React.CSSProperties = {
 const SUBTITLE_STYLE: React.CSSProperties = {
   margin: '4px 0 0 0',
   fontSize: 14,
-  color: '#64748B',
+  color: 'var(--text-muted)',
 };
 
 const ERROR_ALERT_STYLE: React.CSSProperties = {
@@ -101,18 +101,18 @@ const ERROR_ALERT_STYLE: React.CSSProperties = {
 const EMPTY_CONTAINER_STYLE: React.CSSProperties = {
   padding: '48px 24px',
   textAlign: 'center',
-  background: '#FFFFFF',
+  background: 'var(--bg-card)',
   border: '1px dashed #CBD5E1',
   borderRadius: 12,
-  color: '#64748B',
+  color: 'var(--text-muted)',
 };
 
 const NO_MATCH_CONTAINER_STYLE: React.CSSProperties = {
   padding: '36px 20px',
   textAlign: 'center',
-  background: '#F8FAFC',
+  background: 'var(--bg-subtle)',
   borderRadius: 10,
-  color: '#64748B',
+  color: 'var(--text-muted)',
   fontSize: 14,
 };
 
@@ -153,7 +153,7 @@ const BookmarkCard = React.memo(function BookmarkCard({
             {formatEnum(bookmark.difficulty)}
           </span>
           {bookmark.created_at && (
-            <span style={{ fontSize: 11.5, color: '#94A3B8' }}>
+            <span style={{ fontSize: 11.5, color: 'var(--text-disabled)' }}>
               {new Date(bookmark.created_at).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
@@ -195,11 +195,11 @@ function BookmarkSkeleton() {
   return (
     <div style={SKELETON_WRAPPER_STYLE}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ width: 80, height: 22, background: '#E2E8F0', borderRadius: 4 }} />
-        <div style={{ width: 60, height: 18, background: '#E2E8F0', borderRadius: 4 }} />
+        <div style={{ width: 80, height: 22, background: 'var(--border-color)', borderRadius: 4 }} />
+        <div style={{ width: 60, height: 18, background: 'var(--border-color)', borderRadius: 4 }} />
       </div>
-      <div style={{ width: '100%', height: 16, background: '#F1F5F9', borderRadius: 4 }} />
-      <div style={{ width: '80%', height: 16, background: '#F1F5F9', borderRadius: 4 }} />
+      <div style={{ width: '100%', height: 16, background: 'var(--bg-hover)', borderRadius: 4 }} />
+      <div style={{ width: '80%', height: 16, background: 'var(--bg-hover)', borderRadius: 4 }} />
     </div>
   );
 }
@@ -306,7 +306,7 @@ export function BookmarksPage(): React.ReactElement {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    background: '#F8FAFC',
+    background: 'var(--bg-subtle)',
     border: '1px solid #E2E8F0',
     padding: '8px 14px',
     minHeight: 44,
@@ -334,7 +334,7 @@ export function BookmarksPage(): React.ReactElement {
     border: '1px solid #E2E8F0',
     fontSize: 14,
     outline: 'none',
-    background: '#FFFFFF',
+    background: 'var(--bg-card)',
     color: '#1E293B',
     boxSizing: 'border-box',
   };
@@ -347,7 +347,7 @@ export function BookmarksPage(): React.ReactElement {
     border: '1px solid #E2E8F0',
     fontSize: 13,
     fontWeight: 600,
-    background: '#FFFFFF',
+    background: 'var(--bg-card)',
     color: '#1E293B',
     cursor: 'pointer',
     outline: 'none',
@@ -385,7 +385,7 @@ export function BookmarksPage(): React.ReactElement {
             <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Search
                 size={16}
-                color="#94A3B8"
+                color="var(--text-disabled)"
                 style={{ position: 'absolute', left: 12, pointerEvents: 'none' }}
               />
               <input
@@ -398,7 +398,7 @@ export function BookmarksPage(): React.ReactElement {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: isMobile ? '100%' : 'auto' }}>
-              <Filter size={16} color="#64748B" style={{ display: isMobile ? 'none' : 'block' }} />
+              <Filter size={16} color="var(--text-muted)" style={{ display: isMobile ? 'none' : 'block' }} />
               <select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
@@ -430,11 +430,11 @@ export function BookmarksPage(): React.ReactElement {
           </div>
         ) : bookmarks.length === 0 ? (
           <div style={EMPTY_CONTAINER_STYLE}>
-            <Bookmark size={40} color="#94A3B8" style={{ marginBottom: 12, opacity: 0.7 }} />
+            <Bookmark size={40} color="var(--text-disabled)" style={{ marginBottom: 12, opacity: 0.7 }} />
             <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1E293B', margin: '0 0 6px 0' }}>
               No bookmarked questions yet
             </h3>
-            <p style={{ fontSize: 14, margin: 0, color: '#64748B' }}>
+            <p style={{ fontSize: 14, margin: 0, color: 'var(--text-muted)' }}>
               Start practicing exam questions and bookmark tricky questions to review them here!
             </p>
           </div>

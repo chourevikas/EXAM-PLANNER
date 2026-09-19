@@ -186,7 +186,7 @@ export function ActiveAdminsTab({
                           fontWeight: 700,
                           padding: '4px 12px',
                           borderRadius: 0,
-                          color: isSuspended ? '#ef4444' : '#3A8B53',
+                          color: isSuspended ? 'var(--primary-red)' : '#3A8B53',
                           background: isSuspended ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
                           border: `1px solid ${isSuspended ? 'rgba(var(--primary-red-rgb), 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
                           display: 'inline-flex',
@@ -194,7 +194,7 @@ export function ActiveAdminsTab({
                           gap: 6,
                         }}
                       >
-                        <span style={{ width: 6, height: 6, borderRadius: 0, background: isSuspended ? '#ef4444' : '#3A8B53' }} />
+                        <span style={{ width: 6, height: 6, borderRadius: 0, background: isSuspended ? 'var(--primary-red)' : '#3A8B53' }} />
                         {isSuspended ? 'SUSPENDED' : 'ACTIVE'}
                       </span>
                     </td>
@@ -235,7 +235,7 @@ export function ActiveAdminsTab({
                             cursor: 'pointer',
                             background: 'rgba(var(--primary-red-rgb), 0.08)',
                             border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
-                            color: '#ef4444',
+                            color: 'var(--primary-red)',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 6,

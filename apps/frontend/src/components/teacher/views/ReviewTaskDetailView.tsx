@@ -333,7 +333,7 @@ export function ReviewTaskDetailView({ questionId, onBack, onDecided }: ReviewTa
                   borderRadius: 0,
                   border: '1px solid var(--primary-red)',
                   background: 'var(--primary-red)',
-                  color: '#ffffff',
+                  color: 'var(--bg-card)',
                   cursor: submitting ? 'not-allowed' : 'pointer',
                   opacity: submitting ? 0.6 : 1,
                   display: 'flex',

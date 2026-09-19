@@ -88,7 +88,7 @@ function StatCard({ value, suffix, label, icon: Icon, color, bg }: StatProps) {
         style={{
           fontSize: 'clamp(2rem, 4vw, 3rem)',
           fontWeight: 900,
-          color: '#F8FAFC',
+          color: 'var(--bg-subtle)',
           letterSpacing: '-1px',
           lineHeight: 1.05,
         }}
@@ -110,7 +110,7 @@ function StatCard({ value, suffix, label, icon: Icon, color, bg }: StatProps) {
       />
 
       {/* Label */}
-      <div style={{ fontSize: 13.5, color: '#94A3B8', fontWeight: 500, lineHeight: 1.4 }}>
+      <div style={{ fontSize: 13.5, color: 'var(--text-disabled)', fontWeight: 500, lineHeight: 1.4 }}>
         {label}
       </div>
     </div>
@@ -129,7 +129,7 @@ export function StatsSection() {
     <section
       className="landing-section-padding"
       style={{
-        background: '#172033',
+        background: 'var(--deep-navy)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -168,7 +168,7 @@ export function StatsSection() {
           </div>
           <h2
             className="section-heading"
-            style={{ fontWeight: 800, color: '#F8FAFC' }}
+            style={{ fontWeight: 800, color: 'var(--bg-subtle)' }}
           >
             Trusted by Serious Aspirants
           </h2>

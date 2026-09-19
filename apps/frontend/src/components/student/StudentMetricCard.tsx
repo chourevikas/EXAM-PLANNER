@@ -29,7 +29,7 @@ export function StudentMetricCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
-        background: '#FFFFFF',
+        background: 'var(--bg-card)',
         border: '1px solid #E2E8F0',
         borderRadius: 0,
         position: 'relative',
@@ -69,7 +69,7 @@ export function StudentMetricCard({
           style={{
             fontSize: 13.5,
             fontWeight: 600,
-            color: '#172033',
+            color: 'var(--deep-navy)',
             letterSpacing: '-0.01em',
           }}
         >
@@ -82,7 +82,7 @@ export function StudentMetricCard({
             width: 34,
             height: 34,
             borderRadius: 0,
-            backgroundColor: '#F8FAFC',
+            backgroundColor: 'var(--bg-subtle)',
             color: accentColor,
             display: 'flex',
             alignItems: 'center',
@@ -102,7 +102,7 @@ export function StudentMetricCard({
           style={{
             fontSize: 28,
             fontWeight: 700,
-            color: isHovered ? accentColor : '#172033',
+            color: isHovered ? accentColor : 'var(--deep-navy)',
             lineHeight: 1.08,
             letterSpacing: '-0.025em',
             transition: 'color 200ms ease-out',
@@ -116,7 +116,7 @@ export function StudentMetricCard({
             style={{
               fontSize: 12.5,
               fontWeight: 500,
-              color: '#64748B',
+              color: 'var(--text-muted)',
               marginTop: 4,
             }}
           >
@@ -130,7 +130,7 @@ export function StudentMetricCard({
             style={{
               height: 4,
               width: '100%',
-              backgroundColor: '#F1F5F9',
+              backgroundColor: 'var(--bg-hover)',
               borderRadius: 0,
               marginTop: 10,
               overflow: 'hidden',

@@ -436,11 +436,11 @@ export function StudyPlannerPage() {
   // Color helper for subjects
   const getSubjectBadgeStyle = (subj?: string) => {
     const s = (subj || '').toLowerCase();
-    if (s.includes('polity')) return { bg: '#F8FAFC', color: 'var(--primary-red)', border: 'rgba(var(--primary-red-rgb), 0.2)' };
-    if (s.includes('history')) return { bg: '#FEF3C7', color: '#F2B623', border: 'rgba(217,119,6,0.2)' };
+    if (s.includes('polity')) return { bg: 'var(--bg-subtle)', color: 'var(--primary-red)', border: 'rgba(var(--primary-red-rgb), 0.2)' };
+    if (s.includes('history')) return { bg: 'var(--status-warning-bg)', color: '#F2B623', border: 'rgba(217,119,6,0.2)' };
     if (s.includes('economy')) return { bg: '#ECFDF5', color: '#3A8B53', border: 'rgba(5,150,105,0.2)' };
     if (s.includes('geography')) return { bg: '#F3E8FF', color: '#9333EA', border: 'rgba(147,51,234,0.2)' };
-    if (s.includes('environment')) return { bg: '#F0FDF4', color: '#16A34A', border: 'rgba(22,163,74,0.2)' };
+    if (s.includes('environment')) return { bg: '#F0FDF4', color: 'var(--status-success)', border: 'rgba(22,163,74,0.2)' };
     if (s.includes('science') || s.includes('tech')) return { bg: '#F5F3FF', color: '#7C3AED', border: 'rgba(124,58,237,0.2)' };
     return { bg: 'var(--accent-bg)', color: 'var(--accent-primary)', border: 'var(--accent-border)' };
   };
@@ -746,7 +746,7 @@ export function StudyPlannerPage() {
                           {selectedDayData.day_name}'s Schedule <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({selectedDayData.date})</span>
                         </span>
                         {selectedDayData.is_today && (
-                          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 0, backgroundColor: 'rgba(34, 197, 94, 0.12)', color: '#16A34A' }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 0, backgroundColor: 'rgba(34, 197, 94, 0.12)', color: 'var(--status-success)' }}>
                             TODAY
                           </span>
                         )}
@@ -1100,7 +1100,7 @@ export function StudyPlannerPage() {
                               padding: '6px 12px',
                               borderRadius: 0,
                               backgroundColor: 'rgba(34, 197, 94, 0.12)',
-                              color: '#16A34A',
+                              color: 'var(--status-success)',
                               fontSize: 12,
                               fontWeight: 700,
                               border: '1px solid rgba(34, 197, 94, 0.25)',

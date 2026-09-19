@@ -16,7 +16,7 @@ const THEME_PRESETS: ThemePreset[] = [
     id: 'crimson',
     label: 'Crimson',
     description: 'The original red & black palette.',
-    swatchColors: ['#e31b23', '#172033', '#111111'],
+    swatchColors: ['#e31b23', 'var(--deep-navy)', '#111111'],
   },
   {
     id: 'ocean',
@@ -92,7 +92,7 @@ export function ThemeSettingsView() {
             fontSize: 13.5,
             fontWeight: 600,
             background: toast.isError ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-            color: toast.isError ? '#ef4444' : '#3A8B53',
+            color: toast.isError ? 'var(--primary-red)' : '#3A8B53',
             border: `1px solid ${toast.isError ? 'rgba(227,27,35,0.3)' : 'rgba(16,185,129,0.3)'}`,
           }}
         >

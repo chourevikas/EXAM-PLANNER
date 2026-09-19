@@ -178,8 +178,8 @@ export function CandidateDetailView({
               padding: '8px 14px',
               borderRadius: 8,
               border: '1px solid #cbd5e1',
-              backgroundColor: '#ffffff',
-              color: '#334155',
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-secondary)',
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
@@ -187,22 +187,22 @@ export function CandidateDetailView({
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f1f5f9';
-              e.currentTarget.style.color = '#0f172a';
+              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+              e.currentTarget.style.color = 'var(--deep-navy)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#ffffff';
-              e.currentTarget.style.color = '#334155';
+              e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+              e.currentTarget.style.color = 'var(--text-secondary)';
             }}
           >
             <ArrowLeft size={16} />
             <span>Back to Candidates</span>
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)' }}>
             <span>Candidate Directory</span>
             <span>/</span>
-            <span style={{ fontWeight: 700, color: '#0f172a' }}>{displayName}</span>
+            <span style={{ fontWeight: 700, color: 'var(--deep-navy)' }}>{displayName}</span>
           </div>
         </div>
 
@@ -219,8 +219,8 @@ export function CandidateDetailView({
               padding: '8px 12px',
               borderRadius: 8,
               border: '1px solid #cbd5e1',
-              backgroundColor: '#ffffff',
-              color: '#475569',
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-secondary)',
               fontSize: 12,
               fontWeight: 600,
               cursor: refreshing || isDetailLoading ? 'not-allowed' : 'pointer',
@@ -263,7 +263,7 @@ export function CandidateDetailView({
               borderRadius: 8,
               border: 'none',
               background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker, #b91c1c))',
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
@@ -327,7 +327,7 @@ export function CandidateDetailView({
                 height: 64,
                 borderRadius: 12,
                 background: 'linear-gradient(135deg, var(--primary-red) 0%, #4f46e5 50%, #7c3aed 100%)',
-                color: '#ffffff',
+                color: 'var(--bg-card)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -357,7 +357,7 @@ export function CandidateDetailView({
                   style={{
                     fontSize: 22,
                     fontWeight: 800,
-                    color: '#0f172a',
+                    color: 'var(--deep-navy)',
                     margin: 0,
                     letterSpacing: '-0.02em',
                   }}
@@ -365,15 +365,15 @@ export function CandidateDetailView({
                   {displayName}
                 </h1>
                 {candidate.is_verified && (
-                  <CheckCircle size={18} color="#16a34a" title="Verified Candidate" />
+                  <CheckCircle size={18} color="var(--status-success)" title="Verified Candidate" />
                 )}
                 {isDefaultClerkName && (
                   <span
                     style={{
                       fontSize: 11,
                       fontWeight: 600,
-                      backgroundColor: '#fef3c7',
-                      color: '#b45309',
+                      backgroundColor: 'var(--status-warning-bg)',
+                      color: 'var(--status-warning)',
                       border: '1px solid #fde68a',
                       padding: '2px 8px',
                       borderRadius: 6,
@@ -384,7 +384,7 @@ export function CandidateDetailView({
                 )}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748b' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
                 <Mail size={14} color="var(--primary-red)" />
                 <span style={{ fontFamily: 'var(--font-mono)' }}>{candidate.email}</span>
               </div>
@@ -397,9 +397,9 @@ export function CandidateDetailView({
                     fontWeight: 700,
                     padding: '3px 10px',
                     borderRadius: 6,
-                    backgroundColor: candidate.role === 'SUPER_ADMIN' ? '#f3e8ff' : candidate.role === 'ADMIN' ? '#F8FAFC' : '#ecfdf5',
-                    color: candidate.role === 'SUPER_ADMIN' ? '#7c3aed' : candidate.role === 'ADMIN' ? 'var(--primary-red)' : '#16a34a',
-                    border: `1px solid ${candidate.role === 'SUPER_ADMIN' ? '#ddd6fe' : candidate.role === 'ADMIN' ? '#bfdbfe' : '#a7f3d0'}`,
+                    backgroundColor: candidate.role === 'SUPER_ADMIN' ? '#f3e8ff' : candidate.role === 'ADMIN' ? 'var(--bg-subtle)' : '#ecfdf5',
+                    color: candidate.role === 'SUPER_ADMIN' ? '#7c3aed' : candidate.role === 'ADMIN' ? 'var(--primary-red)' : 'var(--status-success)',
+                    border: `1px solid ${candidate.role === 'SUPER_ADMIN' ? '#ddd6fe' : candidate.role === 'ADMIN' ? 'var(--accent-border)' : '#a7f3d0'}`,
                   }}
                 >
                   {candidate.role}
@@ -412,7 +412,7 @@ export function CandidateDetailView({
                     padding: '3px 10px',
                     borderRadius: 6,
                     backgroundColor: candidate.status === 'ACTIVE' ? '#ecfdf5' : '#fef2f2',
-                    color: candidate.status === 'ACTIVE' ? '#16a34a' : '#dc2626',
+                    color: candidate.status === 'ACTIVE' ? 'var(--status-success)' : '#dc2626',
                     border: `1px solid ${candidate.status === 'ACTIVE' ? '#a7f3d0' : '#fecaca'}`,
                   }}
                 >
@@ -425,9 +425,9 @@ export function CandidateDetailView({
                     fontWeight: 700,
                     padding: '3px 10px',
                     borderRadius: 6,
-                    backgroundColor: isPremium ? '#fffbe8' : '#f8fafc',
-                    color: isPremium ? '#b45309' : '#64748b',
-                    border: `1px solid ${isPremium ? '#fde68a' : '#e2e8f0'}`,
+                    backgroundColor: isPremium ? '#fffbe8' : 'var(--bg-subtle)',
+                    color: isPremium ? 'var(--status-warning)' : 'var(--text-muted)',
+                    border: `1px solid ${isPremium ? '#fde68a' : 'var(--border-color)'}`,
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 5,
@@ -448,7 +448,7 @@ export function CandidateDetailView({
           style={{
             fontSize: 13,
             fontWeight: 700,
-            color: '#475569',
+            color: 'var(--text-secondary)',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
             marginBottom: 12,
@@ -463,7 +463,7 @@ export function CandidateDetailView({
             style={{
               padding: 18,
               borderRadius: 10,
-              backgroundColor: '#ffffff',
+              backgroundColor: 'var(--bg-card)',
               border: '1px solid #e2e8f0',
               boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
               display: 'flex',
@@ -488,7 +488,7 @@ export function CandidateDetailView({
               <Zap size={22} />
             </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Current Streak</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Current Streak</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: '#ea580c', marginTop: 2 }}>
                 {candidate.current_streak || candidate.student_profile?.current_streak || 0} Days
               </div>
@@ -500,7 +500,7 @@ export function CandidateDetailView({
             style={{
               padding: 18,
               borderRadius: 10,
-              backgroundColor: '#ffffff',
+              backgroundColor: 'var(--bg-card)',
               border: '1px solid #e2e8f0',
               boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
               display: 'flex',
@@ -514,7 +514,7 @@ export function CandidateDetailView({
                 height: 44,
                 borderRadius: 10,
                 background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
-                color: '#16a34a',
+                color: 'var(--status-success)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -525,8 +525,8 @@ export function CandidateDetailView({
               <BookOpen size={22} />
             </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Questions Solved</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#16a34a', marginTop: 2 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Questions Solved</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--status-success)', marginTop: 2 }}>
                 {candidate.free_questions_attempted || candidate.student_profile?.free_questions_attempted || 0} Solved
               </div>
             </div>
@@ -537,7 +537,7 @@ export function CandidateDetailView({
             style={{
               padding: 18,
               borderRadius: 10,
-              backgroundColor: '#ffffff',
+              backgroundColor: 'var(--bg-card)',
               border: '1px solid #e2e8f0',
               boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
               display: 'flex',
@@ -562,7 +562,7 @@ export function CandidateDetailView({
               <Crown size={22} />
             </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Rank Level</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Rank Level</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: '#d97706', marginTop: 2 }}>
                 Level {candidate.level || candidate.student_profile?.level || 1}
               </div>
@@ -574,7 +574,7 @@ export function CandidateDetailView({
             style={{
               padding: 18,
               borderRadius: 10,
-              backgroundColor: '#ffffff',
+              backgroundColor: 'var(--bg-card)',
               border: '1px solid #e2e8f0',
               boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
               display: 'flex',
@@ -599,7 +599,7 @@ export function CandidateDetailView({
               <Award size={22} />
             </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Total XP</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Total XP</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: '#7c3aed', marginTop: 2 }}>
                 {candidate.total_xp || candidate.student_profile?.total_xp || 0} XP
               </div>
@@ -613,7 +613,7 @@ export function CandidateDetailView({
         {/* Subscription Card */}
         <div
           style={{
-            background: '#ffffff',
+            background: 'var(--bg-card)',
             border: isPremium ? '1px solid #fde68a' : '1px solid #e2e8f0',
             borderRadius: 12,
             padding: 20,
@@ -627,9 +627,9 @@ export function CandidateDetailView({
                   width: 38,
                   height: 38,
                   borderRadius: 8,
-                  backgroundColor: isPremium ? '#fffbe8' : '#f8fafc',
-                  color: isPremium ? '#d97706' : '#64748b',
-                  border: `1px solid ${isPremium ? '#fde68a' : '#cbd5e1'}`,
+                  backgroundColor: isPremium ? '#fffbe8' : 'var(--bg-subtle)',
+                  color: isPremium ? '#d97706' : 'var(--text-muted)',
+                  border: `1px solid ${isPremium ? '#fde68a' : 'var(--border-color)'}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -638,8 +638,8 @@ export function CandidateDetailView({
                 <Crown size={20} />
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Subscription Tier</h4>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>Candidate plan & limits</p>
+                <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--deep-navy)' }}>Subscription Tier</h4>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>Candidate plan & limits</p>
               </div>
             </div>
 
@@ -649,9 +649,9 @@ export function CandidateDetailView({
                 fontWeight: 700,
                 padding: '3px 10px',
                 borderRadius: 6,
-                backgroundColor: isPremium ? '#fffbe8' : '#F8FAFC',
-                color: isPremium ? '#b45309' : 'var(--primary-red)',
-                border: `1px solid ${isPremium ? '#fde68a' : '#bfdbfe'}`,
+                backgroundColor: isPremium ? '#fffbe8' : 'var(--bg-subtle)',
+                color: isPremium ? 'var(--status-warning)' : 'var(--primary-red)',
+                border: `1px solid ${isPremium ? '#fde68a' : 'var(--accent-border)'}`,
               }}
             >
               Active Plan
@@ -662,14 +662,14 @@ export function CandidateDetailView({
             style={{
               padding: 14,
               borderRadius: 8,
-              backgroundColor: isPremium ? '#fffef5' : '#f8fafc',
-              border: `1px dashed ${isPremium ? '#fde68a' : '#e2e8f0'}`,
+              backgroundColor: isPremium ? '#fffef5' : 'var(--bg-subtle)',
+              border: `1px dashed ${isPremium ? '#fde68a' : 'var(--border-color)'}`,
             }}
           >
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)' }}>
               {isPremium ? 'PREMIUM Pro Tier' : 'FREE Standard Tier'}
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
               {isPremium
                 ? 'Unlimited practice questions, smart revision planner, detailed analytics & full mock test simulations.'
                 : 'Standard candidate tier with daily free questions limit and essential performance tracking.'}
@@ -680,7 +680,7 @@ export function CandidateDetailView({
         {/* Account System Details Card */}
         <div
           style={{
-            background: '#ffffff',
+            background: 'var(--bg-card)',
             border: '1px solid #e2e8f0',
             borderRadius: 12,
             padding: 20,
@@ -693,7 +693,7 @@ export function CandidateDetailView({
                 width: 38,
                 height: 38,
                 borderRadius: 8,
-                backgroundColor: '#F8FAFC',
+                backgroundColor: 'var(--bg-subtle)',
                 color: 'var(--primary-red)',
                 border: '1px solid #e2e8f0',
                 display: 'flex',
@@ -704,48 +704,48 @@ export function CandidateDetailView({
               <Globe size={20} />
             </div>
             <div>
-              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Account System Details</h4>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>Platform metadata & timestamps</p>
+              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--deep-navy)' }}>Account System Details</h4>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>Platform metadata & timestamps</p>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-            <div style={{ padding: 12, borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <div style={{ padding: 12, borderRadius: 8, backgroundColor: 'var(--bg-subtle)', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
                 <Clock size={12} />
                 <span>Timezone</span>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)', fontFamily: 'var(--font-mono)' }}>
                 {candidate.timezone || 'Asia/Kolkata'}
               </div>
             </div>
 
-            <div style={{ padding: 12, borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <div style={{ padding: 12, borderRadius: 8, backgroundColor: 'var(--bg-subtle)', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
                 <Calendar size={12} />
                 <span>Registration Date</span>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)', fontFamily: 'var(--font-mono)' }}>
                 {formatDate(candidate.created_at)}
               </div>
             </div>
 
-            <div style={{ padding: 12, borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <div style={{ padding: 12, borderRadius: 8, backgroundColor: 'var(--bg-subtle)', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
                 <RefreshCw size={12} />
                 <span>Last Activity</span>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)', fontFamily: 'var(--font-mono)' }}>
                 {formatDate(candidate.updated_at)}
               </div>
             </div>
 
-            <div style={{ padding: 12, borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <div style={{ padding: 12, borderRadius: 8, backgroundColor: 'var(--bg-subtle)', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
                 <Globe size={12} />
                 <span>Preferred Lang</span>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)' }}>
                 {candidate.preferred_language === 'hi' ? 'Hindi (hi)' : 'English (en)'}
               </div>
             </div>
@@ -774,7 +774,7 @@ export function CandidateDetailView({
             style={{
               width: '100%',
               maxWidth: 480,
-              backgroundColor: '#ffffff',
+              backgroundColor: 'var(--bg-card)',
               borderRadius: 12,
               boxShadow: '0 20px 40px -15px rgba(15, 23, 42, 0.3)',
               border: '1px solid #e2e8f0',
@@ -793,7 +793,7 @@ export function CandidateDetailView({
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Edit3 size={18} color="var(--primary-red)" />
-                <span style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
+                <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--deep-navy)' }}>
                   Edit Candidate Information
                 </span>
               </div>
@@ -803,7 +803,7 @@ export function CandidateDetailView({
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#64748b',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: 4,
                   borderRadius: 6,
@@ -822,7 +822,7 @@ export function CandidateDetailView({
                       display: 'block',
                       fontSize: 12,
                       fontWeight: 700,
-                      color: '#475569',
+                      color: 'var(--text-secondary)',
                       marginBottom: 6,
                     }}
                   >
@@ -843,9 +843,9 @@ export function CandidateDetailView({
                       boxSizing: 'border-box',
                     }}
                     onFocus={(e) => (e.target.style.borderColor = 'var(--primary-red)')}
-                    onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
+                    onBlur={(e) => (e.target.style.borderColor = 'var(--border-color)')}
                   />
-                  <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, display: 'block' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-disabled)', marginTop: 4, display: 'block' }}>
                     Replaces placeholder names (e.g. Clerk Sync User) with real candidate name.
                   </span>
                 </div>
@@ -856,7 +856,7 @@ export function CandidateDetailView({
                       display: 'block',
                       fontSize: 12,
                       fontWeight: 700,
-                      color: '#475569',
+                      color: 'var(--text-secondary)',
                       marginBottom: 6,
                     }}
                   >
@@ -878,7 +878,7 @@ export function CandidateDetailView({
                       fontFamily: 'var(--font-mono)',
                     }}
                     onFocus={(e) => (e.target.style.borderColor = 'var(--primary-red)')}
-                    onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
+                    onBlur={(e) => (e.target.style.borderColor = 'var(--border-color)')}
                   />
                 </div>
 
@@ -889,7 +889,7 @@ export function CandidateDetailView({
                         display: 'block',
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#475569',
+                        color: 'var(--text-secondary)',
                         marginBottom: 6,
                       }}
                     >
@@ -904,7 +904,7 @@ export function CandidateDetailView({
                         borderRadius: 6,
                         border: '1px solid #cbd5e1',
                         fontSize: 13,
-                        backgroundColor: '#ffffff',
+                        backgroundColor: 'var(--bg-card)',
                         outline: 'none',
                         cursor: 'pointer',
                         boxSizing: 'border-box',
@@ -921,7 +921,7 @@ export function CandidateDetailView({
                         display: 'block',
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#475569',
+                        color: 'var(--text-secondary)',
                         marginBottom: 6,
                       }}
                     >
@@ -936,7 +936,7 @@ export function CandidateDetailView({
                         borderRadius: 6,
                         border: '1px solid #cbd5e1',
                         fontSize: 13,
-                        backgroundColor: '#ffffff',
+                        backgroundColor: 'var(--bg-card)',
                         outline: 'none',
                         cursor: 'pointer',
                         boxSizing: 'border-box',
@@ -969,8 +969,8 @@ export function CandidateDetailView({
                     padding: '8px 16px',
                     borderRadius: 6,
                     border: '1px solid #cbd5e1',
-                    backgroundColor: '#ffffff',
-                    color: '#475569',
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--text-secondary)',
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -989,7 +989,7 @@ export function CandidateDetailView({
                     borderRadius: 6,
                     border: 'none',
                     background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker, #b91c1c))',
-                    color: '#ffffff',
+                    color: 'var(--bg-card)',
                     fontSize: 13,
                     fontWeight: 700,
                     cursor: saving ? 'not-allowed' : 'pointer',

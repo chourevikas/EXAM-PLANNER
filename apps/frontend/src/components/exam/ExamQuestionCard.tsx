@@ -340,7 +340,7 @@ export function ExamQuestionCard({
         return { text: '#E11D48', bg: '#FFE4E6', border: '#FECDD3' };
       case 'MEDIUM':
       default:
-        return { text: '#D97706', bg: '#FEF3C7', border: '#FDE68A' };
+        return { text: '#D97706', bg: 'var(--status-warning-bg)', border: '#FDE68A' };
     }
   };
   const diffColors = getDifficultyColors(difficultyLabel);
@@ -381,14 +381,14 @@ export function ExamQuestionCard({
           lineHeight: 1.55,
           fontSize: 15,
           fontWeight: 600,
-          color: '#172033',
+          color: 'var(--deep-navy)',
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
         {...props}
       />
     ),
     strong: ({ node, ...props }: any) => (
-      <strong style={{ fontWeight: 700, color: '#172033' }} {...props} />
+      <strong style={{ fontWeight: 700, color: 'var(--deep-navy)' }} {...props} />
     ),
     table: ({ node, ...props }: any) => (
       <div style={{ overflowX: 'auto', margin: '10px 0' }}>
@@ -410,9 +410,9 @@ export function ExamQuestionCard({
           padding: '6px 10px',
           fontWeight: 700,
           textAlign: 'left',
-          backgroundColor: '#F1F5F9',
+          backgroundColor: 'var(--bg-hover)',
           borderBottom: '2px solid #E2E8F0',
-          color: '#172033',
+          color: 'var(--deep-navy)',
         }}
         {...props}
       />
@@ -422,7 +422,7 @@ export function ExamQuestionCard({
         style={{
           padding: '6px 10px',
           borderBottom: '1px solid #F1F5F9',
-          color: '#172033',
+          color: 'var(--deep-navy)',
         }}
         {...props}
       />
@@ -434,7 +434,7 @@ export function ExamQuestionCard({
         style={{
           margin: '3px 0',
           fontSize: 14,
-          color: '#172033',
+          color: 'var(--deep-navy)',
           lineHeight: 1.45,
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
@@ -492,12 +492,12 @@ export function ExamQuestionCard({
         {passageContent && (
           <div
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               padding: 'clamp(12px, 2.5vw, 18px)',
               border: '1px solid #E2E8F0',
               borderLeft: '4px solid #1E3A8A',
               fontSize: 'clamp(13px, 2vw, 15px)',
-              color: '#334155',
+              color: 'var(--text-secondary)',
               lineHeight: 1.55,
               fontFamily: "'Plus Jakarta Sans', sans-serif",
             }}
@@ -511,7 +511,7 @@ export function ExamQuestionCard({
         {/* Compact Examination Canvas Floating Card with Internal Scrollbar */}
         <div
           style={{
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
             borderTop: '4px solid #1E3A8A',
             borderRadius: 0,
@@ -556,8 +556,8 @@ export function ExamQuestionCard({
                   style={{
                     fontSize: 12,
                     fontWeight: 800,
-                    color: '#1E3A8A',
-                    backgroundColor: '#EFF6FF',
+                    color: 'var(--accent-primary)',
+                    backgroundColor: 'var(--accent-bg)',
                     border: '1px solid #BFDBFE',
                     padding: '3px 10px',
                     borderRadius: 2,
@@ -601,8 +601,8 @@ export function ExamQuestionCard({
                   style={{
                     fontSize: 11,
                     fontWeight: 600,
-                    color: '#334155',
-                    backgroundColor: '#F8FAFC',
+                    color: 'var(--text-secondary)',
+                    backgroundColor: 'var(--bg-subtle)',
                     border: '1px solid #E2E8F0',
                     padding: '3px 8px',
                     borderRadius: 2,
@@ -612,7 +612,7 @@ export function ExamQuestionCard({
                   }}
                   title={`Target solve time: ${expectedTimeSeconds} seconds`}
                 >
-                  <Clock size={12} color="#64748B" />
+                  <Clock size={12} color="var(--text-muted)" />
                   {timeTierLabel}
                 </span> */}
 
@@ -621,8 +621,8 @@ export function ExamQuestionCard({
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: '#475569',
-                    backgroundColor: '#F1F5F9',
+                    color: 'var(--text-secondary)',
+                    backgroundColor: 'var(--bg-hover)',
                     border: '1px solid #E2E8F0',
                     padding: '3px 8px',
                     borderRadius: 2,
@@ -637,7 +637,7 @@ export function ExamQuestionCard({
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: '#1E3A8A',
+                      color: 'var(--accent-primary)',
                       backgroundColor: '#F0F9FF',
                       border: '1px solid #BAE6FD',
                       padding: '2px 8px',
@@ -675,8 +675,8 @@ export function ExamQuestionCard({
                     style={{
                       fontSize: 11,
                       fontWeight: 600,
-                      color: '#334155',
-                      backgroundColor: '#F8FAFC',
+                      color: 'var(--text-secondary)',
+                      backgroundColor: 'var(--bg-subtle)',
                       border: '1px solid #CBD5E1',
                       padding: '2px 8px',
                       borderRadius: 2,
@@ -692,8 +692,8 @@ export function ExamQuestionCard({
                     style={{
                       fontSize: 10.5,
                       fontWeight: 500,
-                      color: '#64748B',
-                      backgroundColor: '#FFFFFF',
+                      color: 'var(--text-muted)',
+                      backgroundColor: 'var(--bg-card)',
                       border: '1px dashed #CBD5E1',
                       padding: '2px 7px',
                       borderRadius: 2,
@@ -719,14 +719,14 @@ export function ExamQuestionCard({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: isBookmarked ? 'var(--primary-red)' : '#94A3B8',
+                      color: isBookmarked ? 'var(--primary-red)' : 'var(--text-disabled)',
                       transition: 'color 0.15s ease',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.color = 'var(--primary-red)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = isBookmarked ? 'var(--primary-red)' : '#94A3B8';
+                      e.currentTarget.style.color = isBookmarked ? 'var(--primary-red)' : 'var(--text-disabled)';
                     }}
                   >
                     <Bookmark size={18} fill={isBookmarked ? 'var(--primary-red)' : 'none'} />
@@ -754,7 +754,7 @@ export function ExamQuestionCard({
               style={{
                 marginBottom: 16,
                 fontSize: 15,
-                color: '#172033',
+                color: 'var(--deep-navy)',
                 fontWeight: 600,
                 lineHeight: 1.55,
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -780,9 +780,9 @@ export function ExamQuestionCard({
                 const isWrongSelectedOpt = revealResult && isSelected && !isCorrectOpt;
 
                 let borderStyle = isSelected ? '1.5px solid #1E3A8A' : '1px solid #E2E8F0';
-                let bgStyle = isSelected ? '#F0F9FF' : '#F8FAFC';
-                let badgeBg = isSelected ? '#1E3A8A' : '#FFFFFF';
-                let badgeColor = isSelected ? '#FFFFFF' : '#475569';
+                let bgStyle = isSelected ? '#F0F9FF' : 'var(--bg-subtle)';
+                let badgeBg = isSelected ? 'var(--accent-primary)' : 'var(--bg-card)';
+                let badgeColor = isSelected ? 'var(--bg-card)' : 'var(--text-secondary)';
                 let badgeBorder = isSelected ? '1px solid #1E3A8A' : '1px solid #CBD5E1';
 
                 if (revealResult) {
@@ -790,13 +790,13 @@ export function ExamQuestionCard({
                     borderStyle = '1.5px solid #3A8B53';
                     bgStyle = '#ECFDF5';
                     badgeBg = '#3A8B53';
-                    badgeColor = '#FFFFFF';
+                    badgeColor = 'var(--bg-card)';
                     badgeBorder = '1px solid #3A8B53';
                   } else if (isWrongSelectedOpt) {
                     borderStyle = '1.5px solid #EF4444';
                     bgStyle = '#FEF2F2';
-                    badgeBg = '#EF4444';
-                    badgeColor = '#FFFFFF';
+                    badgeBg = 'var(--primary-red)';
+                    badgeColor = 'var(--bg-card)';
                     badgeBorder = '1px solid #EF4444';
                   }
                 }
@@ -819,7 +819,7 @@ export function ExamQuestionCard({
                       borderRadius: 4,
                       border: borderStyle,
                       backgroundColor: bgStyle,
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       cursor: revealResult ? 'default' : 'pointer',
                       textAlign: 'left',
                       transition: 'all 0.18s ease-out',
@@ -842,7 +842,7 @@ export function ExamQuestionCard({
                           : isSelected
                             ? '5px solid #1E3A8A'
                             : '1.5px solid #CBD5E1',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--bg-card)',
                         flexShrink: 0,
                         boxSizing: 'border-box',
                         transition: 'all 0.18s ease-out',
@@ -875,7 +875,7 @@ export function ExamQuestionCard({
                     <div
                       style={{
                         fontSize: 14,
-                        color: '#172033',
+                        color: 'var(--deep-navy)',
                         fontWeight: isSelected || isCorrectOpt ? 600 : 500,
                         lineHeight: 1.45,
                         flex: 1,
@@ -894,7 +894,7 @@ export function ExamQuestionCard({
                     {revealResult && isCorrectOpt ? (
                       <CheckCircle2 size={18} style={{ color: '#3A8B53', flexShrink: 0 }} />
                     ) : revealResult && isWrongSelectedOpt ? (
-                      <XCircle size={18} style={{ color: '#EF4444', flexShrink: 0 }} />
+                      <XCircle size={18} style={{ color: 'var(--primary-red)', flexShrink: 0 }} />
                     ) : null}
                   </button>
                 );
@@ -1019,8 +1019,8 @@ export function ExamQuestionCard({
                         padding: '7px 14px',
                         borderRadius: 3,
                         border: '1px solid #CBD5E1',
-                        backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
-                        color: questionIndex === 0 ? '#94A3B8' : '#172033',
+                        backgroundColor: questionIndex === 0 ? 'var(--bg-hover)' : 'var(--bg-card)',
+                        color: questionIndex === 0 ? 'var(--text-disabled)' : 'var(--deep-navy)',
                         fontSize: 12,
                         fontWeight: 700,
                         cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
@@ -1048,8 +1048,8 @@ export function ExamQuestionCard({
                         borderRadius: 3,
                         border: '1px solid #CBD5E1',
                         backgroundColor:
-                          questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
-                        color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#172033',
+                          questionIndex >= totalQuestions - 1 ? 'var(--bg-hover)' : 'var(--bg-card)',
+                        color: questionIndex >= totalQuestions - 1 ? 'var(--text-disabled)' : 'var(--deep-navy)',
                         fontSize: 12,
                         fontWeight: 700,
                         cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
@@ -1083,8 +1083,8 @@ export function ExamQuestionCard({
                             padding: '8px 20px',
                             borderRadius: 3,
                             border: !selectedOptionId ? '1px solid #CBD5E1' : '1px solid #1E3A8A',
-                            backgroundColor: !selectedOptionId ? '#E2E8F0' : '#1E3A8A',
-                            color: !selectedOptionId ? '#94A3B8' : '#FFFFFF',
+                            backgroundColor: !selectedOptionId ? 'var(--border-color)' : 'var(--accent-primary)',
+                            color: !selectedOptionId ? 'var(--text-disabled)' : 'var(--bg-card)',
                             fontSize: 12.5,
                             fontWeight: 700,
                             cursor: !selectedOptionId ? 'not-allowed' : 'pointer',
@@ -1101,7 +1101,7 @@ export function ExamQuestionCard({
                             if (selectedOptionId) e.currentTarget.style.backgroundColor = '#172554';
                           }}
                           onMouseLeave={(e) => {
-                            if (selectedOptionId) e.currentTarget.style.backgroundColor = '#1E3A8A';
+                            if (selectedOptionId) e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
                           }}
                         >
                           {isRevealing ? (
@@ -1133,8 +1133,8 @@ export function ExamQuestionCard({
                             border: showDetailedSolution
                               ? '1px solid #1E3A8A'
                               : '1px solid #CBD5E1',
-                            backgroundColor: showDetailedSolution ? '#EFF6FF' : '#FFFFFF',
-                            color: showDetailedSolution ? '#1E3A8A' : '#172033',
+                            backgroundColor: showDetailedSolution ? 'var(--accent-bg)' : 'var(--bg-card)',
+                            color: showDetailedSolution ? 'var(--accent-primary)' : 'var(--deep-navy)',
                             fontSize: 12.5,
                             fontWeight: 700,
                             cursor: 'pointer',
@@ -1148,7 +1148,7 @@ export function ExamQuestionCard({
                         >
                           <Lightbulb
                             size={14}
-                            color={showDetailedSolution ? '#1E3A8A' : '#64748B'}
+                            color={showDetailedSolution ? 'var(--accent-primary)' : 'var(--text-muted)'}
                           />
                           <span>{showDetailedSolution ? 'Hide Solution' : 'Show Solution'}</span>
                         </button>

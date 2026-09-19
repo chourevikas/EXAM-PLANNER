@@ -147,7 +147,7 @@ export function AnalyticsView() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.02em' }}>
             Reports & Platform Analytics
           </h1>
           <p style={{ fontSize: 14, color: '#667085', marginTop: 4, margin: '4px 0 0 0' }}>
@@ -173,8 +173,8 @@ export function AnalyticsView() {
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
-              color: '#172033',
-              backgroundColor: '#FFFFFF',
+              color: 'var(--deep-navy)',
+              backgroundColor: 'var(--bg-card)',
               outline: 'none',
               height: 38,
               cursor: 'pointer',
@@ -204,8 +204,8 @@ export function AnalyticsView() {
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
-              color: '#172033',
-              backgroundColor: '#FFFFFF',
+              color: 'var(--deep-navy)',
+              backgroundColor: 'var(--bg-card)',
               outline: 'none',
               height: 38,
               cursor: 'pointer',
@@ -228,8 +228,8 @@ export function AnalyticsView() {
               fontSize: 13,
               fontWeight: 500,
               borderRadius: 0,
-              backgroundColor: '#FFFFFF',
-              color: !data || exporting ? '#98A2B3' : '#172033',
+              backgroundColor: 'var(--bg-card)',
+              color: !data || exporting ? '#98A2B3' : 'var(--deep-navy)',
               border: '1px solid #E4E7EC',
               cursor: !data || exporting ? 'not-allowed' : 'pointer',
               height: 38,
@@ -297,7 +297,7 @@ export function AnalyticsView() {
       {/* 2. COMPACT TOP SUMMARY STRIP (~68px height) */}
       <div
         style={{
-          background: '#FFFFFF',
+          background: 'var(--bg-card)',
           border: '1px solid #E4E7EC',
           borderRadius: 0,
           padding: '12px 20px',
@@ -315,7 +315,7 @@ export function AnalyticsView() {
           <div style={{ fontSize: 11, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             TOTAL ATTEMPTS
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#172033', marginTop: 2 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--deep-navy)', marginTop: 2 }}>
             {data ? data.summary.total_attempts.toLocaleString() : '—'}
           </div>
         </div>
@@ -355,7 +355,7 @@ export function AnalyticsView() {
           <div style={{ fontSize: 11, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             AI PRECISION
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#172033', marginTop: 2 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--deep-navy)', marginTop: 2 }}>
             {data ? `${data.summary.ai_precision.toFixed(1)}%` : '—'}
           </div>
         </div>
@@ -364,7 +364,7 @@ export function AnalyticsView() {
           <div style={{ fontSize: 11, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             ACTIVE TEST TAKERS
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#172033', marginTop: 2 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--deep-navy)', marginTop: 2 }}>
             {data ? data.summary.active_test_takers.toLocaleString() : '—'}
           </div>
         </div>
@@ -373,7 +373,7 @@ export function AnalyticsView() {
       {/* 3. DIAGNOSTIC ACCURACY BY SUBJECT TABLE */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#172033', margin: 0 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--deep-navy)', margin: 0 }}>
             Subject Accuracy & Diagnostic Performance
           </h2>
           <span style={{ fontSize: 12.5, color: '#667085' }}>
@@ -383,7 +383,7 @@ export function AnalyticsView() {
 
         <div
           style={{
-            background: '#FFFFFF',
+            background: 'var(--bg-card)',
             border: '1px solid #E4E7EC',
             borderRadius: 0,
             boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
@@ -407,7 +407,7 @@ export function AnalyticsView() {
                 data.subject_accuracy.map((row, idx) => {
                   const isStrong = row.status === 'Strong' || row.status === 'Optimal';
                   const isWarning = row.status === 'Attention Required';
-                  const statusColor = isStrong ? '#15803D' : isWarning ? '#B42318' : '#B45309';
+                  const statusColor = isStrong ? '#15803D' : isWarning ? '#B42318' : 'var(--status-warning)';
 
                   return (
                     <tr
@@ -417,7 +417,7 @@ export function AnalyticsView() {
                         height: 56,
                       }}
                     >
-                      <td style={{ padding: '12px 16px', fontWeight: 600, color: '#172033' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--deep-navy)' }}>
                         {row.subject}
                       </td>
                       <td style={{ padding: '12px 16px', color: '#667085', fontFamily: 'monospace' }}>
@@ -471,7 +471,7 @@ export function AnalyticsView() {
 
       {/* 4. AI EXTRACTION PIPELINE PRECISION METRICS */}
       <div>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#172033', margin: '0 0 12px 0' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--deep-navy)', margin: '0 0 12px 0' }}>
           AI Processing & Extraction Pipeline Precision
         </h2>
 
@@ -481,7 +481,7 @@ export function AnalyticsView() {
               <div
                 key={m.label}
                 style={{
-                  background: '#FFFFFF',
+                  background: 'var(--bg-card)',
                   border: '1px solid #E4E7EC',
                   borderRadius: 0,
                   padding: 16,
@@ -491,7 +491,7 @@ export function AnalyticsView() {
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {m.label}
                 </div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#172033', marginTop: 4 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--deep-navy)', marginTop: 4 }}>
                   {m.value}
                 </div>
                 <div style={{ fontSize: 12, color: '#667085', marginTop: 4 }}>
@@ -509,7 +509,7 @@ export function AnalyticsView() {
               <div
                 key={m.label}
                 style={{
-                  background: '#FFFFFF',
+                  background: 'var(--bg-card)',
                   border: '1px solid #E4E7EC',
                   borderRadius: 0,
                   padding: 16,
@@ -520,7 +520,7 @@ export function AnalyticsView() {
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {m.label}
                 </div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#172033', marginTop: 4 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--deep-navy)', marginTop: 4 }}>
                   {m.value}
                 </div>
                 <div style={{ fontSize: 12, color: '#667085', marginTop: 4 }}>

@@ -64,14 +64,14 @@ export function ExamSubmitModal({
     >
       <div
         style={{
-          backgroundColor: isDark ? '#0f1e3c' : '#ffffff',
+          backgroundColor: isDark ? '#0f1e3c' : 'var(--bg-card)',
           borderRadius: 0,
-          border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0'}`,
+          border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : 'var(--border-color)'}`,
           boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
           width: '100%',
           maxWidth: 440,
           padding: 28,
-          color: isDark ? '#ffffff' : '#172033',
+          color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
           textAlign: 'center'
         }}
       >
@@ -80,7 +80,7 @@ export function ExamSubmitModal({
             width: 56,
             height: 56,
             borderRadius: 0,
-            backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.2)' : '#F8FAFC',
+            backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.2)' : 'var(--bg-subtle)',
             border: '1px solid var(--primary-red)',
             color: 'var(--primary-red)',
             display: 'flex',
@@ -93,7 +93,7 @@ export function ExamSubmitModal({
         </div>
 
         <h3 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px 0' }}>Submit Test Confirmation</h3>
-        <p style={{ fontSize: 14, color: isDark ? 'rgba(255,255,255,0.7)' : '#64748b', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 14, color: isDark ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
           Are you sure you want to finish and submit your exam?
         </p>
 
@@ -104,24 +104,24 @@ export function ExamSubmitModal({
             gap: 10,
             padding: 14,
             borderRadius: 0,
-            backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc',
-            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+            backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'var(--bg-subtle)',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'}`,
             marginBottom: 24
           }}
         >
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#3A8B53' }}>{ans}</div>
-            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b' }}>Answered</div>
+            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>Answered</div>
           </div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#F2B623' }}>{mrk}</div>
-            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b' }}>Review</div>
+            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>Review</div>
           </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: isDark ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)' }}>
               {unatt}
             </div>
-            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b' }}>Left</div>
+            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>Left</div>
           </div>
         </div>
 
@@ -151,9 +151,9 @@ export function ExamSubmitModal({
               flex: 1,
               padding: 12,
               borderRadius: 0,
-              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'}`,
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#f8fafc',
-              color: isDark ? '#ffffff' : '#172033',
+              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : 'var(--border-color)'}`,
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'var(--bg-subtle)',
+              color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
               fontSize: 14,
               fontWeight: 600,
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -171,7 +171,7 @@ export function ExamSubmitModal({
               borderRadius: 0,
               border: 'none',
               backgroundColor: 'var(--primary-red)',
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               fontSize: 14,
               fontWeight: 700,
               cursor: isSubmitting ? 'not-allowed' : 'pointer',

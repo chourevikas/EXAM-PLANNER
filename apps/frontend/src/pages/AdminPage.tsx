@@ -24,7 +24,7 @@ function AdminViewSkeleton() {
   return (
     <div style={{ padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', gap: 12 }}>
       <Spinner size={32} />
-      <div style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Loading admin module...</div>
+      <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>Loading admin module...</div>
     </div>
   );
 }
@@ -124,7 +124,7 @@ export function AdminPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: 'Inter, sans-serif', color: '#172033', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: 'Inter, sans-serif', color: 'var(--deep-navy)', overflowX: 'hidden' }}>
       
       {/* Full-width Top Header (fixed at top: 0) */}
       <AdminTopNav 

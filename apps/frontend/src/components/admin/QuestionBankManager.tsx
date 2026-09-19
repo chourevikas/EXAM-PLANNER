@@ -125,9 +125,9 @@ function ExploreButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) 
         padding: '7px 14px',
         fontSize: 12.5,
         fontWeight: 600,
-        color: isHovered ? 'var(--primary-red)' : '#172033',
-        backgroundColor: isHovered ? '#F8FAFC' : '#FFFFFF',
-        border: `1px solid ${isHovered ? 'var(--primary-red)' : '#CBD5E1'}`,
+        color: isHovered ? 'var(--primary-red)' : 'var(--deep-navy)',
+        backgroundColor: isHovered ? 'var(--bg-subtle)' : 'var(--bg-card)',
+        border: `1px solid ${isHovered ? 'var(--primary-red)' : 'var(--border-color)'}`,
         borderRadius: 0,
         cursor: 'pointer',
         boxShadow: isHovered ? '0 2px 6px rgba(var(--primary-red-rgb), 0.15)' : 'none',
@@ -140,7 +140,7 @@ function ExploreButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) 
         style={{
           transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
           transition: 'transform 150ms ease-out',
-          color: isHovered ? 'var(--primary-red)' : '#64748B',
+          color: isHovered ? 'var(--primary-red)' : 'var(--text-muted)',
         }}
       />
     </button>
@@ -445,8 +445,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
             bottom: 24,
             right: 24,
             padding: '12px 20px',
-            background: '#172033',
-            color: '#FFFFFF',
+            background: 'var(--deep-navy)',
+            color: 'var(--bg-card)',
             borderRadius: 0,
             zIndex: 9999,
             fontSize: 13,
@@ -479,10 +479,10 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
             }}
           >
             <div>
-              <h1 style={{ fontSize: isMobile ? 24 : 30, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: isMobile ? 24 : 30, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.02em' }}>
                 Question Bank
               </h1>
-              <p style={{ fontSize: isMobile ? 13 : 14, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
+              <p style={{ fontSize: isMobile ? 13 : 14, color: 'var(--text-muted)', marginTop: 4, margin: '4px 0 0 0' }}>
                 Browse and review real-time questions organized by subject and mapped subtopics.
               </p>
               {/* Contextual Metadata Badge Line */}
@@ -493,7 +493,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     fontSize: 12,
                     fontWeight: 600,
                     color: 'var(--primary-red)',
-                    backgroundColor: '#F8FAFC',
+                    backgroundColor: 'var(--bg-subtle)',
                     border: '1px solid #BFDBFE',
                     padding: '3px 10px',
                     borderRadius: 0,
@@ -515,7 +515,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     padding: '3px 8px',
                     fontSize: 11.5,
                     fontWeight: 500,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     background: 'transparent',
                     border: '1px solid #CBD5E1',
                     cursor: 'pointer',
@@ -529,7 +529,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
 
             {/* Compact Search Field */}
             <div style={{ position: 'relative', width: isMobile ? '100%' : 280 }}>
-              <Search size={15} style={{ position: 'absolute', left: 12, top: 12, color: '#64748B' }} />
+              <Search size={15} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)' }} />
               <input
                 type="text"
                 placeholder="Search subjects or domains..."
@@ -540,9 +540,9 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   padding: '9px 12px 9px 36px',
                   borderRadius: 0,
                   border: '1px solid #CBD5E1',
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: 'var(--bg-card)',
                   fontSize: 13,
-                  color: '#172033',
+                  color: 'var(--deep-navy)',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
@@ -553,7 +553,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
           {/* Premium Subject Catalog List Container */}
           <div
             style={{
-              background: '#FFFFFF',
+              background: 'var(--bg-card)',
               border: '1px solid #E2E8F0',
               borderRadius: 0,
               boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
@@ -571,20 +571,20 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
               }}
             >
               <thead>
-                <tr style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFAFA' }}>
-                  <th style={{ padding: '12px 20px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                <tr style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: 'var(--bg-subtle)' }}>
+                  <th style={{ padding: '12px 20px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, letterSpacing: '0.04em' }}>
                     SUBJECT
                   </th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, letterSpacing: '0.04em' }}>
                     QUESTIONS
                   </th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, letterSpacing: '0.04em' }}>
                     PENDING REVIEW
                   </th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, letterSpacing: '0.04em' }}>
                     SUBTOPICS
                   </th>
-                  <th style={{ padding: '12px 20px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em', textAlign: 'right' }}>
+                  <th style={{ padding: '12px 20px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 12, letterSpacing: '0.04em', textAlign: 'right' }}>
                     ACTION
                   </th>
                 </tr>
@@ -595,22 +595,22 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <td style={{ padding: '16px 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{ width: 36, height: 36, backgroundColor: '#F1F5F9' }} />
+                          <div style={{ width: 36, height: 36, backgroundColor: 'var(--bg-hover)' }} />
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <div style={{ width: 90, height: 14, backgroundColor: '#F1F5F9' }} />
-                            <div style={{ width: 60, height: 10, backgroundColor: '#F1F5F9' }} />
+                            <div style={{ width: 90, height: 14, backgroundColor: 'var(--bg-hover)' }} />
+                            <div style={{ width: 60, height: 10, backgroundColor: 'var(--bg-hover)' }} />
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '16px' }}><div style={{ width: 50, height: 16, backgroundColor: '#F1F5F9' }} /></td>
-                      <td style={{ padding: '16px' }}><div style={{ width: 80, height: 14, backgroundColor: '#F1F5F9' }} /></td>
-                      <td style={{ padding: '16px' }}><div style={{ width: 70, height: 14, backgroundColor: '#F1F5F9' }} /></td>
-                      <td style={{ padding: '16px 20px', textAlign: 'right' }}><div style={{ width: 80, height: 28, backgroundColor: '#F1F5F9', marginLeft: 'auto' }} /></td>
+                      <td style={{ padding: '16px' }}><div style={{ width: 50, height: 16, backgroundColor: 'var(--bg-hover)' }} /></td>
+                      <td style={{ padding: '16px' }}><div style={{ width: 80, height: 14, backgroundColor: 'var(--bg-hover)' }} /></td>
+                      <td style={{ padding: '16px' }}><div style={{ width: 70, height: 14, backgroundColor: 'var(--bg-hover)' }} /></td>
+                      <td style={{ padding: '16px 20px', textAlign: 'right' }}><div style={{ width: 80, height: 28, backgroundColor: 'var(--bg-hover)', marginLeft: 'auto' }} /></td>
                     </tr>
                   ))
                 ) : filteredSubjects.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: '#64748B' }}>
+                    <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                       No subjects found matching "{debouncedSubjectQuery}".
                     </td>
                   </tr>
@@ -626,7 +626,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           transition: 'background-color 150ms ease-out',
                           cursor: 'pointer',
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-subtle)')}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
                         {/* Subject Identity */}
@@ -639,7 +639,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                backgroundColor: '#EFF6FF',
+                                backgroundColor: 'var(--accent-bg)',
                                 color: 'var(--primary-red)',
                                 border: '1px solid #BFDBFE',
                                 flexShrink: 0,
@@ -648,8 +648,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                               <IconComponent size={18} />
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, color: '#172033', fontSize: 14 }}>{sub.name}</div>
-                              <div style={{ fontSize: 11.5, color: '#64748B' }}>{sub.subtopicsCount} subtopics</div>
+                              <div style={{ fontWeight: 600, color: 'var(--deep-navy)', fontSize: 14 }}>{sub.name}</div>
+                              <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{sub.subtopicsCount} subtopics</div>
                             </div>
                           </div>
                         </td>
@@ -657,10 +657,10 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
 
                         {/* Question Count */}
                         <td style={{ padding: '16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                          <div style={{ fontWeight: 700, color: '#172033', fontSize: 14.5 }}>
+                          <div style={{ fontWeight: 700, color: 'var(--deep-navy)', fontSize: 14.5 }}>
                             {sub.questionsCount.toLocaleString()}
                           </div>
-                          <div style={{ fontSize: 11, color: '#64748B' }}>questions</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>questions</div>
                         </td>
 
                         {/* Pending Review Badge */}
@@ -673,8 +673,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                                 padding: '3px 8px',
                                 fontSize: 11.5,
                                 fontWeight: 600,
-                                color: '#B45309',
-                                backgroundColor: '#FEF3C7',
+                                color: 'var(--status-warning)',
+                                backgroundColor: 'var(--status-warning-bg)',
                                 border: '1px solid #FDE68A',
                                 borderRadius: 0,
                                 gap: 5,
@@ -698,14 +698,14 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                                 gap: 5,
                               }}
                             >
-                              <Check size={12} color="#16A34A" />
+                              <Check size={12} color="var(--status-success)" />
                               All Verified
                             </span>
                           )}
                         </td>
 
                         {/* Subtopics */}
-                        <td style={{ padding: '16px', color: '#475569', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
                           {sub.subtopicsCount} Subtopics
                         </td>
 
@@ -734,7 +734,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
           {/* Header & Back Navigation Banner */}
           <div
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               borderRadius: 0,
               border: '1px solid #E2E8F0',
               padding: isMobile ? '14px 16px' : '18px 22px',
@@ -763,12 +763,12 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   onClick={() => setSelectedSubject(null)}
                   style={{
                     padding: '7px 12px',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--bg-card)',
                     border: '1px solid #CBD5E1',
                     borderRadius: 0,
                     fontSize: 12.5,
                     fontWeight: 600,
-                    color: '#334155',
+                    color: 'var(--text-secondary)',
                     cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -787,7 +787,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       style={{
                         fontSize: isMobile ? 18 : 22,
                         fontWeight: 700,
-                        color: '#172033',
+                        color: 'var(--deep-navy)',
                         margin: 0,
                         letterSpacing: '-0.015em',
                       }}
@@ -800,7 +800,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                         borderRadius: 0,
                         fontSize: 11,
                         fontWeight: 600,
-                        backgroundColor: '#F8FAFC',
+                        backgroundColor: 'var(--bg-subtle)',
                         color: 'var(--primary-red)',
                         border: '1px solid #BFDBFE',
                       }}
@@ -808,7 +808,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       {selectedSubject.code}
                     </span>
                   </div>
-                  <span style={{ fontSize: 12, color: '#64748B', marginTop: 2, display: 'block' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'block' }}>
                     {questions.length} total questions cataloged across past UPSC papers
                   </span>
                 </div>
@@ -829,19 +829,19 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   style={{
                     flex: isMobile ? 1 : 'none',
                     padding: '6px 10px',
-                    backgroundColor: '#FAFAFA',
+                    backgroundColor: 'var(--bg-subtle)',
                     border: '1px solid #E2E8F0',
                     fontSize: 11.5,
-                    color: '#475569',
+                    color: 'var(--text-secondary)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
                   }}
                 >
-                  <BarChart3 size={13} color="#64748B" />
+                  <BarChart3 size={13} color="var(--text-muted)" />
                   <span>
-                    <strong style={{ color: '#16A34A' }}>{difficultyCounts.easy}</strong> E ·{' '}
+                    <strong style={{ color: 'var(--status-success)' }}>{difficultyCounts.easy}</strong> E ·{' '}
                     <strong style={{ color: '#D97706' }}>{difficultyCounts.medium}</strong> M ·{' '}
                     <strong style={{ color: '#DC2626' }}>{difficultyCounts.hard}</strong> H
                   </span>
@@ -852,17 +852,17 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   style={{
                     flex: isMobile ? 1 : 'none',
                     padding: '6px 10px',
-                    backgroundColor: '#FAFAFA',
+                    backgroundColor: 'var(--bg-subtle)',
                     border: '1px solid #E2E8F0',
                     fontSize: 11.5,
-                    color: '#475569',
+                    color: 'var(--text-secondary)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
                   }}
                 >
-                  <Layers size={13} color="#64748B" />
+                  <Layers size={13} color="var(--text-muted)" />
                   <span>
                     <strong>{subtopicCounts.length}</strong> Subtopics
                   </span>
@@ -889,7 +889,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   style={{
                     fontSize: 11.5,
                     fontWeight: 600,
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 4,
@@ -909,8 +909,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       cursor: 'pointer',
                       flexShrink: 0,
                       border: selectedYear === yc.year.toString() ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
-                      backgroundColor: selectedYear === yc.year.toString() ? 'var(--primary-red)' : '#F8FAFC',
-                      color: selectedYear === yc.year.toString() ? '#FFFFFF' : '#334155',
+                      backgroundColor: selectedYear === yc.year.toString() ? 'var(--primary-red)' : 'var(--bg-subtle)',
+                      color: selectedYear === yc.year.toString() ? 'var(--bg-card)' : 'var(--text-secondary)',
                       transition: 'all 150ms ease-out',
                     }}
                   >
@@ -922,7 +922,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     onClick={() => setSelectedYear('ALL')}
                     style={{
                       fontSize: 11,
-                      color: '#EF4444',
+                      color: 'var(--primary-red)',
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
@@ -944,7 +944,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 display: 'flex',
                 gap: 4,
                 marginBottom: 14,
-                backgroundColor: '#E2E8F0',
+                backgroundColor: 'var(--border-color)',
                 padding: 4,
                 borderRadius: 0,
               }}
@@ -956,8 +956,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   padding: '9px 12px',
                   fontSize: 12.5,
                   fontWeight: mobileExploreTab === 'list' ? 700 : 500,
-                  backgroundColor: mobileExploreTab === 'list' ? '#FFFFFF' : 'transparent',
-                  color: mobileExploreTab === 'list' ? '#172033' : '#64748B',
+                  backgroundColor: mobileExploreTab === 'list' ? 'var(--bg-card)' : 'transparent',
+                  color: mobileExploreTab === 'list' ? 'var(--deep-navy)' : 'var(--text-muted)',
                   border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
@@ -968,7 +968,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   transition: 'all 150ms ease-out',
                 }}
               >
-                <Layers size={14} color={mobileExploreTab === 'list' ? 'var(--primary-red)' : '#64748B'} />
+                <Layers size={14} color={mobileExploreTab === 'list' ? 'var(--primary-red)' : 'var(--text-muted)'} />
                 <span>Questions List ({filteredQuestions.length})</span>
               </button>
               <button
@@ -978,8 +978,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   padding: '9px 12px',
                   fontSize: 12.5,
                   fontWeight: mobileExploreTab === 'preview' ? 700 : 500,
-                  backgroundColor: mobileExploreTab === 'preview' ? '#FFFFFF' : 'transparent',
-                  color: mobileExploreTab === 'preview' ? '#172033' : '#64748B',
+                  backgroundColor: mobileExploreTab === 'preview' ? 'var(--bg-card)' : 'transparent',
+                  color: mobileExploreTab === 'preview' ? 'var(--deep-navy)' : 'var(--text-muted)',
                   border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
@@ -990,7 +990,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   transition: 'all 150ms ease-out',
                 }}
               >
-                <BookOpen size={14} color={mobileExploreTab === 'preview' ? 'var(--primary-red)' : '#64748B'} />
+                <BookOpen size={14} color={mobileExploreTab === 'preview' ? 'var(--primary-red)' : 'var(--text-muted)'} />
                 <span>
                   Question Preview {selectedQuestion ? `(Q${selectedQuestion.question_number_in_paper})` : ''}
                 </span>
@@ -1011,7 +1011,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
             {(!isTabletOrBelow || mobileExploreTab === 'list') && (
               <div
                 style={{
-                  background: '#FFFFFF',
+                  background: 'var(--bg-card)',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
                   padding: isMobile ? 12 : 16,
@@ -1023,7 +1023,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
               >
                 {/* Topic Filter Dropdown (Tier 1) */}
                 <div>
-                  <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
                     FILTER BY TOPIC ({topicCounts.length})
                   </label>
                   <select
@@ -1039,8 +1039,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       borderRadius: 0,
                       border: '1px solid #CBD5E1',
                       fontSize: 13,
-                      color: '#172033',
-                      backgroundColor: '#FAFAFA',
+                      color: 'var(--deep-navy)',
+                      backgroundColor: 'var(--bg-subtle)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -1056,7 +1056,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
 
                 {/* Subtopic Filter Dropdown (Tier 2 — depends on selected Topic) */}
                 <div>
-                  <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
                     FILTER BY SUBTOPIC
                     {selectedTopic !== 'ALL' ? ` (${subtopicCounts.length})` : ''}
                   </label>
@@ -1073,8 +1073,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       borderRadius: 0,
                       border: '1px solid #CBD5E1',
                       fontSize: 13,
-                      color: selectedTopic === 'ALL' && topicCounts.length > 1 ? '#94A3B8' : '#172033',
-                      backgroundColor: selectedTopic === 'ALL' && topicCounts.length > 1 ? '#F8FAFC' : '#FAFAFA',
+                      color: selectedTopic === 'ALL' && topicCounts.length > 1 ? 'var(--text-disabled)' : 'var(--deep-navy)',
+                      backgroundColor: selectedTopic === 'ALL' && topicCounts.length > 1 ? 'var(--bg-subtle)' : 'var(--bg-subtle)',
                       outline: 'none',
                       boxSizing: 'border-box',
                       cursor: selectedTopic === 'ALL' && topicCounts.length > 1 ? 'not-allowed' : 'pointer',
@@ -1095,10 +1095,10 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
 
                 {/* Difficulty Filter Tabs */}
                 <div>
-                  <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
                     DIFFICULTY
                   </label>
-                  <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 0 }}>
+                  <div style={{ display: 'flex', gap: 4, background: 'var(--bg-hover)', padding: 3, borderRadius: 0 }}>
                     {(['ALL', 'EASY', 'MEDIUM', 'HARD'] as const).map((lvl) => (
                       <button
                         key={lvl}
@@ -1113,8 +1113,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           fontWeight: selectedDifficulty === lvl ? 700 : 500,
                           border: 'none',
                           borderRadius: 0,
-                          background: selectedDifficulty === lvl ? '#FFFFFF' : 'transparent',
-                          color: selectedDifficulty === lvl ? '#172033' : '#64748B',
+                          background: selectedDifficulty === lvl ? 'var(--bg-card)' : 'transparent',
+                          color: selectedDifficulty === lvl ? 'var(--deep-navy)' : 'var(--text-muted)',
                           cursor: 'pointer',
                           boxShadow: selectedDifficulty === lvl ? '0 1px 2px rgba(15, 23, 42, 0.08)' : 'none',
                         }}
@@ -1127,7 +1127,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
 
                 {/* Quick Search in Question Stem */}
                 <div style={{ position: 'relative' }}>
-                  <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: '#64748B' }} />
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--text-muted)' }} />
                   <input
                     type="text"
                     placeholder="Search questions or keywords..."
@@ -1142,7 +1142,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       borderRadius: 0,
                       border: '1px solid #CBD5E1',
                       fontSize: 12.5,
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -1151,7 +1151,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
 
                 {/* Header List Meta */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#172033' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--deep-navy)' }}>
                     {filteredQuestions.length} Questions Found
                   </span>
                   {(selectedTopic !== 'ALL' || selectedSubtopic !== 'ALL' || selectedYear !== 'ALL' || selectedDifficulty !== 'ALL' || questionSearchQuery) && (
@@ -1163,7 +1163,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                         setSelectedDifficulty('ALL');
                         setQuestionSearchQuery('');
                       }}
-                      style={{ fontSize: 11, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                      style={{ fontSize: 11, color: 'var(--primary-red)', background: 'none', border: 'none', cursor: 'pointer' }}
                     >
                       Reset filters
                     </button>
@@ -1173,12 +1173,12 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 {/* Scrollable Questions Navigator */}
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 540 }}>
                   {loadingQuestions ? (
-                    <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                    <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                       <Loader2 size={18} className="animate-spin" style={{ margin: '0 auto 8px auto' }} />
                       Loading questions...
                     </div>
                   ) : filteredQuestions.length === 0 ? (
-                    <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                    <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                       No questions match current filters.
                     </div>
                   ) : (
@@ -1199,7 +1199,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                             padding: '10px 12px',
                             borderRadius: 0,
                             cursor: 'pointer',
-                            backgroundColor: isSelected ? '#F8FAFC' : '#FFFFFF',
+                            backgroundColor: isSelected ? 'var(--bg-subtle)' : 'var(--bg-card)',
                             border: isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
                             borderLeft: isSelected ? '3px solid var(--primary-red)' : '1px solid #E2E8F0',
                             transition: 'all 150ms ease-out',
@@ -1210,7 +1210,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                               style={{
                                 fontWeight: 700,
                                 fontFamily: 'monospace',
-                                color: isSelected ? 'var(--primary-red)' : '#172033',
+                                color: isSelected ? 'var(--primary-red)' : 'var(--deep-navy)',
                                 fontSize: 12.5,
                               }}
                             >
@@ -1219,8 +1219,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                             <span
                               style={{
                                 fontSize: 11,
-                                color: '#64748B',
-                                backgroundColor: '#F1F5F9',
+                                color: 'var(--text-muted)',
+                                backgroundColor: 'var(--bg-hover)',
                                 padding: '1px 6px',
                                 borderRadius: 0,
                               }}
@@ -1232,7 +1232,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           <div
                             style={{
                               fontSize: 12,
-                              color: isSelected ? '#172033' : '#475569',
+                              color: isSelected ? 'var(--deep-navy)' : 'var(--text-secondary)',
                               fontWeight: isSelected ? 600 : 400,
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -1244,12 +1244,12 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                             {q.question_text}
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748B' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
                               {q.subtopic_name}
                             </span>
                             <span>•</span>
-                            <span style={{ fontWeight: 600, color: q.difficulty === 'HARD' ? '#DC2626' : q.difficulty === 'EASY' ? '#16A34A' : '#D97706' }}>
+                            <span style={{ fontWeight: 600, color: q.difficulty === 'HARD' ? '#DC2626' : q.difficulty === 'EASY' ? 'var(--status-success)' : '#D97706' }}>
                               {q.difficulty}
                             </span>
                           </div>
@@ -1265,7 +1265,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
             {(!isTabletOrBelow || mobileExploreTab === 'preview') && (
               <div
                 style={{
-                  background: '#FFFFFF',
+                  background: 'var(--bg-card)',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
                   padding: isMobile ? '16px 14px' : '24px 28px',
@@ -1290,12 +1290,12 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           gap: 6,
                           padding: '7px 12px',
                           marginBottom: 4,
-                          backgroundColor: '#F1F5F9',
+                          backgroundColor: 'var(--bg-hover)',
                           border: '1px solid #CBD5E1',
                           borderRadius: 0,
                           fontSize: 12,
                           fontWeight: 600,
-                          color: '#334155',
+                          color: 'var(--text-secondary)',
                           cursor: 'pointer',
                           alignSelf: 'flex-start',
                         }}
@@ -1318,8 +1318,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 700, color: '#172033', fontSize: 14 }}>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--deep-navy)', fontSize: 14 }}>
                             Question #{selectedQuestion.question_number_in_paper}
                           </span>
                           <span>•</span>
@@ -1335,22 +1335,22 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                               borderRadius: 0,
                               backgroundColor:
                                 selectedQuestion.difficulty === 'HARD'
-                                  ? '#FEE2E2'
+                                  ? 'var(--primary-red-bg)'
                                   : selectedQuestion.difficulty === 'EASY'
-                                  ? '#DCFCE7'
-                                  : '#FEF3C7',
+                                  ? 'var(--status-success-bg)'
+                                  : 'var(--status-warning-bg)',
                               color:
                                 selectedQuestion.difficulty === 'HARD'
                                   ? '#B91C1C'
                                   : selectedQuestion.difficulty === 'EASY'
                                   ? '#15803D'
-                                  : '#B45309',
+                                  : 'var(--status-warning)',
                             }}
                           >
                             {selectedQuestion.difficulty}
                           </span>
                           <span>•</span>
-                          <span style={{ fontSize: 11.5, color: '#64748B' }}>+{selectedQuestion.marks} marks</span>
+                          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>+{selectedQuestion.marks} marks</span>
                         </div>
                       </div>
 
@@ -1375,8 +1375,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                             padding: '6px 12px',
                             borderRadius: 0,
                             border: '1px solid #CBD5E1',
-                            background: '#FFFFFF',
-                            color: '#475569',
+                            background: 'var(--bg-card)',
+                            color: 'var(--text-secondary)',
                             fontSize: 12,
                             fontWeight: 600,
                             cursor: 'pointer',
@@ -1397,8 +1397,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                             padding: '6px 14px',
                             borderRadius: 0,
                             border: '1px solid #CBD5E1',
-                            background: '#F8FAFC',
-                            color: '#172033',
+                            background: 'var(--bg-subtle)',
+                            color: 'var(--deep-navy)',
                             fontSize: 12,
                             fontWeight: 600,
                             cursor: 'pointer',
@@ -1456,8 +1456,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           fontWeight: 600,
                           borderRadius: 0,
                           border: '1px solid #CBD5E1',
-                          background: '#FFFFFF',
-                          color: selectedQuestionIndex === 0 ? '#CBD5E1' : '#334155',
+                          background: 'var(--bg-card)',
+                          color: selectedQuestionIndex === 0 ? 'var(--border-color)' : 'var(--text-secondary)',
                           cursor: selectedQuestionIndex === 0 ? 'not-allowed' : 'pointer',
                         }}
                       >
@@ -1465,7 +1465,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                         <span>{isMobile ? 'Prev' : 'Previous Question'}</span>
                       </button>
 
-                      <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600, textAlign: 'center' }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>
                         {isMobile
                           ? `Q ${selectedQuestionIndex + 1} / ${filteredQuestions.length}`
                           : `Question ${selectedQuestionIndex + 1} of ${filteredQuestions.length}`}
@@ -1486,8 +1486,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           fontWeight: 600,
                           borderRadius: 0,
                           border: '1px solid #CBD5E1',
-                          background: '#FFFFFF',
-                          color: selectedQuestionIndex >= filteredQuestions.length - 1 ? '#CBD5E1' : '#334155',
+                          background: 'var(--bg-card)',
+                          color: selectedQuestionIndex >= filteredQuestions.length - 1 ? 'var(--border-color)' : 'var(--text-secondary)',
                           cursor: selectedQuestionIndex >= filteredQuestions.length - 1 ? 'not-allowed' : 'pointer',
                         }}
                       >
@@ -1497,8 +1497,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', color: '#64748B', padding: 60 }}>
-                    <BookOpen size={36} color="#CBD5E1" style={{ margin: '0 auto 12px auto' }} />
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 60 }}>
+                    <BookOpen size={36} color="var(--border-color)" style={{ margin: '0 auto 12px auto' }} />
                     <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
                       Select a question from the navigation panel to view its full publication preview.
                     </p>

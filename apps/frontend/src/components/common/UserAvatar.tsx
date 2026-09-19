@@ -143,7 +143,7 @@ export function UserAvatar({
         justifyContent: 'center',
         fontWeight: 700,
         fontSize: Math.round(size * 0.42),
-        color: '#ffffff',
+        color: 'var(--bg-card)',
         flexShrink: 0,
         userSelect: 'none',
         boxShadow: '0 2px 6px rgba(var(--primary-red-rgb), 0.3)',

@@ -85,7 +85,7 @@ export function RejectionModal({ isOpen, adminName, onClose, onConfirm }: Reject
             <button
               type="submit"
               className="btn btn-primary"
-              style={{ padding: '10px 20px', fontSize: 14, background: '#EF4444', borderColor: '#EF4444' }}
+              style={{ padding: '10px 20px', fontSize: 14, background: 'var(--primary-red)', borderColor: 'var(--primary-red)' }}
             >
               Confirm Rejection
             </button>

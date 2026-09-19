@@ -99,7 +99,7 @@ export function TeacherRewardsView() {
             fontSize: 13.5,
             fontWeight: 600,
             background: toast.isError ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
-            color: toast.isError ? '#ef4444' : '#3A8B53',
+            color: toast.isError ? 'var(--primary-red)' : '#3A8B53',
             border: `1px solid ${toast.isError ? 'rgba(var(--primary-red-rgb), 0.3)' : 'rgba(16,185,129,0.3)'}`,
           }}
         >
@@ -343,7 +343,7 @@ function GrantRewardModal({
               borderRadius: 0,
               border: '1px solid #3A8B53',
               background: !title.trim() || submitting ? 'rgba(16,185,129,0.3)' : '#3A8B53',
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               cursor: !title.trim() || submitting ? 'not-allowed' : 'pointer',
             }}
           >

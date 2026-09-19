@@ -34,20 +34,20 @@ import {
 
 const CONTENT_TYPES = [
   { value: 'video', label: 'Video', icon: Video, color: '#DC2626' },
-  { value: 'pdf', label: 'PDF', icon: FileText, color: '#2563EB' },
+  { value: 'pdf', label: 'PDF', icon: FileText, color: 'var(--accent-primary)' },
   { value: 'article', label: 'Article', icon: Globe, color: '#059669' },
   { value: 'other', label: 'Other', icon: Package, color: '#7C3AED' },
 ] as const;
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   draft:     { bg: '#FEF9C3', text: '#A16207', border: '#FDE047' },
-  published: { bg: '#DCFCE7', text: '#15803D', border: '#86EFAC' },
-  rejected:  { bg: '#FEE2E2', text: '#B91C1C', border: '#FCA5A5' },
+  published: { bg: 'var(--status-success-bg)', text: '#15803D', border: '#86EFAC' },
+  rejected:  { bg: 'var(--primary-red-bg)', text: '#B91C1C', border: 'var(--primary-red-border)' },
 };
 
 function statusBadge(status: string) {
   const s = status.toLowerCase();
-  const c = STATUS_COLORS[s] || { bg: '#F1F5F9', text: '#475569', border: '#CBD5E1' };
+  const c = STATUS_COLORS[s] || { bg: 'var(--bg-hover)', text: 'var(--text-secondary)', border: 'var(--border-color)' };
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -124,7 +124,7 @@ function ConfirmDialog({
         maxWidth: 420, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.18)',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
-          <AlertTriangle size={22} color={danger ? '#DC2626' : '#F59E0B'} style={{ flexShrink: 0, marginTop: 2 }} />
+          <AlertTriangle size={22} color={danger ? '#DC2626' : 'var(--status-warning)'} style={{ flexShrink: 0, marginTop: 2 }} />
           <p style={{ margin: 0, fontSize: 15, color: '#374151', lineHeight: 1.55 }}>{message}</p>
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -530,7 +530,7 @@ export function NotificationsView() {
             <tbody>
               {notifications.map((n, idx) => (
                 <tr key={n.id} style={{ borderBottom: idx < notifications.length - 1 ? '1px solid #F3F4F6' : 'none', transition: 'background 0.1s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = '#FAFAFA')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-subtle)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                   {/* Type */}
                   <td style={{ padding: '12px 14px' }}>

@@ -96,7 +96,7 @@ export function RolesPermissionsTab() {
               borderRadius: 0,
               border: '1px solid var(--primary-red)',
               background: 'var(--primary-red)',
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -118,7 +118,7 @@ export function RolesPermissionsTab() {
             fontSize: 13.5,
             fontWeight: 600,
             background: toast.isError ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
-            color: toast.isError ? '#ef4444' : '#3A8B53',
+            color: toast.isError ? 'var(--primary-red)' : '#3A8B53',
             border: `1px solid ${toast.isError ? 'rgba(var(--primary-red-rgb), 0.3)' : 'rgba(16,185,129,0.3)'}`,
           }}
         >
@@ -236,7 +236,7 @@ export function RolesPermissionsTab() {
                             borderRadius: 0,
                             border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                             background: 'rgba(var(--primary-red-rgb), 0.1)',
-                            color: '#ef4444',
+                            color: 'var(--primary-red)',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
@@ -436,7 +436,7 @@ function RoleEditorModal({
                 borderRadius: 0,
                 border: '1px solid var(--primary-red)',
                 background: !name.trim() || submitting ? 'rgba(var(--primary-red-rgb), 0.4)' : 'var(--primary-red)',
-                color: '#ffffff',
+                color: 'var(--bg-card)',
                 cursor: !name.trim() || submitting ? 'not-allowed' : 'pointer',
               }}
             >

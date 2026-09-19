@@ -36,7 +36,7 @@ export function ExamLoaderOverlay({
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: 'var(--bg-subtle)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

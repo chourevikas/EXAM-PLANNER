@@ -142,7 +142,7 @@ export function Testimonials() {
               fontSize: 14,
               fontWeight: 700,
               background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))',
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
@@ -253,7 +253,7 @@ export function Testimonials() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#ffffff',
+                        color: 'var(--bg-card)',
                         fontWeight: 800,
                         fontSize: 15,
                       }}
@@ -353,7 +353,7 @@ export function Testimonials() {
                       padding: '10px 14px',
                       borderRadius: 0,
                       background: 'rgba(var(--primary-red-rgb), 0.12)',
-                      color: '#ef4444',
+                      color: 'var(--primary-red)',
                       border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
                       fontSize: 13,
                     }}
@@ -467,7 +467,7 @@ export function Testimonials() {
                       fontWeight: 700,
                       border: 'none',
                       background: 'var(--primary-red)',
-                      color: '#ffffff',
+                      color: 'var(--bg-card)',
                       cursor: submitting ? 'not-allowed' : 'pointer',
                     }}
                   >

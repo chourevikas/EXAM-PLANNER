@@ -244,7 +244,7 @@ export function DashboardPage() {
               value={
                 <span>
                   {totalQuestionsSolved.toLocaleString()}{' '}
-                  <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Qs</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>Qs</span>
                 </span>
               }
               supportingText={todayQuestionsAttempted > 0 ? `${todayQuestionsAttempted} Qs attempted today` : "Across all practice exams"}
@@ -259,7 +259,7 @@ export function DashboardPage() {
               value={
                 <span>
                   {dashboardStats?.totalExams ?? 0}{' '}
-                  <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Exams</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>Exams</span>
                 </span>
               }
               supportingText="Completed practice tests"
@@ -284,7 +284,7 @@ export function DashboardPage() {
               value={
                 <span>
                   {(user.total_xp ?? 0).toLocaleString()}{' '}
-                  <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>XP</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>XP</span>
                 </span>
               }
               supportingText={
@@ -306,7 +306,7 @@ export function DashboardPage() {
         {/* Subject Accuracy */}
         <div
           style={{
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--bg-card)',
             padding: '22px 24px',
             borderRadius: 0,
             border: '1px solid #E2E8F0',
@@ -316,36 +316,36 @@ export function DashboardPage() {
         >
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#172033', margin: '0 0 4px 0' }}>Subject Accuracy</h3>
-              <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Your strong areas vs. areas needing improvement.</p>
+              <h3 style={{ fontSize: 16.5, fontWeight: 700, color: 'var(--deep-navy)', margin: '0 0 4px 0' }}>Subject Accuracy</h3>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>Your strong areas vs. areas needing improvement.</p>
             </div>
             {subjectData.length > 0 && subjectData.every(s => s.total_attempted === 0) && (
-              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 0, backgroundColor: '#FEF3C7', color: '#B45309' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 0, backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)' }}>
                 No Activity Recorded
               </span>
             )}
           </div>
           <div style={{ height: 250, width: '100%' }}>
             {isLoadingSubjects ? (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', fontSize: 13 }}>
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                 Loading subject performance...
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={subjectData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
-                  <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} domain={[0, 100]} unit="%" />
+                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border-color)" opacity={0.6} />
+                  <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} domain={[0, 100]} unit="%" />
                   <Tooltip
-                    cursor={{ fill: '#F8FAFC' }}
+                    cursor={{ fill: 'var(--bg-subtle)' }}
                     content={({ active, payload }: any) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
                         return (
-                          <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', padding: '10px 14px', borderRadius: 0, boxShadow: '0 4px 12px rgba(15,23,42,0.08)' }}>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: '#172033', marginBottom: 4 }}>{formatEnum(data.subject)}</div>
+                          <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid #E2E8F0', padding: '10px 14px', borderRadius: 0, boxShadow: '0 4px 12px rgba(15,23,42,0.08)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--deep-navy)', marginBottom: 4 }}>{formatEnum(data.subject)}</div>
                             <div style={{ fontSize: 12, color: 'var(--primary-red)', fontWeight: 600 }}>Accuracy: {data.accuracy}%</div>
-                            <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                               Attempted: {data.total_attempted} | Correct: {data.total_correct}
                             </div>
                           </div>
@@ -358,7 +358,7 @@ export function DashboardPage() {
                     {subjectData.map((entry: any, index: number) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={entry.total_attempted === 0 ? '#CBD5E1' : entry.accuracy >= 75 ? '#3A8B53' : entry.accuracy >= 60 ? 'var(--primary-red)' : '#F2B623'}
+                        fill={entry.total_attempted === 0 ? 'var(--border-color)' : entry.accuracy >= 75 ? '#3A8B53' : entry.accuracy >= 60 ? 'var(--primary-red)' : '#F2B623'}
                       />
                     ))}
                   </Bar>
@@ -371,7 +371,7 @@ export function DashboardPage() {
         {/* Time Management */}
         <div
           style={{
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--bg-card)',
             padding: '22px 24px',
             borderRadius: 0,
             border: '1px solid #E2E8F0',
@@ -381,8 +381,8 @@ export function DashboardPage() {
         >
           <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#172033', margin: '0 0 4px 0' }}>Time Management</h3>
-              <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>
+              <h3 style={{ fontSize: 16.5, fontWeight: 700, color: 'var(--deep-navy)', margin: '0 0 4px 0' }}>Time Management</h3>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
                 Study hours logged this week
                 {weeklyStudyHoursSummary !== null ? ` • ${weeklyStudyHoursSummary.totalHours} hrs total` : ''}
               </p>
@@ -418,14 +418,14 @@ export function DashboardPage() {
                     <stop offset="95%" stopColor="var(--primary-red)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} unit="h" />
+                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border-color)" opacity={0.6} />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} unit="h" />
                 <Tooltip
-                  cursor={{ stroke: '#CBD5E1', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  cursor={{ stroke: 'var(--border-color)', strokeWidth: 1, strokeDasharray: '4 4' }}
                   formatter={(value: any) => [`${value} hrs`, 'Study Time']}
                   labelFormatter={(label: any) => `${label}`}
-                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 4, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: '#172033' }}
+                  contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderRadius: 4, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: 'var(--deep-navy)' }}
                 />
                 <Area type="monotone" dataKey="hours" stroke="var(--primary-red)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHours)" />
               </AreaChart>
@@ -549,7 +549,7 @@ export function DashboardPage() {
         {/* 5. Call to Action / Next Up */}
         <div style={{
           backgroundColor: 'var(--accent-primary)', padding: 'clamp(20px, 4vw, 32px)', borderRadius: 0,
-          color: '#FFFFFF', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          color: 'var(--bg-card)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
           boxShadow: '0 20px 40px var(--shadow-color-accent)',
           backgroundImage: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-darker) 100%)',
           position: 'relative', overflow: 'hidden', minWidth: 0
@@ -575,7 +575,7 @@ export function DashboardPage() {
             className="touch-target"
             style={{
               width: '100%', padding: '14px', borderRadius: 0, border: 'none',
-              backgroundColor: '#FFFFFF', color: 'var(--accent-darker)',
+              backgroundColor: 'var(--bg-card)', color: 'var(--accent-darker)',
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               marginTop: 16, transition: 'transform 0.2s', position: 'relative', zIndex: 1,
@@ -694,7 +694,7 @@ export function DashboardPage() {
                       </h3>
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Registered exam history</p>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 0, backgroundColor: '#F8FAFC', color: 'var(--primary-red)', border: '1px solid #BFDBFE' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 0, backgroundColor: 'var(--bg-subtle)', color: 'var(--primary-red)', border: '1px solid #BFDBFE' }}>
                       {registeredAttempts.length} Recorded
                     </span>
                   </div>
@@ -723,8 +723,8 @@ export function DashboardPage() {
                             transition: 'all 0.15s ease'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = '#BFDBFE';
-                            e.currentTarget.style.backgroundColor = '#F8FAFC';
+                            e.currentTarget.style.borderColor = 'var(--accent-border)';
+                            e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.borderColor = 'var(--border-default)';
@@ -760,7 +760,7 @@ export function DashboardPage() {
                                 label={`${attempt.accuracy}% Acc`}
                                 size="sm"
                               />
-                              <span style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', textDecoration: 'underline' }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-primary)', textDecoration: 'underline' }}>
                                 View Report →
                               </span>
                             </div>
@@ -868,7 +868,7 @@ export function DashboardPage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{
                               width: 36, height: 36, borderRadius: 0,
-                              backgroundColor: '#F8FAFC', border: '1px solid #BFDBFE', color: 'var(--primary-red)',
+                              backgroundColor: 'var(--bg-subtle)', border: '1px solid #BFDBFE', color: 'var(--primary-red)',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               fontWeight: 800, fontSize: 14
                             }}>
@@ -879,7 +879,7 @@ export function DashboardPage() {
                                 <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
                                   {attempt.topicName}
                                 </span>
-                                <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 0, backgroundColor: '#F8FAFC', color: 'var(--primary-red)', border: '1px solid #BFDBFE' }}>
+                                <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 0, backgroundColor: 'var(--bg-subtle)', color: 'var(--primary-red)', border: '1px solid #BFDBFE' }}>
                                   SYNCED
                                 </span>
                               </div>
@@ -897,7 +897,7 @@ export function DashboardPage() {
                               <div style={{ fontSize: 11, color: attempt.accuracy >= 70 ? '#3A8B53' : '#F2B623', fontWeight: 700 }}>
                                 {attempt.accuracy}% Acc
                               </div>
-                              <span style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', textDecoration: 'underline' }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-primary)', textDecoration: 'underline' }}>
                                 View Report →
                               </span>
                             </div>

@@ -312,7 +312,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -350,7 +350,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
           />
           {!isMobile && (
             <div style={{ lineHeight: 1.15, display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff', fontFamily: 'Inter, sans-serif' }}>Exam</span>
+              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--bg-card)', fontFamily: 'Inter, sans-serif' }}>Exam</span>
               <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--primary-red)', fontFamily: 'Inter, sans-serif' }}>Planner</span>
             </div>
           )}
@@ -358,7 +358,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
 
         {!isTabletOrBelow && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-            <span style={{ color: '#ffffff', fontWeight: 600 }}>
+            <span style={{ color: 'var(--bg-card)', fontWeight: 600 }}>
               {pageTitle}
             </span>
           </div>
@@ -386,14 +386,14 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               transition: 'all 0.15s ease',
               padding: 8,
             }}
             title="Notifications"
             aria-label="Notifications"
           >
-            <Bell size={19} color="#FFFFFF" />
+            <Bell size={19} color="var(--bg-card)" />
             {unreadCount > 0 && (
               <span
                 style={{
@@ -404,7 +404,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   height: 14,
                   borderRadius: 0,
                   backgroundColor: 'var(--primary-red)',
-                  color: '#FFFFFF',
+                  color: 'var(--bg-card)',
                   fontSize: 9,
                   fontWeight: 700,
                   display: 'flex',
@@ -428,7 +428,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   right: 0,
                   width: 320,
                 }),
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--bg-card)',
                 borderRadius: 0,
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 12px 32px rgba(17, 17, 17, 0.12)',
@@ -440,7 +440,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: '#111111' }}>Notifications</span>
                   {notifications.length > 0 && !isClearingNotifications && (
-                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '1px 6px', backgroundColor: '#FEE2E2', color: 'var(--primary-red)', borderRadius: 10 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '1px 6px', backgroundColor: 'var(--primary-red-bg)', color: 'var(--primary-red)', borderRadius: 10 }}>
                       {notifications.length}
                     </span>
                   )}
@@ -453,7 +453,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: isClearingNotifications ? '#94A3B8' : 'var(--primary-red)',
+                      color: isClearingNotifications ? 'var(--text-disabled)' : 'var(--primary-red)',
                       fontSize: 12,
                       fontWeight: 600,
                       cursor: isClearingNotifications ? 'default' : 'pointer',
@@ -492,7 +492,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <span style={{ fontSize: 14, fontWeight: 700, color: '#111111' }}>
                         You are all checked up!
                       </span>
-                      <span style={{ fontSize: 12, color: '#64748B', maxWidth: 220, margin: '0 auto', lineHeight: 1.4 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 220, margin: '0 auto', lineHeight: 1.4 }}>
                         No new notifications right now. You're completely up to date.
                       </span>
                     </div>
@@ -509,7 +509,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                         style={{
                           padding: '10px 12px',
                           borderRadius: 6,
-                          backgroundColor: '#F8FAFC',
+                          backgroundColor: 'var(--bg-subtle)',
                           borderLeft: '3px solid var(--primary-red)',
                           borderTop: '1px solid #F1F5F9',
                           borderRight: '1px solid #F1F5F9',
@@ -531,7 +531,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                               style={{
                                 background: 'rgba(0, 0, 0, 0.04)',
                                 border: '1px solid #E2E8F0',
-                                color: '#475569',
+                                color: 'var(--text-secondary)',
                                 fontSize: 11,
                                 fontWeight: 500,
                                 cursor: 'pointer',
@@ -544,13 +544,13 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.color = 'var(--primary-red)';
-                                e.currentTarget.style.backgroundColor = '#FEE2E2';
-                                e.currentTarget.style.borderColor = '#FCA5A5';
+                                e.currentTarget.style.backgroundColor = 'var(--primary-red-bg)';
+                                e.currentTarget.style.borderColor = 'var(--primary-red-border)';
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.color = '#475569';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
                                 e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
-                                e.currentTarget.style.borderColor = '#E2E8F0';
+                                e.currentTarget.style.borderColor = 'var(--border-color)';
                               }}
                               title="Mark as read"
                             >
@@ -560,7 +560,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                             <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--primary-red)' }} />
                           </div>
                         </div>
-                        <div style={{ fontSize: 12, color: '#475569', marginTop: 4, lineHeight: 1.4 }}>{n.message}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>{n.message}</div>
                       </div>
                     );
                   })
@@ -620,7 +620,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   right: 0,
                   width: 200,
                 }),
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--bg-card)',
                 borderRadius: 0,
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
@@ -629,13 +629,13 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               }}
             >
               <div style={{ padding: '8px 16px', borderBottom: '1px solid #F1F5F9' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>{user?.full_name || 'Student Account'}</div>
-                <div style={{ fontSize: 11, color: '#64748B' }}>{user?.email || 'student@examplanner.ai'}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--deep-navy)' }}>{user?.full_name || 'Student Account'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{user?.email || 'student@examplanner.ai'}</div>
               </div>
-              <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: '#334155', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
+              <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
                 <User size={15} /> Profile Settings
               </Link>
-              <Link to="/pricing" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: '#334155', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
+              <Link to="/pricing" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
                 <CreditCard size={15} /> Subscription Plan
               </Link>
               <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 4, paddingTop: 4 }}>
@@ -658,7 +658,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                     alignItems: 'center',
                     gap: 10,
                     padding: '10px 16px',
-                    color: '#EF4444',
+                    color: 'var(--primary-red)',
                     background: 'none',
                     border: 'none',
                     width: '100%',

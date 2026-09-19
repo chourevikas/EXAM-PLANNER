@@ -16,7 +16,7 @@ export function StudyPlannerSkeleton() {
       {/* Main Content Card Skeleton (mimicking the "Schedule Explorer") */}
       <div
         style={{
-          backgroundColor: '#FFFFFF',
+          backgroundColor: 'var(--bg-card)',
           border: '1px solid #E2E8F0',
           borderRadius: 0,
           padding: 24,
@@ -41,7 +41,7 @@ export function StudyPlannerSkeleton() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} style={{ border: '1px solid #E2E8F0' }}>
-              <div style={{ padding: '14px 18px', backgroundColor: '#F8FAFC', display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ padding: '14px 18px', backgroundColor: 'var(--bg-subtle)', display: 'flex', justifyContent: 'space-between' }}>
                 <SkeletonText lines={1} fontSize={14} width={120} />
                 <SkeletonBox width={80} height={20} />
               </div>

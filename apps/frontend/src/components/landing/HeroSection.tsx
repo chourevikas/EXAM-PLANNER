@@ -326,7 +326,7 @@ export function HeroSection({}: HeroSectionProps) {
     <section
       style={{
         position: 'relative',
-        background: '#F8FAFC',
+        background: 'var(--bg-subtle)',
         paddingTop: 'clamp(76px, 9vw, 104px)',
         paddingBottom: 'clamp(48px, 6vw, 72px)',
         transition: 'background-color 0.3s ease',
@@ -370,7 +370,7 @@ export function HeroSection({}: HeroSectionProps) {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
-            background: '#F8FAFC',
+            background: 'var(--bg-subtle)',
             border: '1px solid #E2E8F0',
             borderRadius: 0,
             padding: '5px 12px',
@@ -396,7 +396,7 @@ export function HeroSection({}: HeroSectionProps) {
           style={{
             fontSize: 'clamp(2rem, 5vw, 3.2rem)',
             fontWeight: 800,
-            color: '#172033',
+            color: 'var(--deep-navy)',
             lineHeight: 1.12,
             letterSpacing: '-0.025em',
             marginBottom: 14,
@@ -410,7 +410,7 @@ export function HeroSection({}: HeroSectionProps) {
         <p
           style={{
             fontSize: 'clamp(14px, 2vw, 16px)',
-            color: '#64748B',
+            color: 'var(--text-muted)',
             marginBottom: 36,
             lineHeight: 1.6,
             maxWidth: 520,
@@ -430,8 +430,8 @@ export function HeroSection({}: HeroSectionProps) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              background: '#FFFFFF',
-              border: `2px solid ${isSyllabusSearchFocused ? 'var(--primary-red)' : '#E2E8F0'}`,
+              background: 'var(--bg-card)',
+              border: `2px solid ${isSyllabusSearchFocused ? 'var(--primary-red)' : 'var(--border-color)'}`,
               borderRadius: 8,
               boxShadow: isSyllabusSearchFocused
                 ? '0 0 0 4px rgba(var(--primary-red-rgb), 0.1), 0 8px 24px rgba(15,23,42,0.08)'
@@ -443,7 +443,7 @@ export function HeroSection({}: HeroSectionProps) {
             <div
               style={{
                 padding: '0 12px',
-                color: isSyllabusSearchFocused ? 'var(--primary-red)' : '#94A3B8',
+                color: isSyllabusSearchFocused ? 'var(--primary-red)' : 'var(--text-disabled)',
                 flexShrink: 0,
                 display: 'flex',
                 alignItems: 'center',
@@ -459,7 +459,7 @@ export function HeroSection({}: HeroSectionProps) {
                 style={{
                   border: 'none',
                   background: 'transparent',
-                  color: '#172033',
+                  color: 'var(--deep-navy)',
                   fontWeight: 600,
                   fontSize: 14,
                   outline: 'none',
@@ -497,7 +497,7 @@ export function HeroSection({}: HeroSectionProps) {
                 border: 'none',
                 background: 'transparent',
                 fontSize: 15,
-                color: '#172033',
+                color: 'var(--deep-navy)',
                 outline: 'none',
                 fontFamily: 'inherit',
                 padding: '0 16px',
@@ -517,7 +517,7 @@ export function HeroSection({}: HeroSectionProps) {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: '#94A3B8',
+                  color: 'var(--text-disabled)',
                   flexShrink: 0,
                   fontSize: 18,
                 }}
@@ -537,7 +537,7 @@ export function HeroSection({}: HeroSectionProps) {
               }}
               style={{
                 background: 'var(--primary-red)',
-                color: '#FFFFFF',
+                color: 'var(--bg-card)',
                 border: 'none',
                 height: 58,
                 padding: '0 24px',
@@ -563,7 +563,7 @@ export function HeroSection({}: HeroSectionProps) {
                 left: 0,
                 right: 0,
                 zIndex: 200,
-                background: '#FFFFFF',
+                background: 'var(--bg-card)',
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 16px 40px rgba(15, 23, 42, 0.14)',
                 maxHeight: 360,
@@ -577,7 +577,7 @@ export function HeroSection({}: HeroSectionProps) {
                   style={{
                     padding: '20px 16px',
                     textAlign: 'center',
-                    color: '#64748B',
+                    color: 'var(--text-muted)',
                     fontSize: 13,
                   }}
                 >
@@ -590,7 +590,7 @@ export function HeroSection({}: HeroSectionProps) {
                       padding: '8px 16px 6px',
                       fontSize: 11,
                       fontWeight: 700,
-                      color: '#94A3B8',
+                      color: 'var(--text-disabled)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.06em',
                       borderBottom: '1px solid #F1F5F9',
@@ -631,7 +631,7 @@ export function HeroSection({}: HeroSectionProps) {
                           gap: 12,
                           padding: '11px 16px',
                           cursor: 'pointer',
-                          background: isHovered ? '#F8FAFC' : '#FFFFFF',
+                          background: isHovered ? 'var(--bg-subtle)' : 'var(--bg-card)',
                           borderBottom:
                             idx < syllabusSearchResults.length - 1 ? '1px solid #F8FAFC' : 'none',
                           transition: 'background 0.1s ease',
@@ -642,7 +642,7 @@ export function HeroSection({}: HeroSectionProps) {
                             style={{
                               fontSize: 13.5,
                               fontWeight: 600,
-                              color: '#172033',
+                              color: 'var(--deep-navy)',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -653,7 +653,7 @@ export function HeroSection({}: HeroSectionProps) {
                           <div
                             style={{
                               fontSize: 11.5,
-                              color: '#94A3B8',
+                              color: 'var(--text-disabled)',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -677,7 +677,7 @@ export function HeroSection({}: HeroSectionProps) {
                         >
                           {typeLabel}
                         </span>
-                        <ArrowRight size={14} color="#CBD5E1" style={{ flexShrink: 0 }} />
+                        <ArrowRight size={14} color="var(--border-color)" style={{ flexShrink: 0 }} />
                       </div>
                     );
                   })}
@@ -705,8 +705,8 @@ export function HeroSection({}: HeroSectionProps) {
                   padding: '5px 14px',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
-                  background: '#FFFFFF',
-                  color: '#475569',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-secondary)',
                   fontSize: 12,
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -718,8 +718,8 @@ export function HeroSection({}: HeroSectionProps) {
                   e.currentTarget.style.color = 'var(--primary-red)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#E2E8F0';
-                  e.currentTarget.style.color = '#475569';
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
                 }}
               >
                 {hint}
@@ -737,7 +737,7 @@ export function HeroSection({}: HeroSectionProps) {
             justifyContent: 'center',
             gap: 'clamp(12px, 3vw, 24px)',
             fontSize: 12.5,
-            color: '#64748B',
+            color: 'var(--text-muted)',
             fontWeight: 500,
             flexWrap: 'wrap',
           }}
@@ -764,7 +764,7 @@ export function HeroSection({}: HeroSectionProps) {
             marginBottom: 24,
           }}
         >
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#172033', margin: 0 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--deep-navy)', margin: 0 }}>
             Featured Solved PYQs
           </h2>
           <a
@@ -801,7 +801,7 @@ export function HeroSection({}: HeroSectionProps) {
                 navigate(`/guest-exam?${params.toString()}`);
               }}
               style={{
-                background: '#FFFFFF',
+                background: 'var(--bg-card)',
                 border: '1px solid #E2E8F0',
                 borderRadius: 8,
                 padding: 24,
@@ -826,10 +826,10 @@ export function HeroSection({}: HeroSectionProps) {
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
                 <Target size={32} style={{ color: 'var(--primary-red)' }} />
               </div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--deep-navy)', margin: 0 }}>
                 Start Random Practice
               </h3>
-              <p style={{ fontSize: 14, color: '#475569', margin: 0, lineHeight: 1.5 }}>
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
                 Jump into a random mix of questions for <strong>{selectedExam}</strong> right away!
               </p>
               <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--primary-red)', fontWeight: 600, fontSize: 14 }}>
@@ -854,7 +854,7 @@ export function HeroSection({}: HeroSectionProps) {
                   )
                 }
                 style={{
-                  background: '#FFFFFF',
+                  background: 'var(--bg-card)',
                   border: '1px solid #E2E8F0',
                   borderRadius: 8,
                   padding: 20,
@@ -895,7 +895,7 @@ export function HeroSection({}: HeroSectionProps) {
                   >
                     {q.subject_name || 'General'}
                   </span>
-                  <span style={{ color: '#94A3B8' }}>{`${q.exam_name || ''} ${q.source_year || ''}`.trim()}</span>
+                  <span style={{ color: 'var(--text-disabled)' }}>{`${q.exam_name || ''} ${q.source_year || ''}`.trim()}</span>
                 </div>
                 <p
                   style={{

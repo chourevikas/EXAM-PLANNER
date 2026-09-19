@@ -47,7 +47,7 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
         right: 0,
         width: '100%',
         zIndex: 100,
-        background: '#172033',
+        background: 'var(--deep-navy)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         display: 'flex',
         justifyContent: 'space-between',
@@ -69,7 +69,7 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
             style={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
           />
           {!isSmallScreen && (
-            <span style={{ fontWeight: 700, fontSize: 15, color: '#ffffff', letterSpacing: '-0.01em', fontFamily: 'Inter, sans-serif' }}>
+            <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--bg-card)', letterSpacing: '-0.01em', fontFamily: 'Inter, sans-serif' }}>
               ExamPlanner Teacher
             </span>
           )}
@@ -79,7 +79,7 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
             <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: 400 }}>Teacher</span>
             <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
-            <span style={{ color: '#ffffff', fontWeight: 600 }}>{currentViewLabel}</span>
+            <span style={{ color: 'var(--bg-card)', fontWeight: 600 }}>{currentViewLabel}</span>
           </div>
         )}
       </div>
@@ -101,7 +101,7 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
               cursor: 'pointer',
               fontSize: 12,
               fontWeight: 700,
-              color: '#ffffff',
+              color: 'var(--bg-card)',
               padding: 0,
             }}
             title="User Menu"
@@ -115,7 +115,7 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
               className={isMobile ? 'popover-panel' : ''}
               style={{
                 ...(isMobile ? {} : { position: 'absolute', top: 44, right: 0, width: 230 }),
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--bg-card)',
                 borderRadius: 0,
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
@@ -127,10 +127,10 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
               }}
             >
               <div style={{ paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)' }}>
                   {user?.full_name || 'Teacher'}
                 </div>
-                <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
                   {user?.email || ''}
                 </div>
               </div>
@@ -147,7 +147,7 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
                   gap: 8,
                   padding: '8px 10px',
                   borderRadius: 0,
-                  color: '#334155',
+                  color: 'var(--text-secondary)',
                   background: 'transparent',
                   border: 'none',
                   fontSize: 12.5,
@@ -157,7 +157,7 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
                   textAlign: 'left',
                   transition: 'background-color 150ms ease-out',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-hover)')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 <User size={15} color="var(--primary-red)" />

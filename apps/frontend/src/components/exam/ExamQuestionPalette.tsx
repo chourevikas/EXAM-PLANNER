@@ -101,7 +101,7 @@ export function ExamQuestionPalette({
               fontSize: 11,
               fontWeight: 800,
               textTransform: 'uppercase',
-              color: '#1E3A8A',
+              color: 'var(--accent-primary)',
               letterSpacing: '0.08em',
             }}
           >
@@ -111,8 +111,8 @@ export function ExamQuestionPalette({
             style={{
               fontSize: 11,
               fontWeight: 700,
-              color: '#475569',
-              backgroundColor: '#F8FAFC',
+              color: 'var(--text-secondary)',
+              backgroundColor: 'var(--bg-subtle)',
               padding: '2px 8px',
               borderRadius: 0,
               border: '1px solid #E2E8F0',
@@ -130,7 +130,7 @@ export function ExamQuestionPalette({
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#64748B',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
               padding: 4,
               display: 'flex',
@@ -219,7 +219,7 @@ export function ExamQuestionPalette({
               style={{
                 fontSize: 16,
                 fontWeight: 800,
-                color: '#B45309',
+                color: 'var(--status-warning)',
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
@@ -236,7 +236,7 @@ export function ExamQuestionPalette({
           gridTemplateColumns: 'repeat(4, 1fr)',
           gap: 3,
           marginBottom: 14,
-          backgroundColor: '#F8FAFC',
+          backgroundColor: 'var(--bg-subtle)',
           border: '1px solid #E2E8F0',
           borderRadius: 0,
           padding: 3,
@@ -260,8 +260,8 @@ export function ExamQuestionPalette({
                 padding: '6px 2px',
                 borderRadius: 0,
                 border: 'none',
-                backgroundColor: isActive ? '#FFFFFF' : 'transparent',
-                color: isActive ? '#1E3A8A' : '#64748B',
+                backgroundColor: isActive ? 'var(--bg-card)' : 'transparent',
+                color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
                 fontSize: 11,
                 fontWeight: isActive ? 800 : 600,
                 cursor: 'pointer',
@@ -322,29 +322,29 @@ export function ExamQuestionPalette({
             return null;
 
           // Default styling variables
-          let bgColor = '#F8FAFC';
-          let textColor = '#334155';
-          let borderColor = '#E2E8F0';
+          let bgColor = 'var(--bg-subtle)';
+          let textColor = 'var(--text-secondary)';
+          let borderColor = 'var(--border-color)';
 
           if (status === 'ANSWERED') {
-            bgColor = '#DCFCE7';
+            bgColor = 'var(--status-success-bg)';
             textColor = '#15803D';
             borderColor = '#86EFAC';
           } else if (status === 'MARKED_FOR_REVIEW') {
-            bgColor = '#FEF3C7';
-            textColor = '#B45309';
+            bgColor = 'var(--status-warning-bg)';
+            textColor = 'var(--status-warning)';
             borderColor = '#FDE68A';
           } else if (status === 'ANSWERED_AND_MARKED') {
-            bgColor = '#E2E8F0';
+            bgColor = 'var(--border-color)';
             textColor = '#A4161A';
             borderColor = '#93C5FD';
           }
 
           // Active / Current question styling override
           if (isCurrent) {
-            bgColor = '#1E3A8A';
-            textColor = '#FFFFFF';
-            borderColor = '#1E3A8A';
+            bgColor = 'var(--accent-primary)';
+            textColor = 'var(--bg-card)';
+            borderColor = 'var(--accent-primary)';
           }
 
           return (
@@ -379,7 +379,7 @@ export function ExamQuestionPalette({
               }}
               onMouseEnter={(e) => {
                 if (!isCurrent) {
-                  e.currentTarget.style.borderColor = '#94A3B8';
+                  e.currentTarget.style.borderColor = 'var(--text-disabled)';
                   e.currentTarget.style.transform = 'translateY(-1px)';
                 }
               }}
@@ -409,8 +409,8 @@ export function ExamQuestionPalette({
               padding: '10px 0',
               borderRadius: 0,
               border: isRevealed ? '1px solid #CBD5E1' : '1px solid var(--primary-red)',
-              backgroundColor: isRevealed ? '#F1F5F9' : 'var(--primary-red)',
-              color: isRevealed ? '#64748B' : '#FFFFFF',
+              backgroundColor: isRevealed ? 'var(--bg-hover)' : 'var(--primary-red)',
+              color: isRevealed ? 'var(--text-muted)' : 'var(--bg-card)',
               fontSize: 13,
               fontWeight: 700,
               cursor: isRevealed ? 'default' : 'pointer',
@@ -444,8 +444,8 @@ export function ExamQuestionPalette({
               padding: '10px 0',
               borderRadius: 0,
               border: '1px solid #CBD5E1',
-              backgroundColor: '#FFFFFF',
-              color: '#172033',
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--deep-navy)',
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
@@ -453,13 +453,13 @@ export function ExamQuestionPalette({
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#F8FAFC';
-              e.currentTarget.style.borderColor = '#94A3B8';
+              e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
+              e.currentTarget.style.borderColor = 'var(--text-disabled)';
               e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#FFFFFF';
-              e.currentTarget.style.borderColor = '#CBD5E1';
+              e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+              e.currentTarget.style.borderColor = 'var(--border-color)';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
@@ -488,7 +488,7 @@ export function ExamQuestionPalette({
     <aside
       className="exam-palette-sidebar"
       style={{
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'var(--bg-card)',
         border: '1px solid #E2E8F0',
         borderRadius: 0,
         display: 'flex',

@@ -69,7 +69,7 @@ export function VerifyEmailPage() {
         {status === 'success' && (
           <div>
             <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 12px 0', color: '#16A34A' }}>Email Verified Successfully!</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 12px 0', color: 'var(--status-success)' }}>Email Verified Successfully!</h2>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 }}>
               Your account is now fully verified. Redirecting to your student dashboard...
             </p>

@@ -34,7 +34,7 @@ export function ExamFooterBar({
   onSubmitAnswer,
   showClearResponse = true,
   showMarkReview = true,
-  backgroundColor = '#FFFFFF',
+  backgroundColor = 'var(--bg-card)',
   onOpenPalette,
 }: ExamFooterBarProps) {
   const { isMobile, isSmallScreen } = useBreakpoint();
@@ -58,8 +58,8 @@ export function ExamFooterBar({
               padding: '7px 10px',
               borderRadius: 0,
               border: '1px solid #E2E8F0',
-              backgroundColor: '#F8FAFC',
-              color: '#1E3A8A',
+              backgroundColor: 'var(--bg-subtle)',
+              color: 'var(--accent-primary)',
               fontSize: 12.5,
               fontWeight: 700,
               cursor: 'pointer',
@@ -85,9 +85,9 @@ export function ExamFooterBar({
             style={{
               padding: isMobile ? '7px 8px' : '8px 14px',
               borderRadius: 0,
-              border: `1px solid ${isAnswered ? '#FECACA' : '#E2E8F0'}`,
-              backgroundColor: isAnswered ? '#FEF2F2' : '#FFFFFF',
-              color: isAnswered ? '#DC2626' : '#94A3B8',
+              border: `1px solid ${isAnswered ? '#FECACA' : 'var(--border-color)'}`,
+              backgroundColor: isAnswered ? '#FEF2F2' : 'var(--bg-card)',
+              color: isAnswered ? '#DC2626' : 'var(--text-disabled)',
               fontSize: 12,
               fontWeight: 600,
               cursor: isAnswered ? 'pointer' : 'not-allowed',
@@ -112,9 +112,9 @@ export function ExamFooterBar({
             style={{
               padding: isMobile ? '7px 8px' : '8px 14px',
               borderRadius: 0,
-              border: `1px solid ${isMarkedForReview ? '#FCD34D' : '#E2E8F0'}`,
-              backgroundColor: isMarkedForReview ? '#FEF3C7' : '#FFFFFF',
-              color: isMarkedForReview ? '#F2B623' : '#475569',
+              border: `1px solid ${isMarkedForReview ? '#FCD34D' : 'var(--border-color)'}`,
+              backgroundColor: isMarkedForReview ? 'var(--status-warning-bg)' : 'var(--bg-card)',
+              color: isMarkedForReview ? '#F2B623' : 'var(--text-secondary)',
               fontSize: 12,
               fontWeight: 600,
               cursor: 'pointer',
@@ -128,7 +128,7 @@ export function ExamFooterBar({
             <Flag
               size={13}
               fill={isMarkedForReview ? '#F2B623' : 'none'}
-              color={isMarkedForReview ? '#F2B623' : '#64748B'}
+              color={isMarkedForReview ? '#F2B623' : 'var(--text-muted)'}
             />
             {!isMobile && <span>{isMarkedForReview ? 'Marked' : 'Mark'}</span>}
           </button>
@@ -149,7 +149,7 @@ export function ExamFooterBar({
               borderRadius: 0,
               border: '1px solid #3A8B53',
               backgroundColor: isAnswered ? '#3A8B53' : '#F0FDF4',
-              color: isAnswered ? '#FFFFFF' : '#3A8B53',
+              color: isAnswered ? 'var(--bg-card)' : '#3A8B53',
               fontSize: 'clamp(11.5px, 2vw, 13px)',
               fontWeight: 700,
               cursor: isAnswered ? 'pointer' : 'not-allowed',
@@ -176,8 +176,8 @@ export function ExamFooterBar({
             padding: isMobile ? '7px 10px' : '9px 16px',
             borderRadius: 0,
             border: '1px solid #CBD5E1',
-            backgroundColor: '#FFFFFF',
-            color: '#475569',
+            backgroundColor: 'var(--bg-card)',
+            color: 'var(--text-secondary)',
             fontSize: 'clamp(12px, 2vw, 13px)',
             fontWeight: 600,
             cursor: isFirstQuestion ? 'not-allowed' : 'pointer',
@@ -203,7 +203,7 @@ export function ExamFooterBar({
               borderRadius: 0,
               border: 'none',
               backgroundColor: 'var(--primary-red)',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               fontSize: 'clamp(12px, 2vw, 13.5px)',
               fontWeight: 700,
               cursor: 'pointer',
@@ -235,7 +235,7 @@ export function ExamFooterBar({
               borderRadius: 0,
               border: 'none',
               backgroundColor: '#3A8B53',
-              color: '#FFFFFF',
+              color: 'var(--bg-card)',
               fontSize: 'clamp(12px, 2vw, 13.5px)',
               fontWeight: 700,
               cursor: 'pointer',

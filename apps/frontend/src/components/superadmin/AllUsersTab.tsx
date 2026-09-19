@@ -297,7 +297,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                           fontWeight: 700,
                           padding: '4px 10px',
                           borderRadius: 0,
-                          color: isSuspended ? '#ef4444' : u.status === UserStatus.PENDING ? '#F47B35' : '#3A8B53',
+                          color: isSuspended ? 'var(--primary-red)' : u.status === UserStatus.PENDING ? '#F47B35' : '#3A8B53',
                           background: isSuspended ? 'rgba(var(--primary-red-rgb), 0.12)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.12)' : 'rgba(16, 185, 129, 0.12)',
                           border: `1px solid ${isSuspended ? 'rgba(var(--primary-red-rgb), 0.25)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
                         }}
@@ -384,7 +384,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                                   borderRadius: 0,
                                   border: '1px solid rgba(100, 116, 139, 0.3)',
                                   background: 'rgba(100, 116, 139, 0.1)',
-                                  color: '#64748b',
+                                  color: 'var(--text-muted)',
                                 }}
                               >
                                 🔒 Cooling Expired
@@ -421,7 +421,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                                 borderRadius: 0,
                                 border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                                 background: 'rgba(var(--primary-red-rgb), 0.12)',
-                                color: '#ef4444',
+                                color: 'var(--primary-red)',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease',
                               }}

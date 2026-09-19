@@ -279,11 +279,11 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
             >
               <AlertTriangle size={20} />
             </div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.015em' }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.015em' }}>
               Missing Questions & Extraction Integrity
             </h1>
           </div>
-          <p style={{ fontSize: 13.5, color: '#64748B', margin: 0 }}>
+          <p style={{ fontSize: 13.5, color: 'var(--text-muted)', margin: 0 }}>
             Audit missing questions across exam papers and manually complete unextracted paper items.
           </p>
         </div>
@@ -296,10 +296,10 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
             alignItems: 'center',
             gap: 8,
             padding: '9px 16px',
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--bg-card)',
             border: '1px solid #CBD5E1',
             borderRadius: 0,
-            color: '#334155',
+            color: 'var(--text-secondary)',
             fontSize: 13.5,
             fontWeight: 500,
             cursor: loading ? 'not-allowed' : 'pointer',
@@ -323,7 +323,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
       >
         <div
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--bg-card)',
             padding: '20px 24px',
             borderRadius: 0,
             border: '1px solid #E2E8F0',
@@ -334,17 +334,17 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
           }}
         >
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Total Exam Papers</div>
-            <div style={{ fontSize: 26, fontWeight: 700, color: '#0F172A' }}>{metrics.totalExamsCount}</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Total Exam Papers</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--deep-navy)' }}>{metrics.totalExamsCount}</div>
           </div>
-          <div style={{ width: 44, height: 44, borderRadius: 0, backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 0, backgroundColor: 'var(--bg-subtle)', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
             <Layers size={22} />
           </div>
         </div>
 
         <div
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--bg-card)',
             padding: '20px 24px',
             borderRadius: 0,
             border: '1px solid #E2E8F0',
@@ -366,7 +366,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
 
         <div
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--bg-card)',
             padding: '20px 24px',
             borderRadius: 0,
             border: '1px solid #E2E8F0',
@@ -388,7 +388,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
 
         <div
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--bg-card)',
             padding: '20px 24px',
             borderRadius: 0,
             border: '1px solid #E2E8F0',
@@ -399,8 +399,8 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
           }}
         >
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Paper Extraction Health</div>
-            <div style={{ fontSize: 26, fontWeight: 700, color: metrics.healthPercentage >= 80 ? '#10B981' : '#D97706' }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Paper Extraction Health</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: metrics.healthPercentage >= 80 ? 'var(--status-success)' : '#D97706' }}>
               {metrics.healthPercentage}%
             </div>
           </div>
@@ -417,7 +417,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 16,
-          backgroundColor: '#ffffff',
+          backgroundColor: 'var(--bg-card)',
           padding: '14px 20px',
           borderRadius: 0,
           border: '1px solid #E2E8F0',
@@ -428,7 +428,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 260 }}>
           <div style={{ position: 'relative', width: '100%', maxWidth: 360 }}>
-            <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <Search size={16} color="var(--text-disabled)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
               placeholder="Search by exam name or paper code..."
@@ -448,7 +448,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
 
         {/* Year Pills */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#64748B', marginRight: 4 }}>Year:</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginRight: 4 }}>Year:</span>
           <button
             onClick={() => setSelectedYear('ALL')}
             style={{
@@ -456,8 +456,8 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
               borderRadius: 0,
               fontSize: 13,
               fontWeight: selectedYear === 'ALL' ? 600 : 400,
-              backgroundColor: selectedYear === 'ALL' ? '#0F172A' : '#F1F5F9',
-              color: selectedYear === 'ALL' ? '#ffffff' : '#475569',
+              backgroundColor: selectedYear === 'ALL' ? 'var(--deep-navy)' : 'var(--bg-hover)',
+              color: selectedYear === 'ALL' ? 'var(--bg-card)' : 'var(--text-secondary)',
               border: 'none',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
@@ -474,8 +474,8 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                 borderRadius: 0,
                 fontSize: 13,
                 fontWeight: selectedYear === String(yr) ? 600 : 400,
-                backgroundColor: selectedYear === String(yr) ? '#0F172A' : '#F1F5F9',
-                color: selectedYear === String(yr) ? '#ffffff' : '#475569',
+                backgroundColor: selectedYear === String(yr) ? 'var(--deep-navy)' : 'var(--bg-hover)',
+                color: selectedYear === String(yr) ? 'var(--bg-card)' : 'var(--text-secondary)',
                 border: 'none',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
@@ -493,18 +493,18 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
       ) : filteredExams.length === 0 ? (
         <div
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--bg-card)',
             borderRadius: 0,
             padding: '48px 24px',
             textAlign: 'center',
             border: '1px solid #E2E8F0',
           }}
         >
-          <CheckCircle2 size={40} color="#10B981" style={{ margin: '0 auto 12px auto' }} />
+          <CheckCircle2 size={40} color="var(--status-success)" style={{ margin: '0 auto 12px auto' }} />
           <h3 style={{ fontSize: 18, fontWeight: 600, color: '#1E293B', margin: '0 0 6px 0' }}>
             No Missing Questions Found
           </h3>
-          <p style={{ fontSize: 14, color: '#64748B', margin: 0 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
             All exam papers matching the selected filter are fully extracted and complete.
           </p>
         </div>
@@ -535,7 +535,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
               <div
                 key={exam.id}
                 style={{
-                  backgroundColor: '#ffffff',
+                  backgroundColor: 'var(--bg-card)',
                   borderRadius: 0,
                   border: '1px solid #E2E8F0',
                   borderLeft: isExtracting ? '4px solid #3B82F6' : (missingCount > 0 ? '4px solid #EF4444' : '4px solid #10B981'),
@@ -558,12 +558,12 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                 >
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                      <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--deep-navy)', margin: 0 }}>
                         {cleanExamTitle(exam.name || 'Exam Paper')}
                       </h3>
                     </div>
 
-                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                       Year: <strong>{exam.source_year || 'N/A'}</strong>
                     </div>
                   </div>
@@ -571,10 +571,10 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     {/* Metrics badge */}
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
                         {extractedCount} / {expectedCount} Extracted
                       </div>
-                      <div style={{ fontSize: 11, color: isExtracting ? '#2563EB' : ((missingCount > 0 || corruptedCount > 0) ? '#DC2626' : '#10B981'), fontWeight: 600 }}>
+                      <div style={{ fontSize: 11, color: isExtracting ? 'var(--accent-primary)' : ((missingCount > 0 || corruptedCount > 0) ? '#DC2626' : 'var(--status-success)'), fontWeight: 600 }}>
                         {isExtracting ? (
                           'Extraction In Progress...'
                         ) : (
@@ -619,8 +619,8 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                             alignItems: 'center',
                             gap: 6,
                             padding: '8px 14px',
-                            backgroundColor: '#F1F5F9',
-                            color: '#94A3B8',
+                            backgroundColor: 'var(--bg-hover)',
+                            color: 'var(--text-disabled)',
                             borderRadius: 0,
                             fontSize: 13,
                             fontWeight: 500,
@@ -640,8 +640,8 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                             alignItems: 'center',
                             gap: 6,
                             padding: '8px 14px',
-                            backgroundColor: '#ffffff',
-                            color: '#334155',
+                            backgroundColor: 'var(--bg-card)',
+                            color: 'var(--text-secondary)',
                             borderRadius: 0,
                             fontSize: 13,
                             fontWeight: 500,
@@ -820,7 +820,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                             borderRadius: 0,
                             backgroundColor: 'rgba(245, 158, 11, 0.08)',
                             border: '1px solid rgba(245, 158, 11, 0.22)',
-                            color: '#B45309',
+                            color: 'var(--status-warning)',
                             fontSize: 12,
                             fontWeight: 600,
                             cursor: 'pointer',

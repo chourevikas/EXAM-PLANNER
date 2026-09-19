@@ -25,7 +25,7 @@ export function Footer() {
         background: '#07112a',
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
         padding: 'clamp(28px, 5vw, 48px) 0 clamp(20px, 4vw, 32px)',
-        color: '#94a3b8',
+        color: 'var(--text-disabled)',
       }}
     >
       <div className="landing-container">
@@ -48,7 +48,7 @@ export function Footer() {
             <p
               style={{
                 fontSize: 13,
-                color: '#64748b',
+                color: 'var(--text-muted)',
                 marginTop: 10,
                 lineHeight: 1.6,
               }}
@@ -72,7 +72,7 @@ export function Footer() {
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: '#f8fafc',
+                    color: 'var(--bg-subtle)',
                     letterSpacing: '1px',
                     textTransform: 'uppercase',
                     marginBottom: 12,
@@ -114,7 +114,7 @@ export function Footer() {
                         onClick={handleFooterClick}
                         style={{
                           fontSize: 13,
-                          color: '#94a3b8',
+                          color: 'var(--text-disabled)',
                           textDecoration: 'none',
                           transition: 'color 0.2s ease',
                           padding: '6px 0',
@@ -122,7 +122,7 @@ export function Footer() {
                           minHeight: 32,
                         }}
                         onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
-                        onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-disabled)')}
                       >
                         {l}
                       </a>
@@ -146,7 +146,7 @@ export function Footer() {
             paddingTop: 20,
           }}
         >
-          <div style={{ fontSize: 12, color: '#64748b' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             © {new Date().getFullYear()} ExamPlanner. All rights reserved.
           </div>
           {/* TODO: Add real social media links once available */}
@@ -157,7 +157,7 @@ export function Footer() {
                   href="#"
                   style={{
                     fontSize: 12,
-                    color: '#94a3b8',
+                    color: 'var(--text-disabled)',
                     textDecoration: 'none',
                     transition: 'color 0.2s ease',
                   padding: '6px 0',
@@ -166,7 +166,7 @@ export function Footer() {
                   alignItems: 'center',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-disabled)')}
                 >
                   {s}
                 </a>

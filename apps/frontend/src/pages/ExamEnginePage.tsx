@@ -1497,7 +1497,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               </div>
               <div style={{ backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-subtle)', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>WRONG</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#ef4444' }}>{guestScoreData.wrongCount}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--primary-red)' }}>{guestScoreData.wrongCount}</div>
               </div>
               <div style={{ backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-subtle)', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>UNATTEMPTED</div>
@@ -1519,7 +1519,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary-red)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Trophy size={15} /> Unlock Full 12-Matrix Psychometric Analysis
               </div>
-              <div style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569', lineHeight: 1.4 }}>
+              <div style={{ fontSize: 12, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)', lineHeight: 1.4 }}>
                 Sign in or register for free to analyze your complete attempt with FSRS memory retention, cognitive depth breakdown, and AI study recommendations.
               </div>
             </div>
@@ -1559,7 +1559,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                     borderRadius: 0,
                     border: '1px solid var(--border-default)',
                     backgroundColor: 'transparent',
-                    color: isDark ? '#cbd5e1' : '#475569',
+                    color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
                     fontSize: 14,
                     fontWeight: 700,
                     cursor: 'pointer',

@@ -162,17 +162,17 @@ export function AuthModal({
             border: 'none',
             borderRadius: 0,
             cursor: 'pointer',
-            color: '#64748B',
+            color: 'var(--text-muted)',
             transition: 'all 0.15s ease',
             zIndex: 10,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#F1F5F9';
-            e.currentTarget.style.color = '#172033';
+            e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+            e.currentTarget.style.color = 'var(--deep-navy)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = '#64748B';
+            e.currentTarget.style.color = 'var(--text-muted)';
           }}
         >
           <Ico.X />
@@ -185,7 +185,7 @@ export function AuthModal({
                 width: 56,
                 height: 56,
                 borderRadius: 0,
-                background: '#F8FAFC',
+                background: 'var(--bg-subtle)',
                 color: 'var(--primary-red)',
                 fontSize: 26,
                 display: 'flex',
@@ -197,10 +197,10 @@ export function AuthModal({
             >
               ⌛
             </div>
-            <h2 id="auth-modal-title" style={{ fontSize: 'clamp(20px, 4vw, 24px)', fontWeight: 700, color: '#172033', marginBottom: 10, letterSpacing: '-0.02em' }}>
+            <h2 id="auth-modal-title" style={{ fontSize: 'clamp(20px, 4vw, 24px)', fontWeight: 700, color: 'var(--deep-navy)', marginBottom: 10, letterSpacing: '-0.02em' }}>
               Registration submitted
             </h2>
-            <p style={{ fontSize: 14, color: '#64748B', lineHeight: '1.55', marginBottom: 24, fontWeight: 400 }}>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: '1.55', marginBottom: 24, fontWeight: 400 }}>
               Your account registration has been received. Please wait for administrator approval before signing in.
             </p>
             <button
@@ -215,7 +215,7 @@ export function AuthModal({
                 height: 52,
                 borderRadius: 0,
                 background: 'var(--primary-red)',
-                color: '#FFFFFF',
+                color: 'var(--bg-card)',
                 fontSize: 15,
                 fontWeight: 600,
                 border: 'none',
@@ -240,7 +240,7 @@ export function AuthModal({
                 style={{
                   fontSize: 'clamp(24px, 5vw, 30px)',
                   fontWeight: 700,
-                  color: '#172033',
+                  color: 'var(--deep-navy)',
                   marginBottom: 6,
                   letterSpacing: '-0.025em',
                   fontFamily: "'Manrope', sans-serif",
@@ -251,7 +251,7 @@ export function AuthModal({
               <p
                 style={{
                   fontSize: 'clamp(13.5px, 2.5vw, 15px)',
-                  color: '#64748B',
+                  color: 'var(--text-muted)',
                   margin: 0,
                   fontWeight: 400,
                   lineHeight: '1.45',
@@ -313,7 +313,7 @@ export function AuthModal({
                       display: 'block',
                       fontSize: 13.5,
                       fontWeight: 500,
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       marginBottom: 6,
                     }}
                   >
@@ -332,12 +332,12 @@ export function AuthModal({
                         width: '100%',
                         height: 52,
                         borderRadius: 0,
-                        backgroundColor: '#F8FAFC',
+                        backgroundColor: 'var(--bg-subtle)',
                         border: '1px solid #E2E8F0',
                         padding: '0 16px',
                         fontSize: 14.5,
                         fontWeight: 400,
-                        color: '#172033',
+                        color: 'var(--deep-navy)',
                         outline: 'none',
                         boxSizing: 'border-box',
                         transition: 'all 0.15s ease',
@@ -346,12 +346,12 @@ export function AuthModal({
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = 'var(--primary-red)';
                         e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--primary-red-rgb), 0.12)';
-                        e.currentTarget.style.backgroundColor = '#FFFFFF';
+                        e.currentTarget.style.backgroundColor = 'var(--bg-card)';
                       }}
                       onBlur={(e) => {
-                        e.currentTarget.style.borderColor = '#E2E8F0';
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
                         e.currentTarget.style.boxShadow = 'none';
-                        e.currentTarget.style.backgroundColor = '#F8FAFC';
+                        e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                       }}
                     />
                   </div>
@@ -366,7 +366,7 @@ export function AuthModal({
                       display: 'block',
                       fontSize: 13.5,
                       fontWeight: 500,
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       marginBottom: 6,
                     }}
                   >
@@ -380,12 +380,12 @@ export function AuthModal({
                       width: '100%',
                       height: 52,
                       borderRadius: 0,
-                      backgroundColor: '#F8FAFC',
+                      backgroundColor: 'var(--bg-subtle)',
                       border: '1px solid #E2E8F0',
                       padding: '0 16px',
                       fontSize: 14.5,
                       fontWeight: 400,
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       outline: 'none',
                       boxSizing: 'border-box',
                       cursor: 'pointer',
@@ -408,7 +408,7 @@ export function AuthModal({
                     display: 'block',
                     fontSize: 13.5,
                     fontWeight: 500,
-                    color: '#172033',
+                    color: 'var(--deep-navy)',
                     marginBottom: 6,
                   }}
                 >
@@ -428,12 +428,12 @@ export function AuthModal({
                       width: '100%',
                       height: 52,
                       borderRadius: 0,
-                      backgroundColor: '#F8FAFC',
+                      backgroundColor: 'var(--bg-subtle)',
                       border: '1px solid #E2E8F0',
                       padding: '0 16px',
                       fontSize: 14.5,
                       fontWeight: 400,
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       outline: 'none',
                       boxSizing: 'border-box',
                       transition: 'all 0.15s ease',
@@ -442,12 +442,12 @@ export function AuthModal({
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = 'var(--primary-red)';
                       e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--primary-red-rgb), 0.12)';
-                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.backgroundColor = 'var(--bg-card)';
                     }}
                     onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#E2E8F0';
+                      e.currentTarget.style.borderColor = 'var(--border-color)';
                       e.currentTarget.style.boxShadow = 'none';
-                      e.currentTarget.style.backgroundColor = '#F8FAFC';
+                      e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                     }}
                   />
                 </div>
@@ -460,7 +460,7 @@ export function AuthModal({
                     display: 'block',
                     fontSize: 13.5,
                     fontWeight: 500,
-                    color: '#172033',
+                    color: 'var(--deep-navy)',
                     marginBottom: 6,
                   }}
                 >
@@ -479,12 +479,12 @@ export function AuthModal({
                       width: '100%',
                       height: 52,
                       borderRadius: 0,
-                      backgroundColor: '#F8FAFC',
+                      backgroundColor: 'var(--bg-subtle)',
                       border: '1px solid #E2E8F0',
                       padding: '0 44px 0 16px',
                       fontSize: 14.5,
                       fontWeight: 400,
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       outline: 'none',
                       boxSizing: 'border-box',
                       transition: 'all 0.15s ease',
@@ -493,12 +493,12 @@ export function AuthModal({
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = 'var(--primary-red)';
                       e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--primary-red-rgb), 0.12)';
-                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.backgroundColor = 'var(--bg-card)';
                     }}
                     onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#E2E8F0';
+                      e.currentTarget.style.borderColor = 'var(--border-color)';
                       e.currentTarget.style.boxShadow = 'none';
-                      e.currentTarget.style.backgroundColor = '#F8FAFC';
+                      e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                     }}
                   />
                   <button
@@ -513,7 +513,7 @@ export function AuthModal({
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
-                      color: '#64748B',
+                      color: 'var(--text-muted)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -556,7 +556,7 @@ export function AuthModal({
                   height: 52,
                   borderRadius: 0,
                   backgroundColor: 'var(--primary-red)',
-                  color: '#FFFFFF',
+                  color: 'var(--bg-card)',
                   fontSize: 15,
                   fontWeight: 600,
                   border: 'none',
@@ -603,10 +603,10 @@ export function AuthModal({
                   top: '50%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  background: '#FFFFFF',
+                  background: 'var(--bg-card)',
                   padding: '0 12px',
                   fontSize: 12,
-                  color: '#64748B',
+                  color: 'var(--text-muted)',
                   fontWeight: 500,
                   textTransform: 'uppercase',
                   letterSpacing: '0.04em',
@@ -623,9 +623,9 @@ export function AuthModal({
                 width: '100%',
                 height: 52,
                 borderRadius: 0,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--bg-card)',
                 border: '1px solid #E2E8F0',
-                color: '#172033',
+                color: 'var(--deep-navy)',
                 fontSize: 14.5,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -656,19 +656,19 @@ export function AuthModal({
                 }
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#F8FAFC';
-                e.currentTarget.style.borderColor = '#CBD5E1';
+                e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#FFFFFF';
-                e.currentTarget.style.borderColor = '#E2E8F0';
+                e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
               }}
             >
               <Ico.Google />
               <span>Continue with Google</span>
             </button>
 
-            <div style={{ marginTop: 22, textAlign: 'center', fontSize: 14, color: '#64748B', fontWeight: 400 }}>
+            <div style={{ marginTop: 22, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>
               {mode === 'login' ? (
                 <>
                   Don't have an account?{' '}

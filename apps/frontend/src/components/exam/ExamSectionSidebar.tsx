@@ -104,7 +104,7 @@ export function ExamSectionSidebar({
           zIndex: 210,
           width: 300,
           background: 'linear-gradient(180deg, #111111 0%, #172033 100%)',
-          color: '#FFFFFF',
+          color: 'var(--bg-card)',
           boxShadow: '8px 0 32px rgba(15, 23, 42, 0.45)',
           display: 'flex',
           flexDirection: 'column',
@@ -132,7 +132,7 @@ export function ExamSectionSidebar({
                 height: 32,
                 borderRadius: 0,
                 backgroundColor: 'var(--primary-red)',
-                color: '#FFFFFF',
+                color: 'var(--bg-card)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -148,7 +148,7 @@ export function ExamSectionSidebar({
                   fontSize: 12,
                   fontWeight: 500,
                   textTransform: 'uppercase',
-                  color: '#FFFFFF',
+                  color: 'var(--bg-card)',
                   letterSpacing: '0.08em',
                   display: 'block',
                   fontFamily: "'IBM Plex Sans', sans-serif",
@@ -180,7 +180,7 @@ export function ExamSectionSidebar({
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.color = '#FFFFFF';
+                e.currentTarget.style.color = 'var(--bg-card)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'transparent';
@@ -234,7 +234,7 @@ export function ExamSectionSidebar({
                     border: 'none',
                     borderLeft: isSecActive ? '3px solid var(--primary-red)' : '3px solid transparent',
                     background: isSecActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-                    color: isSecActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
+                    color: isSecActive ? 'var(--bg-card)' : 'rgba(255, 255, 255, 0.65)',
                     cursor: 'pointer',
                     textAlign: 'left',
                     transition: 'all 0.15s ease',
@@ -243,7 +243,7 @@ export function ExamSectionSidebar({
                   onMouseEnter={(e) => {
                     if (!isSecActive) {
                       e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                      e.currentTarget.style.color = '#ffffff';
+                      e.currentTarget.style.color = 'var(--bg-card)';
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -347,10 +347,10 @@ export function ExamSectionSidebar({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 0, backgroundColor: '#94A3B8' }} />
-                <span style={{ color: '#CBD5E1', fontWeight: 600 }}>UNANSWERED</span>
+                <div style={{ width: 8, height: 8, borderRadius: 0, backgroundColor: 'var(--text-disabled)' }} />
+                <span style={{ color: 'var(--border-color)', fontWeight: 600 }}>UNANSWERED</span>
               </div>
-              <span style={{ color: '#94A3B8', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>
+              <span style={{ color: 'var(--text-disabled)', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>
                 {unattemptedCount}
               </span>
             </div>

@@ -84,7 +84,7 @@ const ERROR_CONTAINER_STYLE: React.CSSProperties = {
 const ERROR_MESSAGE_STYLE: React.CSSProperties = {
   fontSize: 14.5,
   fontWeight: 600,
-  color: '#ef4444',
+  color: 'var(--primary-red)',
   display: 'flex',
   alignItems: 'center',
   gap: 8,
@@ -99,7 +99,7 @@ const RETRY_BUTTON_STYLE: React.CSSProperties = {
   minHeight: 44,
   fontSize: 13.5,
   fontWeight: 700,
-  color: '#ffffff',
+  color: 'var(--bg-card)',
   backgroundColor: 'var(--primary-red)',
   border: 'none',
   borderRadius: 0,

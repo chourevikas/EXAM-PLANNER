@@ -80,7 +80,7 @@ export function SuperAdminSidebar({
         style={{
           width: isMobile ? 260 : (collapsed ? 68 : 240),
           minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          background: '#172033',
+          background: 'var(--deep-navy)',
           display: 'flex',
           flexDirection: 'column',
           height: 'calc(100dvh - 60px)',
@@ -124,7 +124,7 @@ export function SuperAdminSidebar({
                   borderRadius: 0,
                   transition: 'color 0.15s ease',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
                 title="Toggle Sidebar Menu"
                 aria-label="Toggle Sidebar Menu"
@@ -160,7 +160,7 @@ export function SuperAdminSidebar({
                 borderRadius: 0,
                 transition: 'color 0.15s ease',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
               onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
               title="Expand Sidebar Menu"
               aria-label="Expand Sidebar Menu"
@@ -217,7 +217,7 @@ export function SuperAdminSidebar({
                   background: isActive ? 'rgba(var(--primary-red-rgb), 0.15)' : 'transparent',
                   border: 'none',
                   borderLeft: isActive && (!collapsed || isMobile) ? '3px solid var(--primary-red)' : '3px solid transparent',
-                  color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
+                  color: isActive ? 'var(--bg-card)' : 'rgba(255, 255, 255, 0.65)',
                   cursor: 'pointer',
                   fontSize: 13.5,
                   fontWeight: isActive ? 600 : 400,
@@ -230,7 +230,7 @@ export function SuperAdminSidebar({
                 onMouseEnter={(e) => {
                   if (!isActive) {
                     e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                    e.currentTarget.style.color = '#ffffff';
+                    e.currentTarget.style.color = 'var(--bg-card)';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -253,7 +253,7 @@ export function SuperAdminSidebar({
                   <span
                     style={{
                       backgroundColor: 'var(--primary-red)',
-                      color: '#ffffff',
+                      color: 'var(--bg-card)',
                       fontSize: 10,
                       fontWeight: 700,
                       padding: (collapsed && !isMobile) ? '2px 4px' : '2px 7px',
