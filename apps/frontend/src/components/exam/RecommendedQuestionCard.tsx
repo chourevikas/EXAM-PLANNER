@@ -65,7 +65,7 @@ export function RecommendedQuestionCard({
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ flex: 1, paddingRight: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
-                  <Lightbulb size={16} color="var(--accent-primary)" />
+                  <Lightbulb size={16} color="var(--primary-red)" />
                   <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)' }}>Solution &amp; Explanation</span>
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.45, margin: 0 }}>
@@ -320,7 +320,7 @@ export function RecommendedQuestionCard({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: isSelected ? 'var(--accent-primary)' : '#FFF',
+                        backgroundColor: isSelected ? 'var(--primary-red)' : '#FFF',
                       }}
                     >
                       {isSelected && (

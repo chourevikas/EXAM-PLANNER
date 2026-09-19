@@ -141,7 +141,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               transition: 'all 0.18s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
+              e.currentTarget.style.backgroundColor = '#F8FAFC';
               e.currentTarget.style.color = 'var(--deep-navy)';
             }}
             onMouseLeave={(e) => {
@@ -214,7 +214,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--primary-red)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {scoreData.targetExam}
             </span>
-            <span style={{ color: '#93C5FD' }}>•</span>
+            <span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>•</span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#A4161A' }}>
               {isGuest ? 'Guest Test' : 'Practice Test'}
             </span>

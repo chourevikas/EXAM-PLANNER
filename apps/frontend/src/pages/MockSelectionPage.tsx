@@ -508,8 +508,8 @@ export function MockSelectionPage() {
                 }}
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
-                  border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'exam' ? 'var(--bg-card)' : '#FAFAFC',
+                  border: activeDropdown === 'exam' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
@@ -552,8 +552,8 @@ export function MockSelectionPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                    <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                    <button type="button" onClick={() => toggleExamFilter('All Exams')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleExamFilter('All Exams')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
                   <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -565,8 +565,8 @@ export function MockSelectionPage() {
                         borderRadius: 0,
                         fontSize: 12.5,
                         fontWeight: selectedExamsList.length === 0 ? 700 : 500,
-                        color: selectedExamsList.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                        backgroundColor: selectedExamsList.length === 0 ? 'var(--bg-hover)' : 'transparent',
+                        color: selectedExamsList.length === 0 ? 'var(--primary-red)' : '#334155',
+                        backgroundColor: selectedExamsList.length === 0 ? '#F1F5F9' : 'transparent',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -578,11 +578,11 @@ export function MockSelectionPage() {
                           type="checkbox"
                           checked={selectedExamsList.length === 0}
                           onChange={() => {}}
-                          style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
+                          style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }}
                         />
                         <span>All Exams</span>
                       </div>
-                      {selectedExamsList.length === 0 && <Check size={14} color="var(--accent-primary)" />}
+                      {selectedExamsList.length === 0 && <Check size={14} color="var(--primary-red)" />}
                     </div>
 
                     {/* Individual exam options */}
@@ -597,8 +597,8 @@ export function MockSelectionPage() {
                             borderRadius: 0,
                             fontSize: 12.5,
                             fontWeight: isSelected ? 700 : 500,
-                            color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
+                            color: isSelected ? 'var(--primary-red)' : '#334155',
+                            backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -610,11 +610,11 @@ export function MockSelectionPage() {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => {}}
-                              style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
+                              style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }}
                             />
                             <span>{opt}</span>
                           </div>
-                          {isSelected && <Check size={14} color="var(--accent-primary)" />}
+                          {isSelected && <Check size={14} color="var(--primary-red)" />}
                         </div>
                       );
                     })}
@@ -636,8 +636,8 @@ export function MockSelectionPage() {
                 }}
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
-                  border: activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'year' ? 'var(--bg-card)' : '#FAFAFC',
+                  border: activeDropdown === 'year' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
@@ -680,8 +680,8 @@ export function MockSelectionPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                    <button type="button" onClick={selectAllYears} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                    <button type="button" onClick={() => toggleYearFilter('All Years')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    <button type="button" onClick={selectAllYears} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleYearFilter('All Years')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
                   <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
@@ -715,8 +715,8 @@ export function MockSelectionPage() {
                           borderRadius: 0,
                           fontSize: 12.5,
                           fontWeight: selectedYearsList.length === 0 ? 700 : 500,
-                          color: selectedYearsList.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                          backgroundColor: selectedYearsList.length === 0 ? 'var(--bg-hover)' : 'transparent',
+                          color: selectedYearsList.length === 0 ? 'var(--primary-red)' : '#334155',
+                          backgroundColor: selectedYearsList.length === 0 ? '#F1F5F9' : 'transparent',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -728,11 +728,11 @@ export function MockSelectionPage() {
                             type="checkbox"
                             checked={selectedYearsList.length === 0}
                             onChange={() => {}}
-                            style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
+                            style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }}
                           />
                           <span>{yearOptions[0] || 'All Years'}</span>
                         </div>
-                        {selectedYearsList.length === 0 && <Check size={14} color="var(--accent-primary)" />}
+                        {selectedYearsList.length === 0 && <Check size={14} color="var(--primary-red)" />}
                       </div>
                     )}
 
@@ -750,8 +750,8 @@ export function MockSelectionPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
-                              color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                              backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
+                              color: isSelected ? 'var(--primary-red)' : '#334155',
+                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -763,11 +763,11 @@ export function MockSelectionPage() {
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => {}}
-                                style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
+                                style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }}
                               />
                               <span>{opt}</span>
                             </div>
-                            {isSelected && <Check size={14} color="var(--accent-primary)" />}
+                            {isSelected && <Check size={14} color="var(--primary-red)" />}
                           </div>
                         );
                       })}
@@ -789,8 +789,8 @@ export function MockSelectionPage() {
                 }}
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
-                  border: activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'subject' ? 'var(--bg-card)' : '#FAFAFC',
+                  border: activeDropdown === 'subject' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
@@ -833,8 +833,8 @@ export function MockSelectionPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                    <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                    <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
                   <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
@@ -872,8 +872,8 @@ export function MockSelectionPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
-                              color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                              backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
+                              color: isSelected ? 'var(--primary-red)' : '#334155',
+                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -881,10 +881,10 @@ export function MockSelectionPage() {
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
+                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }} />
                               <span>{formatEnum(opt)}</span>
                             </div>
-                            {isSelected && <Check size={14} color="var(--accent-primary)" />}
+                            {isSelected && <Check size={14} color="var(--primary-red)" />}
                           </div>
                         );
                       })}
@@ -906,8 +906,8 @@ export function MockSelectionPage() {
                 }}
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
-                  border: activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'topic' ? 'var(--bg-card)' : '#FAFAFC',
+                  border: activeDropdown === 'topic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
@@ -950,8 +950,8 @@ export function MockSelectionPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                    <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                    <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
                   <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
@@ -989,8 +989,8 @@ export function MockSelectionPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
-                              color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                              backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
+                              color: isSelected ? 'var(--primary-red)' : '#334155',
+                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -998,10 +998,10 @@ export function MockSelectionPage() {
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
+                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }} />
                               <span>{formatEnum(opt)}</span>
                             </div>
-                            {isSelected && <Check size={14} color="var(--accent-primary)" />}
+                            {isSelected && <Check size={14} color="var(--primary-red)" />}
                           </div>
                         );
                       })}
@@ -1023,8 +1023,8 @@ export function MockSelectionPage() {
                 }}
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
-                  border: activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'subtopic' ? 'var(--bg-card)' : '#FAFAFC',
+                  border: activeDropdown === 'subtopic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
@@ -1067,8 +1067,8 @@ export function MockSelectionPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                    <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
-                    <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
                   <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
@@ -1106,8 +1106,8 @@ export function MockSelectionPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
-                              color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                              backgroundColor: isSelected ? 'var(--bg-hover)' : 'transparent',
+                              color: isSelected ? 'var(--primary-red)' : '#334155',
+                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -1115,10 +1115,10 @@ export function MockSelectionPage() {
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
+                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }} />
                               <span>{formatEnum(opt)}</span>
                             </div>
-                            {isSelected && <Check size={14} color="var(--accent-primary)" />}
+                            {isSelected && <Check size={14} color="var(--primary-red)" />}
                           </div>
                         );
                       })}
@@ -1140,8 +1140,8 @@ export function MockSelectionPage() {
                 }}
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
-                  border: activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                  backgroundColor: activeDropdown === 'difficulty' ? 'var(--bg-card)' : '#FAFAFC',
+                  border: activeDropdown === 'difficulty' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
@@ -1193,8 +1193,8 @@ export function MockSelectionPage() {
                           borderRadius: 0,
                           fontSize: 12.5,
                           fontWeight: isSelected ? 700 : 500,
-                          color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                          backgroundColor: isSelected ? 'var(--bg-subtle)' : 'transparent',
+                          color: isSelected ? 'var(--primary-red)' : '#334155',
+                          backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -1202,7 +1202,7 @@ export function MockSelectionPage() {
                         }}
                       >
                         <span>{opt === 'All Levels' ? 'All Levels' : formatEnum(opt)}</span>
-                        {isSelected && <Check size={14} color="var(--accent-primary)" />}
+                        {isSelected && <Check size={14} color="var(--primary-red)" />}
                       </div>
                     );
                   })}

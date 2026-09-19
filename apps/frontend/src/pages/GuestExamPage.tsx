@@ -1746,7 +1746,7 @@ export function GuestExamPage() {
           >
             <AlertCircle size={28} />
           </div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', margin: '0 0 8px 0' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--deep-navy)', margin: '0 0 8px 0' }}>
             No Questions Available
           </h2>
           <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: '0 0 24px 0' }}>
@@ -1766,7 +1766,7 @@ export function GuestExamPage() {
               style={{
                 padding: '10px 18px',
                 borderRadius: 0,
-                backgroundColor: '#172033',
+                backgroundColor: 'var(--deep-navy)',
                 color: '#FFFFFF',
                 fontSize: 13.5,
                 fontWeight: 600,
@@ -1843,7 +1843,7 @@ export function GuestExamPage() {
         width: '100vw',
         overflow: isTabletOrBelow ? 'visible' : 'hidden',
         backgroundColor: '#F8FAF8',
-        color: '#172033',
+        color: 'var(--deep-navy)',
         fontFamily: "'Manrope', 'Inter', system-ui, sans-serif",
       }}
     >
@@ -1851,7 +1851,7 @@ export function GuestExamPage() {
       <header
         style={{
           height: 64,
-          background: 'linear-gradient(90deg, #0F1D38 0%, #14284C 35%, #1B3864 70%, #224578 100%)',
+          background: 'linear-gradient(90deg, var(--ink-black) 0%, var(--deep-navy) 100%)',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
@@ -1859,7 +1859,8 @@ export function GuestExamPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 24px',
+          gap: 8,
+          padding: isTabletOrBelow ? '0 12px' : '0 24px',
           zIndex: 30,
           flexShrink: 0,
         }}
@@ -1933,14 +1934,14 @@ export function GuestExamPage() {
                   Home
                 </span>
                 <ChevronRight size={12} style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
-                <span style={{ color: '#93C5FD', cursor: 'default' }}>Test</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.95)', cursor: 'default' }}>Test</span>
               </div>
             </div>
           )}
         </div>
 
         {/* Right: Full Screen toggle + End & View Feedback action button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isTabletOrBelow ? 6 : 12, minWidth: 0 }}>
           {isTabletOrBelow && !isFocusMode && (
             <button
               type="button"
@@ -1997,7 +1998,7 @@ export function GuestExamPage() {
             </button>
           )}
           {/* Language Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
             <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)' }} />
             <select
               value={language}
@@ -2012,6 +2013,7 @@ export function GuestExamPage() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 outline: 'none',
+                maxWidth: isTabletOrBelow ? 96 : undefined,
               }}
             >
               {SUPPORTED_LANGUAGES.map((lang) => (
@@ -2052,7 +2054,7 @@ export function GuestExamPage() {
             type="button"
             onClick={() => handleFinishGuestExam()}
             style={{
-              padding: '7px 18px',
+              padding: isTabletOrBelow ? '7px 12px' : '7px 18px',
               borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
@@ -2119,7 +2121,7 @@ export function GuestExamPage() {
                     height: 32,
                     borderRadius: 0,
                     backgroundColor: isFilterRefreshing ? '#EFF6FF' : '#F8FAFC',
-                    color: '#1E3A8A',
+                    color: 'var(--primary-red)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -2177,9 +2179,9 @@ export function GuestExamPage() {
                       width: '100%',
                       padding: '8px 14px',
                       borderRadius: 0,
-                      border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      border: activeDropdown === 'exam' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -2228,7 +2230,7 @@ export function GuestExamPage() {
                     >
                       {/* Action Bar */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                        <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
                         <button type="button" onClick={() => toggleExamFilter('All Exams')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
@@ -2253,7 +2255,7 @@ export function GuestExamPage() {
                                   borderRadius: 4,
                                   fontSize: 12,
                                   fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  color: isSelected ? 'var(--primary-red)' : '#334155',
                                   backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -2272,13 +2274,13 @@ export function GuestExamPage() {
                                   style={{
                                     width: 14,
                                     height: 14,
-                                    border: isSelected ? '1px solid #1E3A8A' : '1px solid #CBD5E1',
+                                    border: isSelected ? '1px solid var(--primary-red)' : '1px solid #CBD5E1',
                                     borderRadius: 3,
                                     marginRight: 8,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    backgroundColor: isSelected ? '#1E3A8A' : '#FFFFFF',
+                                    backgroundColor: isSelected ? 'var(--primary-red)' : '#FFFFFF',
                                     flexShrink: 0,
                                   }}
                                 >
@@ -2321,9 +2323,9 @@ export function GuestExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border:
-                        activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                        activeDropdown === 'year' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -2385,7 +2387,7 @@ export function GuestExamPage() {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#1E3A8A',
+                            color: 'var(--primary-red)',
                             fontSize: 11,
                             fontWeight: 700,
                             cursor: 'pointer',
@@ -2454,7 +2456,7 @@ export function GuestExamPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: selectedYearsList.length === 0 ? 700 : 500,
-                              color: selectedYearsList.length === 0 ? '#1E3A8A' : '#334155',
+                              color: selectedYearsList.length === 0 ? 'var(--primary-red)' : '#334155',
                               backgroundColor:
                                 selectedYearsList.length === 0 ? '#F1F5F9' : 'transparent',
                               display: 'flex',
@@ -2468,12 +2470,12 @@ export function GuestExamPage() {
                                 type="checkbox"
                                 checked={selectedYearsList.length === 0}
                                 onChange={() => {}}
-                                style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                                style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }}
                               />
                               <span>{yearOptions[0] || 'All Years'}</span>
                             </div>
                             {selectedYearsList.length === 0 && (
-                              <Check size={14} color="#1E3A8A" />
+                              <Check size={14} color="var(--primary-red)" />
                             )}
                           </div>
                         )}
@@ -2496,7 +2498,7 @@ export function GuestExamPage() {
                                   borderRadius: 0,
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  color: isSelected ? 'var(--primary-red)' : '#334155',
                                   backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -2509,11 +2511,11 @@ export function GuestExamPage() {
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={() => {}}
-                                    style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                                    style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }}
                                   />
                                   <span>{shortenExamName(opt)}</span>
                                 </div>
-                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                                {isSelected && <Check size={14} color="var(--primary-red)" />}
                               </div>
                             );
                           })}
@@ -2548,9 +2550,9 @@ export function GuestExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border:
-                        activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                        activeDropdown === 'subject' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -2600,7 +2602,7 @@ export function GuestExamPage() {
                     >
                       {/* Action Bar */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                        <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
                         <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
@@ -2652,7 +2654,7 @@ export function GuestExamPage() {
                                   borderRadius: 0,
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  color: isSelected ? 'var(--primary-red)' : '#334155',
                                   backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -2661,10 +2663,10 @@ export function GuestExamPage() {
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }} />
                                   <span>{shortenExamName(opt)}</span>
                                 </div>
-                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                                {isSelected && <Check size={14} color="var(--primary-red)" />}
                               </div>
                             );
                           })}
@@ -2699,9 +2701,9 @@ export function GuestExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border:
-                        activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                        activeDropdown === 'topic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -2751,7 +2753,7 @@ export function GuestExamPage() {
                     >
                       {/* Action Bar */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                        <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
                         <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
@@ -2802,7 +2804,7 @@ export function GuestExamPage() {
                                   borderRadius: 0,
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  color: isSelected ? 'var(--primary-red)' : '#334155',
                                   backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -2811,10 +2813,10 @@ export function GuestExamPage() {
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }} />
                                   <span>{shortenExamName(opt)}</span>
                                 </div>
-                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                                {isSelected && <Check size={14} color="var(--primary-red)" />}
                               </div>
                             );
                           })}
@@ -2849,9 +2851,9 @@ export function GuestExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border:
-                        activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                        activeDropdown === 'subtopic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -2901,7 +2903,7 @@ export function GuestExamPage() {
                     >
                       {/* Action Bar */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                        <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
                         <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
@@ -2952,7 +2954,7 @@ export function GuestExamPage() {
                                   borderRadius: 0,
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  color: isSelected ? 'var(--primary-red)' : '#334155',
                                   backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -2961,10 +2963,10 @@ export function GuestExamPage() {
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }} />
                                   <span>{shortenExamName(opt)}</span>
                                 </div>
-                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                                {isSelected && <Check size={14} color="var(--primary-red)" />}
                               </div>
                             );
                           })}
@@ -2999,9 +3001,9 @@ export function GuestExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border:
-                        activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                        activeDropdown === 'difficulty' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
+                      color: 'var(--deep-navy)',
                       fontSize: 13,
                       fontWeight: 600,
                       display: 'flex',
@@ -3066,7 +3068,7 @@ export function GuestExamPage() {
                               borderRadius: 0,
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
-                              color: isSelected ? '#1E3A8A' : '#334155',
+                              color: isSelected ? 'var(--primary-red)' : '#334155',
                               backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
@@ -3082,7 +3084,7 @@ export function GuestExamPage() {
                             }}
                           >
                             <span>{shortenExamName(opt)}</span>
-                            {isSelected && <Check size={14} color="#1E3A8A" />}
+                            {isSelected && <Check size={14} color="var(--primary-red)" />}
                           </div>
                         );
                       })}
@@ -3133,12 +3135,12 @@ export function GuestExamPage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <SlidersHorizontal size={16} color="#1E3A8A" />
+                <SlidersHorizontal size={16} color="var(--primary-red)" />
                 <span
                   style={{
                     fontSize: 13,
                     fontWeight: 800,
-                    color: '#1E3A8A',
+                    color: 'var(--primary-red)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                   }}
@@ -3192,9 +3194,9 @@ export function GuestExamPage() {
                     width: '100%',
                     padding: '8px 14px',
                     borderRadius: 0,
-                    border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                    border: activeDropdown === 'exam' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -3243,7 +3245,7 @@ export function GuestExamPage() {
                     >
                       {/* Action Bar */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                        <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={selectAllExams} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
                         <button type="button" onClick={() => toggleExamFilter('All Exams')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
@@ -3268,7 +3270,7 @@ export function GuestExamPage() {
                                   borderRadius: 4,
                                   fontSize: 12,
                                   fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  color: isSelected ? 'var(--primary-red)' : '#334155',
                                   backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -3287,13 +3289,13 @@ export function GuestExamPage() {
                                   style={{
                                     width: 14,
                                     height: 14,
-                                    border: isSelected ? '1px solid #1E3A8A' : '1px solid #CBD5E1',
+                                    border: isSelected ? '1px solid var(--primary-red)' : '1px solid #CBD5E1',
                                     borderRadius: 3,
                                     marginRight: 8,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    backgroundColor: isSelected ? '#1E3A8A' : '#FFFFFF',
+                                    backgroundColor: isSelected ? 'var(--primary-red)' : '#FFFFFF',
                                     flexShrink: 0,
                                   }}
                                 >
@@ -3336,9 +3338,9 @@ export function GuestExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border:
-                      activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      activeDropdown === 'year' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -3400,7 +3402,7 @@ export function GuestExamPage() {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#1E3A8A',
+                          color: 'var(--primary-red)',
                           fontSize: 11,
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -3469,7 +3471,7 @@ export function GuestExamPage() {
                             borderRadius: 0,
                             fontSize: 12.5,
                             fontWeight: selectedYearsList.length === 0 ? 700 : 500,
-                            color: selectedYearsList.length === 0 ? '#1E3A8A' : '#334155',
+                            color: selectedYearsList.length === 0 ? 'var(--primary-red)' : '#334155',
                             backgroundColor:
                               selectedYearsList.length === 0 ? '#F1F5F9' : 'transparent',
                             display: 'flex',
@@ -3483,12 +3485,12 @@ export function GuestExamPage() {
                               type="checkbox"
                               checked={selectedYearsList.length === 0}
                               onChange={() => {}}
-                              style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                              style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }}
                             />
                             <span>{yearOptions[0] || 'All Years'}</span>
                           </div>
                           {selectedYearsList.length === 0 && (
-                            <Check size={14} color="#1E3A8A" />
+                            <Check size={14} color="var(--primary-red)" />
                           )}
                         </div>
                       )}
@@ -3511,7 +3513,7 @@ export function GuestExamPage() {
                                 borderRadius: 0,
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
-                                color: isSelected ? '#1E3A8A' : '#334155',
+                                color: isSelected ? 'var(--primary-red)' : '#334155',
                                 backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -3524,11 +3526,11 @@ export function GuestExamPage() {
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => {}}
-                                  style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
+                                  style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }}
                                 />
                                 <span>{shortenExamName(opt)}</span>
                               </div>
-                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                              {isSelected && <Check size={14} color="var(--primary-red)" />}
                             </div>
                           );
                         })}
@@ -3563,9 +3565,9 @@ export function GuestExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border:
-                      activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      activeDropdown === 'subject' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -3615,7 +3617,7 @@ export function GuestExamPage() {
                   >
                     {/* Action Bar */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                      <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                      <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
                       <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
@@ -3666,7 +3668,7 @@ export function GuestExamPage() {
                                 borderRadius: 0,
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
-                                color: isSelected ? '#1E3A8A' : '#334155',
+                                color: isSelected ? 'var(--primary-red)' : '#334155',
                                 backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -3675,10 +3677,10 @@ export function GuestExamPage() {
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }} />
                                 <span>{shortenExamName(opt)}</span>
                               </div>
-                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                              {isSelected && <Check size={14} color="var(--primary-red)" />}
                             </div>
                           );
                         })}
@@ -3713,9 +3715,9 @@ export function GuestExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border:
-                      activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      activeDropdown === 'topic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -3765,7 +3767,7 @@ export function GuestExamPage() {
                   >
                     {/* Action Bar */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                      <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                      <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
                       <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
@@ -3816,7 +3818,7 @@ export function GuestExamPage() {
                                 borderRadius: 0,
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
-                                color: isSelected ? '#1E3A8A' : '#334155',
+                                color: isSelected ? 'var(--primary-red)' : '#334155',
                                 backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -3825,10 +3827,10 @@ export function GuestExamPage() {
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }} />
                                 <span>{shortenExamName(opt)}</span>
                               </div>
-                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                              {isSelected && <Check size={14} color="var(--primary-red)" />}
                             </div>
                           );
                         })}
@@ -3863,9 +3865,9 @@ export function GuestExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border:
-                      activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      activeDropdown === 'subtopic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -3915,7 +3917,7 @@ export function GuestExamPage() {
                   >
                     {/* Action Bar */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
-                      <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                      <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
                       <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
@@ -3966,7 +3968,7 @@ export function GuestExamPage() {
                                 borderRadius: 0,
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
-                                color: isSelected ? '#1E3A8A' : '#334155',
+                                color: isSelected ? 'var(--primary-red)' : '#334155',
                                 backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -3975,10 +3977,10 @@ export function GuestExamPage() {
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: 'var(--primary-red)' }} />
                                 <span>{shortenExamName(opt)}</span>
                               </div>
-                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                              {isSelected && <Check size={14} color="var(--primary-red)" />}
                             </div>
                           );
                         })}
@@ -4013,9 +4015,9 @@ export function GuestExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border:
-                      activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      activeDropdown === 'difficulty' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
+                    color: 'var(--deep-navy)',
                     fontSize: 13,
                     fontWeight: 600,
                     display: 'flex',
@@ -4077,7 +4079,7 @@ export function GuestExamPage() {
                             borderRadius: 0,
                             fontSize: 12.5,
                             fontWeight: isSelected ? 700 : 500,
-                            color: isSelected ? '#1E3A8A' : '#334155',
+                            color: isSelected ? 'var(--primary-red)' : '#334155',
                             backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
@@ -4093,7 +4095,7 @@ export function GuestExamPage() {
                           }}
                         >
                           <span>{shortenExamName(opt)}</span>
-                          {isSelected && <Check size={14} color="#1E3A8A" />}
+                          {isSelected && <Check size={14} color="var(--primary-red)" />}
                         </div>
                       );
                     })}
@@ -4130,12 +4132,12 @@ export function GuestExamPage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Lightbulb size={16} color="#1E3A8A" />
+                <Lightbulb size={16} color="var(--primary-red)" />
                 <span
                   style={{
                     fontSize: 13,
                     fontWeight: 800,
-                    color: '#1E3A8A',
+                    color: 'var(--primary-red)',
                     textTransform: 'uppercase',
                   }}
                 >
@@ -4278,7 +4280,7 @@ export function GuestExamPage() {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 990,
-            backgroundColor: '#172033',
+            backgroundColor: 'var(--deep-navy)',
             color: '#FFFFFF',
             borderRadius: 0,
             padding: '10px 20px',
@@ -4405,7 +4407,7 @@ export function GuestExamPage() {
               <span style={{ fontSize: 22, fontWeight: 800 }}>!</span>
             </div>
 
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: '0 0 8px 0' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--deep-navy)', margin: '0 0 8px 0' }}>
               Leave Practice Session?
             </h3>
 
@@ -4510,14 +4512,14 @@ export function GuestExamPage() {
                 borderRadius: 0,
                 backgroundColor: '#F8FAFC',
                 border: '1px solid #BFDBFE',
-                color: '#1E3A8A',
+                color: 'var(--primary-red)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 16px auto',
               }}
             >
-              <Lightbulb size={26} color="#1E3A8A" />
+              <Lightbulb size={26} color="var(--primary-red)" />
             </div>
 
             <div
@@ -4541,7 +4543,7 @@ export function GuestExamPage() {
               style={{
                 fontSize: 20,
                 fontWeight: 800,
-                color: '#172033',
+                color: 'var(--deep-navy)',
                 margin: '0 0 10px 0',
                 lineHeight: 1.3,
               }}
@@ -4567,7 +4569,7 @@ export function GuestExamPage() {
                   height: 46,
                   borderRadius: 0,
                   border: 'none',
-                  backgroundColor: '#1E3A8A',
+                  backgroundColor: 'var(--primary-red)',
                   color: '#FFFFFF',
                   fontSize: 14,
                   fontWeight: 700,
@@ -4583,7 +4585,7 @@ export function GuestExamPage() {
                   e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1E3A8A';
+                  e.currentTarget.style.backgroundColor = 'var(--primary-red)';
                 }}
               >
                 <GraduationCap size={18} color="#FFFFFF" />

@@ -71,7 +71,7 @@ export function ExamSubmitModal({
           width: '100%',
           maxWidth: 440,
           padding: 28,
-          color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
+          color: isDark ? '#ffffff' : 'var(--deep-navy)',
           textAlign: 'center'
         }}
       >
@@ -151,9 +151,9 @@ export function ExamSubmitModal({
               flex: 1,
               padding: 12,
               borderRadius: 0,
-              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : 'var(--border-color)'}`,
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'var(--bg-subtle)',
-              color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)',
+              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'}`,
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#f8fafc',
+              color: isDark ? '#ffffff' : 'var(--deep-navy)',
               fontSize: 14,
               fontWeight: 600,
               cursor: isSubmitting ? 'not-allowed' : 'pointer',

@@ -13,7 +13,6 @@ const QuestionReviewView = lazy(() => import('../components/admin/views/Question
 const MockTestsView = lazy(() => import('../components/admin/views/MockTestsView').then(m => ({ default: m.MockTestsView })));
 const UsersView = lazy(() => import('../components/admin/views/UsersView').then(m => ({ default: m.UsersView })));
 const AnalyticsView = lazy(() => import('../components/admin/views/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
-const ExamPipelineStatusView = lazy(() => import('../components/admin/views/ExamPipelineStatusView').then(m => ({ default: m.ExamPipelineStatusView })));
 const TeacherRewardsView = lazy(() => import('../components/admin/views/TeacherRewardsView').then(m => ({ default: m.TeacherRewardsView })));
 const CurrentAffairsManager = lazy(() => import('../components/admin/views/CurrentAffairsManager').then(m => ({ default: m.CurrentAffairsManager })));
 const ExamTypesManager = lazy(() => import('../components/admin/views/ExamTypesManager').then(m => ({ default: m.ExamTypesManager })));
@@ -84,8 +83,6 @@ export function AdminPage() {
     switch (activeView) {
       case 'dashboard':
         return <AdminOverviewView onNavigate={handleNavigate} />;
-      case 'pipeline-status':
-        return <ExamPipelineStatusView onNavigate={handleNavigate} />;
       case 'ai-queue':
         return <UploadReviewView initialTab="PIPELINE_ONLY" onNavigate={handleNavigate} />;
       case 'upload':

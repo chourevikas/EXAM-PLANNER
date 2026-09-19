@@ -26,7 +26,8 @@ import {
   ExternalLink,
   Copy,
   Filter,
-  Calendar,
+  ChevronUp,
+  ChevronDown,
   Layers,
   BarChart3,
   RefreshCw,
@@ -147,8 +148,29 @@ function ExploreButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) 
   );
 }
 
+const filterLabelStyle: React.CSSProperties = {
+  fontSize: 11.5,
+  fontWeight: 700,
+  color: '#475569',
+  display: 'block',
+  marginBottom: 4,
+  letterSpacing: '0.02em',
+};
+
+const filterSelectStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '8px 10px',
+  borderRadius: 0,
+  border: '1px solid #CBD5E1',
+  fontSize: 13,
+  color: '#172033',
+  backgroundColor: '#FAFAFA',
+  outline: 'none',
+  boxSizing: 'border-box',
+};
+
 export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
-  const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const { isMobile, isSmallScreen, isTabletOrBelow } = useBreakpoint();
 
   // Navigation State: null = Directory View, SubjectItem = Selected Subject
   const [selectedSubject, setSelectedSubject] = useState<SubjectItem | null>(null);
@@ -171,8 +193,10 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [toastMsg, setToastMsg] = useState<string>('');
 
-  // Mobile / Tablet Tab State: 'list' | 'preview'
-  const [mobileExploreTab, setMobileExploreTab] = useState<'list' | 'preview'>('list');
+  // Tablet / mobile: whether the questions list panel is expanded
+  const [listOpen, setListOpen] = useState<boolean>(true);
+  // Tablet / mobile: whether the filter bar is expanded
+  const [filtersOpen, setFiltersOpen] = useState<boolean>(true);
 
   // Question Filters inside Explore Workspace
   const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
@@ -244,7 +268,8 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
       setSelectedDifficulty('ALL');
       setQuestionSearchQuery('');
       setSelectedQuestionIndex(0);
-      setMobileExploreTab('list');
+      setListOpen(true);
+      setFiltersOpen(true);
     }
   }, [selectedSubject]);
 
@@ -387,6 +412,14 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
   }, [questions, debouncedQuestionQuery, selectedTopic, selectedSubtopic, selectedYear, selectedDifficulty]);
 
   const selectedQuestion = filteredQuestions[selectedQuestionIndex] || filteredQuestions[0] || null;
+
+  const subtopicDisabled = selectedTopic === 'ALL' && topicCounts.length > 1;
+  const hasActiveFilters =
+    selectedTopic !== 'ALL' ||
+    selectedSubtopic !== 'ALL' ||
+    selectedYear !== 'ALL' ||
+    selectedDifficulty !== 'ALL' ||
+    questionSearchQuery !== '';
 
   // Copy Question ID / Text Handler
   const handleCopyQuestionId = (id: string) => {
@@ -746,17 +779,20 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: isMobile ? 'flex-start' : 'center',
-                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isSmallScreen ? 'stretch' : 'center',
+                flexDirection: isSmallScreen ? 'column' : 'row',
+                flexWrap: 'wrap',
                 gap: 12,
               }}
             >
               <div
                 style={{
                   display: 'flex',
-                  alignItems: isMobile ? 'flex-start' : 'center',
-                  flexDirection: isMobile ? 'column' : 'row',
-                  gap: isMobile ? 8 : 14,
+                  alignItems: isSmallScreen ? 'flex-start' : 'center',
+                  flexDirection: isSmallScreen ? 'column' : 'row',
+                  gap: isSmallScreen ? 10 : 14,
+                  minWidth: 0,
+                  flex: isSmallScreen ? '0 0 auto' : '1 1 320px',
                 }}
               >
                 <button
@@ -781,11 +817,12 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   <span>Back to Question Bank</span>
                 </button>
 
-                <div>
+                <div style={{ minWidth: 0, width: isSmallScreen ? '100%' : undefined }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <h1
                       style={{
-                        fontSize: isMobile ? 18 : 22,
+                        fontSize: isSmallScreen ? 18 : 22,
+                        overflowWrap: 'anywhere',
                         fontWeight: 700,
                         color: 'var(--deep-navy)',
                         margin: 0,
@@ -820,14 +857,14 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  width: isMobile ? '100%' : 'auto',
+                  width: isSmallScreen ? '100%' : 'auto',
                   flexWrap: 'wrap',
                 }}
               >
                 {/* Difficulty Distribution Pill */}
                 <div
                   style={{
-                    flex: isMobile ? 1 : 'none',
+                    flex: isSmallScreen ? 1 : 'none',
                     padding: '6px 10px',
                     backgroundColor: 'var(--bg-subtle)',
                     border: '1px solid #E2E8F0',
@@ -850,7 +887,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 {/* Subtopic Coverage Pill */}
                 <div
                   style={{
-                    flex: isMobile ? 1 : 'none',
+                    flex: isSmallScreen ? 1 : 'none',
                     padding: '6px 10px',
                     backgroundColor: 'var(--bg-subtle)',
                     border: '1px solid #E2E8F0',
@@ -870,308 +907,272 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
               </div>
             </div>
 
-            {/* Exam Year Breakdown Ribbon */}
-            {yearCounts.length > 0 && (
-              <div
-                style={{
-                  marginTop: 12,
-                  paddingTop: 12,
-                  borderTop: '1px solid #F1F5F9',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  overflowX: 'auto',
-                  WebkitOverflowScrolling: 'touch',
-                  paddingBottom: 2,
-                }}
-              >
-                <span
+          </div>
+
+          {/* Filters toggle (tablet & mobile) */}
+          {isTabletOrBelow && (
+            <button
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                padding: '11px 14px',
+                marginBottom: filtersOpen ? 0 : 14,
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderBottom: filtersOpen ? '1px solid #F1F5F9' : '1px solid #E2E8F0',
+                borderRadius: 0,
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 700,
+                color: '#172033',
+              }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Filter size={15} color="var(--primary-red)" />
+                Filters
+                {hasActiveFilters && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 7px', backgroundColor: 'var(--primary-red)', color: '#FFFFFF' }}>
+                    Active
+                  </span>
+                )}
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#64748B' }}>
+                {filtersOpen ? 'Hide' : 'Show'}
+                {filtersOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+              </span>
+            </button>
+          )}
+
+          {/* Filter Bar (top) */}
+          {(!isTabletOrBelow || filtersOpen) && (
+          <div
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderTop: isTabletOrBelow ? 'none' : '1px solid #E2E8F0',
+              borderRadius: 0,
+              padding: isMobile ? 12 : 16,
+              marginBottom: 14,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(190px, 1fr))',
+                gap: 12,
+                alignItems: 'end',
+              }}
+            >
+              {/* Topic */}
+              <div>
+                <label style={filterLabelStyle}>TOPIC ({topicCounts.length})</label>
+                <select
+                  value={selectedTopic}
+                  onChange={(e) => {
+                    setSelectedTopic(e.target.value);
+                    setSelectedSubtopic('ALL'); // subtopics belong to a topic
+                    setSelectedQuestionIndex(0);
+                  }}
+                  style={filterSelectStyle}
+                >
+                  <option value="ALL">All Topics ({questions.length})</option>
+                  {topicCounts.map((t) => (
+                    <option key={t.name} value={t.name}>
+                      {t.name} ({t.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Subtopic (only lists subtopics of the selected topic) */}
+              <div>
+                <label style={filterLabelStyle}>
+                  SUBTOPIC{selectedTopic !== 'ALL' ? ` (${subtopicCounts.length})` : ''}
+                </label>
+                <select
+                  value={selectedSubtopic}
+                  onChange={(e) => {
+                    setSelectedSubtopic(e.target.value);
+                    setSelectedQuestionIndex(0);
+                  }}
+                  disabled={subtopicDisabled}
                   style={{
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    color: 'var(--text-muted)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    flexShrink: 0,
+                    ...filterSelectStyle,
+                    color: subtopicDisabled ? '#94A3B8' : '#172033',
+                    backgroundColor: subtopicDisabled ? '#F1F5F9' : '#FAFAFA',
+                    cursor: subtopicDisabled ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  <Calendar size={12} /> Paper Sets:
-                </span>
-                {yearCounts.map((yc) => (
-                  <span
-                    key={yc.year}
-                    onClick={() => setSelectedYear(selectedYear === yc.year.toString() ? 'ALL' : yc.year.toString())}
-                    style={{
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      padding: '2px 8px',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      border: selectedYear === yc.year.toString() ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
-                      backgroundColor: selectedYear === yc.year.toString() ? 'var(--primary-red)' : 'var(--bg-subtle)',
-                      color: selectedYear === yc.year.toString() ? 'var(--bg-card)' : 'var(--text-secondary)',
-                      transition: 'all 150ms ease-out',
+                  <option value="ALL">
+                    {subtopicDisabled
+                      ? 'Select a topic first'
+                      : `All Subtopics (${subtopicCounts.reduce((sum, x) => sum + x.count, 0)})`}
+                  </option>
+                  {!subtopicDisabled && subtopicCounts.map((st) => (
+                    <option key={st.name} value={st.name}>
+                      {st.name} ({st.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Year */}
+              <div>
+                <label style={filterLabelStyle}>YEAR ({yearCounts.length})</label>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => {
+                    setSelectedYear(e.target.value);
+                    setSelectedQuestionIndex(0);
+                  }}
+                  style={filterSelectStyle}
+                >
+                  <option value="ALL">All Years ({questions.length})</option>
+                  {yearCounts.map((yc) => (
+                    <option key={yc.year} value={yc.year.toString()}>
+                      {yc.year} ({yc.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Difficulty */}
+              <div>
+                <label style={filterLabelStyle}>DIFFICULTY</label>
+                <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 0 }}>
+                  {(['ALL', 'EASY', 'MEDIUM', 'HARD'] as const).map((lvl) => (
+                    <button
+                      key={lvl}
+                      onClick={() => {
+                        setSelectedDifficulty(lvl);
+                        setSelectedQuestionIndex(0);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '6px 4px',
+                        fontSize: 11,
+                        fontWeight: selectedDifficulty === lvl ? 700 : 500,
+                        border: 'none',
+                        borderRadius: 0,
+                        background: selectedDifficulty === lvl ? '#FFFFFF' : 'transparent',
+                        color: selectedDifficulty === lvl ? '#172033' : '#64748B',
+                        cursor: 'pointer',
+                        boxShadow: selectedDifficulty === lvl ? '0 1px 2px rgba(15, 23, 42, 0.08)' : 'none',
+                      }}
+                    >
+                      {lvl === 'ALL' ? 'All' : lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Search */}
+              <div>
+                <label style={filterLabelStyle}>SEARCH</label>
+                <div style={{ position: 'relative' }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: '#64748B' }} />
+                  <input
+                    type="text"
+                    placeholder="Question text or keywords..."
+                    value={questionSearchQuery}
+                    onChange={(e) => {
+                      setQuestionSearchQuery(e.target.value);
+                      setSelectedQuestionIndex(0);
                     }}
-                  >
-                    {yc.year} ({yc.count})
-                  </span>
-                ))}
-                {selectedYear !== 'ALL' && (
-                  <button
-                    onClick={() => setSelectedYear('ALL')}
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--primary-red)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      flexShrink: 0,
-                    }}
-                  >
-                    Clear
-                  </button>
-                )}
+                    style={{ ...filterSelectStyle, padding: '8px 8px 8px 30px', backgroundColor: '#FFFFFF' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {hasActiveFilters && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                <button
+                  onClick={() => {
+                    setSelectedTopic('ALL');
+                    setSelectedSubtopic('ALL');
+                    setSelectedYear('ALL');
+                    setSelectedDifficulty('ALL');
+                    setQuestionSearchQuery('');
+                    setSelectedQuestionIndex(0);
+                  }}
+                  style={{ fontSize: 12, fontWeight: 600, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  Reset filters
+                </button>
               </div>
             )}
           </div>
+          )}
 
-          {/* Responsive View Switcher for Tablet & Mobile screens */}
+          {/* Questions list toggle (tablet & mobile) */}
           {isTabletOrBelow && (
-            <div
+            <button
+              onClick={() => setListOpen((v) => !v)}
+              aria-expanded={listOpen}
               style={{
+                width: '100%',
                 display: 'flex',
-                gap: 4,
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                padding: '11px 14px',
                 marginBottom: 14,
-                backgroundColor: 'var(--border-color)',
-                padding: 4,
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
                 borderRadius: 0,
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 700,
+                color: '#172033',
               }}
             >
-              <button
-                onClick={() => setMobileExploreTab('list')}
-                style={{
-                  flex: 1,
-                  padding: '9px 12px',
-                  fontSize: 12.5,
-                  fontWeight: mobileExploreTab === 'list' ? 700 : 500,
-                  backgroundColor: mobileExploreTab === 'list' ? 'var(--bg-card)' : 'transparent',
-                  color: mobileExploreTab === 'list' ? 'var(--deep-navy)' : 'var(--text-muted)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  boxShadow: mobileExploreTab === 'list' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none',
-                  transition: 'all 150ms ease-out',
-                }}
-              >
-                <Layers size={14} color={mobileExploreTab === 'list' ? 'var(--primary-red)' : 'var(--text-muted)'} />
-                <span>Questions List ({filteredQuestions.length})</span>
-              </button>
-              <button
-                onClick={() => setMobileExploreTab('preview')}
-                style={{
-                  flex: 1,
-                  padding: '9px 12px',
-                  fontSize: 12.5,
-                  fontWeight: mobileExploreTab === 'preview' ? 700 : 500,
-                  backgroundColor: mobileExploreTab === 'preview' ? 'var(--bg-card)' : 'transparent',
-                  color: mobileExploreTab === 'preview' ? 'var(--deep-navy)' : 'var(--text-muted)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  boxShadow: mobileExploreTab === 'preview' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none',
-                  transition: 'all 150ms ease-out',
-                }}
-              >
-                <BookOpen size={14} color={mobileExploreTab === 'preview' ? 'var(--primary-red)' : 'var(--text-muted)'} />
-                <span>
-                  Question Preview {selectedQuestion ? `(Q${selectedQuestion.question_number_in_paper})` : ''}
-                </span>
-              </button>
-            </div>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Layers size={15} color="var(--primary-red)" />
+                Questions List ({filteredQuestions.length})
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#64748B' }}>
+                {listOpen ? 'Hide' : 'Show'}
+                {listOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+              </span>
+            </button>
           )}
 
           {/* Split-Pane Exploration Container */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: isTabletOrBelow ? '1fr' : '340px 1fr',
+              gridTemplateColumns: isTabletOrBelow ? 'minmax(0, 1fr)' : '300px minmax(0, 1fr)',
               gap: 20,
-              minHeight: 680,
+              alignItems: 'start',
             }}
           >
-            {/* LEFT PANEL: SUBTOPICS FILTER & QUESTION BROWSER */}
-            {(!isTabletOrBelow || mobileExploreTab === 'list') && (
+            {/* LEFT PANEL: QUESTION LIST */}
+            {(!isTabletOrBelow || listOpen) && (
               <div
                 style={{
                   background: 'var(--bg-card)',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
-                  padding: isMobile ? 12 : 16,
+                  padding: isMobile ? 12 : 14,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 12,
+                  gap: 10,
                   boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
                 }}
               >
-                {/* Topic Filter Dropdown (Tier 1) */}
-                <div>
-                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
-                    FILTER BY TOPIC ({topicCounts.length})
-                  </label>
-                  <select
-                    value={selectedTopic}
-                    onChange={(e) => {
-                      setSelectedTopic(e.target.value);
-                      setSelectedSubtopic('ALL'); // Reset subtopic when topic changes
-                      setSelectedQuestionIndex(0);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: 0,
-                      border: '1px solid #CBD5E1',
-                      fontSize: 13,
-                      color: 'var(--deep-navy)',
-                      backgroundColor: 'var(--bg-subtle)',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    <option value="ALL">All Topics ({questions.length})</option>
-                    {topicCounts.map((t) => (
-                      <option key={t.name} value={t.name}>
-                        {t.name} ({t.count})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Subtopic Filter Dropdown (Tier 2 — depends on selected Topic) */}
-                <div>
-                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
-                    FILTER BY SUBTOPIC
-                    {selectedTopic !== 'ALL' ? ` (${subtopicCounts.length})` : ''}
-                  </label>
-                  <select
-                    value={selectedSubtopic}
-                    onChange={(e) => {
-                      setSelectedSubtopic(e.target.value);
-                      setSelectedQuestionIndex(0);
-                    }}
-                    disabled={selectedTopic === 'ALL' && topicCounts.length > 1}
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: 0,
-                      border: '1px solid #CBD5E1',
-                      fontSize: 13,
-                      color: selectedTopic === 'ALL' && topicCounts.length > 1 ? 'var(--text-disabled)' : 'var(--deep-navy)',
-                      backgroundColor: selectedTopic === 'ALL' && topicCounts.length > 1 ? 'var(--bg-subtle)' : 'var(--bg-subtle)',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                      cursor: selectedTopic === 'ALL' && topicCounts.length > 1 ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    <option value="ALL">
-                      {selectedTopic === 'ALL' && topicCounts.length > 1
-                        ? 'Select a topic first'
-                        : `All Subtopics (${subtopicCounts.reduce((s, x) => s + x.count, 0)})`}
-                    </option>
-                    {subtopicCounts.map((st) => (
-                      <option key={st.name} value={st.name}>
-                        {st.name} ({st.count})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Difficulty Filter Tabs */}
-                <div>
-                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4, letterSpacing: '0.02em' }}>
-                    DIFFICULTY
-                  </label>
-                  <div style={{ display: 'flex', gap: 4, background: 'var(--bg-hover)', padding: 3, borderRadius: 0 }}>
-                    {(['ALL', 'EASY', 'MEDIUM', 'HARD'] as const).map((lvl) => (
-                      <button
-                        key={lvl}
-                        onClick={() => {
-                          setSelectedDifficulty(lvl);
-                          setSelectedQuestionIndex(0);
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: '6px 4px',
-                          fontSize: 11,
-                          fontWeight: selectedDifficulty === lvl ? 700 : 500,
-                          border: 'none',
-                          borderRadius: 0,
-                          background: selectedDifficulty === lvl ? 'var(--bg-card)' : 'transparent',
-                          color: selectedDifficulty === lvl ? 'var(--deep-navy)' : 'var(--text-muted)',
-                          cursor: 'pointer',
-                          boxShadow: selectedDifficulty === lvl ? '0 1px 2px rgba(15, 23, 42, 0.08)' : 'none',
-                        }}
-                      >
-                        {lvl === 'ALL' ? 'All' : lvl}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Quick Search in Question Stem */}
-                <div style={{ position: 'relative' }}>
-                  <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--text-muted)' }} />
-                  <input
-                    type="text"
-                    placeholder="Search questions or keywords..."
-                    value={questionSearchQuery}
-                    onChange={(e) => {
-                      setQuestionSearchQuery(e.target.value);
-                      setSelectedQuestionIndex(0);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '8px 8px 8px 30px',
-                      borderRadius: 0,
-                      border: '1px solid #CBD5E1',
-                      fontSize: 12.5,
-                      color: 'var(--deep-navy)',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-
-                {/* Header List Meta */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--deep-navy)' }}>
-                    {filteredQuestions.length} Questions Found
-                  </span>
-                  {(selectedTopic !== 'ALL' || selectedSubtopic !== 'ALL' || selectedYear !== 'ALL' || selectedDifficulty !== 'ALL' || questionSearchQuery) && (
-                    <button
-                      onClick={() => {
-                        setSelectedTopic('ALL');
-                        setSelectedSubtopic('ALL');
-                        setSelectedYear('ALL');
-                        setSelectedDifficulty('ALL');
-                        setQuestionSearchQuery('');
-                      }}
-                      style={{ fontSize: 11, color: 'var(--primary-red)', background: 'none', border: 'none', cursor: 'pointer' }}
-                    >
-                      Reset filters
-                    </button>
-                  )}
-                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#172033' }}>
+                  {filteredQuestions.length} Questions Found
+                </span>
 
                 {/* Scrollable Questions Navigator */}
-                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 540 }}>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: isTabletOrBelow ? 380 : 640 }}>
                   {loadingQuestions ? (
                     <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                       <Loader2 size={18} className="animate-spin" style={{ margin: '0 auto 8px auto' }} />
@@ -1191,7 +1192,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           onClick={() => {
                             setSelectedQuestionIndex(idx);
                             if (isTabletOrBelow) {
-                              setMobileExploreTab('preview');
+                              setListOpen(false);
                               window.scrollTo({ top: 120, behavior: 'smooth' });
                             }
                           }}
@@ -1262,7 +1263,6 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
             )}
 
             {/* RIGHT PANEL: CLEAN READ-ONLY QUESTION INSPECTOR */}
-            {(!isTabletOrBelow || mobileExploreTab === 'preview') && (
               <div
                 style={{
                   background: 'var(--bg-card)',
@@ -1281,7 +1281,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     {isTabletOrBelow && (
                       <button
                         onClick={() => {
-                          setMobileExploreTab('list');
+                          setListOpen(true);
                           window.scrollTo({ top: 120, behavior: 'smooth' });
                         }}
                         style={{
@@ -1505,7 +1505,6 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   </div>
                 )}
               </div>
-            )}
           </div>
         </div>
       )}

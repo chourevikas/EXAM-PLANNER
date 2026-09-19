@@ -737,7 +737,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
             </div>
 
             <button
-              onClick={() => onNavigate('pipeline-status')}
+              onClick={() => onNavigate('upload')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',

@@ -94,8 +94,9 @@ interface QuestionReviewCardProps {
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '8px 10px',
-  fontSize: 13.5,
+  padding: '11px 14px',
+  fontSize: 15,
+  lineHeight: 1.55,
   borderRadius: 0,
   border: '1px solid #CBD5E1',
   boxSizing: 'border-box',
@@ -103,12 +104,18 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 };
 
+const textareaStyle: React.CSSProperties = {
+  ...inputStyle,
+  resize: 'vertical',
+  minHeight: 80,
+};
+
 const labelStyle: React.CSSProperties = {
   display: 'block',
-  fontSize: 11.5,
+  fontSize: 12.5,
   fontWeight: 700,
-  color: 'var(--text-secondary)',
-  marginBottom: 4,
+  color: '#475569',
+  marginBottom: 6,
 };
 
 const sectionStyle: React.CSSProperties = {
@@ -471,19 +478,19 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
         </div>
         {showPassage && (
           <textarea
-            rows={3}
+            rows={5}
             value={passageText}
             onChange={(e) => setPassageText(e.target.value)}
             placeholder="Reading passage / reference context (if applicable)..."
-            style={{ ...inputStyle, marginBottom: 10, backgroundColor: 'var(--bg-subtle)' }}
+            style={{ ...textareaStyle, marginBottom: 10, backgroundColor: '#F8FAFC' }}
           />
         )}
         <textarea
-          rows={4}
+          rows={8}
           value={questionText}
           onChange={(e) => setQuestionText(e.target.value)}
           placeholder="Enter the full question statement..."
-          style={inputStyle}
+          style={{ ...textareaStyle, minHeight: 160 }}
         />
       </div>
 
@@ -516,12 +523,12 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
                 >
                   {opt.option_label}
                 </div>
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
                   value={opt.option_text}
                   onChange={(e) => setOption(idx, { option_text: e.target.value })}
                   placeholder={`Option ${opt.option_label} text...`}
-                  style={{ ...inputStyle, flex: 1, minWidth: 180, borderColor: opt.is_correct ? '#86EFAC' : 'var(--border-color)' }}
+                  style={{ ...textareaStyle, minHeight: 56, flex: 1, minWidth: 180, borderColor: opt.is_correct ? '#86EFAC' : '#CBD5E1' }}
                 />
                 <button
                   type="button"
@@ -551,11 +558,11 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
       <div style={sectionStyle}>
         <div style={sectionTitleStyle}>Detailed Solution</div>
         <textarea
-          rows={6}
+          rows={12}
           value={detailedSolution}
           onChange={(e) => setDetailedSolution(e.target.value)}
           placeholder="Step-by-step comprehensive solution..."
-          style={inputStyle}
+          style={{ ...textareaStyle, minHeight: 220 }}
         />
       </div>
 
@@ -566,11 +573,11 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
           distractor is tempting but wrong. This is shown to students as a single combined explanation.
         </div>
         <textarea
-          rows={10}
+          rows={16}
           value={reverseLogic}
           onChange={(e) => setReverseLogic(e.target.value)}
           placeholder={'Option A — ...\n\nOption B — ...\n\nOption C — ...\n\nOption D — ...'}
-          style={inputStyle}
+          style={{ ...textareaStyle, minHeight: 300 }}
         />
       </div>
 
@@ -598,7 +605,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
 
       <div style={sectionStyle}>
         <div style={sectionTitleStyle}>Classification</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
           <div>
             <label style={labelStyle}>Subject</label>
             <input type="text" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} style={inputStyle} />
@@ -612,7 +619,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
             <input type="text" value={subtopicName} onChange={(e) => setSubtopicName(e.target.value)} style={inputStyle} />
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
           <div>
             <label style={labelStyle}>Difficulty</label>
             <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} style={{ ...inputStyle, backgroundColor: 'var(--bg-card)' }}>
@@ -662,28 +669,28 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
             {hierarchyLinks.map((h, idx) => {
               const pct = h.relevance_percentage ?? 100;
               return (
-                <div key={idx} style={{ border: '1px solid #E2E8F0', padding: 10, backgroundColor: 'var(--bg-subtle)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 8 }}>
+                <div key={idx} style={{ border: '1px solid #E2E8F0', padding: 10, backgroundColor: '#F8FAFC' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, marginBottom: 8 }}>
                     <input
                       type="text"
                       value={h.subject_name || ''}
                       onChange={(e) => setHierarchyLinks((prev) => prev.map((item, i) => (i === idx ? { ...item, subject_name: e.target.value } : item)))}
                       placeholder="Subject"
-                      style={{ ...inputStyle, fontSize: 12 }}
+                      style={{ ...inputStyle, fontSize: 14 }}
                     />
                     <input
                       type="text"
                       value={h.topic_name || ''}
                       onChange={(e) => setHierarchyLinks((prev) => prev.map((item, i) => (i === idx ? { ...item, topic_name: e.target.value } : item)))}
                       placeholder="Topic"
-                      style={{ ...inputStyle, fontSize: 12 }}
+                      style={{ ...inputStyle, fontSize: 14 }}
                     />
                     <input
                       type="text"
                       value={h.subtopic_name || ''}
                       onChange={(e) => setHierarchyLinks((prev) => prev.map((item, i) => (i === idx ? { ...item, subtopic_name: e.target.value } : item)))}
                       placeholder="Subtopic"
-                      style={{ ...inputStyle, fontSize: 12 }}
+                      style={{ ...inputStyle, fontSize: 14 }}
                     />
                     <input
                       type="number"
@@ -696,7 +703,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
                         )
                       }
                       placeholder="Relevance %"
-                      style={{ ...inputStyle, fontSize: 12 }}
+                      style={{ ...inputStyle, fontSize: 14 }}
                     />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
