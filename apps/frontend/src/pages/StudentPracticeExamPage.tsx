@@ -40,13 +40,26 @@ export function StudentPracticeExamPage() {
 
   // Interactive Filter Bar Popover State
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+  // Close active dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-dropdown-container]')) {
+        setActiveDropdown(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
 
   // Master Syllabus Taxonomy & Available Exams state fetched directly from live APIs
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
   const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE']);
-  const [yearOptions, setYearOptions] = useState<string[]>(['All Years (2017 - 2024)']);
+  const [yearOptions, setYearOptions] = useState<string[]>(['All Years']);
 
   const selectedYearsList = useMemo(() => {
     return parseYearParam(gYear, yearOptions);
@@ -888,10 +901,10 @@ export function StudentPracticeExamPage() {
               const fetchedYears = sorted.map((y: number) => `${y} PYQs`);
               const minYear = Math.min(...filteredYears);
               const maxYear = Math.max(...filteredYears);
-              const yearsArray = [`All Years (${minYear} - ${maxYear})`, ...fetchedYears];
+              const yearsArray = ['All Years', ...fetchedYears];
               setYearOptions(yearsArray);
           } else {
-              setYearOptions(['All Years (2017 - 2024)']);
+              setYearOptions(['All Years']);
           }
         }
       } catch (err) {
@@ -1769,7 +1782,7 @@ export function StudentPracticeExamPage() {
             {
               <>
                 {/* Filter 1: Exam Target */}
-                <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 140 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -1871,7 +1884,7 @@ export function StudentPracticeExamPage() {
                 </div>
 
                 {/* Filter 2: Target / PYQ Year */}
-                <div style={{ position: 'relative', flex: 1, minWidth: 150 }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 150 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -1914,7 +1927,7 @@ export function StudentPracticeExamPage() {
                       style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
                       {selectedYearsList.length === 0
-                        ? (yearOptions[0] || 'All Years (2017 - 2024)')
+                        ? (yearOptions[0] || 'All Years')
                         : selectedYearsList.length === 1
                           ? selectedYearsList[0]
                           : `${selectedYearsList.length} Years Selected`}
@@ -1984,7 +1997,7 @@ export function StudentPracticeExamPage() {
                         </button>
                       </div>
 
-                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                         <Search
                           size={14}
                           color="var(--text-disabled)"
@@ -2019,7 +2032,7 @@ export function StudentPracticeExamPage() {
                         }}
                       >
                         {/* All Years Default */}
-                        {(yearOptions[0] || 'All Years (2017 - 2024)')
+                        {(yearOptions[0] || 'All Years')
                           .toLowerCase()
                           .includes(filterSearchQuery.toLowerCase()) && (
                           <div
@@ -2045,7 +2058,7 @@ export function StudentPracticeExamPage() {
                                 onChange={() => {}}
                                 style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
                               />
-                              <span>{yearOptions[0] || 'All Years (2017 - 2024)'}</span>
+                              <span>{yearOptions[0] || 'All Years'}</span>
                             </div>
                             {selectedYearsList.length === 0 && (
                               <Check size={14} color="var(--accent-primary)" />
@@ -2098,7 +2111,7 @@ export function StudentPracticeExamPage() {
                 </div>
 
                 {/* Filter 3: Subject Focus */}
-                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -2178,7 +2191,7 @@ export function StudentPracticeExamPage() {
                         <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
-                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                         <Search
                           size={14}
                           color="var(--text-disabled)"
@@ -2247,7 +2260,7 @@ export function StudentPracticeExamPage() {
                 </div>
 
                 {/* Filter: Topic Focus */}
-                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -2327,7 +2340,7 @@ export function StudentPracticeExamPage() {
                         <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
-                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                         <Search
                           size={14}
                           color="var(--text-disabled)"
@@ -2396,7 +2409,7 @@ export function StudentPracticeExamPage() {
                 </div>
 
                 {/* Filter: Subtopic Focus */}
-                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -2476,7 +2489,7 @@ export function StudentPracticeExamPage() {
                         <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
-                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                         <Search
                           size={14}
                           color="var(--text-disabled)"
@@ -2545,7 +2558,7 @@ export function StudentPracticeExamPage() {
                 </div>
 
                 {/* Filter 4: Difficulty */}
-                <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 130 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -2725,7 +2738,7 @@ export function StudentPracticeExamPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Filter 1: Exam Target */}
-              <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 140 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
@@ -2827,7 +2840,7 @@ export function StudentPracticeExamPage() {
               </div>
 
               {/* Filter 2: Target / PYQ Year */}
-              <div style={{ position: 'relative', flex: 1, minWidth: 150 }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 150 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
@@ -2870,7 +2883,7 @@ export function StudentPracticeExamPage() {
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
                     {selectedYearsList.length === 0
-                      ? (yearOptions[0] || 'All Years (2017 - 2024)')
+                      ? (yearOptions[0] || 'All Years')
                       : selectedYearsList.length === 1
                         ? selectedYearsList[0]
                         : `${selectedYearsList.length} Years Selected`}
@@ -2940,7 +2953,7 @@ export function StudentPracticeExamPage() {
                       </button>
                     </div>
 
-                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                       <Search
                         size={14}
                         color="var(--text-disabled)"
@@ -2975,7 +2988,7 @@ export function StudentPracticeExamPage() {
                       }}
                     >
                       {/* All Years Default */}
-                      {(yearOptions[0] || 'All Years (2017 - 2024)')
+                      {(yearOptions[0] || 'All Years')
                         .toLowerCase()
                         .includes(filterSearchQuery.toLowerCase()) && (
                         <div
@@ -3001,7 +3014,7 @@ export function StudentPracticeExamPage() {
                               onChange={() => {}}
                               style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
                             />
-                            <span>{yearOptions[0] || 'All Years (2017 - 2024)'}</span>
+                            <span>{yearOptions[0] || 'All Years'}</span>
                           </div>
                           {selectedYearsList.length === 0 && (
                             <Check size={14} color="var(--accent-primary)" />
@@ -3054,7 +3067,7 @@ export function StudentPracticeExamPage() {
               </div>
 
               {/* Filter 3: Subject Focus */}
-              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
@@ -3134,7 +3147,7 @@ export function StudentPracticeExamPage() {
                       <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
-                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                       <Search
                         size={14}
                         color="var(--text-disabled)"
@@ -3203,7 +3216,7 @@ export function StudentPracticeExamPage() {
               </div>
 
               {/* Filter: Topic Focus */}
-              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
@@ -3283,7 +3296,7 @@ export function StudentPracticeExamPage() {
                       <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
-                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                       <Search
                         size={14}
                         color="var(--text-disabled)"
@@ -3352,7 +3365,7 @@ export function StudentPracticeExamPage() {
               </div>
 
               {/* Filter: Subtopic Focus */}
-              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
@@ -3432,7 +3445,7 @@ export function StudentPracticeExamPage() {
                       <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
-                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                       <Search
                         size={14}
                         color="var(--text-disabled)"
@@ -3501,7 +3514,7 @@ export function StudentPracticeExamPage() {
               </div>
 
               {/* Filter 4: Difficulty */}
-              <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 130 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,

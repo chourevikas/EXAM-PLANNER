@@ -65,16 +65,16 @@ export function MockSelectionPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close active dropdown on click outside
+  // Close active dropdown on click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-dropdown-container]')) {
         setActiveDropdown(null);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const [allYearsData, setAllYearsData] = useState<any>(null);
@@ -139,11 +139,11 @@ export function MockSelectionPage() {
         const fetchedYears = sorted.map((y: number) => `${y} PYQs`);
         const minYear = Math.min(...filteredYears);
         const maxYear = Math.max(...filteredYears);
-        const yearsArray = [`All Years (${minYear} - ${maxYear})`, ...fetchedYears];
+        const yearsArray = ['All Years', ...fetchedYears];
         setYearOptions(yearsArray);
         setSelectedYear((prev) => (prev && yearsArray.includes(prev) ? prev : yearsArray[0]));
       } else {
-        const fallback = ['All Years (2017 - 2024)'];
+        const fallback = ['All Years'];
         setYearOptions(fallback);
         setSelectedYear(fallback[0]);
       }
@@ -495,7 +495,7 @@ export function MockSelectionPage() {
         <form onSubmit={handleStartPracticeTest}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
             {/* Filter 1: Target Exam (multi-select) */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} data-dropdown-container>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Target Exam
               </label>
@@ -624,7 +624,7 @@ export function MockSelectionPage() {
             </div>
 
             {/* Filter 2: Target / PYQ Year */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} data-dropdown-container>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Target / PYQ Year
               </label>
@@ -647,7 +647,7 @@ export function MockSelectionPage() {
               >
                 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {selectedYearsList.length === 0
-                    ? (yearOptions[0] || 'All Years (2017 - 2024)')
+                    ? (yearOptions[0] || 'All Years')
                     : selectedYearsList.length === 1
                       ? selectedYearsList[0]
                       : `${selectedYearsList.length} Years Selected`}
@@ -684,7 +684,7 @@ export function MockSelectionPage() {
                     <button type="button" onClick={() => toggleYearFilter('All Years')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
-                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                     <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
                     <input
                       type="text"
@@ -707,7 +707,7 @@ export function MockSelectionPage() {
 
                   <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {/* All Years default option */}
-                    {(yearOptions[0] || 'All Years (2017 - 2024)').toLowerCase().includes(filterSearchQuery.toLowerCase()) && (
+                    {(yearOptions[0] || 'All Years').toLowerCase().includes(filterSearchQuery.toLowerCase()) && (
                       <div
                         onClick={() => toggleYearFilter('All Years')}
                         style={{
@@ -730,7 +730,7 @@ export function MockSelectionPage() {
                             onChange={() => {}}
                             style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
                           />
-                          <span>{yearOptions[0] || 'All Years (2017 - 2024)'}</span>
+                          <span>{yearOptions[0] || 'All Years'}</span>
                         </div>
                         {selectedYearsList.length === 0 && <Check size={14} color="#1E3A8A" />}
                       </div>
@@ -777,7 +777,7 @@ export function MockSelectionPage() {
             </div>
 
             {/* Filter 3: Subject Focus */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} data-dropdown-container>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Subject Focus
               </label>
@@ -837,7 +837,7 @@ export function MockSelectionPage() {
                     <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
-                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                     <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
                     <input
                       type="text"
@@ -894,7 +894,7 @@ export function MockSelectionPage() {
             </div>
 
             {/* Filter 4: Topic Focus */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} data-dropdown-container>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Topic Focus
               </label>
@@ -954,7 +954,7 @@ export function MockSelectionPage() {
                     <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
-                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                     <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
                     <input
                       type="text"
@@ -1011,7 +1011,7 @@ export function MockSelectionPage() {
             </div>
 
             {/* Filter 5: Subtopic Focus */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} data-dropdown-container>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Subtopic Focus
               </label>
@@ -1071,7 +1071,7 @@ export function MockSelectionPage() {
                     <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                   </div>
 
-                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                     <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
                     <input
                       type="text"
@@ -1128,7 +1128,7 @@ export function MockSelectionPage() {
             </div>
 
             {/* Filter 6: Difficulty */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} data-dropdown-container>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Difficulty
               </label>

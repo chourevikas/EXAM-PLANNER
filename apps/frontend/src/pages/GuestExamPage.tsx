@@ -86,10 +86,10 @@ export function GuestExamPage() {
       const sorted = [...availableYearsList].sort((a, b) => b - a);
       const minYear = Math.min(...availableYearsList);
       const maxYear = Math.max(...availableYearsList);
-      return [`All Years (${minYear} - ${maxYear})`, ...sorted.map((y) => `${y} PYQs`)];
+      return ['All Years', ...sorted.map((y) => `${y} PYQs`)];
     }
     return [
-      'All Years (2017 - 2024)',
+      'All Years',
       '2024 PYQs',
       '2023 PYQs',
       '2022 PYQs',
@@ -758,6 +758,19 @@ export function GuestExamPage() {
   const [showMobileRecs, setShowMobileRecs] = useState(false);
   const [showMobileFilterPanel, setShowMobileFilterPanel] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+  // Close active dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-dropdown-container]')) {
+        setActiveDropdown(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
 
@@ -2147,7 +2160,7 @@ export function GuestExamPage() {
             {
               <>
                 {/* Filter 1: Exam */}
-                <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 140 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -2293,7 +2306,7 @@ export function GuestExamPage() {
                 </div>
 
                 {/* Filter 2: Target / PYQ Year */}
-                <div style={{ position: 'relative', flex: 1, minWidth: 150 }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 150 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -2336,7 +2349,7 @@ export function GuestExamPage() {
                       style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
                       {selectedYearsList.length === 0
-                        ? (yearOptions[0] || 'All Years (2017 - 2024)')
+                        ? (yearOptions[0] || 'All Years')
                         : selectedYearsList.length === 1
                           ? selectedYearsList[0]
                           : `${selectedYearsList.length} Years Selected`}
@@ -2406,7 +2419,7 @@ export function GuestExamPage() {
                         </button>
                       </div>
 
-                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                         <Search
                           size={14}
                           color="#94A3B8"
@@ -2441,7 +2454,7 @@ export function GuestExamPage() {
                         }}
                       >
                         {/* All Years Default */}
-                        {(yearOptions[0] || 'All Years (2017 - 2024)')
+                        {(yearOptions[0] || 'All Years')
                           .toLowerCase()
                           .includes(filterSearchQuery.toLowerCase()) && (
                           <div
@@ -2467,7 +2480,7 @@ export function GuestExamPage() {
                                 onChange={() => {}}
                                 style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
                               />
-                              <span>{yearOptions[0] || 'All Years (2017 - 2024)'}</span>
+                              <span>{yearOptions[0] || 'All Years'}</span>
                             </div>
                             {selectedYearsList.length === 0 && (
                               <Check size={14} color="#1E3A8A" />
@@ -2520,7 +2533,7 @@ export function GuestExamPage() {
                 </div>
 
                 {/* Filter 3: Subject */}
-                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -2602,7 +2615,7 @@ export function GuestExamPage() {
                       </div>
 
                       {/* Internal Search Bar */}
-                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                         <Search
                           size={14}
                           color="#94A3B8"
@@ -2671,7 +2684,7 @@ export function GuestExamPage() {
                 </div>
 
                 {/* Filter: Topic */}
-                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -2752,7 +2765,7 @@ export function GuestExamPage() {
                         <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
-                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                         <Search
                           size={14}
                           color="#94A3B8"
@@ -2821,7 +2834,7 @@ export function GuestExamPage() {
                 </div>
 
                 {/* Filter: Subtopic */}
-                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -2902,7 +2915,7 @@ export function GuestExamPage() {
                         <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                       </div>
 
-                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                         <Search
                           size={14}
                           color="#94A3B8"
@@ -2971,7 +2984,7 @@ export function GuestExamPage() {
                 </div>
 
                 {/* Filter 3: Difficulty */}
-                <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 130 }} data-dropdown-container>
                   <label
                     style={{
                       fontSize: 10.5,
@@ -3162,7 +3175,7 @@ export function GuestExamPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Filter 1: Exam */}
-              <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 140 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
@@ -3308,7 +3321,7 @@ export function GuestExamPage() {
               </div>
 
               {/* Filter 2: Target / PYQ Year */}
-              <div style={{ position: 'relative', flex: 1, minWidth: 150 }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 150 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
@@ -3351,7 +3364,7 @@ export function GuestExamPage() {
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
                     {selectedYearsList.length === 0
-                      ? (yearOptions[0] || 'All Years (2017 - 2024)')
+                      ? (yearOptions[0] || 'All Years')
                       : selectedYearsList.length === 1
                         ? selectedYearsList[0]
                         : `${selectedYearsList.length} Years Selected`}
@@ -3421,7 +3434,7 @@ export function GuestExamPage() {
                       </button>
                     </div>
 
-                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                       <Search
                         size={14}
                         color="#94A3B8"
@@ -3456,7 +3469,7 @@ export function GuestExamPage() {
                       }}
                     >
                       {/* All Years Default */}
-                      {(yearOptions[0] || 'All Years (2017 - 2024)')
+                      {(yearOptions[0] || 'All Years')
                         .toLowerCase()
                         .includes(filterSearchQuery.toLowerCase()) && (
                         <div
@@ -3482,7 +3495,7 @@ export function GuestExamPage() {
                               onChange={() => {}}
                               style={{ cursor: 'pointer', accentColor: '#1E3A8A' }}
                             />
-                            <span>{yearOptions[0] || 'All Years (2017 - 2024)'}</span>
+                            <span>{yearOptions[0] || 'All Years'}</span>
                           </div>
                           {selectedYearsList.length === 0 && (
                             <Check size={14} color="#1E3A8A" />
@@ -3535,7 +3548,7 @@ export function GuestExamPage() {
               </div>
 
               {/* Filter 3: Subject */}
-              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
@@ -3616,7 +3629,7 @@ export function GuestExamPage() {
                       <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
-                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                       <Search
                         size={14}
                         color="#94A3B8"
@@ -3685,7 +3698,7 @@ export function GuestExamPage() {
               </div>
 
               {/* Filter: Topic */}
-              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
@@ -3766,7 +3779,7 @@ export function GuestExamPage() {
                       <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
-                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                       <Search
                         size={14}
                         color="#94A3B8"
@@ -3835,7 +3848,7 @@ export function GuestExamPage() {
               </div>
 
               {/* Filter: Subtopic */}
-              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
@@ -3916,7 +3929,7 @@ export function GuestExamPage() {
                       <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
                     </div>
 
-                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <div style={{ position: 'relative', marginBottom: 8 }} data-dropdown-container>
                       <Search
                         size={14}
                         color="#94A3B8"
@@ -3985,7 +3998,7 @@ export function GuestExamPage() {
               </div>
 
               {/* Filter 3: Difficulty */}
-              <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 130 }} data-dropdown-container>
                 <label
                   style={{
                     fontSize: 10.5,
