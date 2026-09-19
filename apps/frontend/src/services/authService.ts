@@ -58,6 +58,7 @@ export async function refreshAccessToken(): Promise<string> {
   }
 
   activeRefreshPromise = (async () => {
+    const tokenBefore = localStorage.getItem('access_token');
     try {
       const res = await fetch(`${API_BASE_URL}/refresh`, {
         method: 'POST',
@@ -66,8 +67,11 @@ export async function refreshAccessToken(): Promise<string> {
       });
 
       if (!res.ok) {
-        logoutUser();
-        window.dispatchEvent(new Event('auth_expired'));
+        const tokenAfter = localStorage.getItem('access_token');
+        if (tokenBefore === tokenAfter) {
+          logoutUser();
+          window.dispatchEvent(new Event('auth_expired'));
+        }
         throw new Error('SESSION_EXPIRED');
       }
 
