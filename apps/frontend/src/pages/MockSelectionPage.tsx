@@ -118,17 +118,22 @@ export function MockSelectionPage() {
     loadGlobalData();
   }, []);
 
-  // Filter years based on selectedExam and update yearOptions
+  // Filter years based on selectedExamsList and update yearOptions
   useEffect(() => {
     if (allYearsData && Array.isArray(allYearsData.years) && allYearsData.years.length > 0) {
-      const examName = extractCanonicalExamName(selectedExam);
       let filteredYears = allYearsData.years;
-      if (selectedExam !== 'All Exams') {
+      
+      // If specific exams are selected, filter years to those exams
+      if (selectedExamsList.length > 0) {
+        const canonicalExams = selectedExamsList.map(extractCanonicalExamName);
         filteredYears = allYearsData.years.filter((y: number) => {
           const examsInYear = allYearsData.exams_by_year[String(y)] || [];
-          return examsInYear.some((e: any) => extractCanonicalExamName(e.name || e.code) === examName);
+          return examsInYear.some((e: any) => 
+            canonicalExams.includes(extractCanonicalExamName(e.name || e.code))
+          );
         });
       }
+
       if (filteredYears.length > 0) {
         const sorted = [...filteredYears].sort((a, b) => b - a);
         const fetchedYears = sorted.map((y: number) => `${y} PYQs`);
@@ -143,13 +148,14 @@ export function MockSelectionPage() {
         setSelectedYear(fallback[0]);
       }
     }
-  }, [allYearsData, selectedExam]);
+  }, [allYearsData, selectedExamsList]);
 
-  // Fetch Taxonomy specifically for selectedExam
+  // Fetch Taxonomy specifically for selectedExamsList
   useEffect(() => {
     async function loadTaxonomy() {
       try {
-        const examParam = selectedExam === 'All Exams' ? undefined : extractCanonicalExamName(selectedExam);
+        // If one exam is selected, fetch taxonomy for that exam. Otherwise fetch all.
+        const examParam = selectedExamsList.length === 1 ? extractCanonicalExamName(selectedExamsList[0]) : undefined;
         const taxData = await fetchMasterSyllabus(undefined, examParam).catch(() => null);
         if (taxData) {
           setMasterSyllabus(taxData);
@@ -161,7 +167,7 @@ export function MockSelectionPage() {
       }
     }
     loadTaxonomy();
-  }, [selectedExam]);
+  }, [selectedExamsList]);
 
   // Live mocks and student attempt status
   useEffect(() => {
