@@ -511,7 +511,22 @@ export function AnalyticsPage() {
       }
 
       // Validate numeric attempt ID
-      const numId = parseInt(String(targetId), 10);
+      let numId = parseInt(String(targetId), 10);
+      
+      // If the ID is a guest attempt, try to recover the synced numeric ID from sessionStorage
+      if (isNaN(numId) && String(targetId).startsWith('guest-attempt-')) {
+        const syncedId = sessionStorage.getItem('latest_synced_attempt_id');
+        if (syncedId) {
+          numId = parseInt(syncedId, 10);
+          setSearchParams({ attemptId: syncedId }, { replace: true });
+        } else {
+          setError(`Guest attempt not synced. Please take a practice exam to generate a report.`);
+          setIsLoading(false);
+          setIsEvaluating(false);
+          return;
+        }
+      }
+
       if (isNaN(numId)) {
         setError(`Invalid attempt ID '${targetId}'.`);
         setIsLoading(false);

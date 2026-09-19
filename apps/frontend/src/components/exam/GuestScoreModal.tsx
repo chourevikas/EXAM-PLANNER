@@ -57,7 +57,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
   const handleAuthSuccess = () => {
     setAuthModalOpen(false);
     onClose();
-    const syncedId = scoreData.attemptId || sessionStorage.getItem('latest_synced_attempt_id');
+    const syncedId = sessionStorage.getItem('latest_synced_attempt_id') || scoreData.attemptId;
     if (syncedId) {
       navigate(`/analytics?attemptId=${encodeURIComponent(syncedId)}`);
     } else {
