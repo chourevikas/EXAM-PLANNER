@@ -67,15 +67,19 @@ export function GuestExamPage() {
   const [allYearsData, setAllYearsData] = useState<any>(null);
   const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE']);
 
+  const selectedExamsList = useMemo(() => {
+    return parseTaxonomyParam(gExam, availableExams.length > 0 ? availableExams : []);
+  }, [gExam, availableExams]);
+
   const availableYearsList = useMemo(() => {
     if (!allYearsData || !allYearsData.years) return [];
-    if (gExam === 'All Exams') return allYearsData.years;
-    const examName = extractCanonicalExamName(gExam);
+    if (selectedExamsList.length === 0) return allYearsData.years;
+    const canonicalExams = selectedExamsList.map(extractCanonicalExamName);
     return allYearsData.years.filter((y: number) => {
       const examsInYear = allYearsData.exams_by_year[String(y)] || [];
-      return examsInYear.some((e: any) => extractCanonicalExamName(e.name || e.code) === examName);
+      return examsInYear.some((e: any) => canonicalExams.includes(extractCanonicalExamName(e.name || e.code)));
     });
-  }, [allYearsData, gExam]);
+  }, [allYearsData, selectedExamsList]);
 
   const yearOptions = useMemo(() => {
     if (availableYearsList.length > 0) {
@@ -112,10 +116,6 @@ export function GuestExamPage() {
     return [];
   }, [subjectsList, threeLevelHierarchy]);
 
-  // Selected Multi-Select Arrays derived from URL parameters and validated against available taxonomy
-  const selectedExamsList = useMemo(() => {
-    return parseTaxonomyParam(gExam, availableExams.length > 0 ? availableExams : []);
-  }, [gExam, availableExams]);
 
   const selectedSubjectsList = useMemo(() => {
     return parseTaxonomyParam(gSubject, availableSubjectsList);
