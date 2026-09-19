@@ -70,7 +70,7 @@ export function ExamHeader({
         left: 0,
         right: 0,
         zIndex: 100,
-        background: 'linear-gradient(90deg, #111111 0%, #172033 100%)',
+        background: 'linear-gradient(90deg, var(--ink-black) 0%, var(--deep-navy) 100%)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
@@ -90,7 +90,7 @@ export function ExamHeader({
           alignItems: 'center',
           gap: 'clamp(6px, 1.5vw, 12px)',
           minWidth: 0,
-          flex: 1,
+          flex: isMobile ? '0 0 auto' : 1,
         }}
       >
         <img
@@ -243,7 +243,7 @@ export function ExamHeader({
           }}
           title="Select Exam Language"
         >
-          <Globe size={14} style={{ color: '#60A5FA', flexShrink: 0 }} />
+          {!isMobile && <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)', flexShrink: 0 }} />}
           <select
             value={language}
             onChange={(e) => onLanguageChange(e.target.value)}
@@ -256,7 +256,7 @@ export function ExamHeader({
               outline: 'none',
               cursor: 'pointer',
               fontFamily: "'IBM Plex Sans', sans-serif",
-              maxWidth: isMobile ? 80 : 130,
+              maxWidth: isMobile ? 72 : 130,
             }}
             aria-label="Select exam language"
           >
@@ -264,7 +264,7 @@ export function ExamHeader({
               <option
                 key={lang.code}
                 value={lang.code}
-                style={{ background: '#172033', color: '#FFFFFF' }}
+                style={{ background: 'var(--deep-navy)', color: '#FFFFFF' }}
               >
                 {lang.nativeName} ({lang.name})
               </option>
@@ -359,7 +359,8 @@ export function ExamHeader({
             disabled={isSubmitting}
             className="touch-target"
             style={{
-              padding: '6px 14px',
+              padding: isMobile ? '6px 10px' : '6px 14px',
+              flexShrink: 0,
               borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
@@ -380,7 +381,7 @@ export function ExamHeader({
                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
             }}
           >
-            {isSubmitting ? 'Submitting...' : 'Submit Test'}
+            {isSubmitting ? 'Submitting...' : isMobile ? 'Submit' : 'Submit Test'}
           </button>
         )}
       </div>

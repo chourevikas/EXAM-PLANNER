@@ -101,7 +101,7 @@ export function ExamQuestionPalette({
               fontSize: 11,
               fontWeight: 800,
               textTransform: 'uppercase',
-              color: '#1E3A8A',
+              color: 'var(--primary-red)',
               letterSpacing: '0.08em',
             }}
           >
@@ -261,7 +261,7 @@ export function ExamQuestionPalette({
                 borderRadius: 0,
                 border: 'none',
                 backgroundColor: isActive ? '#FFFFFF' : 'transparent',
-                color: isActive ? '#1E3A8A' : '#64748B',
+                color: isActive ? 'var(--primary-red)' : '#64748B',
                 fontSize: 11,
                 fontWeight: isActive ? 800 : 600,
                 cursor: 'pointer',
@@ -342,9 +342,9 @@ export function ExamQuestionPalette({
 
           // Active / Current question styling override
           if (isCurrent) {
-            bgColor = '#1E3A8A';
+            bgColor = 'var(--primary-red)';
             textColor = '#FFFFFF';
-            borderColor = '#1E3A8A';
+            borderColor = 'var(--primary-red)';
           }
 
           return (
@@ -445,7 +445,7 @@ export function ExamQuestionPalette({
               borderRadius: 0,
               border: '1px solid #CBD5E1',
               backgroundColor: '#FFFFFF',
-              color: '#172033',
+              color: 'var(--deep-navy)',
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',

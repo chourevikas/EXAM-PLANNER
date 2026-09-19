@@ -103,7 +103,7 @@ export function ExamSectionSidebar({
           height: '100vh',
           zIndex: 210,
           width: 300,
-          background: 'linear-gradient(180deg, #111111 0%, #172033 100%)',
+          background: 'linear-gradient(180deg, var(--ink-black) 0%, var(--deep-navy) 100%)',
           color: '#FFFFFF',
           boxShadow: '8px 0 32px rgba(15, 23, 42, 0.45)',
           display: 'flex',

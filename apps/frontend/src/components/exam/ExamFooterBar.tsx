@@ -59,7 +59,7 @@ export function ExamFooterBar({
               borderRadius: 0,
               border: '1px solid #E2E8F0',
               backgroundColor: '#F8FAFC',
-              color: '#1E3A8A',
+              color: 'var(--primary-red)',
               fontSize: 12.5,
               fontWeight: 700,
               cursor: 'pointer',

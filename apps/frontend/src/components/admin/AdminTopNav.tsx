@@ -31,7 +31,6 @@ interface TopNavProps {
 
 const breadcrumbMap: Record<string, string> = {
   dashboard: 'Dashboard Overview',
-  'pipeline-status': 'Exam Pipeline Status',
   upload: 'Upload Question Paper',
   questions: 'Question Bank',
   'ai-queue': 'AI Processing Queue',
@@ -84,7 +83,7 @@ const DEFAULT_ADMIN_NOTIFICATIONS: AdminNotificationItem[] = [
     icon: Activity,
     color: '#3A8B53',
     bg: 'rgba(16, 185, 129, 0.15)',
-    targetView: 'pipeline-status',
+    targetView: 'upload',
   },
 ];
 

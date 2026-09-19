@@ -90,9 +90,6 @@ function prefetchAdminView(viewId: string) {
     case 'ai-queue':
       import('./UploadReviewView');
       break;
-    case 'pipeline-status':
-      import('./views/ExamPipelineStatusView');
-      break;
     case 'exam-types':
       import('./views/ExamTypesManager');
       break;

@@ -316,7 +316,7 @@ export function QuestionSolutionMarkdownCard({
                 style={{
                   fontSize: 16,
                   fontWeight: 700,
-                  color: isUserCorrect ? '#15803D' : isUserCorrect === false ? '#B91C1C' : '#172033',
+                  color: isUserCorrect ? '#15803D' : isUserCorrect === false ? '#B91C1C' : 'var(--deep-navy)',
                 }}
               >
                 Option ({correctLabel}) is Correct
@@ -386,7 +386,7 @@ export function QuestionSolutionMarkdownCard({
               gap: 6,
               fontSize: 14,
               fontWeight: 700,
-              color: '#172033',
+              color: 'var(--deep-navy)',
               marginBottom: 10,
             }}
           >
@@ -406,7 +406,7 @@ export function QuestionSolutionMarkdownCard({
               style={{
                 fontSize: 14,
                 lineHeight: 1.7,
-                color: '#172033',
+                color: 'var(--deep-navy)',
                 padding: '16px 18px',
               }}
             >

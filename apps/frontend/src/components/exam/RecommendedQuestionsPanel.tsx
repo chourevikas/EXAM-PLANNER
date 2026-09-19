@@ -69,12 +69,12 @@ export function RecommendedQuestionsPanel({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 7, height: 7, borderRadius: 0, backgroundColor: '#1E3A8A' }} />
+              <div style={{ width: 7, height: 7, borderRadius: 0, backgroundColor: 'var(--primary-red)' }} />
               <span
                 style={{
                   fontSize: 10.5,
                   fontWeight: 800,
-                  color: '#1E3A8A',
+                  color: 'var(--primary-red)',
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
                 }}
@@ -144,14 +144,14 @@ export function RecommendedQuestionsPanel({
                       gap: 5,
                       padding: '3px 8px',
                       borderRadius: 4,
-                      border: isActive ? '1px solid #1E3A8A' : '1px solid #CBD5E1',
+                      border: isActive ? '1px solid var(--primary-red)' : '1px solid #CBD5E1',
                       backgroundColor: isActive ? '#EFF6FF' : '#FFFFFF',
-                      color: isActive ? '#1E3A8A' : '#64748B',
+                      color: isActive ? 'var(--primary-red)' : '#64748B',
                       fontSize: 10.5,
                       fontWeight: 700,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
-                      boxShadow: isActive ? '0 1px 2px rgba(30, 58, 138, 0.08)' : 'none',
+                      boxShadow: isActive ? '0 1px 2px rgba(var(--primary-red-rgb), 0.08)' : 'none',
                     }}
                   >
                     <span>{examName}</span>
@@ -161,7 +161,7 @@ export function RecommendedQuestionsPanel({
                         fontWeight: 800,
                         padding: '1px 5px',
                         borderRadius: 3,
-                        backgroundColor: isActive ? '#1E3A8A' : '#94A3B8',
+                        backgroundColor: isActive ? 'var(--primary-red)' : '#94A3B8',
                         color: '#FFFFFF',
                         letterSpacing: '0.04em',
                         lineHeight: 1.2,

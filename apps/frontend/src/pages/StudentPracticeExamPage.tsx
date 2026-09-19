@@ -1806,7 +1806,7 @@ export function StudentPracticeExamPage() {
                       width: '100%',
                       padding: '8px 14px',
                       borderRadius: 0,
-                      border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      border: activeDropdown === 'exam' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'exam' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                       color: 'var(--deep-navy)',
                       fontSize: 13,
@@ -1909,7 +1909,7 @@ export function StudentPracticeExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border:
-                        activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                        activeDropdown === 'year' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'year' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                       color: 'var(--deep-navy)',
                       fontSize: 13,
@@ -2136,7 +2136,7 @@ export function StudentPracticeExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border:
-                        activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                        activeDropdown === 'subject' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'subject' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                       color: 'var(--deep-navy)',
                       fontSize: 13,
@@ -2285,7 +2285,7 @@ export function StudentPracticeExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border:
-                        activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                        activeDropdown === 'topic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'topic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                       color: 'var(--deep-navy)',
                       fontSize: 13,
@@ -2434,7 +2434,7 @@ export function StudentPracticeExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border:
-                        activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                        activeDropdown === 'subtopic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'subtopic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                       color: 'var(--deep-navy)',
                       fontSize: 13,
@@ -2583,7 +2583,7 @@ export function StudentPracticeExamPage() {
                       padding: '8px 14px',
                       borderRadius: 0,
                       border:
-                        activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                        activeDropdown === 'difficulty' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'difficulty' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                       color: 'var(--deep-navy)',
                       fontSize: 13,
@@ -2762,7 +2762,7 @@ export function StudentPracticeExamPage() {
                     width: '100%',
                     padding: '8px 14px',
                     borderRadius: 0,
-                    border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                    border: activeDropdown === 'exam' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'exam' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                     color: 'var(--deep-navy)',
                     fontSize: 13,
@@ -2865,7 +2865,7 @@ export function StudentPracticeExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border:
-                      activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      activeDropdown === 'year' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'year' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                     color: 'var(--deep-navy)',
                     fontSize: 13,
@@ -3092,7 +3092,7 @@ export function StudentPracticeExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border:
-                      activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      activeDropdown === 'subject' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'subject' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                     color: 'var(--deep-navy)',
                     fontSize: 13,
@@ -3241,7 +3241,7 @@ export function StudentPracticeExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border:
-                      activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      activeDropdown === 'topic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'topic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                     color: 'var(--deep-navy)',
                     fontSize: 13,
@@ -3390,7 +3390,7 @@ export function StudentPracticeExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border:
-                      activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      activeDropdown === 'subtopic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'subtopic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                     color: 'var(--deep-navy)',
                     fontSize: 13,
@@ -3539,7 +3539,7 @@ export function StudentPracticeExamPage() {
                     padding: '8px 14px',
                     borderRadius: 0,
                     border:
-                      activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      activeDropdown === 'difficulty' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'difficulty' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                     color: 'var(--deep-navy)',
                     fontSize: 13,

@@ -142,7 +142,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#F8FAFC';
-              e.currentTarget.style.color = '#172033';
+              e.currentTarget.style.color = 'var(--deep-navy)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = '#FFFFFF';
@@ -214,13 +214,13 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--primary-red)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {scoreData.targetExam}
             </span>
-            <span style={{ color: '#93C5FD' }}>•</span>
+            <span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>•</span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#A4161A' }}>
               {isGuest ? 'Guest Test' : 'Practice Test'}
             </span>
           </div>
 
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: '#172033', margin: '0 0 18px 0', letterSpacing: '-0.02em' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--deep-navy)', margin: '0 0 18px 0', letterSpacing: '-0.02em' }}>
             {scoreData.topicName}
             {scoreData.subtopicName ? <span style={{ fontWeight: 600, color: '#64748B' }}> · {scoreData.subtopicName}</span> : ''}
           </h2>
@@ -240,7 +240,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               Your Score
             </div>
 
-            <div style={{ fontSize: 46, fontWeight: 900, color: '#172033', lineHeight: 1, letterSpacing: '-0.04em' }}>
+            <div style={{ fontSize: 46, fontWeight: 900, color: 'var(--deep-navy)', lineHeight: 1, letterSpacing: '-0.04em' }}>
               {scoreData.score}{' '}
               <span style={{ fontSize: 22, color: '#64748B', fontWeight: 700 }}>/ {scoreData.totalMarksPossible}</span>
             </div>
