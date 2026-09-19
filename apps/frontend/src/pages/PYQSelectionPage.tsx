@@ -89,9 +89,17 @@ export function PYQSelectionPage() {
   }, []);
 
   const yearOptions = useMemo(() => {
-    const years = Array.from(new Set(examsList.map((e) => String(e.year)))).sort((a, b) => Number(b) - Number(a));
+    let relevantExams = examsList;
+    if (selectedExamTarget !== 'All Exams') {
+      const target = selectedExamTarget.toLowerCase();
+      relevantExams = examsList.filter((e) => {
+        const t = (e.title || '').toLowerCase();
+        return t.includes(target.split(' ')[0].toLowerCase());
+      });
+    }
+    const years = Array.from(new Set(relevantExams.map((e) => String(e.year)))).sort((a, b) => Number(b) - Number(a));
     return ['All Years', ...years];
-  }, [examsList]);
+  }, [examsList, selectedExamTarget]);
 
   // Derive distinct exam names from the loaded exams list
   const examOptions = useMemo(() => {
@@ -112,6 +120,13 @@ export function PYQSelectionPage() {
     ).sort();
     return ['All Exams', ...names];
   }, [examsList]);
+
+  // Reset selected year if it's no longer valid for the newly selected exam
+  useEffect(() => {
+    if (selectedYear !== 'All Years' && !yearOptions.includes(selectedYear)) {
+      setSelectedYear('All Years');
+    }
+  }, [yearOptions, selectedYear]);
 
   const filteredExamsList = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
