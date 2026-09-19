@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { User, UserRole } from '../../types/auth';
 import { useAuth } from '@clerk/clerk-react';
 import { refreshAccessToken } from '../../services/authService';
+import { Spinner } from './Spinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -40,9 +41,18 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
       }
     };
 
+    const handleAuthSuccess = () => {
+      setToken(localStorage.getItem('access_token'));
+      setUserJson(localStorage.getItem('user'));
+    };
+
     window.addEventListener('auth_expired', handleAuthExpired);
+    window.addEventListener('user_profile_updated', handleAuthSuccess);
+    window.addEventListener('storage', handleAuthSuccess);
     return () => {
       window.removeEventListener('auth_expired', handleAuthExpired);
+      window.removeEventListener('user_profile_updated', handleAuthSuccess);
+      window.removeEventListener('storage', handleAuthSuccess);
     };
   }, [token, isSignedIn, signOut]);
 
@@ -54,6 +64,15 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   // If no token or user in localStorage AND not signed in via Clerk, redirect to signin
   if (!isCustomAuth && !isClerkAuth) {
     return <Navigate to="/signin" state={{ from: location }} replace />;
+  }
+
+  // If Clerk is signed in but we don't have our custom token yet, wait for ClerkExchangeBridge to finish
+  if (isClerkAuth && !isCustomAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner size={48} label="Loading account..." />
+      </div>
+    );
   }
 
   let userRole: UserRole | null = null;
