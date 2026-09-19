@@ -838,7 +838,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               right: 24,
               zIndex: 9999,
               padding: '12px 20px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               fontSize: 13.5,
               fontWeight: 600,
               backgroundColor: toastMessage.type === 'success' ? '#15803D' : toastMessage.type === 'error' ? '#DC2626' : '#F2B623',
@@ -930,7 +930,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         <div
           style={{
             backgroundColor: 'var(--bg-card)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid #E2E8F0',
             padding: '16px 20px',
             marginBottom: 24,
@@ -953,7 +953,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 width: '100%',
                 padding: '8px 12px 8px 36px',
                 fontSize: 13,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #CBD5E1',
                 outline: 'none',
                 color: 'var(--deep-navy)',
@@ -969,7 +969,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               onChange={(e) => setExamStatusFilter(e.target.value)}
               style={{
                 padding: '8px 12px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #CBD5E1',
                 fontSize: 13,
                 color: 'var(--deep-navy)',
@@ -987,7 +987,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               onClick={loadExamsList}
               style={{
                 padding: '8px 14px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #CBD5E1',
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--deep-navy)',
@@ -1006,7 +1006,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         </div>
 
         {/* Exams Table */}
-        <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)' }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)' }}>
           {loadingExams ? (
             <div style={{ padding: 60, textAlign: 'center' }}>
               <Spinner size={32} label="Loading examination repositories…" />
@@ -1079,7 +1079,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                               alignItems: 'center',
                               gap: 5,
                               padding: '3px 10px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12,
                               fontWeight: 600,
                               backgroundColor: 'var(--bg-hover)',
@@ -1097,7 +1097,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                               alignItems: 'center',
                               gap: 5,
                               padding: '3px 10px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12,
                               fontWeight: 600,
                               backgroundColor: isPublished ? 'var(--status-success-bg)' : 'var(--status-warning-bg)',
@@ -1105,7 +1105,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                               border: `1px solid ${isPublished ? '#86EFAC' : '#FDE68A'}`,
                             }}
                           >
-                            <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: isPublished ? 'var(--status-success)' : '#F2B623' }} />
+                            <span style={{ width: 6, height: 6, borderRadius: 'var(--radius)', backgroundColor: isPublished ? 'var(--status-success)' : '#F2B623' }} />
                             {isPublished ? 'Published (Live)' : 'Pending QA Review'}
                           </span>
                         )}
@@ -1118,7 +1118,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                               padding: '7px 15px',
                               backgroundColor: 'var(--text-disabled)',
                               color: 'var(--bg-card)',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               border: 'none',
                               fontSize: 12.5,
                               fontWeight: 600,
@@ -1141,7 +1141,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                               padding: '7px 15px',
                               backgroundColor: 'var(--primary-red)',
                               color: 'var(--bg-card)',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               border: 'none',
                               fontSize: 12.5,
                               fontWeight: 600,
@@ -1216,7 +1216,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             right: 24,
             zIndex: 9999,
             padding: '12px 20px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             fontSize: 13.5,
             fontWeight: 600,
             backgroundColor: toastMessage.type === 'success' ? '#15803D' : toastMessage.type === 'error' ? '#DC2626' : '#F2B623',
@@ -1236,7 +1236,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       <div
         style={{
           backgroundColor: 'var(--bg-card)',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           border: '1px solid #E2E8F0',
           padding: '20px 24px',
           marginBottom: 20,
@@ -1251,7 +1251,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 padding: '8px 14px',
                 backgroundColor: 'var(--bg-card)',
                 border: '1px solid #CBD5E1',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 fontSize: 13,
                 fontWeight: 600,
                 color: 'var(--text-secondary)',
@@ -1274,7 +1274,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 <span
                   style={{
                     padding: '3px 9px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     fontSize: 11.5,
                     fontWeight: 600,
                     backgroundColor: 'var(--bg-hover)',
@@ -1286,7 +1286,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 <span
                   style={{
                     padding: '3px 9px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     fontSize: 11.5,
                     fontWeight: 600,
                     backgroundColor: 'var(--bg-hover)',
@@ -1308,7 +1308,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 backgroundColor: '#FEF2F2',
                 border: '1px solid #FCA5A5',
                 color: '#DC2626',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -1329,7 +1329,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={verifyingAll || publishingExam}
                 style={{
                   padding: '9px 18px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: verifyingAll ? 'not-allowed' : 'pointer',
@@ -1357,7 +1357,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={true}
                 style={{
                   padding: '9px 18px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'default',
@@ -1377,7 +1377,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={true}
                 style={{
                   padding: '9px 18px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'not-allowed',
@@ -1399,7 +1399,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={publishingExam}
                 style={{
                   padding: '9px 18px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -1422,7 +1422,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 style={{
                   padding: '9px 18px',
                   border: 'none',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -1448,7 +1448,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 style={{
                   padding: '9px 18px',
                   border: '1px solid #CBD5E1',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -1559,7 +1559,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
 
         {publishStatus.publish_status === 'PUBLISH_FAILED' && publishStatus.can_retry && (
-          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 0, backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 'var(--radius)', backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <AlertTriangle size={20} color="#F2B623" />
               <div>
@@ -1577,7 +1577,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={loadingQuestions}
                 style={{
                   padding: '7px 12px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   backgroundColor: 'var(--bg-card)',
                   color: 'var(--status-warning)',
                   border: '1px solid #FCD34D',
@@ -1598,7 +1598,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={publishingExam}
                 style={{
                   padding: '7px 14px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   backgroundColor: '#F2B623',
                   color: 'var(--bg-card)',
                   border: 'none',
@@ -1619,7 +1619,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         )}
 
         {publishStatus.is_corrupted && (
-          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 0, backgroundColor: '#FEF2F2', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 'var(--radius)', backgroundColor: '#FEF2F2', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <ShieldAlert size={20} color="#DC2626" />
               <div>
@@ -1637,7 +1637,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={loadingQuestions}
                 style={{
                   padding: '7px 14px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   backgroundColor: 'var(--bg-card)',
                   color: '#B91C1C',
                   border: '1px solid #FCA5A5',
@@ -1654,7 +1654,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 <RefreshCw size={13} className={loadingQuestions ? 'animate-spin' : ''} />
                 Re-evaluate Integrity
               </button>
-              <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 0, backgroundColor: 'var(--primary-red-bg)', color: '#B91C1C', border: '1px solid #FCA5A5' }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--radius)', backgroundColor: 'var(--primary-red-bg)', color: '#B91C1C', border: '1px solid #FCA5A5' }}>
                 CORRUPTED DATA
               </span>
             </div>
@@ -1677,7 +1677,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     fontSize: 12,
                     fontWeight: 600,
                     padding: '3px 10px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     backgroundColor: 'var(--accent-bg)',
                     color: '#0284C7',
                     border: '1px solid #BAE6FD',
@@ -1692,21 +1692,21 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   Verify All
                 </button>
               )}
-              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 0, backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)', border: '1px solid #FDE68A' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius)', backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)', border: '1px solid #FDE68A' }}>
                 ⏳ {reviewMetrics.pending} Pending Review
               </span>
-              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 0, backgroundColor: 'var(--status-success-bg)', color: '#15803D', border: '1px solid #86EFAC' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius)', backgroundColor: 'var(--status-success-bg)', color: '#15803D', border: '1px solid #86EFAC' }}>
                 ✅ {reviewMetrics.reviewed} Verified
               </span>
               {reviewMetrics.rejected > 0 && (
-                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 0, backgroundColor: '#FEF2F2', color: '#B42318', border: '1px solid #FECDCA' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius)', backgroundColor: '#FEF2F2', color: '#B42318', border: '1px solid #FECDCA' }}>
                   ❌ {reviewMetrics.rejected} Rejected
                 </span>
               )}
             </div>
           </div>
 
-          <div style={{ width: '100%', height: 6, backgroundColor: 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: 6, backgroundColor: 'var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
             <div
               style={{
                 height: '100%',
@@ -1725,7 +1725,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         <div
           style={{
             backgroundColor: 'var(--bg-card)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid #E2E8F0',
             display: 'flex',
             flexDirection: 'column',
@@ -1762,7 +1762,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 <X size={16} />
               </button>
             </div>
-            <div style={{ display: 'flex', gap: 4, backgroundColor: 'var(--bg-hover)', padding: 3, borderRadius: 0 }}>
+            <div style={{ display: 'flex', gap: 4, backgroundColor: 'var(--bg-hover)', padding: 3, borderRadius: 'var(--radius)' }}>
               {[
                 { id: 'ALL', label: `All (${reviewMetrics.total})` },
                 { id: 'PENDING', label: `Pending (${reviewMetrics.pending})` },
@@ -1779,7 +1779,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       fontSize: 11.5,
                       fontWeight: isActive ? 700 : 500,
                       border: 'none',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       cursor: 'pointer',
                       backgroundColor: isActive ? 'var(--bg-card)' : 'transparent',
                       color: isActive ? 'var(--deep-navy)' : 'var(--text-muted)',
@@ -1805,7 +1805,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   width: '100%',
                   padding: '7px 10px 7px 30px',
                   fontSize: 12.5,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   outline: 'none',
                   color: 'var(--deep-navy)',
@@ -1842,7 +1842,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     onClick={() => handleSelectQuestion(idx)}
                     style={{
                       padding: '12px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       marginBottom: 8,
                       cursor: 'pointer',
                       border: isCorrupted
@@ -1866,7 +1866,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           color: isCorrupted ? '#DC2626' : (isSelected ? 'var(--primary-red)' : 'var(--deep-navy)'),
                           backgroundColor: isCorrupted ? 'var(--primary-red-bg)' : (isSelected ? 'var(--border-color)' : 'var(--bg-hover)'),
                           padding: '2px 7px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                         }}
                       >
                         Q{q.question_number_in_paper}
@@ -1877,7 +1877,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           fontSize: 11,
                           fontWeight: 600,
                           padding: '2px 7px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           backgroundColor: isCorrupted ? '#FEF2F2' : isPublished ? 'var(--status-success-bg)' : isRejected ? '#FEF2F2' : 'var(--status-warning-bg)',
                           color: isCorrupted ? '#DC2626' : isPublished ? '#15803D' : isRejected ? '#B42318' : 'var(--status-warning)',
                           border: isCorrupted ? '1px solid #FCA5A5' : `1px solid ${isPublished ? '#86EFAC' : isRejected ? '#FECDCA' : '#FDE68A'}`,
@@ -1954,7 +1954,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={currentPage === 1 || loadingQuestions}
                   style={{
                     padding: '5px 7px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     backgroundColor: 'var(--bg-card)',
                     color: currentPage === 1 || loadingQuestions ? 'var(--border-color)' : 'var(--text-secondary)',
@@ -1971,7 +1971,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={currentPage === 1 || loadingQuestions}
                   style={{
                     padding: '5px 8px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     backgroundColor: 'var(--bg-card)',
                     color: currentPage === 1 || loadingQuestions ? 'var(--border-color)' : 'var(--text-secondary)',
@@ -2006,7 +2006,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                             minWidth: 22,
                             height: 22,
                             padding: '0 3px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: isCur ? '1px solid #E31B23' : '1px solid #E2E8F0',
                             backgroundColor: isCur ? 'var(--primary-red)' : 'var(--bg-card)',
                             color: isCur ? 'var(--bg-card)' : 'var(--text-secondary)',
@@ -2028,7 +2028,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={currentPage === totalPages || loadingQuestions}
                   style={{
                     padding: '5px 8px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     backgroundColor: 'var(--bg-card)',
                     color: currentPage === totalPages || loadingQuestions ? 'var(--border-color)' : 'var(--text-secondary)',
@@ -2048,7 +2048,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={currentPage === totalPages || loadingQuestions}
                   style={{
                     padding: '5px 7px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     backgroundColor: 'var(--bg-card)',
                     color: currentPage === totalPages || loadingQuestions ? 'var(--border-color)' : 'var(--text-secondary)',
@@ -2071,7 +2071,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         <div
           style={{
             backgroundColor: 'var(--bg-card)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid #E2E8F0',
             display: 'flex',
             flexDirection: 'column',
@@ -2106,7 +2106,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       fontSize: 12,
                       fontWeight: 600,
                       padding: '3px 10px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       backgroundColor:
                         activeQuestion.status === 'PUBLISHED'
                           ? 'var(--status-success-bg)'
@@ -2147,7 +2147,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     title="Permanently delete this question"
                     style={{
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontSize: 13,
                       fontWeight: 600,
                       border: '1px solid #E2E8F0',
@@ -2172,7 +2172,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     disabled={isEditingQuestion || actionLoadingId === activeQuestion.id}
                     style={{
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontSize: 13,
                       fontWeight: 600,
                       border: '1px solid #FECDCA',
@@ -2194,7 +2194,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     disabled={isEditingQuestion || actionLoadingId === activeQuestion.id || activeQuestion.status === 'PUBLISHED'}
                     style={{
                       padding: '8px 18px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontSize: 13,
                       fontWeight: 600,
                       border: 'none',
@@ -2254,7 +2254,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       backgroundColor: '#DC2626',
                       color: 'var(--bg-card)',
                       border: 'none',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontSize: 12,
                       fontWeight: 600,
                       cursor: 'pointer',
@@ -2294,7 +2294,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={(selectedQuestionIndex === 0 && currentPage === 1) || loadingQuestions}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     fontSize: 13,
                     fontWeight: 600,
                     border: '1px solid #CBD5E1',
@@ -2319,7 +2319,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={(selectedQuestionIndex === filteredQuestions.length - 1 && currentPage === totalPages) || loadingQuestions}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     fontSize: 13,
                     fontWeight: 600,
                     border: '1px solid #CBD5E1',
@@ -2363,7 +2363,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div
             style={{
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               maxWidth: 460,
               width: '100%',
               padding: 24,
@@ -2385,7 +2385,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 onClick={() => setShowUnsavedModal(false)}
                 style={{
                   padding: '8px 14px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   backgroundColor: 'var(--bg-card)',
                   fontSize: 13,
@@ -2406,7 +2406,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 }}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: '#DC2626',
                   color: 'var(--bg-card)',
@@ -2440,7 +2440,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div
             style={{
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               maxWidth: 480,
               width: '100%',
               padding: 24,
@@ -2461,7 +2461,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               style={{
                 backgroundColor: '#FEF2F2',
                 border: '1px solid #FECDCA',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 padding: '12px 14px',
                 fontSize: 13,
                 color: '#B42318',
@@ -2476,7 +2476,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={verifyingAll}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: '#0284C7',
                   color: 'var(--bg-card)',
@@ -2498,7 +2498,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 }}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: 'var(--primary-red)',
                   color: 'var(--bg-card)',
@@ -2513,7 +2513,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 onClick={() => setShowPublishWarningModal(false)}
                 style={{
                   padding: '8px 14px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   backgroundColor: 'var(--bg-card)',
                   fontSize: 13,
@@ -2546,7 +2546,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div
             style={{
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               maxWidth: 480,
               width: '100%',
               padding: 24,
@@ -2574,7 +2574,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={publishingExam}
                 style={{
                   padding: '9px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   backgroundColor: 'var(--bg-card)',
                   fontSize: 13,
@@ -2589,7 +2589,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={publishingExam}
                 style={{
                   padding: '9px 20px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: 'var(--status-success)',
                   color: 'var(--bg-card)',
@@ -2628,7 +2628,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div
             style={{
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               maxWidth: 460,
               width: '100%',
               padding: 24,
@@ -2667,7 +2667,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={actionLoadingId === questionToReject.id}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-secondary)',
@@ -2683,7 +2683,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={actionLoadingId === questionToReject.id}
                 style={{
                   padding: '8px 18px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: '#DC2626',
                   color: 'var(--bg-card)',
@@ -2721,7 +2721,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div
             style={{
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               maxWidth: 460,
               width: '100%',
               padding: 24,
@@ -2761,7 +2761,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={deletingQuestion}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-secondary)',
@@ -2777,7 +2777,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={deletingQuestion}
                 style={{
                   padding: '8px 18px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: '#DC2626',
                   color: 'var(--bg-card)',

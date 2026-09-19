@@ -89,7 +89,7 @@ export function SignUpPage() {
         <div
           style={{
             background: 'var(--bg-card)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: 40,
             width: '100%',
             maxWidth: 440,
@@ -109,7 +109,7 @@ export function SignUpPage() {
                 border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                 color: 'var(--primary-red)',
                 padding: '12px 16px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 marginBottom: 20,
                 fontSize: 14,
                 display: 'flex',
@@ -129,7 +129,7 @@ export function SignUpPage() {
                 border: '1px solid rgba(34, 197, 94, 0.3)',
                 color: '#22c55e',
                 padding: '12px 16px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 marginBottom: 20,
                 fontSize: 14,
                 display: 'flex',
@@ -150,7 +150,7 @@ export function SignUpPage() {
             style={{
               width: '100%',
               padding: '12px 16px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid var(--border-color)',
               background: 'var(--bg-card)',
               color: 'var(--text-main)',
@@ -191,7 +191,7 @@ export function SignUpPage() {
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid var(--border-color)',
                   background: 'var(--bg-secondary)',
                   color: 'var(--text-main)',
@@ -215,7 +215,7 @@ export function SignUpPage() {
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid var(--border-color)',
                   background: 'var(--bg-secondary)',
                   color: 'var(--text-main)',
@@ -241,7 +241,7 @@ export function SignUpPage() {
                   style={{
                     width: '100%',
                     padding: '12px 40px 12px 16px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid var(--border-color)',
                     background: 'var(--bg-secondary)',
                     color: 'var(--text-main)',
@@ -280,7 +280,7 @@ export function SignUpPage() {
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid var(--border-color)',
                   background: 'var(--bg-secondary)',
                   color: 'var(--text-main)',
@@ -304,7 +304,7 @@ export function SignUpPage() {
               style={{
                 width: '100%',
                 padding: '14px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: 'none',
                 background: 'var(--royal)',
                 color: 'var(--bg-card)',
@@ -346,7 +346,7 @@ export function SignUpPage() {
           <div
             style={{
               background: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: 36,
               maxWidth: 460,
               width: '100%',
@@ -359,7 +359,7 @@ export function SignUpPage() {
               style={{
                 width: 64,
                 height: 64,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 background: 'rgba(245, 158, 11, 0.15)',
                 color: '#F2B623',
                 display: 'flex',
@@ -386,7 +386,7 @@ export function SignUpPage() {
               style={{
                 width: '100%',
                 padding: '12px 24px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: 'none',
                 background: 'var(--royal)',
                 color: 'var(--bg-card)',

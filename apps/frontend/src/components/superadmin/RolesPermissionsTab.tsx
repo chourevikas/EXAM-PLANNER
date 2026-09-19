@@ -52,7 +52,7 @@ export function RolesPermissionsTab() {
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         padding: 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
@@ -74,7 +74,7 @@ export function RolesPermissionsTab() {
               padding: '9px 18px',
               fontSize: 13,
               fontWeight: 600,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid var(--border-color)',
               background: 'var(--bg-body)',
               color: 'var(--text-main)',
@@ -93,7 +93,7 @@ export function RolesPermissionsTab() {
               padding: '9px 18px',
               fontSize: 13,
               fontWeight: 700,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid var(--primary-red)',
               background: 'var(--primary-red)',
               color: 'var(--bg-card)',
@@ -114,7 +114,7 @@ export function RolesPermissionsTab() {
           style={{
             padding: '12px 16px',
             marginBottom: 16,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             fontSize: 13.5,
             fontWeight: 600,
             background: toast.isError ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
@@ -130,7 +130,7 @@ export function RolesPermissionsTab() {
           style={{
             padding: '12px 16px',
             marginBottom: 16,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             background: 'rgba(var(--primary-red-rgb), 0.1)',
             color: 'var(--primary-red)',
             border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
@@ -146,7 +146,7 @@ export function RolesPermissionsTab() {
           Loading roles...
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 0, border: '1px solid var(--border-color)' }}>
+        <div style={{ overflowX: 'auto', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
               <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -192,7 +192,7 @@ export function RolesPermissionsTab() {
                         fontSize: 11,
                         fontWeight: 800,
                         padding: '4px 12px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         color: '#F47B35',
                         background: 'rgba(249, 115, 22, 0.12)',
                         border: '1px solid rgba(249, 115, 22, 0.25)',
@@ -213,7 +213,7 @@ export function RolesPermissionsTab() {
                           padding: '7px 12px',
                           fontSize: 12,
                           fontWeight: 700,
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid var(--border-color)',
                           background: 'var(--bg-body)',
                           color: 'var(--text-main)',
@@ -233,7 +233,7 @@ export function RolesPermissionsTab() {
                             padding: '7px 12px',
                             fontSize: 12,
                             fontWeight: 700,
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                             background: 'rgba(var(--primary-red-rgb), 0.1)',
                             color: 'var(--primary-red)',
@@ -347,7 +347,7 @@ function RoleEditorModal({
                 width: '100%',
                 padding: '10px 12px',
                 fontSize: 13.5,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid var(--border-color)',
                 background: isSystem ? 'var(--bg-body)' : '#fff',
                 color: 'var(--text-main)',
@@ -389,7 +389,7 @@ function RoleEditorModal({
                 width: '100%',
                 padding: '10px 12px',
                 fontSize: 13.5,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid var(--border-color)',
                 background: isSystem ? 'var(--bg-body)' : '#fff',
                 color: 'var(--text-main)',
@@ -433,7 +433,7 @@ function RoleEditorModal({
                 padding: '11px 20px',
                 fontSize: 13.5,
                 fontWeight: 700,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid var(--primary-red)',
                 background: !name.trim() || submitting ? 'rgba(var(--primary-red-rgb), 0.4)' : 'var(--primary-red)',
                 color: 'var(--bg-card)',

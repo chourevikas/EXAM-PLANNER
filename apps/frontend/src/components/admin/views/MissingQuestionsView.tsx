@@ -268,7 +268,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
               style={{
                 width: 38,
                 height: 38,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'rgba(239, 68, 68, 0.08)',
                 border: '1px solid rgba(239, 68, 68, 0.2)',
                 display: 'flex',
@@ -298,7 +298,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
             padding: '9px 16px',
             backgroundColor: 'var(--bg-card)',
             border: '1px solid #CBD5E1',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             color: 'var(--text-secondary)',
             fontSize: 13.5,
             fontWeight: 500,
@@ -325,7 +325,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
           style={{
             backgroundColor: 'var(--bg-card)',
             padding: '20px 24px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid #E2E8F0',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
             display: 'flex',
@@ -337,7 +337,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Total Exam Papers</div>
             <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--deep-navy)' }}>{metrics.totalExamsCount}</div>
           </div>
-          <div style={{ width: 44, height: 44, borderRadius: 0, backgroundColor: 'var(--bg-subtle)', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-subtle)', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
             <Layers size={22} />
           </div>
         </div>
@@ -346,7 +346,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
           style={{
             backgroundColor: 'var(--bg-card)',
             padding: '20px 24px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid #E2E8F0',
             borderLeft: '4px solid #EF4444',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
@@ -359,7 +359,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
             <div style={{ fontSize: 13, fontWeight: 600, color: '#991B1B', marginBottom: 4 }}>Exams With Missing Qs</div>
             <div style={{ fontSize: 26, fontWeight: 700, color: '#DC2626' }}>{metrics.examsWithMissing}</div>
           </div>
-          <div style={{ width: 44, height: 44, borderRadius: 0, backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#DC2626' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 'var(--radius)', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#DC2626' }}>
             <AlertCircle size={22} />
           </div>
         </div>
@@ -368,7 +368,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
           style={{
             backgroundColor: 'var(--bg-card)',
             padding: '20px 24px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid #E2E8F0',
             borderLeft: '4px solid #F59E0B',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
@@ -381,7 +381,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
             <div style={{ fontSize: 13, fontWeight: 600, color: '#92400E', marginBottom: 4 }}>Total Missing Question Items</div>
             <div style={{ fontSize: 26, fontWeight: 700, color: '#D97706' }}>{metrics.totalMissingQuestionsCount}</div>
           </div>
-          <div style={{ width: 44, height: 44, borderRadius: 0, backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D97706' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 'var(--radius)', backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D97706' }}>
             <FileText size={22} />
           </div>
         </div>
@@ -390,7 +390,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
           style={{
             backgroundColor: 'var(--bg-card)',
             padding: '20px 24px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid #E2E8F0',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
             display: 'flex',
@@ -404,7 +404,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
               {metrics.healthPercentage}%
             </div>
           </div>
-          <div style={{ width: 44, height: 44, borderRadius: 0, backgroundColor: metrics.healthPercentage >= 80 ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)', border: `1px solid ${metrics.healthPercentage >= 80 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: metrics.healthPercentage >= 80 ? '#059669' : '#D97706' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 'var(--radius)', backgroundColor: metrics.healthPercentage >= 80 ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)', border: `1px solid ${metrics.healthPercentage >= 80 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: metrics.healthPercentage >= 80 ? '#059669' : '#D97706' }}>
             <CheckCircle2 size={22} />
           </div>
         </div>
@@ -419,7 +419,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
           gap: 16,
           backgroundColor: 'var(--bg-card)',
           padding: '14px 20px',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           border: '1px solid #E2E8F0',
           marginBottom: 20,
           flexWrap: 'wrap',
@@ -437,7 +437,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
               style={{
                 width: '100%',
                 padding: '8px 12px 8px 36px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #CBD5E1',
                 fontSize: 13.5,
                 outline: 'none',
@@ -453,7 +453,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
             onClick={() => setSelectedYear('ALL')}
             style={{
               padding: '5px 12px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               fontSize: 13,
               fontWeight: selectedYear === 'ALL' ? 600 : 400,
               backgroundColor: selectedYear === 'ALL' ? 'var(--deep-navy)' : 'var(--bg-hover)',
@@ -471,7 +471,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
               onClick={() => setSelectedYear(String(yr))}
               style={{
                 padding: '5px 12px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 fontSize: 13,
                 fontWeight: selectedYear === String(yr) ? 600 : 400,
                 backgroundColor: selectedYear === String(yr) ? 'var(--deep-navy)' : 'var(--bg-hover)',
@@ -494,7 +494,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
         <div
           style={{
             backgroundColor: 'var(--bg-card)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '48px 24px',
             textAlign: 'center',
             border: '1px solid #E2E8F0',
@@ -536,7 +536,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                 key={exam.id}
                 style={{
                   backgroundColor: 'var(--bg-card)',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #E2E8F0',
                   borderLeft: isExtracting ? '4px solid #3B82F6' : (missingCount > 0 ? '4px solid #EF4444' : '4px solid #10B981'),
                   boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
@@ -598,7 +598,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                             padding: '8px 14px',
                             backgroundColor: '#FEF2F2',
                             color: '#DC2626',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             fontSize: 13,
                             fontWeight: 600,
                             border: '1px solid #FECACA',
@@ -621,7 +621,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                             padding: '8px 14px',
                             backgroundColor: 'var(--bg-hover)',
                             color: 'var(--text-disabled)',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             fontSize: 13,
                             fontWeight: 500,
                             border: '1px solid #E2E8F0',
@@ -642,7 +642,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                             padding: '8px 14px',
                             backgroundColor: 'var(--bg-card)',
                             color: 'var(--text-secondary)',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             fontSize: 13,
                             fontWeight: 500,
                             border: '1px solid #CBD5E1',
@@ -664,7 +664,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                     style={{
                       backgroundColor: 'rgba(59, 130, 246, 0.05)',
                       padding: '12px 16px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: '1px solid rgba(59, 130, 246, 0.2)',
                       display: 'flex',
                       alignItems: 'center',
@@ -686,7 +686,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                       backgroundColor: 'rgba(239, 68, 68, 0.03)',
                       backdropFilter: 'blur(4px)',
                       padding: '14px 18px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: '1px solid rgba(239, 68, 68, 0.18)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -709,7 +709,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                             fontWeight: 600,
                             cursor: 'pointer',
                             padding: '2px 6px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                           }}
                         >
                           {isExpanded ? 'Collapse List' : `+ ${hiddenCount} More Missing Questions`}
@@ -724,7 +724,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                           onClick={() => handleOpenAddMissingModal(exam, qNum, false)}
                           style={{
                             padding: '4px 10px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             backgroundColor: 'rgba(239, 68, 68, 0.08)',
                             border: '1px solid rgba(239, 68, 68, 0.22)',
                             color: '#B91C1C',
@@ -756,7 +756,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                           onClick={() => toggleExpandExams(exam.id)}
                           style={{
                             padding: '4px 10px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             backgroundColor: 'rgba(239, 68, 68, 0.04)',
                             border: '1px dashed rgba(239, 68, 68, 0.3)',
                             color: '#DC2626',
@@ -779,7 +779,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                       backgroundColor: 'rgba(245, 158, 11, 0.03)',
                       backdropFilter: 'blur(4px)',
                       padding: '14px 18px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: '1px solid rgba(245, 158, 11, 0.18)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -802,7 +802,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                             fontWeight: 600,
                             cursor: 'pointer',
                             padding: '2px 6px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                           }}
                         >
                           {isExpanded ? 'Collapse List' : `+ ${hiddenCorruptedCount} More Corrupted Questions`}
@@ -817,7 +817,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                           onClick={() => handleOpenAddMissingModal(exam, qNum, true)}
                           style={{
                             padding: '4px 10px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             backgroundColor: 'rgba(245, 158, 11, 0.08)',
                             border: '1px solid rgba(245, 158, 11, 0.22)',
                             color: 'var(--status-warning)',
@@ -849,7 +849,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                           onClick={() => toggleExpandExams(exam.id)}
                           style={{
                             padding: '4px 10px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             backgroundColor: 'rgba(245, 158, 11, 0.04)',
                             border: '1px dashed rgba(245, 158, 11, 0.3)',
                             color: '#D97706',

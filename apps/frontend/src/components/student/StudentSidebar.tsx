@@ -97,7 +97,7 @@ export function StudentSidebar({
           gap: 12,
           padding: isCollapsedDesktop ? '10px 0' : '10px 14px',
           justifyContent: isCollapsedDesktop ? 'center' : 'flex-start',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           textDecoration: 'none',
           fontSize: 13.5,
           fontWeight: isActive ? 600 : 400,
@@ -180,7 +180,7 @@ export function StudentSidebar({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   transition: 'color 0.15s ease',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
@@ -217,7 +217,7 @@ export function StudentSidebar({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 transition: 'color 0.15s ease',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
@@ -297,7 +297,7 @@ export function StudentSidebar({
             <div
               style={{
                 padding: 14,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 background: '#111111',
                 border: '1px solid #F2B623',
                 boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
@@ -333,7 +333,7 @@ export function StudentSidebar({
                   alignItems: 'center',
                   gap: 6,
                   padding: '6px 12px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #F2B623',
                   backgroundColor: 'transparent',
                   color: '#F2B623',

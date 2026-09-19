@@ -408,7 +408,7 @@ export function SuperAdminPage() {
               <div
                 style={{
                   background: 'var(--bg-card, #ffffff)',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   padding: '32px 36px',
                   color: 'var(--text-main, #172033)',
                   marginBottom: 32,
@@ -432,7 +432,7 @@ export function SuperAdminPage() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.12em',
                       padding: '4px 12px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       background: 'rgba(var(--primary-red-rgb), 0.1)',
                       border: '1px solid rgba(var(--primary-red-rgb), 0.2)',
                       display: 'inline-flex',
@@ -457,7 +457,7 @@ export function SuperAdminPage() {
                 <div
                   style={{
                     padding: '14px 20px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     fontSize: 14,
                     fontWeight: 600,
                     marginBottom: 24,

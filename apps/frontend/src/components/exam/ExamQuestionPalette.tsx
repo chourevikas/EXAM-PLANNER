@@ -114,7 +114,7 @@ export function ExamQuestionPalette({
               color: 'var(--text-secondary)',
               backgroundColor: 'var(--bg-subtle)',
               padding: '2px 8px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid #E2E8F0',
             }}
           >
@@ -158,7 +158,7 @@ export function ExamQuestionPalette({
           style={{
             backgroundColor: '#F0FDF4',
             border: '1px solid #DCFCE7',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '8px 10px',
             display: 'flex',
             flexDirection: 'column',
@@ -196,7 +196,7 @@ export function ExamQuestionPalette({
           style={{
             backgroundColor: '#FFFBEB',
             border: '1px solid #FEF3C7',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '8px 10px',
             display: 'flex',
             flexDirection: 'column',
@@ -238,7 +238,7 @@ export function ExamQuestionPalette({
           marginBottom: 14,
           backgroundColor: 'var(--bg-subtle)',
           border: '1px solid #E2E8F0',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           padding: 3,
           boxSizing: 'border-box',
         }}
@@ -258,7 +258,7 @@ export function ExamQuestionPalette({
               className="touch-target center-content"
               style={{
                 padding: '6px 2px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: 'none',
                 backgroundColor: isActive ? '#FFFFFF' : 'transparent',
                 color: isActive ? 'var(--primary-red)' : '#64748B',
@@ -358,7 +358,7 @@ export function ExamQuestionPalette({
                 aspectRatio: '1 / 1',
                 minHeight: 34,
                 maxHeight: 44,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: `1px solid ${borderColor}`,
                 backgroundColor: bgColor,
                 color: textColor,
@@ -407,7 +407,7 @@ export function ExamQuestionPalette({
             style={{
               width: '100%',
               padding: '10px 0',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: isRevealed ? '1px solid #CBD5E1' : '1px solid var(--primary-red)',
               backgroundColor: isRevealed ? 'var(--bg-hover)' : 'var(--primary-red)',
               color: isRevealed ? 'var(--text-muted)' : 'var(--bg-card)',
@@ -442,7 +442,7 @@ export function ExamQuestionPalette({
             style={{
               width: '100%',
               padding: '10px 0',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid #CBD5E1',
               backgroundColor: '#FFFFFF',
               color: 'var(--deep-navy)',
@@ -490,7 +490,7 @@ export function ExamQuestionPalette({
       style={{
         backgroundColor: 'var(--bg-card)',
         border: '1px solid #E2E8F0',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         display: 'flex',
         flexDirection: 'column',
         padding: '16px 14px',

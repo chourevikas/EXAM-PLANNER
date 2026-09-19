@@ -109,7 +109,7 @@ export function WorkflowSection() {
                   style={{
                     width: 72,
                     height: 72,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     position: 'relative',
                     zIndex: 1,
                     background: palette.bg,
@@ -182,7 +182,7 @@ export function WorkflowSection() {
                   alignItems: 'flex-start',
                   gap: 'clamp(12px, 3vw, 18px)',
                   padding: 'clamp(14px, 3vw, 20px) clamp(16px, 4vw, 24px)',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   background: 'rgba(255,255,255,0.04)',
                   border: '1px solid rgba(255,255,255,0.08)',
                 }}
@@ -191,7 +191,7 @@ export function WorkflowSection() {
                   style={{
                     width: 'clamp(44px, 10vw, 52px)',
                     height: 'clamp(44px, 10vw, 52px)',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     flexShrink: 0,
                     background: palette.bg,
                     border: `2px solid ${palette.border}44`,

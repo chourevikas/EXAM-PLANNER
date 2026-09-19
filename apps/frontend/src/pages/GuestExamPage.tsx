@@ -1724,7 +1724,7 @@ export function GuestExamPage() {
             maxWidth: 520,
             width: '100%',
             backgroundColor: '#FFFFFF',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '36px 32px',
             border: '1px solid #E2E8F0',
             boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.08)',
@@ -1735,7 +1735,7 @@ export function GuestExamPage() {
             style={{
               width: 56,
               height: 56,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               backgroundColor: '#FEF3C7',
               display: 'inline-flex',
               alignItems: 'center',
@@ -1765,7 +1765,7 @@ export function GuestExamPage() {
               }}
               style={{
                 padding: '10px 18px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--deep-navy)',
                 color: '#FFFFFF',
                 fontSize: 13.5,
@@ -1785,7 +1785,7 @@ export function GuestExamPage() {
               onClick={() => navigate('/mocks')}
               style={{
                 padding: '10px 18px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--primary-red)',
                 color: '#FFFFFF',
                 fontSize: 13.5,
@@ -1953,7 +1953,7 @@ export function GuestExamPage() {
                 justifyContent: 'center',
                 width: 32,
                 height: 32,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid rgba(255, 255, 255, 0.25)',
                 backgroundColor: 'rgba(255, 255, 255, 0.09)',
                 color: '#FFFFFF',
@@ -1980,7 +1980,7 @@ export function GuestExamPage() {
                 width: displayRecs.length ? 'auto' : 32,
                 height: 32,
                 padding: displayRecs.length ? '0 8px' : 0,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid rgba(255, 255, 255, 0.25)',
                 backgroundColor: 'rgba(255, 255, 255, 0.09)',
                 color: '#FFFFFF',
@@ -2033,7 +2033,7 @@ export function GuestExamPage() {
               alignItems: 'center',
               gap: 6,
               padding: '6px 10px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: `1px solid ${isFocusMode ? 'rgba(var(--primary-red-rgb), 0.5)' : 'rgba(255, 255, 255, 0.25)'}`,
               backgroundColor: isFocusMode
                 ? 'rgba(var(--primary-red-rgb), 0.18)'
@@ -2055,7 +2055,7 @@ export function GuestExamPage() {
             onClick={() => handleFinishGuestExam()}
             style={{
               padding: isTabletOrBelow ? '7px 12px' : '7px 18px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
               color: '#FFFFFF',
@@ -2090,7 +2090,7 @@ export function GuestExamPage() {
             style={{
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: 'clamp(10px, 2vw, 14px) clamp(12px, 2.5vw, 18px)',
               display: 'flex',
               flexWrap: 'wrap',
@@ -2119,7 +2119,7 @@ export function GuestExamPage() {
                   style={{
                     width: 32,
                     height: 32,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     backgroundColor: isFilterRefreshing ? '#EFF6FF' : '#F8FAFC',
                     color: 'var(--primary-red)',
                     display: 'flex',
@@ -2178,7 +2178,7 @@ export function GuestExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: activeDropdown === 'exam' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
                       color: 'var(--deep-navy)',
@@ -2222,7 +2222,7 @@ export function GuestExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: '#FFFFFF',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 10,
                         zIndex: 100,
@@ -2321,7 +2321,7 @@ export function GuestExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border:
                         activeDropdown === 'year' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#F8FAFC',
@@ -2366,7 +2366,7 @@ export function GuestExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: '#FFFFFF',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 10,
                         zIndex: 100,
@@ -2426,7 +2426,7 @@ export function GuestExamPage() {
                           style={{
                             width: '100%',
                             padding: '7px 10px 7px 30px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid #E2E8F0',
                             fontSize: 12,
                             outline: 'none',
@@ -2453,7 +2453,7 @@ export function GuestExamPage() {
                             onClick={() => toggleYearFilter('All Years')}
                             style={{
                               padding: '8px 10px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12.5,
                               fontWeight: selectedYearsList.length === 0 ? 700 : 500,
                               color: selectedYearsList.length === 0 ? 'var(--primary-red)' : '#334155',
@@ -2495,7 +2495,7 @@ export function GuestExamPage() {
                                 onClick={() => toggleYearFilter(opt)}
                                 style={{
                                   padding: '8px 10px',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius)',
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
                                   color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -2548,7 +2548,7 @@ export function GuestExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border:
                         activeDropdown === 'subject' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
@@ -2594,7 +2594,7 @@ export function GuestExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: '#FFFFFF',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 10,
                         zIndex: 100,
@@ -2622,7 +2622,7 @@ export function GuestExamPage() {
                           style={{
                             width: '100%',
                             padding: '7px 10px 7px 30px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid #E2E8F0',
                             fontSize: 12,
                             outline: 'none',
@@ -2651,7 +2651,7 @@ export function GuestExamPage() {
                                 onClick={() => toggleSubjectFilter(opt)}
                                 style={{
                                   padding: '8px 10px',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius)',
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
                                   color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -2699,7 +2699,7 @@ export function GuestExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border:
                         activeDropdown === 'topic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
@@ -2745,7 +2745,7 @@ export function GuestExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: '#FFFFFF',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 10,
                         zIndex: 100,
@@ -2772,7 +2772,7 @@ export function GuestExamPage() {
                           style={{
                             width: '100%',
                             padding: '7px 10px 7px 30px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid #E2E8F0',
                             fontSize: 12,
                             outline: 'none',
@@ -2801,7 +2801,7 @@ export function GuestExamPage() {
                                 onClick={() => toggleTopicFilter(opt)}
                                 style={{
                                   padding: '8px 10px',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius)',
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
                                   color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -2849,7 +2849,7 @@ export function GuestExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border:
                         activeDropdown === 'subtopic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#F8FAFC',
@@ -2895,7 +2895,7 @@ export function GuestExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: '#FFFFFF',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 10,
                         zIndex: 100,
@@ -2922,7 +2922,7 @@ export function GuestExamPage() {
                           style={{
                             width: '100%',
                             padding: '7px 10px 7px 30px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid #E2E8F0',
                             fontSize: 12,
                             outline: 'none',
@@ -2951,7 +2951,7 @@ export function GuestExamPage() {
                                 onClick={() => toggleSubtopicFilter(opt)}
                                 style={{
                                   padding: '8px 10px',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius)',
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
                                   color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -2999,7 +2999,7 @@ export function GuestExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border:
                         activeDropdown === 'difficulty' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
@@ -3039,7 +3039,7 @@ export function GuestExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: '#FFFFFF',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 8,
                         zIndex: 100,
@@ -3065,7 +3065,7 @@ export function GuestExamPage() {
                             }}
                             style={{
                               padding: '8px 10px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
                               color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -3193,7 +3193,7 @@ export function GuestExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: activeDropdown === 'exam' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
                     color: 'var(--deep-navy)',
@@ -3237,7 +3237,7 @@ export function GuestExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: '#FFFFFF',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 10,
                         zIndex: 100,
@@ -3336,7 +3336,7 @@ export function GuestExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border:
                       activeDropdown === 'year' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#F8FAFC',
@@ -3381,7 +3381,7 @@ export function GuestExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: '#FFFFFF',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 10,
                       zIndex: 100,
@@ -3441,7 +3441,7 @@ export function GuestExamPage() {
                         style={{
                           width: '100%',
                           padding: '7px 10px 7px 30px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #E2E8F0',
                           fontSize: 12,
                           outline: 'none',
@@ -3468,7 +3468,7 @@ export function GuestExamPage() {
                           onClick={() => toggleYearFilter('All Years')}
                           style={{
                             padding: '8px 10px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             fontSize: 12.5,
                             fontWeight: selectedYearsList.length === 0 ? 700 : 500,
                             color: selectedYearsList.length === 0 ? 'var(--primary-red)' : '#334155',
@@ -3510,7 +3510,7 @@ export function GuestExamPage() {
                               onClick={() => toggleYearFilter(opt)}
                               style={{
                                 padding: '8px 10px',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
                                 color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -3563,7 +3563,7 @@ export function GuestExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border:
                       activeDropdown === 'subject' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
@@ -3609,7 +3609,7 @@ export function GuestExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: '#FFFFFF',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 10,
                       zIndex: 100,
@@ -3636,7 +3636,7 @@ export function GuestExamPage() {
                         style={{
                           width: '100%',
                           padding: '7px 10px 7px 30px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #E2E8F0',
                           fontSize: 12,
                           outline: 'none',
@@ -3665,7 +3665,7 @@ export function GuestExamPage() {
                               onClick={() => toggleSubjectFilter(opt)}
                               style={{
                                 padding: '8px 10px',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
                                 color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -3713,7 +3713,7 @@ export function GuestExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border:
                       activeDropdown === 'topic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
@@ -3759,7 +3759,7 @@ export function GuestExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: '#FFFFFF',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 10,
                       zIndex: 100,
@@ -3786,7 +3786,7 @@ export function GuestExamPage() {
                         style={{
                           width: '100%',
                           padding: '7px 10px 7px 30px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #E2E8F0',
                           fontSize: 12,
                           outline: 'none',
@@ -3815,7 +3815,7 @@ export function GuestExamPage() {
                               onClick={() => toggleTopicFilter(opt)}
                               style={{
                                 padding: '8px 10px',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
                                 color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -3863,7 +3863,7 @@ export function GuestExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border:
                       activeDropdown === 'subtopic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#F8FAFC',
@@ -3909,7 +3909,7 @@ export function GuestExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: '#FFFFFF',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 10,
                       zIndex: 100,
@@ -3936,7 +3936,7 @@ export function GuestExamPage() {
                         style={{
                           width: '100%',
                           padding: '7px 10px 7px 30px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #E2E8F0',
                           fontSize: 12,
                           outline: 'none',
@@ -3965,7 +3965,7 @@ export function GuestExamPage() {
                               onClick={() => toggleSubtopicFilter(opt)}
                               style={{
                                 padding: '8px 10px',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
                                 color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -4013,7 +4013,7 @@ export function GuestExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border:
                       activeDropdown === 'difficulty' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
@@ -4051,7 +4051,7 @@ export function GuestExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: '#FFFFFF',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 8,
                       zIndex: 100,
@@ -4076,7 +4076,7 @@ export function GuestExamPage() {
                           }}
                           style={{
                             padding: '8px 10px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             fontSize: 12.5,
                             fontWeight: isSelected ? 700 : 500,
                             color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -4241,7 +4241,7 @@ export function GuestExamPage() {
               width: 380,
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               display: 'flex',
               flexDirection: 'column',
               padding: '16px 14px',
@@ -4282,7 +4282,7 @@ export function GuestExamPage() {
             zIndex: 990,
             backgroundColor: 'var(--deep-navy)',
             color: '#FFFFFF',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '10px 20px',
             display: 'flex',
             alignItems: 'center',
@@ -4300,7 +4300,7 @@ export function GuestExamPage() {
               style={{
                 width: 26,
                 height: 26,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--primary-red)',
                 color: '#FFFFFF',
                 display: 'inline-flex',
@@ -4324,7 +4324,7 @@ export function GuestExamPage() {
             }}
             style={{
               padding: '6px 14px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: 'none',
               backgroundColor: 'var(--primary-red)',
               color: '#FFFFFF',
@@ -4382,7 +4382,7 @@ export function GuestExamPage() {
               width: '100%',
               maxWidth: 420,
               backgroundColor: '#FFFFFF',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: '28px 28px',
               border: '2px solid #E2E8F0',
               boxShadow: '0 20px 40px -10px rgba(15, 23, 42, 0.25)',
@@ -4394,7 +4394,7 @@ export function GuestExamPage() {
               style={{
                 width: 50,
                 height: 50,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: '#FEF2F2',
                 border: '1px solid #FECACA',
                 color: '#DC2626',
@@ -4423,7 +4423,7 @@ export function GuestExamPage() {
                 style={{
                   flex: 1,
                   height: 42,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1.5px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
                   color: '#475569',
@@ -4451,7 +4451,7 @@ export function GuestExamPage() {
                 style={{
                   flex: 1,
                   height: 42,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: '#DC2626',
                   color: '#FFFFFF',
@@ -4497,7 +4497,7 @@ export function GuestExamPage() {
               width: '100%',
               maxWidth: 440,
               backgroundColor: '#FFFFFF',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: '32px 28px',
               border: '1.5px solid #E2E8F0',
               boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
@@ -4509,7 +4509,7 @@ export function GuestExamPage() {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: '#F8FAFC',
                 border: '1px solid #BFDBFE',
                 color: 'var(--primary-red)',
@@ -4530,7 +4530,7 @@ export function GuestExamPage() {
                 fontSize: 11,
                 fontWeight: 800,
                 padding: '3px 10px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 marginBottom: 10,
                 letterSpacing: '0.04em',
                 textTransform: 'uppercase',
@@ -4567,7 +4567,7 @@ export function GuestExamPage() {
                 style={{
                   width: '100%',
                   height: 46,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: 'var(--primary-red)',
                   color: '#FFFFFF',
@@ -4598,7 +4598,7 @@ export function GuestExamPage() {
                 style={{
                   width: '100%',
                   height: 42,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1.5px solid #E2E8F0',
                   backgroundColor: '#FFFFFF',
                   color: '#64748B',

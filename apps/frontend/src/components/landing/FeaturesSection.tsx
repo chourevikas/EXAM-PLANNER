@@ -32,7 +32,7 @@ function FeatureCard({ icon, title, desc, num, paletteIndex }: FeatureCardProps)
         minHeight: 230,
         flexShrink: 0,
         background: 'var(--bg-card)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         padding: '28px 26px',
         border: `1px solid ${p.border}`,
         position: 'relative',
@@ -87,7 +87,7 @@ function FeatureCard({ icon, title, desc, num, paletteIndex }: FeatureCardProps)
           style={{
             position: 'absolute',
             inset: -6,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             background: p.glow,
             filter: 'blur(8px)',
           }}
@@ -97,7 +97,7 @@ function FeatureCard({ icon, title, desc, num, paletteIndex }: FeatureCardProps)
           style={{
             width: 54,
             height: 54,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             background: p.bg,
             border: `1px solid ${p.border}`,
             display: 'flex',
@@ -145,7 +145,7 @@ function FeatureCard({ icon, title, desc, num, paletteIndex }: FeatureCardProps)
           right: 0,
           height: 3,
           background: `linear-gradient(90deg, ${p.color} 0%, ${p.color}44 60%, transparent 100%)`,
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
         }}
       />
     </div>

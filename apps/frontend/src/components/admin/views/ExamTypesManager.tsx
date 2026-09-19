@@ -174,7 +174,7 @@ export function ExamTypesManager() {
             backgroundColor: toast.type === 'success' ? '#166534' : '#991B1B',
             color: 'var(--bg-card)',
             padding: '12px 20px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
             display: 'flex',
             alignItems: 'center',
@@ -193,7 +193,7 @@ export function ExamTypesManager() {
       <div
         style={{
           background: 'linear-gradient(135deg, #0F1D38 0%, #14284C 45%, #1B3864 75%, #224578 100%)',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           padding: isMobile ? '16px 18px' : '24px 28px',
           marginBottom: 24,
           boxShadow: '0 4px 16px -2px rgba(15, 29, 56, 0.12)',
@@ -210,7 +210,7 @@ export function ExamTypesManager() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'rgba(var(--primary-red-rgb), 0.2)',
                 display: 'flex',
                 alignItems: 'center',
@@ -235,7 +235,7 @@ export function ExamTypesManager() {
             onClick={loadExamTypes}
             style={{
               padding: '8px 14px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               backgroundColor: 'rgba(255, 255, 255, 0.1)',
               border: '1px solid rgba(255, 255, 255, 0.2)',
               color: 'var(--bg-card)',
@@ -255,7 +255,7 @@ export function ExamTypesManager() {
             onClick={handleOpenAddModal}
             style={{
               padding: '8px 18px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               backgroundColor: 'var(--primary-red)',
               border: 'none',
               color: 'var(--bg-card)',
@@ -482,7 +482,7 @@ export function ExamTypesManager() {
                         color: 'var(--text-secondary)',
                         fontSize: 12,
                         fontWeight: 600,
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                       }}
                     >
                       {item.exams_count || 0} papers
@@ -585,7 +585,7 @@ export function ExamTypesManager() {
               width: '100%',
               maxWidth: 'min(620px, calc(100vw - 24px))',
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.25)',
               overflow: 'hidden',
               display: 'flex',
@@ -634,7 +634,7 @@ export function ExamTypesManager() {
                       padding: '8px 12px',
                       fontSize: 13,
                       border: '1px solid #CBD5E1',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       outline: 'none',
                       fontFamily: 'monospace',
                       boxSizing: 'border-box',
@@ -657,7 +657,7 @@ export function ExamTypesManager() {
                       padding: '8px 12px',
                       fontSize: 13,
                       border: '1px solid #CBD5E1',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -680,7 +680,7 @@ export function ExamTypesManager() {
                       padding: '8px 12px',
                       fontSize: 13,
                       border: '1px solid #CBD5E1',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -701,7 +701,7 @@ export function ExamTypesManager() {
                       padding: '8px 12px',
                       fontSize: 13,
                       border: '1px solid #CBD5E1',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -723,7 +723,7 @@ export function ExamTypesManager() {
                       padding: '8px 12px',
                       fontSize: 13,
                       border: '1px solid #CBD5E1',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -747,7 +747,7 @@ export function ExamTypesManager() {
                       padding: '8px 12px',
                       fontSize: 13,
                       border: '1px solid #86EFAC',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       outline: 'none',
                       backgroundColor: '#F0FDF4',
                       boxSizing: 'border-box',
@@ -770,7 +770,7 @@ export function ExamTypesManager() {
                       padding: '8px 12px',
                       fontSize: 13,
                       border: '1px solid #FCA5A5',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       outline: 'none',
                       backgroundColor: '#FEF2F2',
                       boxSizing: 'border-box',
@@ -793,7 +793,7 @@ export function ExamTypesManager() {
                     padding: '8px 12px',
                     fontSize: 13,
                     border: '1px solid #CBD5E1',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     outline: 'none',
                     boxSizing: 'border-box',
                     fontFamily: 'inherit',
@@ -875,7 +875,7 @@ export function ExamTypesManager() {
               width: '100%',
               maxWidth: 'min(480px, calc(100vw - 24px))',
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.25)',
               padding: 24,
             }}
@@ -885,7 +885,7 @@ export function ExamTypesManager() {
                 style={{
                   width: 40,
                   height: 40,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   backgroundColor: 'var(--primary-red-bg)',
                   display: 'flex',
                   alignItems: 'center',

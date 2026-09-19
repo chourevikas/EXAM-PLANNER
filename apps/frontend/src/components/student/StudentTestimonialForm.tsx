@@ -47,7 +47,7 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
         marginTop: 32,
         backgroundColor: 'var(--bg-card)',
         border: '1px solid var(--border-default)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         padding: '32px 36px',
         boxShadow: 'var(--shadow-color-base)',
         background: 'linear-gradient(135deg, rgba(var(--primary-red-rgb), 0.04) 0%, rgba(139, 92, 246, 0.04) 100%)',
@@ -59,7 +59,7 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
           style={{
             width: 42,
             height: 42,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             background: 'linear-gradient(135deg, var(--primary-red), #7c3aed)',
             color: 'var(--bg-card)',
             display: 'flex',
@@ -85,7 +85,7 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
           style={{
             marginTop: 20,
             padding: '20px 24px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             backgroundColor: 'rgba(16, 185, 129, 0.12)',
             border: '1px solid rgba(16, 185, 129, 0.3)',
             color: '#3A8B53',
@@ -105,7 +105,7 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
             <div
               style={{
                 padding: '12px 16px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'rgba(var(--primary-red-rgb), 0.12)',
                 border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                 color: '#dc2626',
@@ -130,7 +130,7 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid var(--border-default)',
                   backgroundColor: 'var(--bg-body, #ffffff)',
                   color: 'var(--text-primary)',
@@ -184,7 +184,7 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
               style={{
                 width: '100%',
                 padding: '14px 16px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid var(--border-default)',
                 backgroundColor: 'var(--bg-body, #ffffff)',
                 color: 'var(--text-primary)',
@@ -204,7 +204,7 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
               disabled={submitting}
               style={{
                 padding: '12px 28px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 fontSize: 14,
                 fontWeight: 700,
                 backgroundColor: 'var(--primary-red)',

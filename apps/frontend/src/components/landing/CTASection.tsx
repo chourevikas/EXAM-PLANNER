@@ -56,7 +56,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
             gap: 8,
             background: 'rgba(var(--primary-red-rgb), 0.15)',
             border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '6px 18px',
             marginBottom: 24,
           }}
@@ -66,7 +66,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
               style={{
                 position: 'absolute',
                 inset: 0,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 background: C.emerald,
               }}
             />
@@ -74,7 +74,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
               style={{
                 position: 'absolute',
                 inset: -4,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 background: 'rgba(16,185,129,0.3)',
                 animation: 'pulse-ring 1.5s ease infinite',
               }}

@@ -69,7 +69,7 @@ export function RecommendedQuestionsPanel({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 7, height: 7, borderRadius: 0, backgroundColor: 'var(--primary-red)' }} />
+              <div style={{ width: 7, height: 7, borderRadius: 'var(--radius)', backgroundColor: 'var(--primary-red)' }} />
               <span
                 style={{
                   fontSize: 10.5,
@@ -89,7 +89,7 @@ export function RecommendedQuestionsPanel({
                 color: 'var(--text-secondary)',
                 backgroundColor: 'var(--bg-hover)',
                 padding: '1px 6px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
               }}
             >
               {questions.length} Qs

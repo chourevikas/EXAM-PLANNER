@@ -50,7 +50,7 @@ function StatCard({ value, suffix, label, icon: Icon, color, bg }: StatProps) {
         alignItems: 'center',
         textAlign: 'center',
         padding: '32px 24px',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         background: 'rgba(255,255,255,0.05)',
         border: '1px solid rgba(255,255,255,0.08)',
         backdropFilter: 'blur(8px)',
@@ -71,7 +71,7 @@ function StatCard({ value, suffix, label, icon: Icon, color, bg }: StatProps) {
         style={{
           width: 48,
           height: 48,
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           background: bg,
           display: 'flex',
           alignItems: 'center',
@@ -103,7 +103,7 @@ function StatCard({ value, suffix, label, icon: Icon, color, bg }: StatProps) {
           width: 36,
           height: 3,
           background: color,
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           margin: '12px auto 10px',
           opacity: 0.8,
         }}

@@ -60,7 +60,7 @@ function MetricCard({
       style={{
         background: 'var(--bg-card)',
         border: isHovered && onClick ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         position: 'relative',
         overflow: 'hidden',
         padding: '20px 22px',
@@ -123,7 +123,7 @@ function MetricCard({
           style={{
             width: 34,
             height: 34,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             backgroundColor: 'var(--bg-subtle)',
             display: 'flex',
             alignItems: 'center',
@@ -195,7 +195,7 @@ function MetricCard({
               height: 4,
               width: '100%',
               backgroundColor: 'var(--bg-hover)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               marginTop: 10,
               overflow: 'hidden',
             }}
@@ -205,7 +205,7 @@ function MetricCard({
                 height: '100%',
                 width: `${Math.min(100, Math.max(0, progressPercent))}%`,
                 backgroundColor: accentColor,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 transition: 'width 400ms ease-out',
               }}
             />
@@ -274,7 +274,7 @@ function TableRowItem({
             fontWeight: 600,
             color: 'var(--deep-navy)',
             backgroundColor: 'var(--bg-hover)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
           }}
         >
           {paper.questions}
@@ -294,12 +294,12 @@ function TableRowItem({
             alignItems: 'center',
             gap: 6,
             padding: '3px 10px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             backgroundColor: '#F0FDF4',
             border: '1px solid #DCFCE7',
           }}
         >
-          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: 'var(--status-success)' }} />
+          <span style={{ width: 6, height: 6, borderRadius: 'var(--radius)', backgroundColor: 'var(--status-success)' }} />
           <span style={{ fontSize: 12.5, fontWeight: 600, color: '#15803D' }}>
             {paper.confidence || 99}% confidence
           </span>
@@ -331,7 +331,7 @@ function TableRowItem({
                   color: 'var(--text-disabled)',
                   background: 'var(--bg-hover)',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   cursor: 'not-allowed',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -367,7 +367,7 @@ function TableRowItem({
                   color: hovered ? 'var(--primary-red)' : 'var(--deep-navy)',
                   background: 'var(--bg-card)',
                   border: hovered ? '1px solid #93C5FD' : '1px solid #E2E8F0',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   cursor: 'pointer',
                   boxShadow: hovered ? '0 1px 2px rgba(var(--primary-red-rgb), 0.1)' : 'none',
                   transition: 'all 150ms ease-out',
@@ -418,7 +418,7 @@ function SubjectDistributionRow({
       onMouseLeave={() => setHovered(false)}
       style={{
         padding: '8px 10px',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         backgroundColor: hovered ? 'var(--bg-subtle)' : 'transparent',
         transition: 'all 150ms ease-out',
         position: 'relative',
@@ -447,7 +447,7 @@ function SubjectDistributionRow({
         style={{
           height: hovered ? 7 : 5,
           backgroundColor: 'var(--bg-hover)',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           overflow: 'hidden',
           transition: 'height 150ms ease-out',
         }}
@@ -457,7 +457,7 @@ function SubjectDistributionRow({
             height: '100%',
             width: `${Math.min(100, Math.max(0, percent))}%`,
             backgroundColor: hovered ? 'var(--accent-darker)' : 'var(--primary-red)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             transition: 'width 400ms ease-out, background-color 150ms ease-out',
           }}
         />
@@ -472,7 +472,7 @@ function SubjectDistributionRow({
             color: 'var(--text-secondary)',
             backgroundColor: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '4px 8px',
             boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)',
             display: 'flex',
@@ -527,7 +527,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
       <div
         style={{
           background: 'linear-gradient(135deg, #0F1D38 0%, #14284C 45%, #1B3864 75%, #224578 100%)',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           padding: isMobile ? '16px 18px' : '24px 28px',
           marginBottom: 24,
           boxShadow: '0 4px 16px -2px rgba(15, 29, 56, 0.12)',
@@ -561,13 +561,13 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
                 padding: '3px 10px',
                 backgroundColor: 'rgba(255, 255, 255, 0.12)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 fontSize: 12,
                 fontWeight: 600,
                 color: '#6EE7B7',
               }}
             >
-              <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#34D399' }} />
+              <span style={{ width: 6, height: 6, borderRadius: 'var(--radius)', backgroundColor: '#34D399' }} />
               <span>Extraction Pipeline Operational</span>
             </div>
           </div>
@@ -590,7 +590,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               padding: '9px 15px',
               fontSize: 13,
               fontWeight: 500,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               background: 'rgba(255, 255, 255, 0.12)',
               color: 'var(--bg-card)',
               border: '1px solid rgba(255, 255, 255, 0.25)',
@@ -613,7 +613,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               padding: '9px 18px',
               fontSize: 13.5,
               fontWeight: 600,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               background: 'var(--primary-red)',
               color: 'var(--bg-card)',
               border: '1px solid var(--primary-red)',
@@ -635,7 +635,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
             padding: '12px 16px',
             background: '#FEF2F2',
             border: '1px solid #FECDCA',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             marginBottom: 20,
             color: '#B42318',
             display: 'flex',
@@ -657,7 +657,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               color: '#B42318',
               background: 'var(--bg-card)',
               border: '1px solid #FECDCA',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               cursor: 'pointer',
             }}
           >
@@ -710,7 +710,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           style={{
             background: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: isMobile ? '16px' : '24px',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
           }}
@@ -725,7 +725,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 4, height: 22, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
+              <div style={{ width: 4, height: 22, backgroundColor: 'var(--primary-red)', borderRadius: 'var(--radius)' }} />
               <div>
                 <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.01em' }}>
                   Recent Exam Paper Uploads
@@ -749,7 +749,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
                 fontWeight: 600,
                 cursor: 'pointer',
                 padding: '4px 8px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 transition: 'color 0.15s ease',
               }}
             >
@@ -836,7 +836,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           style={{
             background: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: 24,
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
             display: 'flex',
@@ -845,7 +845,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
         >
           {/* Section Title with Vertical Accent */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
+            <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 'var(--radius)' }} />
             <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.01em' }}>
               Question Distribution
             </h2>
@@ -862,7 +862,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
                     <div style={{ height: 14, width: 120, backgroundColor: 'var(--bg-hover)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
                     <div style={{ height: 14, width: 40, backgroundColor: 'var(--bg-hover)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
                   </div>
-                  <div style={{ height: 5, backgroundColor: 'var(--bg-hover)', borderRadius: 0 }} />
+                  <div style={{ height: 5, backgroundColor: 'var(--bg-hover)', borderRadius: 'var(--radius)' }} />
                 </div>
               ))
             ) : subjectsList.length === 0 ? (

@@ -129,7 +129,7 @@ function ExploreButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) 
         color: isHovered ? 'var(--primary-red)' : 'var(--deep-navy)',
         backgroundColor: isHovered ? 'var(--bg-subtle)' : 'var(--bg-card)',
         border: `1px solid ${isHovered ? 'var(--primary-red)' : 'var(--border-color)'}`,
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         cursor: 'pointer',
         boxShadow: isHovered ? '0 2px 6px rgba(var(--primary-red-rgb), 0.15)' : 'none',
         transition: 'all 150ms ease-out',
@@ -160,7 +160,7 @@ const filterLabelStyle: React.CSSProperties = {
 const filterSelectStyle: React.CSSProperties = {
   width: '100%',
   padding: '8px 10px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   border: '1px solid #CBD5E1',
   fontSize: 13,
   color: '#172033',
@@ -457,7 +457,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
             padding: '12px 16px',
             background: '#FEF2F2',
             border: '1px solid #FECDCA',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             marginBottom: 20,
             color: '#B42318',
             fontSize: 13.5,
@@ -480,7 +480,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
             padding: '12px 20px',
             background: 'var(--deep-navy)',
             color: 'var(--bg-card)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             zIndex: 9999,
             fontSize: 13,
             fontWeight: 500,
@@ -529,7 +529,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     backgroundColor: 'var(--bg-subtle)',
                     border: '1px solid #BFDBFE',
                     padding: '3px 10px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                   }}
                 >
                   {loadingSubjects ? (
@@ -571,7 +571,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 style={{
                   width: '100%',
                   padding: '9px 12px 9px 36px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   backgroundColor: 'var(--bg-card)',
                   fontSize: 13,
@@ -588,7 +588,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
             style={{
               background: 'var(--bg-card)',
               border: '1px solid #E2E8F0',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
               overflowX: 'auto',
               WebkitOverflowScrolling: 'touch',
@@ -709,11 +709,11 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                                 color: 'var(--status-warning)',
                                 backgroundColor: 'var(--status-warning-bg)',
                                 border: '1px solid #FDE68A',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 gap: 5,
                               }}
                             >
-                              <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#F2B623' }} />
+                              <span style={{ width: 6, height: 6, borderRadius: 'var(--radius)', backgroundColor: '#F2B623' }} />
                               {sub.pendingCount} Pending Review
                             </span>
                           ) : (
@@ -727,7 +727,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                                 color: '#15803D',
                                 backgroundColor: '#F0FDF4',
                                 border: '1px solid #BBF7D0',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 gap: 5,
                               }}
                             >
@@ -768,7 +768,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
           <div
             style={{
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid #E2E8F0',
               padding: isMobile ? '14px 16px' : '18px 22px',
               marginBottom: 16,
@@ -801,7 +801,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     padding: '7px 12px',
                     backgroundColor: 'var(--bg-card)',
                     border: '1px solid #CBD5E1',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     fontSize: 12.5,
                     fontWeight: 600,
                     color: 'var(--text-secondary)',
@@ -834,7 +834,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                     <span
                       style={{
                         padding: '2px 8px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         fontSize: 11,
                         fontWeight: 600,
                         backgroundColor: 'var(--bg-subtle)',
@@ -925,7 +925,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 backgroundColor: '#FFFFFF',
                 border: '1px solid #E2E8F0',
                 borderBottom: filtersOpen ? '1px solid #F1F5F9' : '1px solid #E2E8F0',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 cursor: 'pointer',
                 fontSize: 13,
                 fontWeight: 700,
@@ -955,7 +955,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
               background: '#FFFFFF',
               border: '1px solid #E2E8F0',
               borderTop: isTabletOrBelow ? 'none' : '1px solid #E2E8F0',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: isMobile ? 12 : 16,
               marginBottom: 14,
               boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
@@ -1045,7 +1045,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
               {/* Difficulty */}
               <div>
                 <label style={filterLabelStyle}>DIFFICULTY</label>
-                <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 0 }}>
+                <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 'var(--radius)' }}>
                   {(['ALL', 'EASY', 'MEDIUM', 'HARD'] as const).map((lvl) => (
                     <button
                       key={lvl}
@@ -1059,7 +1059,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                         fontSize: 11,
                         fontWeight: selectedDifficulty === lvl ? 700 : 500,
                         border: 'none',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         background: selectedDifficulty === lvl ? '#FFFFFF' : 'transparent',
                         color: selectedDifficulty === lvl ? '#172033' : '#64748B',
                         cursor: 'pointer',
@@ -1126,7 +1126,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 marginBottom: 14,
                 backgroundColor: '#FFFFFF',
                 border: '1px solid #E2E8F0',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 cursor: 'pointer',
                 fontSize: 13,
                 fontWeight: 700,
@@ -1159,7 +1159,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 style={{
                   background: 'var(--bg-card)',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   padding: isMobile ? 12 : 14,
                   display: 'flex',
                   flexDirection: 'column',
@@ -1198,7 +1198,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           }}
                           style={{
                             padding: '10px 12px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             cursor: 'pointer',
                             backgroundColor: isSelected ? 'var(--bg-subtle)' : 'var(--bg-card)',
                             border: isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
@@ -1223,7 +1223,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                                 color: 'var(--text-muted)',
                                 backgroundColor: 'var(--bg-hover)',
                                 padding: '1px 6px',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                               }}
                             >
                               {q.source_year}
@@ -1267,7 +1267,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 style={{
                   background: 'var(--bg-card)',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   padding: isMobile ? '16px 14px' : '24px 28px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -1292,7 +1292,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           marginBottom: 4,
                           backgroundColor: 'var(--bg-hover)',
                           border: '1px solid #CBD5E1',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           fontSize: 12,
                           fontWeight: 600,
                           color: 'var(--text-secondary)',
@@ -1332,7 +1332,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                               padding: '2px 8px',
                               fontSize: 11,
                               fontWeight: 700,
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               backgroundColor:
                                 selectedQuestion.difficulty === 'HARD'
                                   ? 'var(--primary-red-bg)'
@@ -1373,7 +1373,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                             alignItems: 'center',
                             gap: 5,
                             padding: '6px 12px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid #CBD5E1',
                             background: 'var(--bg-card)',
                             color: 'var(--text-secondary)',
@@ -1395,7 +1395,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                             alignItems: 'center',
                             gap: 6,
                             padding: '6px 14px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid #CBD5E1',
                             background: 'var(--bg-subtle)',
                             color: 'var(--deep-navy)',
@@ -1454,7 +1454,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           padding: isMobile ? '7px 10px' : '7px 14px',
                           fontSize: 12.5,
                           fontWeight: 600,
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #CBD5E1',
                           background: 'var(--bg-card)',
                           color: selectedQuestionIndex === 0 ? 'var(--border-color)' : 'var(--text-secondary)',
@@ -1484,7 +1484,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                           padding: isMobile ? '7px 10px' : '7px 14px',
                           fontSize: 12.5,
                           fontWeight: 600,
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #CBD5E1',
                           background: 'var(--bg-card)',
                           color: selectedQuestionIndex >= filteredQuestions.length - 1 ? 'var(--border-color)' : 'var(--text-secondary)',

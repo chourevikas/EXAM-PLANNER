@@ -31,7 +31,7 @@ export function StudentMetricCard({
       style={{
         background: 'var(--bg-card)',
         border: '1px solid #E2E8F0',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         position: 'relative',
         overflow: 'hidden',
         padding: '20px 22px',
@@ -81,7 +81,7 @@ export function StudentMetricCard({
           style={{
             width: 34,
             height: 34,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             backgroundColor: 'var(--bg-subtle)',
             color: accentColor,
             display: 'flex',
@@ -131,7 +131,7 @@ export function StudentMetricCard({
               height: 4,
               width: '100%',
               backgroundColor: 'var(--bg-hover)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               marginTop: 10,
               overflow: 'hidden',
             }}
@@ -141,7 +141,7 @@ export function StudentMetricCard({
                 height: '100%',
                 width: `${Math.min(100, Math.max(0, progressPercent))}%`,
                 backgroundColor: accentColor,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 transition: 'width 400ms ease-out',
               }}
             />

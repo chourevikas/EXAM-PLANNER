@@ -203,7 +203,7 @@ export function AdminQuestionPublicationCard({
         lineHeight: 1.6,
         padding: '24px 28px',
         border: '1px solid #E5E7EB',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
         ...style,
       }}
@@ -382,7 +382,7 @@ export function AdminQuestionPublicationCard({
           backgroundColor: '#EEF2FF',
           border: '1px solid #C7D2FE',
           padding: '18px 22px',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
         }}
       >
         <div

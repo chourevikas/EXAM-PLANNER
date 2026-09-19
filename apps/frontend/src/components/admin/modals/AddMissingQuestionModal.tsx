@@ -263,7 +263,7 @@ export function AddMissingQuestionModal({
           maxWidth: 860,
           maxHeight: '90vh',
           backgroundColor: 'var(--bg-card)',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
           display: 'flex',
           flexDirection: 'column',
@@ -287,7 +287,7 @@ export function AddMissingQuestionModal({
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'rgba(239, 68, 68, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
@@ -315,7 +315,7 @@ export function AddMissingQuestionModal({
               color: 'rgba(255, 255, 255, 0.6)',
               cursor: 'pointer',
               padding: 6,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               display: 'flex',
               alignItems: 'center',
             }}
@@ -335,7 +335,7 @@ export function AddMissingQuestionModal({
                   padding: '12px 16px',
                   backgroundColor: '#FEF2F2',
                   border: '1px solid #FCA5A5',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   color: '#991B1B',
                   fontSize: 13,
                   display: 'flex',
@@ -363,7 +363,7 @@ export function AddMissingQuestionModal({
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     fontSize: 14,
                     outline: 'none',
@@ -380,7 +380,7 @@ export function AddMissingQuestionModal({
                         onClick={() => setQuestionNumber(qNum)}
                         style={{
                           padding: '1px 6px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           fontSize: 11,
                           fontWeight: questionNumber === qNum ? 700 : 500,
                           backgroundColor: questionNumber === qNum ? '#DC2626' : 'var(--bg-hover)',
@@ -408,7 +408,7 @@ export function AddMissingQuestionModal({
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     fontSize: 14,
                     backgroundColor: 'var(--bg-card)',
@@ -434,7 +434,7 @@ export function AddMissingQuestionModal({
                     style={{
                       flex: 1,
                       padding: '8px 10px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: '1px solid #CBD5E1',
                       fontSize: 13,
                     }}
@@ -448,7 +448,7 @@ export function AddMissingQuestionModal({
                     style={{
                       flex: 1,
                       padding: '8px 10px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: '1px solid #CBD5E1',
                       fontSize: 13,
                     }}
@@ -470,7 +470,7 @@ export function AddMissingQuestionModal({
                 style={{
                   width: '100%',
                   padding: '10px 12px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   fontSize: 14,
                   fontFamily: 'Inter, sans-serif',
@@ -493,7 +493,7 @@ export function AddMissingQuestionModal({
                 style={{
                   width: '100%',
                   padding: '8px 12px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #E2E8F0',
                   fontSize: 13,
                   fontFamily: 'Inter, sans-serif',
@@ -516,7 +516,7 @@ export function AddMissingQuestionModal({
                     key={opt.option_label}
                     style={{
                       padding: 12,
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: opt.is_correct ? '1.5px solid #10B981' : '1px solid #E2E8F0',
                       backgroundColor: opt.is_correct ? '#F0FDF4' : 'var(--bg-subtle)',
                       display: 'flex',
@@ -557,7 +557,7 @@ export function AddMissingQuestionModal({
                         style={{
                           width: '100%',
                           padding: '8px 12px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #CBD5E1',
                           fontSize: 13.5,
                           outline: 'none',
@@ -571,7 +571,7 @@ export function AddMissingQuestionModal({
             </div>
 
             {/* Master Syllabus Hierarchy Selector */}
-            <div style={{ padding: 16, borderRadius: 0, backgroundColor: 'var(--bg-hover)', border: '1px solid #E2E8F0' }}>
+            <div style={{ padding: 16, borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-hover)', border: '1px solid #E2E8F0' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <BookOpen size={16} color="var(--text-secondary)" />
@@ -585,7 +585,7 @@ export function AddMissingQuestionModal({
                       fontSize: 11,
                       fontWeight: 600,
                       padding: '2px 8px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       backgroundColor: taxonomyVerified ? 'var(--status-success-bg)' : 'var(--status-warning-bg)',
                       color: taxonomyVerified ? '#065F46' : '#92400E',
                     }}
@@ -603,7 +603,7 @@ export function AddMissingQuestionModal({
                   <select
                     value={selectedSubject}
                     onChange={(e) => setSelectedSubject(e.target.value)}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 0, border: '1px solid #CBD5E1', fontSize: 13 }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--radius)', border: '1px solid #CBD5E1', fontSize: 13 }}
                   >
                     <option value="">Select Subject</option>
                     {syllabusTree.map((s, i) => {
@@ -624,7 +624,7 @@ export function AddMissingQuestionModal({
                   <select
                     value={selectedTopic}
                     onChange={(e) => setSelectedTopic(e.target.value)}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 0, border: '1px solid #CBD5E1', fontSize: 13 }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--radius)', border: '1px solid #CBD5E1', fontSize: 13 }}
                   >
                     <option value="">Select Topic</option>
                     {availableTopics.map((t, i) => (
@@ -642,7 +642,7 @@ export function AddMissingQuestionModal({
                   <select
                     value={selectedSubtopic}
                     onChange={(e) => setSelectedSubtopic(e.target.value)}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 0, border: '1px solid #CBD5E1', fontSize: 13 }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--radius)', border: '1px solid #CBD5E1', fontSize: 13 }}
                   >
                     <option value="">Select Subtopic</option>
                     {availableSubtopics.map((st, i) => (
@@ -670,7 +670,7 @@ export function AddMissingQuestionModal({
                   value={detailedSolution}
                   onChange={(e) => setDetailedSolution(e.target.value)}
                   placeholder="Detailed step-by-step solution..."
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 0, border: '1px solid #CBD5E1', fontSize: 13 }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid #CBD5E1', fontSize: 13 }}
                 />
               </div>
 
@@ -686,12 +686,12 @@ export function AddMissingQuestionModal({
                     onChange={(e) => setNewTrap(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTrap())}
                     placeholder="Add common trap or misconception..."
-                    style={{ flex: 1, padding: '7px 10px', borderRadius: 0, border: '1px solid #CBD5E1', fontSize: 13 }}
+                    style={{ flex: 1, padding: '7px 10px', borderRadius: 'var(--radius)', border: '1px solid #CBD5E1', fontSize: 13 }}
                   />
                   <button
                     type="button"
                     onClick={handleAddTrap}
-                    style={{ padding: '7px 14px', borderRadius: 0, backgroundColor: 'var(--text-secondary)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13 }}
+                    style={{ padding: '7px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--text-secondary)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13 }}
                   >
                     Add
                   </button>
@@ -702,7 +702,7 @@ export function AddMissingQuestionModal({
                       key={idx}
                       style={{
                         padding: '3px 10px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         backgroundColor: '#FEF2F2',
                         color: '#991B1B',
                         fontSize: 12,
@@ -738,7 +738,7 @@ export function AddMissingQuestionModal({
               disabled={loading}
               style={{
                 padding: '9px 18px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #CBD5E1',
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-secondary)',
@@ -754,7 +754,7 @@ export function AddMissingQuestionModal({
               disabled={loading}
               style={{
                 padding: '9px 20px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: 'none',
                 backgroundColor: 'var(--primary-red)',
                 color: 'var(--bg-card)',

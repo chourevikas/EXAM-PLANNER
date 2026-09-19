@@ -115,7 +115,7 @@ export function QuestionSolutionMarkdownCard({
         style={{
           marginTop: 20,
           padding: '24px',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           backgroundColor: 'var(--bg-subtle)',
           border: '1px solid #E2E8F0',
           display: 'flex',
@@ -241,7 +241,7 @@ export function QuestionSolutionMarkdownCard({
     <div
       style={{
         marginTop: 20,
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         border: '1px solid #E2E8F0',
         backgroundColor: 'var(--bg-card)',
         boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.06)',
@@ -268,7 +268,7 @@ export function QuestionSolutionMarkdownCard({
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--status-success-bg)',
                 display: 'flex',
                 alignItems: 'center',
@@ -283,7 +283,7 @@ export function QuestionSolutionMarkdownCard({
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--primary-red-bg)',
                 display: 'flex',
                 alignItems: 'center',
@@ -298,7 +298,7 @@ export function QuestionSolutionMarkdownCard({
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: '#E0E7FF',
                 display: 'flex',
                 alignItems: 'center',
@@ -338,7 +338,7 @@ export function QuestionSolutionMarkdownCard({
           <span
             style={{
               padding: '4px 10px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               fontSize: 11,
               fontWeight: 700,
               backgroundColor:
@@ -356,7 +356,7 @@ export function QuestionSolutionMarkdownCard({
             <span
               style={{
                 padding: '4px 10px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 fontSize: 11,
                 fontWeight: 600,
                 backgroundColor: 'var(--bg-hover)',
@@ -395,7 +395,7 @@ export function QuestionSolutionMarkdownCard({
           </div>
           <div
             style={{
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid #F1F5F9',
               backgroundColor: 'var(--bg-subtle)',
               overflow: 'hidden',
@@ -501,7 +501,7 @@ export function QuestionSolutionMarkdownCard({
                               style={{
                                 width: 20,
                                 height: 20,
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 backgroundColor: 'var(--border-color)',
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -527,7 +527,7 @@ export function QuestionSolutionMarkdownCard({
                             fontSize: 11,
                             fontWeight: 700,
                             padding: '2px 8px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             backgroundColor: isOptionCorrect ? 'var(--status-success-bg)' : 'var(--bg-hover)',
                             color: isOptionCorrect ? '#15803D' : 'var(--text-muted)',
                             flexShrink: 0,
@@ -563,7 +563,7 @@ export function QuestionSolutionMarkdownCard({
           <div
             style={{
               padding: '16px 18px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               backgroundColor: '#FFFBEB',
               border: '1px solid #FDE68A',
             }}

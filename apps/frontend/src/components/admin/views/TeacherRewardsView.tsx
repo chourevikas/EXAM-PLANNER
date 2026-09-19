@@ -54,7 +54,7 @@ export function TeacherRewardsView() {
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         padding: isMobile ? '20px 16px' : 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
@@ -75,7 +75,7 @@ export function TeacherRewardsView() {
             padding: '9px 18px',
             fontSize: 13,
             fontWeight: 600,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid var(--border-color)',
             background: 'var(--bg-body)',
             color: 'var(--text-main)',
@@ -95,7 +95,7 @@ export function TeacherRewardsView() {
           style={{
             padding: '12px 16px',
             marginBottom: 16,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             fontSize: 13.5,
             fontWeight: 600,
             background: toast.isError ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
@@ -111,7 +111,7 @@ export function TeacherRewardsView() {
           style={{
             padding: '12px 16px',
             marginBottom: 16,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             background: 'rgba(var(--primary-red-rgb), 0.1)',
             color: 'var(--primary-red)',
             border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
@@ -132,7 +132,7 @@ export function TeacherRewardsView() {
             padding: '48px 24px',
             textAlign: 'center',
             background: 'var(--bg-body)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid var(--border-color)',
           }}
         >
@@ -141,7 +141,7 @@ export function TeacherRewardsView() {
           </div>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 0, border: '1px solid var(--border-color)' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
           <table style={{ width: '100%', minWidth: 500, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
               <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -184,7 +184,7 @@ export function TeacherRewardsView() {
                         padding: '7px 14px',
                         fontSize: 12.5,
                         fontWeight: 700,
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         border: '1px solid #3A8B53',
                         background: 'rgba(16, 185, 129, 0.1)',
                         color: '#3A8B53',
@@ -276,7 +276,7 @@ function GrantRewardModal({
                 width: '100%',
                 padding: '10px 12px',
                 fontSize: 13.5,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid var(--border-color)',
                 background: 'var(--bg-body)',
                 color: 'var(--text-main)',
@@ -298,7 +298,7 @@ function GrantRewardModal({
                 width: '100%',
                 padding: '10px 12px',
                 fontSize: 13.5,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid var(--border-color)',
                 background: 'var(--bg-body)',
                 color: 'var(--text-main)',
@@ -322,7 +322,7 @@ function GrantRewardModal({
                 width: '100%',
                 padding: '10px 12px',
                 fontSize: 13.5,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid var(--border-color)',
                 background: 'var(--bg-body)',
                 color: 'var(--text-main)',
@@ -340,7 +340,7 @@ function GrantRewardModal({
               padding: '11px 20px',
               fontSize: 13.5,
               fontWeight: 700,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid #3A8B53',
               background: !title.trim() || submitting ? 'rgba(16,185,129,0.3)' : '#3A8B53',
               color: 'var(--bg-card)',

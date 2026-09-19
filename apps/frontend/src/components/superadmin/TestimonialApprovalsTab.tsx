@@ -44,7 +44,7 @@ export function TestimonialApprovalsTab({
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         padding: 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
@@ -63,7 +63,7 @@ export function TestimonialApprovalsTab({
                   fontSize: 11,
                   fontWeight: 800,
                   padding: '3px 10px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   background: 'rgba(249, 115, 22, 0.12)',
                   color: '#F47B35',
                   border: '1px solid rgba(249, 115, 22, 0.25)',
@@ -84,7 +84,7 @@ export function TestimonialApprovalsTab({
             padding: '9px 18px',
             fontSize: 13,
             fontWeight: 600,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid var(--border-color)',
             background: 'var(--bg-body)',
             color: 'var(--text-main)',
@@ -106,7 +106,7 @@ export function TestimonialApprovalsTab({
           onClick={() => setStatusFilter('ALL')}
           style={{
             padding: '8px 16px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
@@ -126,7 +126,7 @@ export function TestimonialApprovalsTab({
           onClick={() => setStatusFilter('PENDING')}
           style={{
             padding: '8px 16px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
@@ -146,7 +146,7 @@ export function TestimonialApprovalsTab({
           onClick={() => setStatusFilter('APPROVED')}
           style={{
             padding: '8px 16px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
@@ -166,7 +166,7 @@ export function TestimonialApprovalsTab({
           onClick={() => setStatusFilter('REJECTED')}
           style={{
             padding: '8px 16px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
@@ -192,7 +192,7 @@ export function TestimonialApprovalsTab({
             gap: 10,
             background: 'var(--bg-body)',
             border: '1px solid var(--border-color)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '10px 16px',
             maxWidth: 400,
           }}
@@ -227,7 +227,7 @@ export function TestimonialApprovalsTab({
             padding: '48px 24px',
             textAlign: 'center',
             background: 'var(--bg-body)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid var(--border-color)',
           }}
         >
@@ -255,7 +255,7 @@ export function TestimonialApprovalsTab({
                       ? 'rgba(16, 185, 129, 0.35)'
                       : 'rgba(var(--primary-red-rgb), 0.35)'
                   }`,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   padding: 24,
                   display: 'flex',
                   flexDirection: 'column',
@@ -283,7 +283,7 @@ export function TestimonialApprovalsTab({
                         fontSize: 11,
                         fontWeight: 800,
                         padding: '4px 10px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         color: isPending ? '#ea580c' : isApproved ? '#3A8B53' : '#dc2626',
                         background: isPending
                           ? 'rgba(249, 115, 22, 0.12)'
@@ -323,7 +323,7 @@ export function TestimonialApprovalsTab({
                         color: 'var(--primary-red)',
                         background: 'rgba(var(--primary-red-rgb), 0.08)',
                         padding: '8px 12px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         marginBottom: 16,
                       }}
                     >
@@ -348,7 +348,7 @@ export function TestimonialApprovalsTab({
                       style={{
                         width: 40,
                         height: 40,
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         background: 'linear-gradient(135deg, var(--primary-red), #7c3aed)',
                         color: 'var(--bg-card)',
                         display: 'flex',
@@ -377,7 +377,7 @@ export function TestimonialApprovalsTab({
                           padding: '7px 14px',
                           fontSize: 12.5,
                           fontWeight: 700,
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: 'none',
                           background: '#3A8B53',
                           color: 'var(--bg-card)',
@@ -400,7 +400,7 @@ export function TestimonialApprovalsTab({
                           padding: '7px 14px',
                           fontSize: 12.5,
                           fontWeight: 700,
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                           background: 'rgba(var(--primary-red-rgb), 0.1)',
                           color: 'var(--primary-red)',
@@ -422,7 +422,7 @@ export function TestimonialApprovalsTab({
                       style={{
                         padding: '7px 10px',
                         fontSize: 12.5,
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         border: '1px solid var(--border-color)',
                         background: 'transparent',
                         color: 'var(--text-muted)',

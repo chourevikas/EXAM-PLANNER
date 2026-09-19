@@ -38,7 +38,7 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         padding: 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
@@ -55,7 +55,7 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
                 fontSize: 11,
                 fontWeight: 800,
                 padding: '3px 10px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 background: 'rgba(var(--primary-red-rgb), 0.12)',
                 color: 'var(--primary-red)',
                 border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
@@ -76,7 +76,7 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
               padding: '9px 16px',
               fontSize: 13,
               fontWeight: 600,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: `1px solid ${onlyFlagged ? '#F47B35' : 'var(--border-color)'}`,
               background: onlyFlagged ? 'rgba(249, 115, 22, 0.12)' : 'var(--bg-body)',
               color: onlyFlagged ? '#F47B35' : 'var(--text-main)',
@@ -95,7 +95,7 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
               padding: '9px 18px',
               fontSize: 13,
               fontWeight: 600,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid var(--border-color)',
               background: 'var(--bg-body)',
               color: 'var(--text-main)',
@@ -116,7 +116,7 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
           style={{
             padding: '12px 16px',
             marginBottom: 16,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             background: 'rgba(var(--primary-red-rgb), 0.1)',
             color: 'var(--primary-red)',
             border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
@@ -137,7 +137,7 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
             padding: '48px 24px',
             textAlign: 'center',
             background: 'var(--bg-body)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid var(--border-color)',
           }}
         >
@@ -147,7 +147,7 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
           </div>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 0, border: '1px solid var(--border-color)' }}>
+        <div style={{ overflowX: 'auto', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
               <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -174,7 +174,7 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
                           fontSize: 11,
                           fontWeight: 700,
                           padding: '4px 10px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           color: '#F47B35',
                           background: 'rgba(249, 115, 22, 0.12)',
                           border: '1px solid rgba(249, 115, 22, 0.25)',
@@ -196,7 +196,7 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
                         padding: '7px 14px',
                         fontSize: 12.5,
                         fontWeight: 700,
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         border: '1px solid var(--primary-red)',
                         background: 'rgba(var(--primary-red-rgb), 0.1)',
                         color: 'var(--primary-red)',

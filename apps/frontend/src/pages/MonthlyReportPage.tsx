@@ -12,7 +12,7 @@ const ITEMS_PER_PAGE = 4;
 // ==================== BASE MODULE STYLES ====================
 
 const BANNER_BASE_STYLE: React.CSSProperties = {
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--bg-card)',
   border: '1px solid #E2E8F0',
   boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
@@ -30,7 +30,7 @@ const BANNER_BADGE_STYLE: React.CSSProperties = {
   gap: 6,
   padding: '4px 12px',
   backgroundColor: 'rgba(58, 139, 83, 0.1)',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   marginBottom: 10,
 };
 
@@ -56,7 +56,7 @@ const BANNER_SUBTITLE_STYLE: React.CSSProperties = {
 
 const ERROR_BOX_STYLE: React.CSSProperties = {
   padding: 16,
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)',
   border: '1px solid #FCA5A5',
   color: 'var(--primary-red)',
@@ -70,7 +70,7 @@ const ERROR_BOX_STYLE: React.CSSProperties = {
 const SKELETON_CARD_STYLE: React.CSSProperties = {
   backgroundColor: 'var(--bg-card)',
   padding: 24,
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   border: '1px solid #E2E8F0',
   height: 136,
   animation: 'pulse 1.5s infinite ease-in-out',
@@ -78,7 +78,7 @@ const SKELETON_CARD_STYLE: React.CSSProperties = {
 
 const CARD_BASE_STYLE: React.CSSProperties = {
   backgroundColor: 'var(--bg-card)',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   border: '1px solid #E2E8F0',
   boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
   display: 'flex',
@@ -110,7 +110,7 @@ const CARD_BADGE_STYLE: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 700,
   padding: '3px 8px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--bg-base)',
   color: 'var(--primary-red)',
 };
@@ -119,7 +119,7 @@ const SUBJECT_BADGE_STYLE: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 700,
   padding: '3px 8px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'rgba(58, 139, 83, 0.1)',
   color: 'var(--success-green)',
 };
@@ -141,7 +141,7 @@ const EMPTY_STATE_STYLE: React.CSSProperties = {
 };
 
 const BASE_PAGE_BTN_STYLE: React.CSSProperties = {
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   border: '1px solid #E2E8F0',
   display: 'flex',
   alignItems: 'center',
@@ -251,7 +251,7 @@ export function MonthlyReportPage() {
     padding: '9px 18px',
     minHeight: 44,
     width: isMobile ? '100%' : 'auto',
-    borderRadius: 0,
+    borderRadius: 'var(--radius)',
     backgroundColor: 'var(--bg-base)',
     border: '1px solid #E2E8F0',
     color: 'var(--text-primary)',
@@ -385,13 +385,13 @@ export function MonthlyReportPage() {
                         <span style={{ color: 'var(--text-primary)' }}>{pt.month}</span>
                         <span style={{ color: 'var(--primary-red)' }}>{pt.percentile} %ile</span>
                       </div>
-                      <div style={{ height: 10, width: '100%', backgroundColor: 'var(--bg-muted)', borderRadius: 0, overflow: 'hidden' }}>
+                      <div style={{ height: 10, width: '100%', backgroundColor: 'var(--bg-muted)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
                         <div
                           style={{
                             height: '100%',
                             width: `${Math.min(pt.percentile, 100)}%`,
                             background: 'linear-gradient(90deg, var(--primary-red) 0%, #3A8B53 100%)',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             transition: 'width 0.6s ease',
                           }}
                         />
@@ -456,7 +456,7 @@ export function MonthlyReportPage() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
                   {visibleSubjectItems.map((sb, idx) => (
-                    <div key={`subject_${sb.subject}_${idx}`} style={{ padding: '8px 12px', borderRadius: 0, backgroundColor: 'var(--bg-base)', border: '1px solid #F1F5F9' }}>
+                    <div key={`subject_${sb.subject}_${idx}`} style={{ padding: '8px 12px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-base)', border: '1px solid #F1F5F9' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5, fontWeight: 700, marginBottom: 4, gap: 8 }}>
                         <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {formatEnum(sb.subject)}
@@ -471,13 +471,13 @@ export function MonthlyReportPage() {
 
                       {/* Visual Comparison Bars */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={{ height: 5, width: '100%', backgroundColor: 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
+                        <div style={{ height: 5, width: '100%', backgroundColor: 'var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
                           <div
                             style={{
                               height: '100%',
                               width: `${sb.user_accuracy}%`,
                               backgroundColor: sb.user_accuracy >= sb.national_avg_accuracy ? 'var(--success-green)' : 'var(--warning-yellow)',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                             }}
                           />
                         </div>

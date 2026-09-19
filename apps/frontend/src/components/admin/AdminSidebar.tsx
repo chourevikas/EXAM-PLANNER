@@ -147,7 +147,7 @@ function prefetchAdminView(viewId: string) {
           gap: 12,
           padding: (collapsed && !isMobile) ? '10px 0' : '10px 14px',
           justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           background: isActive ? 'rgba(var(--primary-red-rgb), 0.15)' : 'transparent',
           border: 'none',
           borderLeft: isActive && (!collapsed || isMobile) ? '3px solid var(--primary-red)' : '3px solid transparent',
@@ -237,7 +237,7 @@ function prefetchAdminView(viewId: string) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     transition: 'color 0.15s ease',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
@@ -275,7 +275,7 @@ function prefetchAdminView(viewId: string) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   transition: 'color 0.15s ease',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}

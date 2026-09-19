@@ -318,7 +318,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               alignItems: 'center',
               justifyContent: 'center',
               padding: 6,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               marginRight: -4,
             }}
             title="Toggle Navigation Menu"
@@ -379,7 +379,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             className="touch-target"
             style={{
               position: 'relative',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: 'none',
               backgroundColor: 'transparent',
               display: 'flex',
@@ -402,7 +402,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   right: 4,
                   width: 14,
                   height: 14,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   backgroundColor: 'var(--primary-red)',
                   color: 'var(--bg-card)',
                   fontSize: 9,
@@ -429,7 +429,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   width: 320,
                 }),
                 backgroundColor: 'var(--bg-card)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 12px 32px rgba(17, 17, 17, 0.12)',
                 padding: 16,
@@ -595,7 +595,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             className="touch-target"
             style={{
               padding: 0,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
@@ -621,7 +621,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   width: 200,
                 }),
                 backgroundColor: 'var(--bg-card)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
                 padding: '8px 0',

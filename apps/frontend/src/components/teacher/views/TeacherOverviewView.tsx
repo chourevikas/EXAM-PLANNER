@@ -50,7 +50,7 @@ export function TeacherOverviewView({ user, onNavigate }: TeacherOverviewViewPro
       <div
         style={{
           background: 'var(--bg-card)',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           padding: '28px 32px',
           border: '1px solid var(--border-color)',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
@@ -65,7 +65,7 @@ export function TeacherOverviewView({ user, onNavigate }: TeacherOverviewViewPro
             textTransform: 'uppercase',
             letterSpacing: '0.12em',
             padding: '4px 12px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             background: 'rgba(var(--primary-red-rgb), 0.1)',
             border: '1px solid rgba(var(--primary-red-rgb), 0.2)',
             display: 'inline-flex',
@@ -97,7 +97,7 @@ export function TeacherOverviewView({ user, onNavigate }: TeacherOverviewViewPro
                 padding: 22,
                 background: 'var(--bg-card)',
                 border: '1px solid var(--border-color)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',

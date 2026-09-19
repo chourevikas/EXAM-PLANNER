@@ -73,13 +73,13 @@ export function PricingPage() {
     <StudentLayout pageTitle="Pro Subscription">
       {/* Header Banner */}
       <section style={{
-        marginBottom: 36, padding: '40px 32px', borderRadius: 0,
+        marginBottom: 36, padding: '40px 32px', borderRadius: 'var(--radius)',
         backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
         boxShadow: 'var(--shadow-color-base)',
         backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.08) 0%, rgba(var(--primary-red-rgb), 0.06) 50%, rgba(219,39,119,0.06) 100%)',
         textAlign: 'center', position: 'relative', overflow: 'hidden'
       }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 16px', backgroundColor: 'var(--accent-bg)', borderRadius: 0, marginBottom: 16, border: '1px solid var(--accent-border)' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 16px', backgroundColor: 'var(--accent-bg)', borderRadius: 'var(--radius)', marginBottom: 16, border: '1px solid var(--accent-border)' }}>
           <Zap size={16} color="var(--accent-primary)" />
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Elevate Your Exam Preparation
@@ -93,11 +93,11 @@ export function PricingPage() {
         </p>
 
         {/* Billing Toggle */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 28, padding: 6, backgroundColor: 'var(--bg-subtle)', borderRadius: 0, border: '1px solid var(--border-default)' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 28, padding: 6, backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)' }}>
           <button
             onClick={() => setBillingCycle('monthly')}
             style={{
-              padding: '8px 20px', borderRadius: 0, border: 'none',
+              padding: '8px 20px', borderRadius: 'var(--radius)', border: 'none',
               backgroundColor: billingCycle === 'monthly' ? 'var(--bg-card)' : 'transparent',
               color: billingCycle === 'monthly' ? 'var(--text-primary)' : 'var(--text-muted)',
               fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
@@ -109,7 +109,7 @@ export function PricingPage() {
           <button
             onClick={() => setBillingCycle('annual')}
             style={{
-              padding: '8px 20px', borderRadius: 0, border: 'none',
+              padding: '8px 20px', borderRadius: 'var(--radius)', border: 'none',
               backgroundColor: billingCycle === 'annual' ? 'var(--accent-primary)' : 'transparent',
               color: billingCycle === 'annual' ? 'var(--bg-card)' : 'var(--text-muted)',
               fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
@@ -118,7 +118,7 @@ export function PricingPage() {
             }}
           >
             <span>Annual Plan</span>
-            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 0, backgroundColor: 'rgba(255,255,255,0.25)', color: '#FFF', fontWeight: 800 }}>
+            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 'var(--radius)', backgroundColor: 'rgba(255,255,255,0.25)', color: '#FFF', fontWeight: 800 }}>
               SAVE 50%
             </span>
           </button>
@@ -130,7 +130,7 @@ export function PricingPage() {
 
         {/* Free Plan Card */}
         <div style={{
-          backgroundColor: 'var(--bg-card)', padding: 32, borderRadius: 0,
+          backgroundColor: 'var(--bg-card)', padding: 32, borderRadius: 'var(--radius)',
           border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)',
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
         }}>
@@ -164,7 +164,7 @@ export function PricingPage() {
           <button
             disabled
             style={{
-              marginTop: 32, padding: '14px', borderRadius: 0, border: '1px solid var(--border-default)',
+              marginTop: 32, padding: '14px', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)',
               backgroundColor: 'var(--bg-subtle)', color: 'var(--text-muted)', fontSize: 14, fontWeight: 600,
               cursor: 'not-allowed'
             }}
@@ -175,7 +175,7 @@ export function PricingPage() {
 
         {/* Pro Plan Card (Featured) */}
         <div style={{
-          backgroundColor: 'var(--bg-card)', padding: 32, borderRadius: 0,
+          backgroundColor: 'var(--bg-card)', padding: 32, borderRadius: 'var(--radius)',
           border: '2px solid var(--accent-primary)', boxShadow: '0 16px 36px var(--shadow-color-accent)',
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
           position: 'relative', overflow: 'hidden'
@@ -184,7 +184,7 @@ export function PricingPage() {
           <div style={{
             position: 'absolute', top: 18, right: 18, padding: '4px 12px',
             backgroundColor: 'var(--accent-bg)', border: '1px solid var(--accent-border)',
-            borderRadius: 0, display: 'flex', alignItems: 'center', gap: 6
+            borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', gap: 6
           }}>
             <Star size={13} fill="var(--accent-primary)" color="var(--accent-primary)" />
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)' }}>MOST POPULAR</span>
@@ -215,7 +215,7 @@ export function PricingPage() {
           <button
             onClick={() => setShowCheckout(true)}
             style={{
-              marginTop: 32, padding: '16px', borderRadius: 0, border: 'none',
+              marginTop: 32, padding: '16px', borderRadius: 'var(--radius)', border: 'none',
               backgroundColor: 'var(--accent-primary)', color: 'var(--bg-card)', fontSize: 15, fontWeight: 700,
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               boxShadow: '0 6px 20px var(--shadow-color-accent)', transition: 'transform 0.2s'
@@ -236,7 +236,7 @@ export function PricingPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
         }}>
           <div style={{
-            backgroundColor: '#0f1e3c', borderRadius: 0, border: '1px solid rgba(255, 255, 255, 0.12)',
+            backgroundColor: '#0f1e3c', borderRadius: 'var(--radius)', border: '1px solid rgba(255, 255, 255, 0.12)',
             boxShadow: '0 24px 60px rgba(0,0,0,0.5)', width: '100%', maxWidth: 540, padding: 32,
             position: 'relative', color: 'var(--bg-card)'
           }}>
@@ -253,7 +253,7 @@ export function PricingPage() {
 
             {paymentSuccess ? (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <div style={{ width: 64, height: 64, borderRadius: 0, backgroundColor: 'rgba(34, 197, 94, 0.2)', border: '2px solid #22c55e', color: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
+                <div style={{ width: 64, height: 64, borderRadius: 'var(--radius)', backgroundColor: 'rgba(34, 197, 94, 0.2)', border: '2px solid #22c55e', color: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
                   <Check size={36} />
                 </div>
                 <h3 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 8px 0' }}>Payment Successful! 🎉</h3>
@@ -273,7 +273,7 @@ export function PricingPage() {
                 </div>
 
                 {/* Selected Plan Details */}
-                <div style={{ padding: 16, borderRadius: 0, backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20 }}>
+                <div style={{ padding: 16, borderRadius: 'var(--radius)', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 15, fontWeight: 700 }}>
                       Pro Plan ({billingCycle === 'annual' ? 'Annual Billed' : 'Monthly'})
@@ -299,7 +299,7 @@ export function PricingPage() {
                       onChange={(e) => setPromoCode(e.target.value)}
                       disabled={discountApplied}
                       style={{
-                        width: '100%', padding: '10px 12px', borderRadius: 0,
+                        width: '100%', padding: '10px 12px', borderRadius: 'var(--radius)',
                         border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.06)',
                         color: 'var(--bg-card)', fontSize: 13, outline: 'none', boxSizing: 'border-box'
                       }}
@@ -309,7 +309,7 @@ export function PricingPage() {
                     onClick={handleApplyPromo}
                     disabled={discountApplied || !promoCode}
                     style={{
-                      padding: '10px 16px', borderRadius: 0, border: 'none',
+                      padding: '10px 16px', borderRadius: 'var(--radius)', border: 'none',
                       backgroundColor: discountApplied ? '#22c55e' : 'var(--primary-red)', color: '#FFF',
                       fontSize: 13, fontWeight: 700, cursor: 'pointer'
                     }}
@@ -334,7 +334,7 @@ export function PricingPage() {
                         key={method.id}
                         onClick={() => setPaymentMethod(method.id as any)}
                         style={{
-                          padding: '10px', borderRadius: 0,
+                          padding: '10px', borderRadius: 'var(--radius)',
                           border: `1px solid ${paymentMethod === method.id ? '#60a5fa' : 'rgba(255,255,255,0.1)'}`,
                           backgroundColor: paymentMethod === method.id ? 'rgba(var(--primary-red-rgb), 0.2)' : 'rgba(255,255,255,0.04)',
                           color: 'var(--bg-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -350,7 +350,7 @@ export function PricingPage() {
 
                 {/* Method Specific Form */}
                 {paymentMethod === 'upi' && (
-                  <div style={{ marginBottom: 24, padding: 16, borderRadius: 0, backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ marginBottom: 24, padding: 16, borderRadius: 'var(--radius)', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'rgba(255,255,255,0.8)' }}>
                       Enter VPA / UPI ID (GPay, PhonePe, Paytm):
                     </div>
@@ -360,7 +360,7 @@ export function PricingPage() {
                       value={upiId}
                       onChange={(e) => setUpiId(e.target.value)}
                       style={{
-                        width: '100%', padding: '10px 12px', borderRadius: 0,
+                        width: '100%', padding: '10px 12px', borderRadius: 'var(--radius)',
                         border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.08)',
                         color: 'var(--bg-card)', fontSize: 13, outline: 'none', boxSizing: 'border-box'
                       }}
@@ -373,7 +373,7 @@ export function PricingPage() {
                   onClick={handleCompletePayment}
                   disabled={isProcessing}
                   style={{
-                    width: '100%', padding: '16px', borderRadius: 0, border: 'none',
+                    width: '100%', padding: '16px', borderRadius: 'var(--radius)', border: 'none',
                     backgroundColor: 'var(--primary-red)', color: 'var(--bg-card)', fontSize: 15, fontWeight: 700,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     boxShadow: '0 4px 16px rgba(var(--primary-red-rgb), 0.4)'

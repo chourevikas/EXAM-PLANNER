@@ -160,7 +160,7 @@ export function AuthModal({
             right: 16,
             background: 'transparent',
             border: 'none',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             cursor: 'pointer',
             color: 'var(--text-muted)',
             transition: 'all 0.15s ease',
@@ -184,7 +184,7 @@ export function AuthModal({
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 background: 'var(--bg-subtle)',
                 color: 'var(--primary-red)',
                 fontSize: 26,
@@ -213,7 +213,7 @@ export function AuthModal({
               style={{
                 width: '100%',
                 height: 52,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 background: 'var(--primary-red)',
                 color: 'var(--bg-card)',
                 fontSize: 15,
@@ -268,7 +268,7 @@ export function AuthModal({
               <div
                 style={{
                   padding: '12px 14px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   background: '#FEF2F2',
                   border: '1px solid #FECACA',
                   color: '#DC2626',
@@ -288,7 +288,7 @@ export function AuthModal({
               <div
                 style={{
                   padding: '12px 14px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   background: '#ECFDF5',
                   border: '1px solid #A7F3D0',
                   color: '#3A8B53',
@@ -331,7 +331,7 @@ export function AuthModal({
                       style={{
                         width: '100%',
                         height: 52,
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         backgroundColor: 'var(--bg-subtle)',
                         border: '1px solid #E2E8F0',
                         padding: '0 16px',
@@ -379,7 +379,7 @@ export function AuthModal({
                     style={{
                       width: '100%',
                       height: 52,
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       backgroundColor: 'var(--bg-subtle)',
                       border: '1px solid #E2E8F0',
                       padding: '0 16px',
@@ -427,7 +427,7 @@ export function AuthModal({
                     style={{
                       width: '100%',
                       height: 52,
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       backgroundColor: 'var(--bg-subtle)',
                       border: '1px solid #E2E8F0',
                       padding: '0 16px',
@@ -478,7 +478,7 @@ export function AuthModal({
                     style={{
                       width: '100%',
                       height: 52,
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       backgroundColor: 'var(--bg-subtle)',
                       border: '1px solid #E2E8F0',
                       padding: '0 44px 0 16px',
@@ -554,7 +554,7 @@ export function AuthModal({
                 style={{
                   width: '100%',
                   height: 52,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   backgroundColor: 'var(--primary-red)',
                   color: 'var(--bg-card)',
                   fontSize: 15,
@@ -622,7 +622,7 @@ export function AuthModal({
               style={{
                 width: '100%',
                 height: 52,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--bg-card)',
                 border: '1px solid #E2E8F0',
                 color: 'var(--deep-navy)',

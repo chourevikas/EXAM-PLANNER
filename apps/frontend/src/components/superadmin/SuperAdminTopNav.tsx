@@ -109,7 +109,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
               gap: 10,
               background: 'rgba(255, 255, 255, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.15)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: '7px 14px',
               width: isMobile ? 160 : 320,
             }}
@@ -142,7 +142,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
             style={{
               width: 36,
               height: 36,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: '2px 6px',
             }}
           >
@@ -159,7 +159,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
         padding: '6px 14px',
         fontSize: 12.5,
         fontWeight: 700,
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         border: '1px solid rgba(255, 255, 255, 0.25)',
         background: 'rgba(255, 255, 255, 0.1)',
         color: 'var(--bg-card)',
@@ -187,7 +187,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
           right: 0,
           width: 260,
           background: 'var(--bg-card, #ffffff)',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           border: '1px solid var(--border-color, #e2e8f0)',
           boxShadow: '0 12px 32px rgba(15, 29, 56, 0.18)',
           padding: 16,
@@ -201,7 +201,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
             style={{
               width: 42,
               height: 42,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               background: 'linear-gradient(135deg, #F47B35 0%, #ea580c 100%)',
               display: 'flex',
               alignItems: 'center',
@@ -219,7 +219,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
               style={{
                 flex: 1,
                 padding: '8px 12px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #E2E8F0',
                 fontSize: 14,
                 outline: 'none',
@@ -262,7 +262,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
                   className="touch-target"
                   style={{
                     padding: '10px 12px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: 'none',
                     backgroundColor: 'var(--bg-subtle)',
                     color: 'var(--deep-navy)',
@@ -290,7 +290,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
         style={{
           width: 36,
           height: 36,
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           backgroundColor: 'var(--primary-red)',
           border: '1.5px solid rgba(255, 255, 255, 0.25)',
           color: 'var(--bg-card)',
@@ -319,7 +319,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
               width: 250,
             }),
             backgroundColor: 'var(--bg-card)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid #E2E8F0',
             boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
             padding: 14,
@@ -350,7 +350,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
                 gap: 6,
                 width: '100%',
                 padding: '8px 10px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 color: '#DC2626',
                 backgroundColor: '#FEF2F2',
                 fontSize: 12.5,

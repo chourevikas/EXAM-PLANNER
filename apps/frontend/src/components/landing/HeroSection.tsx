@@ -372,7 +372,7 @@ export function HeroSection({}: HeroSectionProps) {
             gap: 6,
             background: 'var(--bg-subtle)',
             border: '1px solid #E2E8F0',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '5px 12px',
             marginBottom: 18,
           }}
@@ -704,7 +704,7 @@ export function HeroSection({}: HeroSectionProps) {
                 style={{
                   padding: '5px 14px',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   background: 'var(--bg-card)',
                   color: 'var(--text-secondary)',
                   fontSize: 12,

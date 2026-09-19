@@ -16,7 +16,7 @@ const StudentTestimonialForm = lazy(() =>
 // ==================== BASE MODULE STYLES ====================
 
 const BANNER_BASE_STYLE: React.CSSProperties = {
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--bg-card)',
   border: '1px solid var(--border-default)',
   boxShadow: 'var(--shadow-color-base)',
@@ -29,7 +29,7 @@ const BANNER_BADGE_STYLE: React.CSSProperties = {
   gap: 6,
   padding: '4px 12px',
   backgroundColor: 'rgba(219, 39, 119, 0.1)',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   marginBottom: 10,
   border: '1px solid rgba(219, 39, 119, 0.25)',
 };
@@ -74,7 +74,7 @@ const ERROR_CONTAINER_STYLE: React.CSSProperties = {
   textAlign: 'center',
   backgroundColor: 'var(--bg-card)',
   border: '1px solid var(--border-default)',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -102,13 +102,13 @@ const RETRY_BUTTON_STYLE: React.CSSProperties = {
   color: 'var(--bg-card)',
   backgroundColor: 'var(--primary-red)',
   border: 'none',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   cursor: 'pointer',
   boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.25)',
 };
 
 const METRIC_CARD_BASE_STYLE: React.CSSProperties = {
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--bg-card)',
   border: '1px solid var(--border-default)',
 };
@@ -127,7 +127,7 @@ const METRIC_SUB_STYLE: React.CSSProperties = {
 
 const REPORT_CARD_BASE_STYLE: React.CSSProperties = {
   backgroundColor: 'var(--bg-card)',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   border: '1px solid var(--border-default)',
 };
 
@@ -142,7 +142,7 @@ const REPORT_ICON_GREEN_STYLE: React.CSSProperties = {
   padding: 8,
   backgroundColor: 'rgba(16, 185, 129, 0.12)',
   color: '#3A8B53',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -152,7 +152,7 @@ const REPORT_ICON_GOLD_STYLE: React.CSSProperties = {
   padding: 8,
   backgroundColor: 'rgba(245, 158, 11, 0.12)',
   color: '#F2B623',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',

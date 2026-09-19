@@ -147,12 +147,12 @@ export function PYQSelectionPage() {
     <StudentLayout pageTitle="Previous Year Questions">
       {/* Header Banner */}
       <section style={{ 
-        marginBottom: 32, padding: 32, borderRadius: 0,
+        marginBottom: 32, padding: 32, borderRadius: 'var(--radius)',
         backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
         boxShadow: 'var(--shadow-color-base)',
         backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(245,158,11,0.06) 100%)'
       }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 0, marginBottom: 10, border: '1px solid var(--accent-border)' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 'var(--radius)', marginBottom: 10, border: '1px solid var(--accent-border)' }}>
           <Ico.Book size={14} />
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Authentic UPSC Archive</span>
         </div>
@@ -167,7 +167,7 @@ export function PYQSelectionPage() {
           padding: '14px 18px',
           backgroundColor: 'var(--bg-card)',
           border: '1px solid var(--border-default)',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'flex-end',
@@ -175,7 +175,7 @@ export function PYQSelectionPage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 12, borderRight: '1px solid var(--border-default)' }}>
-          <div style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: 'var(--accent-bg)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 'var(--radius)', backgroundColor: 'var(--accent-bg)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <SlidersHorizontal size={16} />
           </div>
           <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Filters</span>
@@ -189,7 +189,7 @@ export function PYQSelectionPage() {
             value={selectedExamTarget}
             onChange={(e) => setSelectedExamTarget(e.target.value)}
             style={{
-              width: '100%', height: 38, padding: '0 12px', borderRadius: 0,
+              width: '100%', height: 38, padding: '0 12px', borderRadius: 'var(--radius)',
               border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)',
               color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, outline: 'none',
             }}
@@ -208,7 +208,7 @@ export function PYQSelectionPage() {
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
             style={{
-              width: '100%', height: 38, padding: '0 12px', borderRadius: 0,
+              width: '100%', height: 38, padding: '0 12px', borderRadius: 'var(--radius)',
               border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)',
               color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, outline: 'none',
             }}
@@ -231,7 +231,7 @@ export function PYQSelectionPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by paper title or code..."
               style={{
-                width: '100%', height: 38, padding: '0 12px 0 34px', borderRadius: 0,
+                width: '100%', height: 38, padding: '0 12px 0 34px', borderRadius: 'var(--radius)',
                 border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)',
                 color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, outline: 'none',
                 boxSizing: 'border-box',
@@ -248,7 +248,7 @@ export function PYQSelectionPage() {
           Fetching real-time exam archive and attempt status...
         </div>
       ) : examsList.length === 0 ? (
-        <div style={{ padding: 60, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 0, border: '1px solid var(--border-default)' }}>
+        <div style={{ padding: 60, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)' }}>
           <div style={{ margin: '0 auto 12px auto', opacity: 0.5 }}>
             <Ico.Book size={40} />
           </div>
@@ -258,7 +258,7 @@ export function PYQSelectionPage() {
           </p>
         </div>
       ) : filteredExamsList.length === 0 ? (
-        <div style={{ padding: 60, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 0, border: '1px solid var(--border-default)' }}>
+        <div style={{ padding: 60, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)' }}>
           <div style={{ margin: '0 auto 12px auto', opacity: 0.5 }}>
             <Ico.Book size={40} />
           </div>
@@ -280,7 +280,7 @@ export function PYQSelectionPage() {
                 onMouseLeave={() => setHoveredExam(null)}
                 style={{
                   backgroundColor: 'var(--bg-card)',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: `1px solid ${hoveredExam === exam.id ? 'var(--primary-red)' : hasCompleted ? '#A7F3D0' : 'var(--border-color)'}`,
                   position: 'relative',
                   overflow: 'hidden',
@@ -317,7 +317,7 @@ export function PYQSelectionPage() {
                       backgroundColor: hasInProgress ? 'rgba(245,158,11,0.12)' : hasCompleted ? 'rgba(16,185,129,0.12)' : 'var(--accent-bg)',
                       color: hasInProgress ? '#F2B623' : hasCompleted ? '#3A8B53' : 'var(--accent-primary)',
                       padding: '6px 12px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontSize: 12,
                       fontWeight: 800,
                       display: 'flex',
@@ -348,7 +348,7 @@ export function PYQSelectionPage() {
                   </div>
 
                   {hasCompleted && exam.scoreText && (
-                    <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 0, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 13, color: '#3A8B53', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 13, color: '#3A8B53', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
                       <span>Report Ready</span>
                       <span>Score: {exam.scoreText}</span>
                     </div>
@@ -364,7 +364,7 @@ export function PYQSelectionPage() {
                         style={{
                           flex: 1,
                           padding: '10px 14px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           backgroundColor: '#F2B623',
                           color: 'var(--bg-card)',
                           fontWeight: 700,
@@ -385,7 +385,7 @@ export function PYQSelectionPage() {
                           to={`/analytics?attemptId=${exam.completedAttemptId}`}
                           style={{
                             padding: '10px 12px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             backgroundColor: 'var(--primary-red)',
                             color: 'var(--bg-card)',
                             fontWeight: 700,
@@ -405,7 +405,7 @@ export function PYQSelectionPage() {
                         to={`/exam/${exam.id}?forceNew=true&type=PYQ`}
                         style={{
                           padding: '10px 12px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           backgroundColor: 'var(--bg-subtle)',
                           color: 'var(--text-primary)',
                           fontWeight: 600,
@@ -428,7 +428,7 @@ export function PYQSelectionPage() {
                         style={{
                           flex: 1,
                           padding: '10px 14px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           backgroundColor: 'var(--primary-red)',
                           color: 'var(--bg-card)',
                           fontWeight: 700,
@@ -448,7 +448,7 @@ export function PYQSelectionPage() {
                         to={`/exam/${exam.id}?forceNew=true&type=PYQ`}
                         style={{
                           padding: '10px 14px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           backgroundColor: 'var(--bg-subtle)',
                           color: 'var(--text-primary)',
                           fontWeight: 600,
@@ -470,7 +470,7 @@ export function PYQSelectionPage() {
                       style={{
                         flex: 1,
                         padding: '10px 14px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         backgroundColor: 'var(--accent-primary)',
                         color: 'var(--bg-card)',
                         fontWeight: 700,

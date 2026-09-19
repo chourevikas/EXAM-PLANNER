@@ -68,7 +68,7 @@ export function ThemeSettingsView() {
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         padding: isMobile ? '20px 16px' : 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
@@ -88,7 +88,7 @@ export function ThemeSettingsView() {
           style={{
             padding: '12px 16px',
             marginBottom: 16,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             fontSize: 13.5,
             fontWeight: 600,
             background: toast.isError ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
@@ -118,7 +118,7 @@ export function ThemeSettingsView() {
               style={{
                 textAlign: 'left',
                 cursor: isSaving ? 'wait' : 'pointer',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: isActive ? '2px solid var(--accent-primary, #e31b23)' : '1px solid var(--border-color)',
                 background: 'var(--bg-body, #ffffff)',
                 padding: 18,

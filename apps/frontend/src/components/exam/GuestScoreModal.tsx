@@ -106,7 +106,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             maxWidth: 460,
             maxHeight: '90vh',
             backgroundColor: 'var(--bg-card)',
-            borderRadius: 0, // Extra rounded bubbly corners
+            borderRadius: 'var(--radius)', // Extra rounded bubbly corners
             padding: '32px 28px',
             border: '2px solid #E2E8F0',
             boxShadow: '0 25px 50px -12px rgba(var(--primary-red-rgb), 0.25), 0 0 0 1px rgba(255, 255, 255, 0.8) inset',
@@ -130,7 +130,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               zIndex: 2,
               width: 32,
               height: 32,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1.5px solid #E2E8F0',
               backgroundColor: 'var(--bg-card)',
               color: 'var(--text-muted)',
@@ -160,7 +160,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               right: -20,
               width: 100,
               height: 100,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               background: 'radial-gradient(circle, rgba(var(--primary-red-rgb), 0.15) 0%, rgba(255, 255, 255, 0) 70%)',
               pointerEvents: 'none',
             }}
@@ -172,7 +172,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               left: -30,
               width: 120,
               height: 120,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               background: 'radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, rgba(255, 255, 255, 0) 70%)',
               pointerEvents: 'none',
             }}
@@ -183,7 +183,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             style={{
               width: 60,
               height: 60,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               background: 'linear-gradient(135deg, var(--primary-red) 0%, var(--primary-red) 100%)',
               color: 'var(--bg-card)',
               display: 'flex',
@@ -205,7 +205,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               alignItems: 'center',
               gap: 6,
               padding: '5px 14px',
-              borderRadius: 0, // Bubbly pill shape
+              borderRadius: 'var(--radius)', // Bubbly pill shape
               backgroundColor: 'var(--bg-subtle)',
               border: '1.5px solid #BFDBFE',
               marginBottom: 10,
@@ -229,7 +229,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
           <div
             style={{
               background: 'linear-gradient(135deg, #F0F6FF 0%, #E0EDFF 100%)',
-              borderRadius: 0, // High border-radius for bubbly aesthetic
+              borderRadius: 'var(--radius)', // High border-radius for bubbly aesthetic
               padding: '22px 20px',
               marginBottom: 20,
               border: '2px solid #BFDBFE',
@@ -246,7 +246,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             </div>
 
             {/* Dynamic Accuracy Pill */}
-            <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 0, backgroundColor: '#ECFDF5', border: '1.5px solid #6EE7B7' }}>
+            <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 'var(--radius)', backgroundColor: '#ECFDF5', border: '1.5px solid #6EE7B7' }}>
               <CheckCircle2 size={14} style={{ color: '#3A8B53' }} />
               <span style={{ fontSize: 13, fontWeight: 800, color: '#3A8B53' }}>
                 {scoreData.accuracy}% Accuracy
@@ -268,7 +268,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               style={{
                 backgroundColor: '#ECFDF5',
                 padding: '12px 8px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '2px solid #A7F3D0',
                 display: 'flex',
                 flexDirection: 'column',
@@ -289,7 +289,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               style={{
                 backgroundColor: '#FEF2F2',
                 padding: '12px 8px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '2px solid #FECACA',
                 display: 'flex',
                 flexDirection: 'column',
@@ -310,7 +310,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               style={{
                 backgroundColor: 'var(--bg-subtle)',
                 padding: '12px 8px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '2px solid #E2E8F0',
                 display: 'flex',
                 flexDirection: 'column',
@@ -331,7 +331,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
           <div
             style={{
               background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: '14px 16px',
               marginBottom: 20,
               border: '2px solid #C7D2FE',
@@ -359,7 +359,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                 style={{
                   flex: 1,
                   height: 48,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: 'var(--primary-red)',
                   color: 'var(--bg-card)',
@@ -393,7 +393,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                 style={{
                   height: 48,
                   padding: '0 18px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '2px solid #CBD5E1',
                   backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-secondary)',
@@ -426,7 +426,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               style={{
                 width: '100%',
                 padding: '11px 16px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #CBD5E1',
                 backgroundColor: 'var(--bg-subtle)',
                 color: '#1E293B',

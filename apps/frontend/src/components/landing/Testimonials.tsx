@@ -138,7 +138,7 @@ export function Testimonials() {
             className="touch-target"
             style={{
               padding: '12px 24px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               fontSize: 14,
               fontWeight: 700,
               background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))',
@@ -169,7 +169,7 @@ export function Testimonials() {
                 style={{
                   background: 'var(--bg-card)',
                   border: '1px solid var(--border-color)',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   overflow: 'hidden',
                   boxShadow: 'var(--shadow-sm)',
                   transition: 'all 0.28s ease',
@@ -244,7 +244,7 @@ export function Testimonials() {
                       style={{
                         width: 48,
                         height: 48,
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         overflow: 'hidden',
                         flexShrink: 0,
                         border: `2px solid ${accentColor}55`,
@@ -333,7 +333,7 @@ export function Testimonials() {
               <div
                 style={{
                   padding: 20,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   background: 'rgba(16, 185, 129, 0.12)',
                   color: '#3A8B53',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
@@ -351,7 +351,7 @@ export function Testimonials() {
                   <div
                     style={{
                       padding: '10px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       background: 'rgba(var(--primary-red-rgb), 0.12)',
                       color: 'var(--primary-red)',
                       border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
@@ -374,7 +374,7 @@ export function Testimonials() {
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: '1px solid var(--border-color)',
                       background: 'var(--bg-body)',
                       color: 'var(--text-main)',
@@ -426,7 +426,7 @@ export function Testimonials() {
                     style={{
                       width: '100%',
                       padding: '12px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: '1px solid var(--border-color)',
                       background: 'var(--bg-body)',
                       color: 'var(--text-main)',
@@ -445,7 +445,7 @@ export function Testimonials() {
                     className="touch-target"
                     style={{
                       padding: '10px 18px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontSize: 13,
                       fontWeight: 600,
                       border: '1px solid var(--border-color)',
@@ -462,7 +462,7 @@ export function Testimonials() {
                     className="touch-target"
                     style={{
                       padding: '10px 22px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontSize: 13,
                       fontWeight: 700,
                       border: 'none',

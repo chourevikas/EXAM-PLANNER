@@ -1616,7 +1616,7 @@ export function StudentPracticeExamPage() {
           style={{
             background: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '40px 32px',
             maxWidth: 480,
             boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
@@ -1639,7 +1639,7 @@ export function StudentPracticeExamPage() {
               }}
               style={{
                 padding: '12px 20px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--deep-navy)',
                 color: 'var(--bg-card)',
                 fontWeight: 600,
@@ -1654,7 +1654,7 @@ export function StudentPracticeExamPage() {
               onClick={() => navigate('/mocks')}
               style={{
                 padding: '12px 20px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--primary-red)',
                 color: 'var(--bg-card)',
                 fontWeight: 600,
@@ -1720,7 +1720,7 @@ export function StudentPracticeExamPage() {
             style={{
               backgroundColor: 'var(--bg-card)',
               border: '1px solid #E2E8F0',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: 'clamp(10px, 2vw, 14px) clamp(12px, 2.5vw, 18px)',
               display: 'flex',
               flexWrap: 'wrap',
@@ -1749,7 +1749,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     width: 32,
                     height: 32,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     backgroundColor: isFilterRefreshing ? 'var(--accent-bg)' : 'var(--bg-subtle)',
                     color: 'var(--accent-primary)',
                     display: 'flex',
@@ -1805,7 +1805,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: activeDropdown === 'exam' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'exam' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                       color: 'var(--deep-navy)',
@@ -1845,7 +1845,7 @@ export function StudentPracticeExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 8,
                         zIndex: 100,
@@ -1863,7 +1863,7 @@ export function StudentPracticeExamPage() {
                             }}
                             style={{
                               padding: '9px 12px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12.5,
                               fontWeight: gExam === opt ? 700 : 500,
                               color: gExam === opt ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -1907,7 +1907,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border:
                         activeDropdown === 'year' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'year' ? 'var(--bg-card)' : 'var(--bg-subtle)',
@@ -1952,7 +1952,7 @@ export function StudentPracticeExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 10,
                         zIndex: 100,
@@ -2012,7 +2012,7 @@ export function StudentPracticeExamPage() {
                           style={{
                             width: '100%',
                             padding: '7px 10px 7px 30px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid #E2E8F0',
                             fontSize: 12,
                             outline: 'none',
@@ -2039,7 +2039,7 @@ export function StudentPracticeExamPage() {
                             onClick={() => toggleYearFilter('All Years')}
                             style={{
                               padding: '8px 10px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12.5,
                               fontWeight: selectedYearsList.length === 0 ? 700 : 500,
                               color: selectedYearsList.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -2081,7 +2081,7 @@ export function StudentPracticeExamPage() {
                                 onClick={() => toggleYearFilter(opt)}
                                 style={{
                                   padding: '8px 10px',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius)',
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
                                   color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -2134,7 +2134,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border:
                         activeDropdown === 'subject' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'subject' ? 'var(--bg-card)' : 'var(--bg-subtle)',
@@ -2179,7 +2179,7 @@ export function StudentPracticeExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 10,
                         zIndex: 100,
@@ -2206,7 +2206,7 @@ export function StudentPracticeExamPage() {
                           style={{
                             width: '100%',
                             padding: '7px 10px 7px 30px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid #E2E8F0',
                             fontSize: 12,
                             outline: 'none',
@@ -2235,7 +2235,7 @@ export function StudentPracticeExamPage() {
                                 onClick={() => toggleSubjectFilter(opt)}
                                 style={{
                                   padding: '8px 10px',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius)',
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
                                   color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -2283,7 +2283,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border:
                         activeDropdown === 'topic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'topic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
@@ -2328,7 +2328,7 @@ export function StudentPracticeExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 10,
                         zIndex: 100,
@@ -2355,7 +2355,7 @@ export function StudentPracticeExamPage() {
                           style={{
                             width: '100%',
                             padding: '7px 10px 7px 30px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid #E2E8F0',
                             fontSize: 12,
                             outline: 'none',
@@ -2384,7 +2384,7 @@ export function StudentPracticeExamPage() {
                                 onClick={() => toggleTopicFilter(opt)}
                                 style={{
                                   padding: '8px 10px',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius)',
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
                                   color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -2432,7 +2432,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border:
                         activeDropdown === 'subtopic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'subtopic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
@@ -2477,7 +2477,7 @@ export function StudentPracticeExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 10,
                         zIndex: 100,
@@ -2504,7 +2504,7 @@ export function StudentPracticeExamPage() {
                           style={{
                             width: '100%',
                             padding: '7px 10px 7px 30px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: '1px solid #E2E8F0',
                             fontSize: 12,
                             outline: 'none',
@@ -2533,7 +2533,7 @@ export function StudentPracticeExamPage() {
                                 onClick={() => toggleSubtopicFilter(opt)}
                                 style={{
                                   padding: '8px 10px',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius)',
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
                                   color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -2581,7 +2581,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       width: '100%',
                       padding: '8px 14px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border:
                         activeDropdown === 'difficulty' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                       backgroundColor: activeDropdown === 'difficulty' ? 'var(--bg-card)' : 'var(--bg-subtle)',
@@ -2620,7 +2620,7 @@ export function StudentPracticeExamPage() {
                         maxWidth: 'calc(100vw - 32px)',
                         backgroundColor: 'var(--bg-card)',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                         padding: 8,
                         zIndex: 100,
@@ -2642,7 +2642,7 @@ export function StudentPracticeExamPage() {
                             }}
                             style={{
                               padding: '8px 10px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
                               color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -2761,7 +2761,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: activeDropdown === 'exam' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'exam' ? 'var(--bg-card)' : 'var(--bg-subtle)',
                     color: 'var(--deep-navy)',
@@ -2801,7 +2801,7 @@ export function StudentPracticeExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 8,
                       zIndex: 100,
@@ -2819,7 +2819,7 @@ export function StudentPracticeExamPage() {
                           }}
                           style={{
                             padding: '9px 12px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             fontSize: 12.5,
                             fontWeight: gExam === opt ? 700 : 500,
                             color: gExam === opt ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -2863,7 +2863,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border:
                       activeDropdown === 'year' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'year' ? 'var(--bg-card)' : 'var(--bg-subtle)',
@@ -2908,7 +2908,7 @@ export function StudentPracticeExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 10,
                       zIndex: 100,
@@ -2968,7 +2968,7 @@ export function StudentPracticeExamPage() {
                         style={{
                           width: '100%',
                           padding: '7px 10px 7px 30px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #E2E8F0',
                           fontSize: 12,
                           outline: 'none',
@@ -2995,7 +2995,7 @@ export function StudentPracticeExamPage() {
                           onClick={() => toggleYearFilter('All Years')}
                           style={{
                             padding: '8px 10px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             fontSize: 12.5,
                             fontWeight: selectedYearsList.length === 0 ? 700 : 500,
                             color: selectedYearsList.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -3037,7 +3037,7 @@ export function StudentPracticeExamPage() {
                               onClick={() => toggleYearFilter(opt)}
                               style={{
                                 padding: '8px 10px',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
                                 color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -3090,7 +3090,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border:
                       activeDropdown === 'subject' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'subject' ? 'var(--bg-card)' : 'var(--bg-subtle)',
@@ -3135,7 +3135,7 @@ export function StudentPracticeExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 10,
                       zIndex: 100,
@@ -3162,7 +3162,7 @@ export function StudentPracticeExamPage() {
                         style={{
                           width: '100%',
                           padding: '7px 10px 7px 30px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #E2E8F0',
                           fontSize: 12,
                           outline: 'none',
@@ -3191,7 +3191,7 @@ export function StudentPracticeExamPage() {
                               onClick={() => toggleSubjectFilter(opt)}
                               style={{
                                 padding: '8px 10px',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
                                 color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -3239,7 +3239,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border:
                       activeDropdown === 'topic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'topic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
@@ -3284,7 +3284,7 @@ export function StudentPracticeExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 10,
                       zIndex: 100,
@@ -3311,7 +3311,7 @@ export function StudentPracticeExamPage() {
                         style={{
                           width: '100%',
                           padding: '7px 10px 7px 30px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #E2E8F0',
                           fontSize: 12,
                           outline: 'none',
@@ -3340,7 +3340,7 @@ export function StudentPracticeExamPage() {
                               onClick={() => toggleTopicFilter(opt)}
                               style={{
                                 padding: '8px 10px',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
                                 color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -3388,7 +3388,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border:
                       activeDropdown === 'subtopic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'subtopic' ? 'var(--bg-card)' : 'var(--bg-subtle)',
@@ -3433,7 +3433,7 @@ export function StudentPracticeExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 10,
                       zIndex: 100,
@@ -3460,7 +3460,7 @@ export function StudentPracticeExamPage() {
                         style={{
                           width: '100%',
                           padding: '7px 10px 7px 30px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid #E2E8F0',
                           fontSize: 12,
                           outline: 'none',
@@ -3489,7 +3489,7 @@ export function StudentPracticeExamPage() {
                               onClick={() => toggleSubtopicFilter(opt)}
                               style={{
                                 padding: '8px 10px',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius)',
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
                                 color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -3537,7 +3537,7 @@ export function StudentPracticeExamPage() {
                   style={{
                     width: '100%',
                     padding: '8px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border:
                       activeDropdown === 'difficulty' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                     backgroundColor: activeDropdown === 'difficulty' ? 'var(--bg-card)' : 'var(--bg-subtle)',
@@ -3574,7 +3574,7 @@ export function StudentPracticeExamPage() {
                       maxWidth: 'calc(100vw - 32px)',
                       backgroundColor: 'var(--bg-card)',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                       padding: 8,
                       zIndex: 100,
@@ -3595,7 +3595,7 @@ export function StudentPracticeExamPage() {
                           }}
                           style={{
                             padding: '8px 10px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             fontSize: 12.5,
                             fontWeight: isSelected ? 700 : 500,
                             color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -3753,7 +3753,7 @@ export function StudentPracticeExamPage() {
               width: 380,
               backgroundColor: 'var(--bg-card)',
               border: '1px solid #E2E8F0',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               display: 'flex',
               flexDirection: 'column',
               padding: '16px 14px',
@@ -3794,7 +3794,7 @@ export function StudentPracticeExamPage() {
             zIndex: 990,
             backgroundColor: 'var(--deep-navy)',
             color: 'var(--bg-card)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '10px 20px',
             display: 'flex',
             alignItems: 'center',
@@ -3811,7 +3811,7 @@ export function StudentPracticeExamPage() {
               style={{
                 width: 26,
                 height: 26,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--primary-red)',
                 color: 'var(--bg-card)',
                 display: 'inline-flex',
@@ -3835,7 +3835,7 @@ export function StudentPracticeExamPage() {
             }}
             style={{
               padding: '6px 14px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: 'none',
               backgroundColor: 'var(--primary-red)',
               color: 'var(--bg-card)',
@@ -3885,7 +3885,7 @@ export function StudentPracticeExamPage() {
           <div
             style={{
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: 32,
               maxWidth: 420,
               width: '100%',
@@ -3910,7 +3910,7 @@ export function StudentPracticeExamPage() {
                 style={{
                   flex: 1,
                   height: 42,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1.5px solid #CBD5E1',
                   backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-secondary)',
@@ -3932,7 +3932,7 @@ export function StudentPracticeExamPage() {
                 style={{
                   flex: 1,
                   height: 42,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: '#DC2626',
                   color: 'var(--bg-card)',
@@ -3972,7 +3972,7 @@ export function StudentPracticeExamPage() {
               width: '100%',
               maxWidth: 440,
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: '32px 28px',
               border: '1.5px solid #E2E8F0',
               boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
@@ -3984,7 +3984,7 @@ export function StudentPracticeExamPage() {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: '#ECFDF5',
                 border: '1px solid #A7F3D0',
                 color: '#3A8B53',
@@ -4005,7 +4005,7 @@ export function StudentPracticeExamPage() {
                 fontSize: 11,
                 fontWeight: 800,
                 padding: '3px 10px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 marginBottom: 10,
                 letterSpacing: '0.04em',
                 textTransform: 'uppercase',
@@ -4042,7 +4042,7 @@ export function StudentPracticeExamPage() {
                 style={{
                   width: '100%',
                   height: 46,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: 'var(--accent-primary)',
                   color: 'var(--bg-card)',
@@ -4072,7 +4072,7 @@ export function StudentPracticeExamPage() {
                 style={{
                   width: '100%',
                   height: 42,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1.5px solid #E2E8F0',
                   backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-muted)',

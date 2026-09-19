@@ -11,7 +11,7 @@ export function StudentMetricCardSkeleton({ showProgress = false }: StudentMetri
       style={{
         background: 'var(--bg-card)',
         border: '1px solid #E2E8F0',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         position: 'relative',
         overflow: 'hidden',
         padding: '20px 22px',

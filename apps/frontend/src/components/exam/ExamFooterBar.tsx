@@ -56,7 +56,7 @@ export function ExamFooterBar({
             className="touch-target"
             style={{
               padding: '7px 10px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid #E2E8F0',
               backgroundColor: '#F8FAFC',
               color: 'var(--primary-red)',
@@ -84,7 +84,7 @@ export function ExamFooterBar({
             className="touch-target"
             style={{
               padding: isMobile ? '7px 8px' : '8px 14px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: `1px solid ${isAnswered ? '#FECACA' : 'var(--border-color)'}`,
               backgroundColor: isAnswered ? '#FEF2F2' : 'var(--bg-card)',
               color: isAnswered ? '#DC2626' : 'var(--text-disabled)',
@@ -111,7 +111,7 @@ export function ExamFooterBar({
             className="touch-target"
             style={{
               padding: isMobile ? '7px 8px' : '8px 14px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: `1px solid ${isMarkedForReview ? '#FCD34D' : 'var(--border-color)'}`,
               backgroundColor: isMarkedForReview ? 'var(--status-warning-bg)' : 'var(--bg-card)',
               color: isMarkedForReview ? '#F2B623' : 'var(--text-secondary)',
@@ -146,7 +146,7 @@ export function ExamFooterBar({
             className="touch-target"
             style={{
               padding: isMobile ? '7px 10px' : '9px 16px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid #3A8B53',
               backgroundColor: isAnswered ? '#3A8B53' : '#F0FDF4',
               color: isAnswered ? 'var(--bg-card)' : '#3A8B53',
@@ -174,7 +174,7 @@ export function ExamFooterBar({
           className="touch-target"
           style={{
             padding: isMobile ? '7px 10px' : '9px 16px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid #CBD5E1',
             backgroundColor: 'var(--bg-card)',
             color: 'var(--text-secondary)',
@@ -200,7 +200,7 @@ export function ExamFooterBar({
             className="touch-target"
             style={{
               padding: isMobile ? '7px 12px' : '9px 20px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: 'none',
               backgroundColor: 'var(--primary-red)',
               color: 'var(--bg-card)',
@@ -232,7 +232,7 @@ export function ExamFooterBar({
             className="touch-target"
             style={{
               padding: isMobile ? '7px 12px' : '9px 20px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: 'none',
               backgroundColor: '#3A8B53',
               color: 'var(--bg-card)',

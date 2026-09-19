@@ -14,7 +14,7 @@ export function AuditLogsTab({ logs, loading, onRefresh }: AuditLogsTabProps) {
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         padding: 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
@@ -31,7 +31,7 @@ export function AuditLogsTab({ logs, loading, onRefresh }: AuditLogsTabProps) {
                 fontSize: 11,
                 fontWeight: 800,
                 padding: '3px 10px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 background: 'rgba(var(--primary-red-rgb), 0.12)',
                 color: 'var(--primary-red)',
                 border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
@@ -51,7 +51,7 @@ export function AuditLogsTab({ logs, loading, onRefresh }: AuditLogsTabProps) {
             padding: '9px 18px',
             fontSize: 13,
             fontWeight: 600,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid var(--border-color)',
             background: 'var(--bg-body)',
             color: 'var(--text-main)',
@@ -77,7 +77,7 @@ export function AuditLogsTab({ logs, loading, onRefresh }: AuditLogsTabProps) {
             padding: '48px 24px',
             textAlign: 'center',
             background: 'var(--bg-body)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid var(--border-color)',
           }}
         >
@@ -86,7 +86,7 @@ export function AuditLogsTab({ logs, loading, onRefresh }: AuditLogsTabProps) {
           </div>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 0, border: '1px solid var(--border-color)' }}>
+        <div style={{ overflowX: 'auto', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
               <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -117,7 +117,7 @@ export function AuditLogsTab({ logs, loading, onRefresh }: AuditLogsTabProps) {
                           fontSize: 11,
                           fontWeight: 800,
                           padding: '4px 12px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           color: actionColor,
                           background: actionBg,
                           border: `1px solid ${actionBorder}`,

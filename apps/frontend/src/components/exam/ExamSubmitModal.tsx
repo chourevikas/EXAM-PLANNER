@@ -65,7 +65,7 @@ export function ExamSubmitModal({
       <div
         style={{
           backgroundColor: isDark ? '#0f1e3c' : 'var(--bg-card)',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : 'var(--border-color)'}`,
           boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
           width: '100%',
@@ -79,7 +79,7 @@ export function ExamSubmitModal({
           style={{
             width: 56,
             height: 56,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.2)' : 'var(--bg-subtle)',
             border: '1px solid var(--primary-red)',
             color: 'var(--primary-red)',
@@ -103,7 +103,7 @@ export function ExamSubmitModal({
             gridTemplateColumns: '1fr 1fr 1fr',
             gap: 10,
             padding: 14,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'var(--bg-subtle)',
             border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'var(--border-color)'}`,
             marginBottom: 24
@@ -150,7 +150,7 @@ export function ExamSubmitModal({
             style={{
               flex: 1,
               padding: 12,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'}`,
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#f8fafc',
               color: isDark ? '#ffffff' : 'var(--deep-navy)',
@@ -168,7 +168,7 @@ export function ExamSubmitModal({
             style={{
               flex: 1,
               padding: 12,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: 'none',
               backgroundColor: 'var(--primary-red)',
               color: 'var(--bg-card)',

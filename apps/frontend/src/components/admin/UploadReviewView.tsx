@@ -71,7 +71,7 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false, 
       style={{
         background: 'var(--bg-card)',
         border: '1px solid #E2E8F0',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         position: 'relative',
         overflow: 'hidden',
         padding: isMobile ? '12px 14px' : '18px 20px',
@@ -111,7 +111,7 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false, 
           style={{
             width: isMobile ? 26 : 32,
             height: isMobile ? 26 : 32,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             backgroundColor: 'var(--bg-subtle)',
             display: 'flex',
             alignItems: 'center',
@@ -261,7 +261,7 @@ function TableRowItem({
             <span
               style={{
                 padding: '3px 8px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 fontSize: 11.5,
                 fontWeight: 600,
                 display: 'inline-flex',
@@ -297,7 +297,7 @@ function TableRowItem({
           </div>
 
           {/* Micro Progress Bar */}
-          <div style={{ width: '100%', height: 4, backgroundColor: 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: 4, backgroundColor: 'var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
             <div
               style={{
                 height: '100%',
@@ -327,7 +327,7 @@ function TableRowItem({
               color: 'var(--deep-navy)',
               background: 'var(--bg-card)',
               border: '1px solid #E2E8F0',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               cursor: 'pointer',
               boxShadow: rowHovered ? '0 1px 2px rgba(15, 23, 42, 0.05)' : 'none',
               transition: 'all 150ms ease-out',
@@ -345,7 +345,7 @@ function TableRowItem({
                 fontWeight: 600,
                 color: 'var(--text-disabled)',
                 background: 'var(--bg-hover)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 5,
@@ -373,7 +373,7 @@ function TableRowItem({
                 color: 'var(--bg-card)',
                 background: 'var(--primary-red)',
                 border: 'none',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -393,7 +393,7 @@ function TableRowItem({
                 fontWeight: 600,
                 color: 'var(--text-muted)',
                 background: 'var(--bg-hover)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 5,
@@ -476,7 +476,7 @@ function MobilePipelineCard({
       style={{
         backgroundColor: 'var(--bg-card)',
         border: '1px solid #E2E8F0',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         padding: '14px 14px',
         display: 'flex',
         flexDirection: 'column',
@@ -504,12 +504,12 @@ function MobilePipelineCard({
       </div>
 
       {/* Middle Row: Extraction Progress */}
-      <div style={{ backgroundColor: 'var(--bg-subtle)', border: '1px solid #E2E8F0', borderRadius: 0, padding: '10px 12px' }}>
+      <div style={{ backgroundColor: 'var(--bg-subtle)', border: '1px solid #E2E8F0', borderRadius: 'var(--radius)', padding: '10px 12px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               fontSize: 11,
               fontWeight: 600,
               display: 'inline-flex',
@@ -545,7 +545,7 @@ function MobilePipelineCard({
         </div>
 
         {/* Micro Progress Bar */}
-        <div style={{ width: '100%', height: 5, backgroundColor: 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
+        <div style={{ width: '100%', height: 5, backgroundColor: 'var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
           <div
             style={{
               height: '100%',
@@ -573,7 +573,7 @@ function MobilePipelineCard({
             color: 'var(--deep-navy)',
             background: 'var(--bg-card)',
             border: '1px solid #CBD5E1',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             cursor: 'pointer',
             textAlign: 'center',
             display: 'flex',
@@ -596,7 +596,7 @@ function MobilePipelineCard({
               fontWeight: 600,
               color: 'var(--text-disabled)',
               background: 'var(--bg-hover)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -624,7 +624,7 @@ function MobilePipelineCard({
               color: 'var(--bg-card)',
               background: 'var(--primary-red)',
               border: '1px solid var(--primary-red)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -644,7 +644,7 @@ function MobilePipelineCard({
               fontWeight: 600,
               color: 'var(--text-muted)',
               background: 'var(--bg-hover)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -951,7 +951,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
             backgroundColor: 'var(--status-success-bg)',
             border: '1px solid #86EFAC',
             padding: '3px 9px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
@@ -973,7 +973,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
             backgroundColor: '#FEF2F2',
             border: '1px solid #FECDCA',
             padding: '3px 9px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
@@ -995,7 +995,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
             backgroundColor: '#E0F2FE',
             border: '1px solid #BAE6FD',
             padding: '3px 9px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
@@ -1016,7 +1016,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
           backgroundColor: 'var(--status-warning-bg)',
           border: '1px solid #FDE68A',
           padding: '3px 9px',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           display: 'inline-flex',
           alignItems: 'center',
           gap: 5,
@@ -1040,13 +1040,13 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
             backgroundColor: 'var(--status-success-bg)',
             border: '1px solid #86EFAC',
             padding: '3px 9px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
           }}
         >
-          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: 'var(--status-success)' }} />
+          <span style={{ width: 6, height: 6, borderRadius: 'var(--radius)', backgroundColor: 'var(--status-success)' }} />
           Published
         </span>
       );
@@ -1061,7 +1061,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
             backgroundColor: '#E0F2FE',
             border: '1px solid #BAE6FD',
             padding: '3px 9px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
@@ -1082,13 +1082,13 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
             backgroundColor: '#FEF2F2',
             border: '1px solid #FECDCA',
             padding: '3px 9px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
           }}
         >
-          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#DC2626' }} />
+          <span style={{ width: 6, height: 6, borderRadius: 'var(--radius)', backgroundColor: '#DC2626' }} />
           Failed
         </span>
       );
@@ -1102,13 +1102,13 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
           backgroundColor: 'var(--status-warning-bg)',
           border: '1px solid #FDE68A',
           padding: '3px 9px',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           display: 'inline-flex',
           alignItems: 'center',
           gap: 5,
         }}
       >
-        <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#F2B623' }} />
+        <span style={{ width: 6, height: 6, borderRadius: 'var(--radius)', backgroundColor: '#F2B623' }} />
         Pending Review
       </span>
     );
@@ -1127,7 +1127,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
             backgroundColor: '#15803D',
             color: 'var(--bg-card)',
             padding: '12px 20px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.2)',
             display: 'flex',
             alignItems: 'center',
@@ -1185,7 +1185,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 padding: '9px 14px',
                 fontSize: 13,
                 fontWeight: 500,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--deep-navy)',
                 border: '1px solid #E2E8F0',
@@ -1210,7 +1210,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 padding: '9px 16px',
                 fontSize: 13,
                 fontWeight: 600,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--deep-navy)',
                 color: 'var(--bg-card)',
                 border: '1px solid #172033',
@@ -1275,7 +1275,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
           style={{
             backgroundColor: '#FEF2F2',
             border: '1px solid #FECDCA',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '16px 20px',
             marginBottom: 24,
             display: 'flex',
@@ -1300,7 +1300,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     backgroundColor: 'var(--primary-red-bg)',
                     display: 'flex',
                     alignItems: 'center',
@@ -1331,7 +1331,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                     color: 'var(--bg-card)',
                     fontSize: 12.5,
                     fontWeight: 600,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: 'none',
                     cursor: 'pointer',
                     display: 'flex',
@@ -1359,7 +1359,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                     color: 'var(--text-secondary)',
                     fontSize: 12.5,
                     fontWeight: 600,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     cursor: 'pointer',
                   }}
@@ -1400,14 +1400,14 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
               overflowY: 'auto',
               background: 'var(--bg-card)',
               border: '1px solid #E2E8F0',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: isMobile ? '18px 14px' : 28,
               boxShadow: '0 20px 40px rgba(15, 23, 42, 0.2)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
+                <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 'var(--radius)' }} />
                 <h2 style={{ fontSize: isMobile ? 15.5 : 17, fontWeight: 700, color: 'var(--deep-navy)', margin: 0, letterSpacing: '-0.01em' }}>
                   Upload Question Paper PDF
                 </h2>
@@ -1454,7 +1454,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     fontSize: 13,
                     outline: 'none',
@@ -1493,7 +1493,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     fontSize: 13,
                     outline: 'none',
@@ -1525,7 +1525,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     fontSize: 13,
                     outline: 'none',
@@ -1546,7 +1546,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     fontSize: 13,
                     outline: 'none',
@@ -1572,7 +1572,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
               style={{
                 border: `2px dashed ${isDragOver ? 'var(--primary-red)' : '#93C5FD'}`,
                 backgroundColor: isDragOver ? 'var(--border-color)' : 'var(--bg-subtle)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 padding: isMobile ? '22px 14px' : '32px 24px',
                 textAlign: 'center',
                 cursor: 'pointer',
@@ -1591,7 +1591,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 style={{
                   width: isMobile ? 40 : 48,
                   height: isMobile ? 40 : 48,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   backgroundColor: 'var(--bg-card)',
                   color: 'var(--primary-red)',
                   display: 'flex',
@@ -1641,7 +1641,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   alignItems: 'center',
                   gap: 8,
                   padding: isMobile ? '11px 18px' : '10px 22px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   fontSize: 13.5,
                   fontWeight: 600,
                   backgroundColor: !selectedFile || isUploading ? 'var(--text-disabled)' : 'var(--primary-red)',
@@ -1667,7 +1667,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
           style={{
             background: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
             overflow: 'hidden',
           }}
@@ -1694,7 +1694,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 style={{
                   width: '100%',
                   padding: '8px 12px 8px 36px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   backgroundColor: 'var(--bg-card)',
                   fontSize: 13,
@@ -1713,7 +1713,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   flex: isMobile ? 1 : 'none',
                   width: isMobile ? '100%' : 'auto',
                   padding: '8px 12px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   fontSize: 13,
                   fontWeight: 500,
@@ -1737,7 +1737,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   flex: isMobile ? 1 : 'none',
                   width: isMobile ? '100%' : 'auto',
                   padding: '8px 12px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   fontSize: 13,
                   fontWeight: 500,
@@ -1759,7 +1759,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   flex: isMobile ? 1 : 'none',
                   width: isMobile ? '100%' : 'auto',
                   padding: '8px 12px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid #CBD5E1',
                   fontSize: 13,
                   fontWeight: 500,
@@ -1794,7 +1794,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   color: 'var(--text-muted)',
                   background: 'var(--bg-card)',
                   border: '1px solid #CBD5E1',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   cursor: 'pointer',
                   textAlign: 'center',
                 }}
@@ -2016,7 +2016,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                       padding: '4px 8px',
                       fontSize: 12,
                       fontWeight: 500,
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       border: '1px solid #CBD5E1',
                       backgroundColor: 'var(--bg-card)',
                       color: '#1E293B',
@@ -2053,7 +2053,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                     justifyContent: 'center',
                     width: 32,
                     height: 32,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     backgroundColor: safeCurrentPage === 1 ? 'var(--bg-hover)' : 'var(--bg-card)',
                     color: safeCurrentPage === 1 ? 'var(--text-disabled)' : 'var(--text-secondary)',
@@ -2075,7 +2075,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                     justifyContent: 'center',
                     width: 32,
                     height: 32,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     backgroundColor: safeCurrentPage === 1 ? 'var(--bg-hover)' : 'var(--bg-card)',
                     color: safeCurrentPage === 1 ? 'var(--text-disabled)' : 'var(--text-secondary)',
@@ -2110,7 +2110,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                           minWidth: 32,
                           height: 32,
                           padding: '0 8px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           fontSize: 13,
                           fontWeight: safeCurrentPage === item ? 700 : 500,
                           border: safeCurrentPage === item ? '1px solid #E31B23' : '1px solid #CBD5E1',
@@ -2136,7 +2136,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                     justifyContent: 'center',
                     width: 32,
                     height: 32,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     backgroundColor: safeCurrentPage === totalPages ? 'var(--bg-hover)' : 'var(--bg-card)',
                     color: safeCurrentPage === totalPages ? 'var(--text-disabled)' : 'var(--text-secondary)',
@@ -2158,7 +2158,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                     justifyContent: 'center',
                     width: 32,
                     height: 32,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #CBD5E1',
                     backgroundColor: safeCurrentPage === totalPages ? 'var(--bg-hover)' : 'var(--bg-card)',
                     color: safeCurrentPage === totalPages ? 'var(--text-disabled)' : 'var(--text-secondary)',
@@ -2260,7 +2260,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                       padding: 10,
                       background: selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#F0FDF4' : '#FEF2F2',
                       border: `1px solid ${selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#BBF7D0' : '#FECDCA'}`,
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                     }}
                   >
                     <div style={{ fontSize: 11.5, fontWeight: 700, color: selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#15803D' : '#DC2626' }}>
@@ -2276,7 +2276,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                       padding: 10,
                       background: selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#F0FDF4' : '#FEF2F2',
                       border: `1px solid ${selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#BBF7D0' : '#FECDCA'}`,
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                     }}
                   >
                     <div style={{ fontSize: 11.5, fontWeight: 700, color: selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#15803D' : '#DC2626' }}>
@@ -2298,14 +2298,14 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ background: 'var(--bg-subtle)', border: '1px solid #E2E8F0', borderRadius: 0, padding: 12 }}>
+                  <div style={{ background: 'var(--bg-subtle)', border: '1px solid #E2E8F0', borderRadius: 'var(--radius)', padding: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)' }}>One-Pass Content Extraction</span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#15803D' }}>
                         {selectedExam.extracted_questions_count} / {selectedExam.total_questions || 100} Questions & Solutions
                       </span>
                     </div>
-                    <div style={{ height: 6, background: 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
+                    <div style={{ height: 6, background: 'var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
                       <div
                         style={{
                           height: '100%',
@@ -2328,7 +2328,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                   ARTIFACT PATHS & DEPLOYMENT
                 </div>
-                <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 0, border: '1px solid #E2E8F0', fontFamily: 'monospace', fontSize: 11.5, color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
+                <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 'var(--radius)', border: '1px solid #E2E8F0', fontFamily: 'monospace', fontSize: 11.5, color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
                   <div>Questions JSON: {selectedExam.questions_json_path || 'artifacts/json/questions.json'}</div>
                   <div style={{ marginTop: 6 }}>Solutions JSON: {selectedExam.solutions_json_path || 'artifacts/json/solutions.json'}</div>
                 </div>
@@ -2343,7 +2343,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 style={{
                   flex: 1,
                   padding: '9px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   fontSize: 13,
                   fontWeight: 600,
                   backgroundColor: 'var(--bg-card)',
@@ -2387,7 +2387,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                       style={{
                         flex: 1,
                         padding: '9px 16px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         fontSize: 12.5,
                         fontWeight: 600,
                         backgroundColor: 'var(--bg-hover)',
@@ -2418,7 +2418,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                     style={{
                       flex: 1,
                       padding: '9px 16px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontSize: 13,
                       fontWeight: 600,
                       backgroundColor: 'var(--primary-red)',
@@ -2440,7 +2440,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                     style={{
                       flex: 1,
                       padding: '9px 16px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontSize: 12.5,
                       fontWeight: 600,
                       backgroundColor: 'var(--bg-hover)',
@@ -2464,7 +2464,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
               style={{
                 width: '100%',
                 padding: '9px 16px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #FECACA',
                 backgroundColor: 'var(--bg-card)',
                 color: '#DC2626',
@@ -2505,7 +2505,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
               width: '100%',
               maxWidth: 'min(480px, calc(100vw - 24px))',
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.25)',
               padding: 24,
             }}
@@ -2515,7 +2515,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 style={{
                   width: 40,
                   height: 40,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   backgroundColor: 'var(--primary-red-bg)',
                   display: 'flex',
                   alignItems: 'center',
@@ -2603,7 +2603,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
           <div
             style={{
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               maxWidth: 480,
               width: '100%',
               padding: 28,
@@ -2616,7 +2616,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
               <div
                 style={{
                   padding: 10,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   backgroundColor: 'rgba(245, 158, 11, 0.15)',
                   color: '#F2B623',
                   display: 'flex',
@@ -2651,7 +2651,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                     onClick={() => handleConflictResolve(opt)}
                     style={{
                       padding: '9px 18px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontSize: 13.5,
                       fontWeight: 600,
                       cursor: 'pointer',

@@ -100,7 +100,7 @@ export function WhySection() {
                     style={{
                       width: 22,
                       height: 22,
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       background: palettes.blue.bg,
                       border: `1px solid ${palettes.blue.border}`,
                       display: 'flex',
@@ -155,7 +155,7 @@ export function WhySection() {
                   style={{
                     width: 52,
                     height: 52,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     background: palettes.emerald.bg,
                     border: `1px solid ${palettes.emerald.border}`,
                     display: 'flex',
@@ -224,7 +224,7 @@ export function WhySection() {
                   style={{
                     width: 52,
                     height: 52,
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     background: palettes.violet.bg,
                     border: `1px solid ${palettes.violet.border}`,
                     display: 'flex',

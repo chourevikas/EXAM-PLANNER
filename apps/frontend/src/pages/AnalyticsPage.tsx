@@ -27,7 +27,7 @@ const backBannerStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '12px 20px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'rgba(var(--primary-red-rgb), 0.08)',
   border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
   flexWrap: 'wrap',
@@ -41,7 +41,7 @@ const backBannerValueStyle: React.CSSProperties = { fontSize: 14, fontWeight: 80
 const headerSectionStyle: React.CSSProperties = {
   marginBottom: 24,
   padding: 32,
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--bg-card)',
   border: '1px solid var(--border-default)',
   boxShadow: 'var(--shadow-color-base)',
@@ -59,7 +59,7 @@ const headerBadgeStyle: React.CSSProperties = {
   gap: 6,
   padding: '4px 12px',
   backgroundColor: 'var(--accent-bg)',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   marginBottom: 10,
   border: '1px solid var(--accent-border)',
 };
@@ -74,7 +74,7 @@ const aiBadgeLoadedStyle: React.CSSProperties = {
   padding: '4px 12px',
   backgroundColor: '#ECFDF5',
   border: '1px solid #A7F3D0',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   color: '#059669',
   fontSize: 12,
   fontWeight: 800,
@@ -88,7 +88,7 @@ const aiBadgePendingStyle: React.CSSProperties = {
   padding: '4px 12px',
   backgroundColor: 'var(--status-warning-bg)',
   border: '1px solid #FDE68A',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   color: '#D97706',
   fontSize: 12,
   fontWeight: 800,
@@ -98,7 +98,7 @@ const aiBadgePendingStyle: React.CSSProperties = {
 const attemptSwitcherStyle: React.CSSProperties = {
   marginBottom: 20,
   padding: '14px 20px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--bg-card)',
   border: '1px solid var(--border-default)',
   boxShadow: 'var(--shadow-color-base)',
@@ -116,7 +116,7 @@ const attemptSwitcherHintStyle: React.CSSProperties = { fontSize: 12, color: 'va
 
 const attemptSwitcherSelectStyle: React.CSSProperties = {
   padding: '6px 14px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--bg-subtle)',
   border: '1px solid var(--primary-red)',
   color: 'var(--text-primary)',
@@ -129,7 +129,7 @@ const emptyStateContainerStyle: React.CSSProperties = {
   padding: '64px 32px',
   textAlign: 'center',
   backgroundColor: 'var(--bg-card)',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   border: '1px solid var(--border-default)',
   boxShadow: 'var(--shadow-color-base)',
   display: 'flex',
@@ -144,7 +144,7 @@ const emptyStateContainerStyle: React.CSSProperties = {
 const emptyStateIconStyle: React.CSSProperties = {
   width: 80,
   height: 80,
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)',
   border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
   display: 'flex',
@@ -158,7 +158,7 @@ const emptyStateCTAStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: 8,
   padding: '14px 28px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--primary-red)',
   color: 'var(--bg-card)',
   border: 'none',
@@ -172,7 +172,7 @@ const emptyStateCTAStyle: React.CSSProperties = {
 const historyTableSectionStyle: React.CSSProperties = {
   marginBottom: 24,
   padding: 24,
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--bg-card)',
   border: '1px solid var(--border-default)',
   boxShadow: 'var(--shadow-color-base)',
@@ -193,7 +193,7 @@ const attemptBadgeStyle: React.CSSProperties = {
   fontSize: 10.5,
   fontWeight: 800,
   padding: '2px 7px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'rgba(var(--primary-red-rgb), 0.12)',
   color: 'var(--primary-red)',
   border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
@@ -207,7 +207,7 @@ const tdActionStyle: React.CSSProperties = { padding: '12px', textAlign: 'right'
 
 const viewReportBtnStyle: React.CSSProperties = {
   padding: '8px 16px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--primary-red)',
   color: 'var(--bg-card)',
   border: 'none',
@@ -235,7 +235,7 @@ const paginationControlsStyle: React.CSSProperties = { display: 'flex', alignIte
 const evaluatingContainerStyle: React.CSSProperties = {
   padding: 32,
   marginBottom: 28,
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--bg-card)',
   border: '2px solid rgba(var(--primary-red-rgb), 0.3)',
   boxShadow: '0 8px 32px rgba(var(--primary-red-rgb), 0.12)',
@@ -251,7 +251,7 @@ const progressBarOuterStyle: React.CSSProperties = {
   width: '100%',
   maxWidth: 480,
   height: 8,
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--bg-subtle)',
   overflow: 'hidden',
   marginTop: 6,
@@ -261,7 +261,7 @@ const evalLabelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, col
 
 const errorBannerStyle: React.CSSProperties = {
   padding: '20px 24px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)',
   border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
   color: 'var(--text-primary)',
@@ -282,7 +282,7 @@ const retryBtnStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: 8,
   padding: '10px 20px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'var(--primary-red)',
   color: 'var(--bg-card)',
   border: 'none',
@@ -296,7 +296,7 @@ const noReportContainerStyle: React.CSSProperties = {
   padding: 48,
   textAlign: 'center',
   backgroundColor: 'var(--bg-card)',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   border: '1px solid var(--border-default)',
   boxShadow: 'var(--shadow-color-base)',
   display: 'flex',
@@ -311,7 +311,7 @@ const noReportContainerStyle: React.CSSProperties = {
 const noReportIconStyle: React.CSSProperties = {
   width: 64,
   height: 64,
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)',
   display: 'flex',
   alignItems: 'center',
@@ -322,7 +322,7 @@ const noReportIconStyle: React.CSSProperties = {
 
 const refreshBtnStyle: React.CSSProperties = {
   padding: '12px 20px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   border: '1px solid var(--border-default)',
   backgroundColor: 'var(--bg-subtle)',
   color: 'var(--text-primary)',
@@ -337,7 +337,7 @@ const refreshBtnStyle: React.CSSProperties = {
 
 const practiceExamBtnStyle: React.CSSProperties = {
   padding: '12px 22px',
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   border: 'none',
   backgroundColor: 'var(--accent-primary, var(--primary-red))',
   color: 'var(--bg-card)',
@@ -880,7 +880,7 @@ export function AnalyticsPage() {
                           padding: '14px 14px',
                           backgroundColor: 'var(--bg-subtle)',
                           border: '1px solid var(--border-default)',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           display: 'flex',
                           flexDirection: 'column',
                           gap: 12,
@@ -902,7 +902,7 @@ export function AnalyticsPage() {
                               fontSize: 10.5,
                               fontWeight: 700,
                               padding: '2px 7px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
                               color: att.mode === 'FULL_MOCK' ? 'var(--primary-red)' : '#3A8B53',
                               flexShrink: 0,
@@ -1008,7 +1008,7 @@ export function AnalyticsPage() {
                                   fontSize: 11,
                                   fontWeight: 700,
                                   padding: '3px 8px',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius)',
                                   backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
                                   color: att.mode === 'FULL_MOCK' ? 'var(--primary-red)' : '#3A8B53',
                                 }}
@@ -1067,7 +1067,7 @@ export function AnalyticsPage() {
                         style={{
                           minHeight: 44,
                           padding: '10px 16px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid var(--border-default)',
                           backgroundColor: historyPage <= 1 ? 'transparent' : 'var(--bg-subtle)',
                           color: historyPage <= 1 ? 'var(--text-muted)' : 'var(--text-primary)',
@@ -1089,7 +1089,7 @@ export function AnalyticsPage() {
                         style={{
                           minHeight: 44,
                           padding: '10px 16px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid var(--border-default)',
                           backgroundColor: historyPage >= paginationData.totalPages ? 'transparent' : 'var(--bg-subtle)',
                           color: historyPage >= paginationData.totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
@@ -1120,7 +1120,7 @@ export function AnalyticsPage() {
                         style={{
                           minHeight: 36,
                           padding: '6px 12px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid var(--border-default)',
                           backgroundColor: historyPage <= 1 ? 'transparent' : 'var(--bg-subtle)',
                           color: historyPage <= 1 ? 'var(--text-muted)' : 'var(--text-primary)',
@@ -1141,7 +1141,7 @@ export function AnalyticsPage() {
                             minHeight: 36,
                             minWidth: 36,
                             padding: '6px 11px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             border: pageNum === historyPage ? '1px solid var(--primary-red)' : '1px solid var(--border-default)',
                             backgroundColor: pageNum === historyPage ? 'var(--primary-red)' : 'var(--bg-subtle)',
                             color: pageNum === historyPage ? 'var(--bg-card)' : 'var(--text-primary)',
@@ -1160,7 +1160,7 @@ export function AnalyticsPage() {
                         style={{
                           minHeight: 36,
                           padding: '6px 12px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           border: '1px solid var(--border-default)',
                           backgroundColor: historyPage >= paginationData.totalPages ? 'transparent' : 'var(--bg-subtle)',
                           color: historyPage >= paginationData.totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
@@ -1228,7 +1228,7 @@ export function AnalyticsPage() {
                     height: '100%',
                     width: `${evalProgress}%`,
                     background: 'linear-gradient(90deg, var(--primary-red), #8b5cf6)',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     transition: 'width 0.4s ease',
                   }}
                 />

@@ -514,7 +514,7 @@ export function ExamQuestionCard({
             backgroundColor: 'var(--bg-card)',
             border: '1px solid #E2E8F0',
             borderTop: '4px solid var(--primary-red)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
             padding: 'clamp(12px, 2.5vw, 20px)',
             display: 'flex',

@@ -26,7 +26,7 @@ export function SuperAdminTabNav({ activeTab, onTabChange, pendingCount, pending
         gap: 8,
         background: 'var(--bg-card)',
         padding: 6,
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         border: '1px solid var(--border-color)',
         marginBottom: 28,
         overflowX: 'auto',
@@ -45,7 +45,7 @@ export function SuperAdminTabNav({ activeTab, onTabChange, pendingCount, pending
               flex: 1,
               minWidth: 170,
               padding: '12px 20px',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: 'none',
               background: isActive
                 ? 'linear-gradient(135deg, #0F1D38 0%, #1B3864 100%)'
@@ -85,7 +85,7 @@ export function SuperAdminTabNav({ activeTab, onTabChange, pendingCount, pending
                   fontSize: 11,
                   fontWeight: 800,
                   padding: '2px 8px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   marginLeft: 4,
                   border: isActive ? 'none' : '1px solid rgba(249, 115, 22, 0.3)',
                 }}

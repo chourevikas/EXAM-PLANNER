@@ -462,7 +462,7 @@ export function MockSelectionPage() {
         style={{
           marginBottom: 36,
           padding: '28px 32px',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           backgroundColor: 'var(--bg-card)',
           border: '1px solid #E5E7EB',
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
@@ -472,7 +472,7 @@ export function MockSelectionPage() {
           <div style={{
             width: 44,
             height: 44,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
             display: 'flex',
             alignItems: 'center',
@@ -507,7 +507,7 @@ export function MockSelectionPage() {
                   setFilterSearchQuery('');
                 }}
                 style={{
-                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 'var(--radius)',
                   border: activeDropdown === 'exam' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                   backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
@@ -545,7 +545,7 @@ export function MockSelectionPage() {
                     maxWidth: 'calc(100vw - 32px)',
                     backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                     padding: 10,
                     zIndex: 100,
@@ -562,7 +562,7 @@ export function MockSelectionPage() {
                       onClick={() => toggleExamFilter('All Exams')}
                       style={{
                         padding: '8px 10px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         fontSize: 12.5,
                         fontWeight: selectedExamsList.length === 0 ? 700 : 500,
                         color: selectedExamsList.length === 0 ? 'var(--primary-red)' : '#334155',
@@ -594,7 +594,7 @@ export function MockSelectionPage() {
                           onClick={() => toggleExamFilter(opt)}
                           style={{
                             padding: '8px 10px',
-                            borderRadius: 0,
+                            borderRadius: 'var(--radius)',
                             fontSize: 12.5,
                             fontWeight: isSelected ? 700 : 500,
                             color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -635,7 +635,7 @@ export function MockSelectionPage() {
                   setFilterSearchQuery('');
                 }}
                 style={{
-                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 'var(--radius)',
                   border: activeDropdown === 'year' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                   backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
@@ -673,7 +673,7 @@ export function MockSelectionPage() {
                     maxWidth: 'calc(100vw - 32px)',
                     backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                     padding: 10,
                     zIndex: 100,
@@ -695,7 +695,7 @@ export function MockSelectionPage() {
                       style={{
                         width: '100%',
                         padding: '7px 10px 7px 30px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         border: '1px solid #E2E8F0',
                         fontSize: 12,
                         outline: 'none',
@@ -712,7 +712,7 @@ export function MockSelectionPage() {
                         onClick={() => toggleYearFilter('All Years')}
                         style={{
                           padding: '8px 10px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           fontSize: 12.5,
                           fontWeight: selectedYearsList.length === 0 ? 700 : 500,
                           color: selectedYearsList.length === 0 ? 'var(--primary-red)' : '#334155',
@@ -747,7 +747,7 @@ export function MockSelectionPage() {
                             onClick={() => toggleYearFilter(opt)}
                             style={{
                               padding: '8px 10px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
                               color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -788,7 +788,7 @@ export function MockSelectionPage() {
                   setFilterSearchQuery('');
                 }}
                 style={{
-                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 'var(--radius)',
                   border: activeDropdown === 'subject' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                   backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
@@ -826,7 +826,7 @@ export function MockSelectionPage() {
                     maxWidth: 'calc(100vw - 32px)',
                     backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                     padding: 10,
                     zIndex: 100,
@@ -848,7 +848,7 @@ export function MockSelectionPage() {
                       style={{
                         width: '100%',
                         padding: '7px 10px 7px 30px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         border: '1px solid #E2E8F0',
                         fontSize: 12,
                         outline: 'none',
@@ -869,7 +869,7 @@ export function MockSelectionPage() {
                             onClick={() => toggleSubjectFilter(opt)}
                             style={{
                               padding: '8px 10px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
                               color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -905,7 +905,7 @@ export function MockSelectionPage() {
                   setFilterSearchQuery('');
                 }}
                 style={{
-                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 'var(--radius)',
                   border: activeDropdown === 'topic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                   backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
@@ -943,7 +943,7 @@ export function MockSelectionPage() {
                     maxWidth: 'calc(100vw - 32px)',
                     backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                     padding: 10,
                     zIndex: 100,
@@ -965,7 +965,7 @@ export function MockSelectionPage() {
                       style={{
                         width: '100%',
                         padding: '7px 10px 7px 30px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         border: '1px solid #E2E8F0',
                         fontSize: 12,
                         outline: 'none',
@@ -986,7 +986,7 @@ export function MockSelectionPage() {
                             onClick={() => toggleTopicFilter(opt)}
                             style={{
                               padding: '8px 10px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
                               color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -1022,7 +1022,7 @@ export function MockSelectionPage() {
                   setFilterSearchQuery('');
                 }}
                 style={{
-                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 'var(--radius)',
                   border: activeDropdown === 'subtopic' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                   backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
@@ -1060,7 +1060,7 @@ export function MockSelectionPage() {
                     maxWidth: 'calc(100vw - 32px)',
                     backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                     padding: 10,
                     zIndex: 100,
@@ -1082,7 +1082,7 @@ export function MockSelectionPage() {
                       style={{
                         width: '100%',
                         padding: '7px 10px 7px 30px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         border: '1px solid #E2E8F0',
                         fontSize: 12,
                         outline: 'none',
@@ -1103,7 +1103,7 @@ export function MockSelectionPage() {
                             onClick={() => toggleSubtopicFilter(opt)}
                             style={{
                               padding: '8px 10px',
-                              borderRadius: 0,
+                              borderRadius: 'var(--radius)',
                               fontSize: 12.5,
                               fontWeight: isSelected ? 700 : 500,
                               color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -1139,7 +1139,7 @@ export function MockSelectionPage() {
                   setFilterSearchQuery('');
                 }}
                 style={{
-                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 'var(--radius)',
                   border: activeDropdown === 'difficulty' ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
                   backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#FAFAFC',
                   color: 'var(--deep-navy)', fontSize: 13, fontWeight: 600, outline: 'none',
@@ -1173,7 +1173,7 @@ export function MockSelectionPage() {
                     maxWidth: 'calc(100vw - 32px)',
                     backgroundColor: 'var(--bg-card)',
                     border: '1px solid #E2E8F0',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                     padding: 6,
                     zIndex: 100,
@@ -1190,7 +1190,7 @@ export function MockSelectionPage() {
                         }}
                         style={{
                           padding: '9px 12px',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           fontSize: 12.5,
                           fontWeight: isSelected ? 700 : 500,
                           color: isSelected ? 'var(--primary-red)' : '#334155',
@@ -1229,7 +1229,7 @@ export function MockSelectionPage() {
               type="submit"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '12px 24px', borderRadius: 0,
+                padding: '12px 24px', borderRadius: 'var(--radius)',
                 background: 'linear-gradient(135deg, #4F46E5 0%, var(--primary-red) 100%)',
                 color: 'var(--bg-card)', fontWeight: 700, fontSize: 14, border: 'none',
                 cursor: 'pointer', boxShadow: '0 4px 14px rgba(var(--primary-red-rgb), 0.35)',
@@ -1265,7 +1265,7 @@ export function MockSelectionPage() {
             color: 'var(--primary-red)',
             textDecoration: 'none',
             padding: '6px 12px',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid #F8FAFC',
             backgroundColor: 'var(--bg-subtle)',
             display: 'inline-flex',
@@ -1296,7 +1296,7 @@ export function MockSelectionPage() {
                 onMouseLeave={() => setHoveredMock(null)}
                 style={{
                   backgroundColor: 'var(--bg-card)',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: `1px solid ${hoveredMock === mock.id ? 'var(--primary-red)' : isCompleted ? '#A7F3D0' : 'var(--border-color)'}`,
                   padding: '24px',
                   boxShadow: hoveredMock === mock.id
@@ -1316,7 +1316,7 @@ export function MockSelectionPage() {
                       fontSize: 11,
                       fontWeight: 700,
                       padding: '3px 8px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       backgroundColor: 'var(--bg-subtle)',
                       color: 'var(--primary-red)',
                       textTransform: 'uppercase',
@@ -1350,15 +1350,15 @@ export function MockSelectionPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: '#EA580C', marginBottom: 6 }}>
                         <span>65% Completed</span>
                       </div>
-                      <div style={{ width: '100%', height: 6, borderRadius: 0, backgroundColor: 'var(--bg-hover)', overflow: 'hidden' }}>
-                        <div style={{ width: '65%', height: '100%', backgroundColor: '#F47B35', borderRadius: 0 }} />
+                      <div style={{ width: '100%', height: 6, borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-hover)', overflow: 'hidden' }}>
+                        <div style={{ width: '65%', height: '100%', backgroundColor: '#F47B35', borderRadius: 'var(--radius)' }} />
                       </div>
                     </div>
                   )}
 
                   {/* Completed: Score Badge */}
                   {isCompleted && (
-                    <div style={{ marginTop: 10, padding: '4px 10px', backgroundColor: '#ECFDF5', borderRadius: 0, fontSize: 12, fontWeight: 700, color: '#3A8B53', display: 'inline-block' }}>
+                    <div style={{ marginTop: 10, padding: '4px 10px', backgroundColor: '#ECFDF5', borderRadius: 'var(--radius)', fontSize: 12, fontWeight: 700, color: '#3A8B53', display: 'inline-block' }}>
                       Score: {mock.scoreText || '0 / 200'}
                     </div>
                   )}
@@ -1372,7 +1372,7 @@ export function MockSelectionPage() {
                       style={{
                         width: '100%',
                         height: 40,
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         backgroundColor: '#FFF7ED',
                         border: '1px solid #FFEDD5',
                         color: '#EA580C',
@@ -1395,7 +1395,7 @@ export function MockSelectionPage() {
                         style={{
                           flex: 1,
                           height: 40,
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           backgroundColor: '#3A8B53',
                           color: 'var(--bg-card)',
                           fontWeight: 700,
@@ -1416,7 +1416,7 @@ export function MockSelectionPage() {
                         style={{
                           padding: '0 16px',
                           height: 40,
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           backgroundColor: 'var(--bg-card)',
                           border: '1px solid #E2E8F0',
                           color: 'var(--text-secondary)',
@@ -1438,7 +1438,7 @@ export function MockSelectionPage() {
                       style={{
                         width: '100%',
                         height: 40,
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         backgroundColor: 'var(--primary-red)',
                         color: 'var(--bg-card)',
                         fontWeight: 700,

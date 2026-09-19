@@ -18,7 +18,7 @@ export function StudyPlannerSkeleton() {
         style={{
           backgroundColor: 'var(--bg-card)',
           border: '1px solid #E2E8F0',
-          borderRadius: 0,
+          borderRadius: 'var(--radius)',
           padding: 24,
           display: 'flex',
           flexDirection: 'column',

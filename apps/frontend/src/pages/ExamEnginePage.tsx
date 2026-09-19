@@ -1248,7 +1248,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               backgroundColor: 'var(--primary-red)',
               color: 'var(--bg-card)',
               border: 'none',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               fontSize: 13,
               fontWeight: 800,
               cursor: 'pointer',
@@ -1301,7 +1301,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   alignItems: 'center',
                   gap: 6,
                   padding: '6px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: isActive ? 'var(--primary-red)' : 'transparent',
                   color: isActive ? 'var(--bg-card)' : isDark ? 'rgba(255, 255, 255, 0.7)' : 'var(--text-muted)',
@@ -1430,7 +1430,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               maxHeight: '90vh',
               overflowY: 'auto',
               backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-card)',
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               padding: '32px',
               border: `1px solid ${isDark ? 'var(--text-secondary)' : 'var(--border-color)'}`,
               boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)',
@@ -1441,7 +1441,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)',
                 color: 'var(--primary-red)',
                 display: 'flex',
@@ -1465,7 +1465,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             <div
               style={{
                 backgroundColor: isDark ? 'var(--deep-navy)' : '#f0f6ff',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 padding: '18px',
                 marginBottom: 20,
                 border: '1px solid rgba(var(--primary-red-rgb), 0.15)',
@@ -1491,15 +1491,15 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 marginBottom: 20,
               }}
             >
-              <div style={{ backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-subtle)', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
+              <div style={{ backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-subtle)', padding: 10, borderRadius: 'var(--radius)', border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>CORRECT</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#3A8B53' }}>{guestScoreData.correctCount}</div>
               </div>
-              <div style={{ backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-subtle)', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
+              <div style={{ backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-subtle)', padding: 10, borderRadius: 'var(--radius)', border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>WRONG</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--primary-red)' }}>{guestScoreData.wrongCount}</div>
               </div>
-              <div style={{ backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-subtle)', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
+              <div style={{ backgroundColor: isDark ? 'var(--deep-navy)' : 'var(--bg-subtle)', padding: 10, borderRadius: 'var(--radius)', border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>UNATTEMPTED</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-muted)' }}>{guestScoreData.unattemptedCount}</div>
               </div>
@@ -1509,7 +1509,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             <div
               style={{
                 background: 'linear-gradient(135deg, rgba(var(--primary-red-rgb), 0.06) 0%, rgba(124,58,237,0.06) 100%)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 padding: 16,
                 marginBottom: 20,
                 border: '1px solid rgba(var(--primary-red-rgb), 0.2)',
@@ -1536,7 +1536,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   style={{
                     flex: 1,
                     padding: '12px 16px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: 'none',
                     backgroundColor: 'var(--primary-red)',
                     color: 'var(--bg-card)',
@@ -1556,7 +1556,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   onClick={() => navigate('/')}
                   style={{
                     padding: '12px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid var(--border-default)',
                     backgroundColor: 'transparent',
                     color: isDark ? 'var(--border-color)' : 'var(--text-secondary)',
@@ -1576,7 +1576,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 style={{
                   width: '100%',
                   padding: '11px 16px',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   border: '1px solid var(--border-default)',
                   backgroundColor: isDark ? '#1e293b' : 'var(--bg-subtle)',
                   color: isDark ? 'var(--bg-subtle)' : '#1e293b',

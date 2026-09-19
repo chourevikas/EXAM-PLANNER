@@ -130,7 +130,7 @@ export function ExamSectionSidebar({
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--primary-red)',
                 color: 'var(--bg-card)',
                 display: 'flex',
@@ -172,7 +172,7 @@ export function ExamSectionSidebar({
                 color: 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
                 padding: 6,
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -230,7 +230,7 @@ export function ExamSectionSidebar({
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '10px 14px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: 'none',
                     borderLeft: isSecActive ? '3px solid var(--primary-red)' : '3px solid transparent',
                     background: isSecActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
@@ -265,7 +265,7 @@ export function ExamSectionSidebar({
                       fontVariantNumeric: 'tabular-nums',
                       backgroundColor: isSecActive ? 'rgba(var(--primary-red-rgb), 0.3)' : 'rgba(255, 255, 255, 0.06)',
                       padding: '2px 8px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius)',
                       fontFamily: "'IBM Plex Sans', sans-serif",
                     }}
                   >
@@ -301,13 +301,13 @@ export function ExamSectionSidebar({
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '10px 14px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'rgba(16, 185, 129, 0.12)',
                 border: '1px solid rgba(16, 185, 129, 0.25)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 0, backgroundColor: '#3A8B53' }} />
+                <div style={{ width: 8, height: 8, borderRadius: 'var(--radius)', backgroundColor: '#3A8B53' }} />
                 <span style={{ color: '#A7F3D0', fontWeight: 600 }}>ANSWERED</span>
               </div>
               <span style={{ color: '#34D399', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>
@@ -321,13 +321,13 @@ export function ExamSectionSidebar({
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '10px 14px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'rgba(245, 158, 11, 0.12)',
                 border: '1px solid rgba(245, 158, 11, 0.25)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 0, backgroundColor: '#F2B623' }} />
+                <div style={{ width: 8, height: 8, borderRadius: 'var(--radius)', backgroundColor: '#F2B623' }} />
                 <span style={{ color: '#FDE68A', fontWeight: 600 }}>REVIEW</span>
               </div>
               <span style={{ color: '#FBBF24', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>
@@ -341,13 +341,13 @@ export function ExamSectionSidebar({
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '10px 14px',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 0, backgroundColor: 'var(--text-disabled)' }} />
+                <div style={{ width: 8, height: 8, borderRadius: 'var(--radius)', backgroundColor: 'var(--text-disabled)' }} />
                 <span style={{ color: 'var(--border-color)', fontWeight: 600 }}>UNANSWERED</span>
               </div>
               <span style={{ color: 'var(--text-disabled)', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>

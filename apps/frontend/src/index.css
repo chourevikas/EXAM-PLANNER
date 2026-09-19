@@ -66,7 +66,7 @@
   --content-padding: clamp(12px, 3vw, 36px);
 
   /* Other constants */
-  --radius: 5px;
+  --radius: 8px;
   --shadow-sm: 0 1px 2px rgba(17, 17, 17, 0.05);
   --shadow-md: 0 4px 12px rgba(17, 17, 17, 0.06);
 }
@@ -114,13 +114,24 @@ aside,
 header,
 nav,
 footer,
-table,
 thead,
 tbody,
 tr,
 th,
 td {
   border-radius: 0 !important;
+}
+
+/* Tables: rows/cells stay square, but the table and its wrapper round and clip so the
+   shaded header row follows the rounded corners. */
+table {
+  border-radius: var(--radius);
+}
+
+:where(div, section, article):has(> table),
+:where(div, section, article):has(> div > table) {
+  border-radius: var(--radius);
+  overflow: clip;
 }
 
 html {

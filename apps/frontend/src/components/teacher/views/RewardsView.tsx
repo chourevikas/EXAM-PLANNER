@@ -20,7 +20,7 @@ export function RewardsView() {
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius)',
         padding: 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
@@ -38,7 +38,7 @@ export function RewardsView() {
           style={{
             padding: '12px 16px',
             marginBottom: 16,
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             background: 'rgba(var(--primary-red-rgb), 0.1)',
             color: 'var(--primary-red)',
             border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
@@ -59,7 +59,7 @@ export function RewardsView() {
             padding: '48px 24px',
             textAlign: 'center',
             background: 'var(--bg-body)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             border: '1px solid var(--border-color)',
           }}
         >
@@ -80,7 +80,7 @@ export function RewardsView() {
                 padding: 18,
                 background: 'var(--bg-body)',
                 border: '1px solid var(--border-color)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
               }}
             >
               <div style={{ padding: 10, background: 'rgba(244, 123, 53, 0.12)', color: '#F47B35', flexShrink: 0 }}>
@@ -95,7 +95,7 @@ export function RewardsView() {
                         fontSize: 11,
                         fontWeight: 800,
                         padding: '3px 10px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         background: 'rgba(16, 185, 129, 0.12)',
                         color: '#3A8B53',
                         border: '1px solid rgba(16, 185, 129, 0.25)',

@@ -97,7 +97,7 @@ const inputStyle: React.CSSProperties = {
   padding: '11px 14px',
   fontSize: 15,
   lineHeight: 1.55,
-  borderRadius: 0,
+  borderRadius: 'var(--radius)',
   border: '1px solid #CBD5E1',
   boxSizing: 'border-box',
   fontFamily: 'inherit',

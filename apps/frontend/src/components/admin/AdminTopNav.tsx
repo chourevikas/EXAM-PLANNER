@@ -296,7 +296,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               alignItems: 'center',
               justifyContent: 'center',
               padding: 6,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               marginRight: isMobile ? -4 : -6,
             }}
             title="Toggle Navigation Menu"
@@ -360,7 +360,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             alignItems: 'center',
             gap: 8,
             backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius)',
             padding: '5px 10px',
             width: isMobile ? 140 : 250,
             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -389,7 +389,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 color: 'rgba(255, 255, 255, 0.5)',
                 fontFamily: 'monospace',
                 background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 padding: '1px 4px',
                 fontWeight: 600
               }}
@@ -407,7 +407,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 width: '100%',
                 minWidth: 250,
                 backgroundColor: '#10213D',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
                 boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
                 zIndex: 150,
@@ -433,7 +433,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                         alignItems: 'center',
                         gap: 8,
                         padding: '7px 10px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         border: 'none',
                         background: 'transparent',
                         color: 'rgba(255, 255, 255, 0.9)',
@@ -470,7 +470,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             style={{
               width: 36,
               height: 36,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid rgba(255, 255, 255, 0.12)',
               backgroundColor: 'rgba(255, 255, 255, 0.04)',
               display: 'flex',
@@ -509,7 +509,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   style={{
                     flex: 1,
                     padding: '8px 12px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     border: '1px solid #E2E8F0',
                     fontSize: 14,
                     outline: 'none',
@@ -548,7 +548,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                       className="touch-target"
                       style={{
                         padding: '10px 12px',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius)',
                         border: 'none',
                         backgroundColor: 'var(--bg-subtle)',
                         color: 'var(--deep-navy)',
@@ -583,7 +583,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               position: 'relative',
               width: 36,
               height: 36,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: `1px solid ${showNotifications ? '#3B6EA8' : 'rgba(255, 255, 255, 0.12)'}`,
               backgroundColor: showNotifications ? 'rgba(59, 110, 168, 0.2)' : 'rgba(255, 255, 255, 0.04)',
               display: 'flex',
@@ -605,7 +605,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   right: 5,
                   width: 6,
                   height: 6,
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius)',
                   backgroundColor: 'var(--primary-red)'
                 }}
               />
@@ -623,7 +623,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   width: 320,
                 }),
                 backgroundColor: 'var(--bg-card)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
                 padding: 14,
@@ -637,7 +637,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep-navy)' }}>System Alerts</span>
                   {notifications.length > 0 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 0, backgroundColor: 'var(--bg-subtle)', color: 'var(--primary-red)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-subtle)', color: 'var(--primary-red)' }}>
                       {notifications.length} New
                     </span>
                   )}
@@ -720,7 +720,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                         className={isClearingNotifications || isRemoving ? 'notif-item-sliding-out' : ''}
                         style={{
                           padding: 10,
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius)',
                           backgroundColor: 'var(--bg-subtle)',
                           border: '1px solid #E2E8F0',
                           borderLeft: '3px solid var(--primary-red)',
@@ -739,7 +739,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                           if (!isClearingNotifications && !isRemoving) e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                         }}
                       >
-                        <div style={{ padding: 6, borderRadius: 0, backgroundColor: item.bg || 'rgba(59, 110, 168, 0.15)', color: item.color || '#3B6EA8', flexShrink: 0 }}>
+                        <div style={{ padding: 6, borderRadius: 'var(--radius)', backgroundColor: item.bg || 'rgba(59, 110, 168, 0.15)', color: item.color || '#3B6EA8', flexShrink: 0 }}>
                           <ItemIcon size={14} />
                         </div>
                         <div style={{ flex: 1 }}>
@@ -767,7 +767,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             style={{
               width: 32,
               height: 32,
-              borderRadius: 0,
+              borderRadius: 'var(--radius)',
               border: '1px solid rgba(255, 255, 255, 0.2)',
               backgroundColor: 'var(--primary-red)',
               display: 'flex',
@@ -796,7 +796,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   width: 230,
                 }),
                 backgroundColor: 'var(--bg-card)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius)',
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
                 padding: 12,
@@ -838,7 +838,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                     gap: 6,
                     width: '100%',
                     padding: '8px 10px',
-                    borderRadius: 0,
+                    borderRadius: 'var(--radius)',
                     color: '#DC2626',
                     backgroundColor: '#FEF2F2',
                     fontSize: 12.5,
