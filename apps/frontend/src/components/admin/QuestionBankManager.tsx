@@ -61,6 +61,7 @@ interface QuestionCatalogItem {
   question_text: string;
   passage_text?: string;
   exam_name?: string;
+  exam_full_name?: string;
   exam_code?: string;
   exam_id?: string | number;
   source_year?: number;
@@ -202,6 +203,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
   const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('ALL');
   const [selectedSubtopic, setSelectedSubtopic] = useState<string>('ALL');
+  const [selectedExam, setSelectedExam] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('ALL');
 
@@ -264,6 +266,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
       loadQuestionsForSubject(selectedSubject.query_name || selectedSubject.name);
       setSelectedTopic('ALL');
       setSelectedSubtopic('ALL');
+      setSelectedExam('ALL');
       setSelectedYear('ALL');
       setSelectedDifficulty('ALL');
       setQuestionSearchQuery('');
@@ -289,6 +292,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
         question_text: q.question_text || 'No question text stem available',
         passage_text: q.passage_text,
         exam_name: q.exam_name || 'UPSC CSE Prelims',
+        exam_full_name: q.exam_full_name,
         exam_code: q.exam_code || 'UPSC_CSE',
         exam_id: q.exam_id,
         source_year: q.source_year || 2024,
@@ -358,10 +362,25 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
       .sort((a, b) => b.count - a.count);
   }, [questions, selectedTopic]);
 
-  // Distinct Exam Years for selected subject's questions
+  // Exams that have questions in the selected subject (keyed by exam id, else name)
+  const examKey = (q: QuestionCatalogItem) => String(q.exam_id ?? q.exam_name ?? '');
+  const examCounts = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; count: number }>();
+    questions.forEach((q) => {
+      const key = examKey(q);
+      if (!key) return;
+      const entry = map.get(key) || { key, label: q.exam_full_name || q.exam_name || key, count: 0 };
+      entry.count += 1;
+      map.set(key, entry);
+    });
+    return [...map.values()].sort((a, b) => b.count - a.count);
+  }, [questions]);
+
+  // Distinct exam years — limited to the selected exam so the two filters stay consistent
   const yearCounts = useMemo(() => {
     const map: { [key: number]: number } = {};
     questions.forEach((q) => {
+      if (selectedExam !== 'ALL' && examKey(q) !== selectedExam) return;
       if (q.source_year) {
         map[q.source_year] = (map[q.source_year] || 0) + 1;
       }
@@ -369,7 +388,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
     return Object.entries(map)
       .map(([year, count]) => ({ year: parseInt(year, 10), count }))
       .sort((a, b) => b.year - a.year);
-  }, [questions]);
+  }, [questions, selectedExam]);
 
   // Difficulty counts breakdown
   const difficultyCounts = useMemo(() => {
@@ -401,15 +420,17 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
       const matchesSubtopic =
         selectedSubtopic === 'ALL' || q.subtopic_name === selectedSubtopic;
 
+      const matchesExam = selectedExam === 'ALL' || examKey(q) === selectedExam;
+
       const matchesYear =
         selectedYear === 'ALL' || q.source_year?.toString() === selectedYear;
 
       const matchesDifficulty =
         selectedDifficulty === 'ALL' || (q.difficulty || '').toUpperCase() === selectedDifficulty;
 
-      return matchesSearch && matchesTopic && matchesSubtopic && matchesYear && matchesDifficulty;
+      return matchesSearch && matchesTopic && matchesSubtopic && matchesExam && matchesYear && matchesDifficulty;
     });
-  }, [questions, debouncedQuestionQuery, selectedTopic, selectedSubtopic, selectedYear, selectedDifficulty]);
+  }, [questions, debouncedQuestionQuery, selectedTopic, selectedSubtopic, selectedExam, selectedYear, selectedDifficulty]);
 
   const selectedQuestion = filteredQuestions[selectedQuestionIndex] || filteredQuestions[0] || null;
 
@@ -417,6 +438,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
   const hasActiveFilters =
     selectedTopic !== 'ALL' ||
     selectedSubtopic !== 'ALL' ||
+    selectedExam !== 'ALL' ||
     selectedYear !== 'ALL' ||
     selectedDifficulty !== 'ALL' ||
     questionSearchQuery !== '';
@@ -969,6 +991,27 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                 alignItems: 'end',
               }}
             >
+              {/* Exam */}
+              <div>
+                <label style={filterLabelStyle}>EXAM ({examCounts.length})</label>
+                <select
+                  value={selectedExam}
+                  onChange={(e) => {
+                    setSelectedExam(e.target.value);
+                    setSelectedYear('ALL'); // years belong to an exam
+                    setSelectedQuestionIndex(0);
+                  }}
+                  style={filterSelectStyle}
+                >
+                  <option value="ALL">All Exams ({questions.length})</option>
+                  {examCounts.map((ex) => (
+                    <option key={ex.key} value={ex.key}>
+                      {ex.label} ({ex.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Topic */}
               <div>
                 <label style={filterLabelStyle}>TOPIC ({topicCounts.length})</label>
@@ -1033,7 +1076,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   }}
                   style={filterSelectStyle}
                 >
-                  <option value="ALL">All Years ({questions.length})</option>
+                  <option value="ALL">All Years ({yearCounts.reduce((sum, yc) => sum + yc.count, 0)})</option>
                   {yearCounts.map((yc) => (
                     <option key={yc.year} value={yc.year.toString()}>
                       {yc.year} ({yc.count})
@@ -1097,6 +1140,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                   onClick={() => {
                     setSelectedTopic('ALL');
                     setSelectedSubtopic('ALL');
+                    setSelectedExam('ALL');
                     setSelectedYear('ALL');
                     setSelectedDifficulty('ALL');
                     setQuestionSearchQuery('');

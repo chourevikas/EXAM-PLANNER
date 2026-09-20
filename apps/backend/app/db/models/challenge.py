@@ -1,9 +1,9 @@
 import enum
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship, Index, AutoString
+from sqlmodel import SQLModel, Field, Relationship, Index, AutoString, Column
 from app.db.models.enums import DifficultyLevel
-from app.db.models.types import DateTimeTZ, BigIntPK
+from app.db.models.types import DateTimeTZ, BigIntPK, PortableJSON
 
 if TYPE_CHECKING:
     from app.db.models.user import User
@@ -44,6 +44,9 @@ class Challenge(SQLModel, table=True):
     question_count: int = Field(default=10)
     difficulty: Optional[DifficultyLevel] = Field(default=None)
     subject_name: Optional[str] = Field(default=None, max_length=200)
+    exam_type_id: Optional[int] = Field(default=None, foreign_key="exam_types.id", ondelete="SET NULL")
+    exam_name: Optional[str] = Field(default=None, max_length=200)
+    years: Optional[list] = Field(default=None, sa_column=Column(PortableJSON))
     time_limit_minutes: int = Field(default=15)
     visibility: ChallengeVisibility = Field(default=ChallengeVisibility.INVITE_ONLY, index=True, sa_type=AutoString)
     share_token: str = Field(max_length=64)

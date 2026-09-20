@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { StudentSidebar } from './StudentSidebar';
 import { StudentTopHeader } from './StudentTopHeader';
 import { fetchCurrentUser } from '../../services/authService';
@@ -112,6 +112,8 @@ export function PersistentStudentLayout() {
   const [pageTitle, setPageTitle] = useState('Dashboard');
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // True once the server has confirmed the user (or the request failed), so the onboarding gate can decide.
+  const [userChecked, setUserChecked] = useState(false);
 
   const { isTabletOrBelow } = useBreakpoint();
   const location = useLocation();
@@ -140,7 +142,8 @@ export function PersistentStudentLayout() {
       })
       .catch((err) => {
         console.error('Failed to fetch user data in layout shell:', err);
-      });
+      })
+      .finally(() => setUserChecked(true));
   }, []);
 
   // Close mobile drawer when transitioning to desktop
@@ -159,6 +162,18 @@ export function PersistentStudentLayout() {
   };
 
   const contentAreaClass = `student-content-area${collapsed ? ' sidebar-collapsed' : ''}`;
+
+  // First login: students must finish onboarding before using the portal.
+  if (user?.role === 'STUDENT') {
+    if (user.onboarding_completed === false) return <Navigate to="/onboarding" replace />;
+    if (user.onboarding_completed === undefined && !userChecked) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Spinner size={40} label="Loading your account…" />
+        </div>
+      );
+    }
+  }
 
   return (
     <StudentLayoutContext.Provider

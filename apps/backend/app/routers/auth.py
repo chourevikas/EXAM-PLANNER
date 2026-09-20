@@ -21,6 +21,7 @@ from app.schemas.auth import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
     VerifyEmailRequest,
+    OnboardingRequest,
 )
 import jwt
 from app.config.settings import settings
@@ -440,6 +441,9 @@ async def _build_user_out_response(
         target_year=prep.get("target_year"),
         optional_subject=prep.get("optional_subject"),
         weekly_hours=prep.get("weekly_hours"),
+        subject_proficiency=prep.get("subject_proficiency"),
+        # Only students onboard; a student with no profile row hasn't yet.
+        onboarding_completed=(current_user.role != UserRole.STUDENT) or bool(prep.get("onboarding_completed", False)),
         preferred_language=getattr(current_user, "preferred_language", "en") or "en",
         free_questions_attempted=stats.get("free_questions_attempted", 0),
         total_questions_attempted=stats.get("total_questions_attempted", 0),
@@ -458,6 +462,59 @@ async def read_current_user(
     session: AsyncSession = Depends(get_async_session)
 ):
     return await _build_user_out_response(current_user=current_user, session=session, background_tasks=background_tasks)
+
+
+# Set during onboarding, read-only afterwards.
+LOCKED_TARGET_FIELDS = ("target_exam", "target_year", "optional_subject")
+
+
+@router.post("/me/onboarding", response_model=UserOut, summary="Complete First-Login Student Onboarding")
+async def complete_onboarding(
+    payload: OnboardingRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    if current_user.role != UserRole.STUDENT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Onboarding is only for student accounts.")
+
+    from app.core.languages import normalize_language, is_supported_language
+    if not is_supported_language(payload.preferred_language):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported language '{payload.preferred_language}'",
+        )
+
+    db_user = await session.get(User, current_user.id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    profile = (await session.exec(select(StudentProfile).where(StudentProfile.user_id == db_user.id))).first()
+    if profile is None:
+        profile = StudentProfile(user_id=db_user.id)
+    if profile.onboarding_completed_at is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Onboarding is already complete.")
+
+    profile.target_exam = payload.target_exam.strip()
+    profile.target_year = payload.target_year.strip()
+    profile.optional_subject = (payload.optional_subject or "").strip() or None
+    profile.weekly_hours = payload.weekly_hours.strip()
+    profile.subject_proficiency = payload.subject_proficiency
+    profile.onboarding_completed_at = datetime.now(timezone.utc)
+    session.add(profile)
+
+    iso_code, _ = normalize_language(payload.preferred_language)
+    db_user.preferred_language = iso_code
+    session.add(db_user)
+    await session.commit()
+    await session.refresh(db_user)
+
+    from app.cache.helpers import invalidate_user_cache
+    await invalidate_user_cache(str(db_user.id), db_user.clerk_id)
+    cache = get_cache()
+    await cache.delete_pattern("ep:users:list*")
+    await cache.delete_pattern("users:list*")
+    await cache.delete_pattern("ep:admin:*")
+    return await _build_user_out_response(current_user=db_user, session=session, background_tasks=background_tasks)
 
 
 @router.patch("/me", response_model=UserOut)
@@ -494,9 +551,20 @@ async def update_current_user(
         profile = (await session.exec(select(StudentProfile).where(StudentProfile.user_id == db_user.id))).first()
         if profile is None:
             profile = StudentProfile(user_id=db_user.id)
+        locked = profile.onboarding_completed_at is not None
         for field, (value, max_len) in prep.items():
-            if value is not None:
-                setattr(profile, field, value.strip()[:max_len] or None)
+            if value is None:
+                continue
+            new_value = value.strip()[:max_len] or None
+            if locked and field in LOCKED_TARGET_FIELDS:
+                # The primary target is set once during onboarding. Re-sending the stored value is harmless.
+                if new_value != getattr(profile, field):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Your primary target exam, year and optional subject can't be changed after onboarding.",
+                    )
+                continue
+            setattr(profile, field, new_value)
         session.add(profile)
     if user_update.preferred_language is not None:
         from app.core.languages import normalize_language, is_supported_language

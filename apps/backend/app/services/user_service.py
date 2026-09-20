@@ -10,7 +10,7 @@ from app.core.security import get_password_hash
 from app.core.exceptions import UserAlreadyExistsException, BaseAppException
 
 
-PROFILE_EXTRA_FIELDS = ("target_exam", "target_year", "optional_subject", "weekly_hours")
+PROFILE_EXTRA_FIELDS = ("target_exam", "target_year", "optional_subject", "weekly_hours", "subject_proficiency")
 
 
 async def get_profile_extras(session: AsyncSession, user_ids: List[int]) -> dict:
@@ -28,6 +28,7 @@ async def get_profile_extras(session: AsyncSession, user_ids: List[int]) -> dict
         tier = prof.subscription_tier
         out[prof.user_id] = {
             "subscription_tier": tier.value if hasattr(tier, "value") else str(tier),
+            "onboarding_completed": prof.onboarding_completed_at is not None,
             **{f: getattr(prof, f) for f in PROFILE_EXTRA_FIELDS},
         }
     return out

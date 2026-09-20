@@ -15,6 +15,7 @@ from app.schemas.challenge import (
     SaveChallengeResponseRequest,
     SubmitChallengeAttemptResponse,
     LeaderboardEntry,
+    ChallengeOptions,
 )
 
 router = APIRouter(prefix="/challenges", tags=["Challenges"])
@@ -37,6 +38,15 @@ async def list_challenges(
 ):
     service = ChallengeService(session)
     return await service.list_my_challenges(current_user)
+
+
+@router.get("/options", response_model=ChallengeOptions, summary="Exams and Years Available for a New Challenge")
+async def get_challenge_options(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    service = ChallengeService(session)
+    return await service.get_options()
 
 
 @router.get("/public/{share_token}", response_model=ChallengePublicPreview, summary="Public Challenge Preview (Unauthenticated)")

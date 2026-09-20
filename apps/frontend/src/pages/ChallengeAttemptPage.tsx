@@ -106,7 +106,18 @@ export function ChallengeAttemptPage() {
   if (error && !session) {
     return (
       <StudentLayout pageTitle="Challenge">
-        <div style={{ padding: 40, textAlign: 'center', color: '#d32f2f' }}>{error}</div>
+        <div style={{ padding: 40, textAlign: 'center' }}>
+          <div style={{ color: '#d32f2f', fontWeight: 600, marginBottom: 16 }}>{error}</div>
+          <button
+            onClick={() => navigate('/challenges')}
+            style={{
+              backgroundColor: 'var(--accent-primary)', color: '#fff', border: 'none',
+              borderRadius: 10, padding: '10px 22px', fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            Back to Challenges
+          </button>
+        </div>
       </StudentLayout>
     );
   }

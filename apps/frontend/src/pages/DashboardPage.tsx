@@ -255,6 +255,7 @@ export function DashboardPage() {
               showProgress={true}
               progressPercent={Math.min((totalQuestionsSolved / 500) * 100, 100)}
               accentColor="var(--primary-red)"
+              onClick={() => navigate('/analytics')}
             />
 
             <StudentMetricCard
@@ -268,6 +269,7 @@ export function DashboardPage() {
               supportingText="Completed practice tests"
               icon={<Ico.Trophy size={18} />}
               accentColor="#F2B623"
+              onClick={() => navigate('/pyq')}
             />
 
             <StudentMetricCard
@@ -280,6 +282,7 @@ export function DashboardPage() {
               supportingText="Average correctness score"
               icon={<Ico.Chart size={18} />}
               accentColor="#3A8B53"
+              onClick={() => navigate('/analytics')}
             />
 
             <StudentMetricCard
@@ -291,12 +294,22 @@ export function DashboardPage() {
                 </span>
               }
               supportingText={
-                <span style={{ color: 'var(--primary-red)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowBadgesModal(true);
+                  }}
+                  style={{
+                    background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit',
+                    color: 'var(--primary-red)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}
+                >
                   View Achievements <Ico.ArrowRight size={13} />
-                </span>
+                </button>
               }
               icon={<Ico.Star filled />}
-              onClick={() => setShowBadgesModal(true)}
+              onClick={() => navigate('/reports/monthly')}
               accentColor="var(--primary-red)"
             />
           </>

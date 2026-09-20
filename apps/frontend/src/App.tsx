@@ -83,8 +83,8 @@ const NotificationsPage = lazy(() =>
 const ChallengesPage = lazy(() =>
   import('./pages/ChallengesPage').then((m) => ({ default: m.ChallengesPage })),
 );
-const CreateChallengePage = lazy(() =>
-  import('./pages/CreateChallengePage').then((m) => ({ default: m.CreateChallengePage })),
+const OnboardingPage = lazy(() =>
+  import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })),
 );
 const ChallengeDetailPage = lazy(() =>
   import('./pages/ChallengeDetailPage').then((m) => ({ default: m.ChallengeDetailPage })),
@@ -173,6 +173,16 @@ export default function App() {
           />
           <Route path="/challenge/:token" element={<PublicChallengePage />} />
 
+          {/* First-login onboarding (students only) */}
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.STUDENT]}>
+                <OnboardingPage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Persistent Student Portal Shell — Stays mounted on all student routes */}
           <Route
             element={
@@ -189,7 +199,8 @@ export default function App() {
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/notifications/:id" element={<NotificationsPage />} />
             <Route path="/challenges" element={<ChallengesPage />} />
-            <Route path="/challenges/new" element={<CreateChallengePage />} />
+            {/* Creating a challenge is now a modal on /challenges; keep old links working */}
+            <Route path="/challenges/new" element={<Navigate to="/challenges" replace />} />
             <Route path="/challenges/attempt/:idOrToken" element={<ChallengeAttemptPage />} />
             <Route path="/challenges/:id" element={<ChallengeDetailPage />} />
             <Route path="/study-planner" element={<StudyPlannerPage />} />

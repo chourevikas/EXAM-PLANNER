@@ -1,9 +1,9 @@
 import enum
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship, Index
+from sqlmodel import SQLModel, Field, Relationship, Index, Column
 from app.db.models.enums import UserRole, UserStatus
-from app.db.models.types import DateTimeTZ, BigIntPK
+from app.db.models.types import DateTimeTZ, BigIntPK, PortableJSON
 
 if TYPE_CHECKING:
     from app.db.models.subscription import UserSubscription
@@ -175,6 +175,11 @@ class StudentProfile(SQLModel, table=True):
     target_year: Optional[str] = Field(default=None, max_length=10)
     optional_subject: Optional[str] = Field(default=None, max_length=150)
     weekly_hours: Optional[str] = Field(default=None, max_length=10)
+    # Set when the student finishes the first-login onboarding; the primary target
+    # (exam / year / optional subject) is locked from then on.
+    onboarding_completed_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
+    # Self-rated proficiency per subject, 1 (weak) to 5 (strong): {"History": 2, ...}
+    subject_proficiency: Optional[dict] = Field(default=None, sa_column=Column(PortableJSON))
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,

@@ -47,6 +47,10 @@ export interface User {
   target_year?: string | null;
   optional_subject?: string | null;
   weekly_hours?: string | null;
+  // Self-rated 1-5 per subject, captured during first-login onboarding.
+  subject_proficiency?: Record<string, number> | null;
+  // False until a student completes onboarding; undefined on sessions older than the feature.
+  onboarding_completed?: boolean;
   free_questions_attempted?: number;
   current_streak?: number;
   total_xp?: number;

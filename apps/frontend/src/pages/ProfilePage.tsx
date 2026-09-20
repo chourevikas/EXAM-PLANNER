@@ -27,6 +27,20 @@ import { updateUserProfile, fetchCurrentUser } from '../services/authService';
 import { useRefreshUserOnFocus } from '../hooks/useRefreshUserOnFocus';
 import { UserAvatar } from '../components/common/UserAvatar';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
+import { WEEKLY_HOURS_OPTIONS } from '../constants/onboarding';
+
+const lockedFieldStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 14px',
+  borderRadius: 'var(--radius)',
+  border: '1px solid var(--border-default)',
+  backgroundColor: 'var(--bg-disabled, rgba(0,0,0,0.05))',
+  color: 'var(--text-muted)',
+  fontSize: 14,
+  outline: 'none',
+  boxSizing: 'border-box',
+  cursor: 'not-allowed',
+};
 
 const PREDEFINED_AVATARS = ['👨‍🎓', '👩‍🎓', '🚀', '🌟', '🧠', '🦉', '🎯', '📚'];
 
@@ -122,10 +136,14 @@ export function ProfilePage() {
   }, [clerkUser, isClerkLoaded]);
   
   // Exam Target Fields
-  const [targetExam, setTargetExam] = useState(user.target_exam || 'UPSC CSE');
-  const [targetYear, setTargetYear] = useState(user.target_year || '2026');
-  const [optionalSubject, setOptionalSubject] = useState(user.optional_subject || 'Political Science & IR');
-  const [weeklyGoalHours, setWeeklyGoalHours] = useState(user.weekly_hours || '35');
+  // The primary target (exam / year / optional subject) is set once during onboarding and shown read-only.
+  const targetExam: string = user.target_exam || '';
+  const targetYear: string = user.target_year || '';
+  const optionalSubject: string = user.optional_subject || '';
+  const [weeklyGoalHours, setWeeklyGoalHours] = useState(user.weekly_hours || '');
+  useEffect(() => {
+    if (user.weekly_hours) setWeeklyGoalHours(user.weekly_hours);
+  }, [user.weekly_hours]);
 
   // Security Fields
   const [currentPassword, setCurrentPassword] = useState('');
@@ -156,10 +174,7 @@ export function ProfilePage() {
       profile_image: profileImage,
       phone,
       bio,
-      target_exam: targetExam,
-      target_year: targetYear,
-      optional_subject: optionalSubject,
-      weekly_hours: weeklyGoalHours,
+      weekly_hours: weeklyGoalHours || user.weekly_hours,
     };
 
     localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -173,15 +188,8 @@ export function ProfilePage() {
       full_name: fullName,
       profile_image: profileImage,
       phone,
-      // Exam-preparation details are stored for students only (admins have no exam target).
-      ...(isAdmin || isSuperAdmin
-        ? {}
-        : {
-            target_exam: targetExam,
-            target_year: targetYear,
-            optional_subject: optionalSubject,
-            weekly_hours: weeklyGoalHours,
-          }),
+      // Only the weekly goal is editable; the primary target is locked server-side after onboarding.
+      ...(isAdmin || isSuperAdmin || !weeklyGoalHours ? {} : { weekly_hours: weeklyGoalHours }),
     }).catch(err => console.error("Failed to sync profile change with backend:", err));
 
     setSavedSuccess(true);
@@ -311,7 +319,9 @@ export function ProfilePage() {
             <div style={{ fontSize: 14, color: 'var(--text-muted, #64748b)', marginBottom: 12 }}>
               {clerkUser?.primaryEmailAddress?.emailAddress || user.email || 'superadmin@examplanner.com'}
               {!(isSuperAdmin || isAdmin) && (
-                <> • Target: <strong style={{ color: 'var(--text-primary, #172033)' }}>{targetExam} {targetYear}</strong></>
+                targetExam && (
+                  <> • Target: <strong style={{ color: 'var(--text-primary, #172033)' }}>{targetExam} {targetYear}</strong></>
+                )
               )}
               {(isSuperAdmin || isAdmin) && (
                 <> • <strong style={{ color: 'var(--primary-red)' }}>Administrative Console Access</strong></>
@@ -550,28 +560,31 @@ export function ProfilePage() {
                 />
               </div>
 
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
-                  User Role
-                </label>
-                <input
-                  type="text"
-                  value={user.role ? user.role.toUpperCase() : "ASPIRANT / STUDENT"}
-                  disabled
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border-default)',
-                    backgroundColor: 'var(--bg-disabled, rgba(0,0,0,0.05))',
-                    color: 'var(--text-muted)',
-                    fontSize: 14,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    cursor: 'not-allowed'
-                  }}
-                />
-              </div>
+              {/* Role is only shown to staff accounts; students don't see it */}
+              {(isSuperAdmin || isAdmin) && (
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                    User Role
+                  </label>
+                  <input
+                    type="text"
+                    value={user.role ? user.role.toUpperCase() : ''}
+                    disabled
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid var(--border-default)',
+                      backgroundColor: 'var(--bg-disabled, rgba(0,0,0,0.05))',
+                      color: 'var(--text-muted)',
+                      fontSize: 14,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      cursor: 'not-allowed'
+                    }}
+                  />
+                </div>
+              )}
 
               <div>
                 <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
@@ -648,78 +661,48 @@ export function ProfilePage() {
             }}
           >
             <div>
-              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
-                Primary Target Exam
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                Primary Target Exam <Lock size={12} color="var(--text-muted)" aria-hidden="true" />
               </label>
-              <select
+              <input
+                type="text"
+                readOnly
+                aria-readonly="true"
+                title="Set during onboarding and can't be changed"
                 value={targetExam}
-                onChange={(e) => setTargetExam(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius)',
-                  border: '1px solid var(--border-default)',
-                  backgroundColor: 'var(--bg-subtle)',
-                  color: 'var(--text-primary)',
-                  fontSize: 14,
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              >
-                <option value="UPSC CSE">UPSC Civil Services Examination (CSE)</option>
-              </select>
+                placeholder="Not set"
+                style={{ ...lockedFieldStyle }}
+              />
             </div>
 
             <div>
-              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
-                Target Attempt Year
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                Target Attempt Year <Lock size={12} color="var(--text-muted)" aria-hidden="true" />
               </label>
-              <select
-                value={targetYear}
-                onChange={(e) => setTargetYear(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius)',
-                  border: '1px solid var(--border-default)',
-                  backgroundColor: 'var(--bg-subtle)',
-                  color: 'var(--text-primary)',
-                  fontSize: 14,
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              >
-                <option value="2025">2025 Attempt</option>
-                <option value="2026">2026 Attempt</option>
-                <option value="2027">2027 Attempt</option>
-              </select>
+              <input
+                type="text"
+                readOnly
+                aria-readonly="true"
+                title="Set during onboarding and can't be changed"
+                value={targetYear ? `${targetYear} Attempt` : ''}
+                placeholder="Not set"
+                style={{ ...lockedFieldStyle }}
+              />
             </div>
 
             <div>
-              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
-                Optional Subject (Mains)
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                Optional Subject (Mains) <Lock size={12} color="var(--text-muted)" aria-hidden="true" />
               </label>
-              <select
+              <input
+                type="text"
+                readOnly
+                aria-readonly="true"
+                title="Set during onboarding and can't be changed"
                 value={optionalSubject}
-                onChange={(e) => setOptionalSubject(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius)',
-                  border: '1px solid var(--border-default)',
-                  backgroundColor: 'var(--bg-subtle)',
-                  color: 'var(--text-primary)',
-                  fontSize: 14,
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              >
-                <option value="Political Science & IR">Political Science & International Relations (PSIR)</option>
-                <option value="History">History</option>
-                <option value="Geography">Geography</option>
-                <option value="Public Administration">Public Administration</option>
-                <option value="Sociology">Sociology</option>
-              </select>
+                placeholder="Not set"
+                style={{ ...lockedFieldStyle }}
+              />
             </div>
 
             <div>
@@ -741,10 +724,31 @@ export function ProfilePage() {
                   boxSizing: 'border-box'
                 }}
               >
-                <option value="25">25 Hours / Week (Part-Time / Working)</option>
-                <option value="35">35 Hours / Week (Standard Dedicated)</option>
-                <option value="45">45 Hours / Week (Intense Full-Time)</option>
+                {!weeklyGoalHours && <option value="">Select hours…</option>}
+                {WEEKLY_HOURS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
+            </div>
+
+            <div
+              style={{
+                gridColumn: '1 / -1',
+                display: 'flex',
+                gap: 8,
+                alignItems: 'flex-start',
+                fontSize: 12.5,
+                color: 'var(--text-muted)',
+                backgroundColor: 'var(--bg-subtle)',
+                borderRadius: 'var(--radius)',
+                padding: '10px 12px',
+              }}
+            >
+              <Lock size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>
+                Your primary target exam, attempt year and optional subject were set during onboarding and can't be
+                edited here. Your weekly goal can be changed any time.
+              </span>
             </div>
 
           </div>

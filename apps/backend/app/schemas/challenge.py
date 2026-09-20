@@ -22,6 +22,8 @@ class CreateChallengeRequest(BaseModel):
     question_count: int = 10
     difficulty: Optional[DifficultyLevel] = None
     subject_name: Optional[str] = None
+    exam_type_id: Optional[int] = None
+    years: List[int] = []
     time_limit_minutes: int = 15
     visibility: ChallengeVisibility = ChallengeVisibility.INVITE_ONLY
     duration: ChallengeDuration = ChallengeDuration.ONE_WEEK
@@ -42,6 +44,24 @@ class ChallengeSummary(BaseModel):
     expires_at: Optional[datetime] = None
     attempt_count: int = 0
     my_best_score: Optional[float] = None
+    subject_name: Optional[str] = None
+    difficulty: Optional[DifficultyLevel] = None
+    exam_name: Optional[str] = None
+    years: List[int] = []
+    # A user gets one attempt per challenge: has_attempted means it is already submitted.
+    has_attempted: bool = False
+    has_in_progress: bool = False
+
+
+class ChallengeExamOption(BaseModel):
+    id: int
+    name: str
+    years: List[int]
+
+
+class ChallengeOptions(BaseModel):
+    exams: List[ChallengeExamOption]
+    years: List[int]
 
 
 class ChallengePublicPreview(BaseModel):

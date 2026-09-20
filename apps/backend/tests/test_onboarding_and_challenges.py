@@ -1,0 +1,277 @@
+"""Student onboarding (locked primary target) and challenges (exam/year filters, one attempt per user)."""
+import pytest
+from httpx import AsyncClient, ASGITransport
+from sqlmodel import SQLModel, select
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import StaticPool
+
+from app.fastapi_server import app
+from app.cache import get_cache
+from app.db.session import get_async_session
+from app.db.models.user import User, UserRole
+from app.db.models.exam_type import ExamType
+from app.db.models.hierarchy import Exam
+from app.db.models.question import Question, QuestionTranslation
+from app.db.models.challenge import ChallengeQuestion
+from app.db.models.enums import QuestionStatus, LanguageCode
+from app.core.security import create_access_token, get_password_hash
+
+test_engine = create_async_engine(
+    "sqlite+aiosqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+    echo=False,
+)
+
+_state: dict = {}
+
+
+async def _override_session():
+    async with test_engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+    async with AsyncSession(test_engine, expire_on_commit=False) as session:
+        if not _state:
+            await _seed(session)
+        yield session
+
+
+async def _seed(session: AsyncSession):
+    etype = ExamType(type="upsc", name="UPSC Civil Services Examination")
+    other_type = ExamType(type="mpsc", name="MPSC Rajyaseva")
+    session.add(etype)
+    session.add(other_type)
+    await session.commit()
+    await session.refresh(etype)
+    await session.refresh(other_type)
+
+    def exam(code, year, type_id):
+        return Exam(code=code, name=f"{code} paper", exam_type_id=type_id, source_year=year)
+
+    exams = {
+        "upsc2023": exam("UPSC-2023", 2023, etype.id),
+        "upsc2024": exam("UPSC-2024", 2024, etype.id),
+        "mpsc2023": exam("MPSC-2023", 2023, other_type.id),
+    }
+    for e in exams.values():
+        session.add(e)
+    await session.commit()
+    for e in exams.values():
+        await session.refresh(e)
+
+    qids = {}
+    for key, count in (("upsc2023", 3), ("upsc2024", 2), ("mpsc2023", 2)):
+        qids[key] = []
+        for n in range(1, count + 1):
+            q = Question(
+                exam_id=exams[key].id,
+                question_number_in_paper=n,
+                status=QuestionStatus.PUBLISHED,
+                source_year=exams[key].source_year,
+            )
+            session.add(q)
+            await session.commit()
+            await session.refresh(q)
+            session.add(QuestionTranslation(question_id=q.id, language=LanguageCode.ENGLISH, question_text=f"{key} q{n}"))
+            qids[key].append(q.id)
+    await session.commit()
+
+    def user(name, role):
+        return User(
+            full_name=name,
+            email=f"{name.lower().replace(' ', '_')}@ob.test",
+            role=role,
+            password_hash=get_password_hash("x"),
+        )
+
+    users = {
+        "alice": user("Alice", UserRole.STUDENT),
+        "bob": user("Bob", UserRole.STUDENT),
+        "carol": user("Carol", UserRole.STUDENT),
+        "admin": user("Admin", UserRole.ADMIN),
+    }
+    for u in users.values():
+        session.add(u)
+    await session.commit()
+    for u in users.values():
+        await session.refresh(u)
+
+    _state.update(
+        users={k: (u.id, u.role.value) for k, u in users.items()},
+        upsc_type=etype.id,
+        mpsc_type=other_type.id,
+        qids=qids,
+    )
+
+
+def _h(who: str) -> dict:
+    uid, role = _state["users"][who]
+    return {"Authorization": f"Bearer {create_access_token(subject=uid, role=role)}"}
+
+
+@pytest.fixture
+async def client():
+    app.dependency_overrides[get_async_session] = _override_session
+    await get_cache().delete_pattern("*")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        await c.get("/api/v1/exam-types")  # any DB-backed call triggers the seed
+        await get_cache().delete_pattern("*")
+        yield c
+    # don't leak cached users (ids collide across modules' in-memory DBs) into later test modules
+    await get_cache().delete_pattern("*")
+
+
+ONBOARDING = {
+    "target_exam": "UPSC CSE",
+    "target_year": "2027",
+    "optional_subject": "Geography",
+    "weekly_hours": "35",
+    "preferred_language": "hi",
+    "subject_proficiency": {"History": 2, "Polity": 4},
+}
+
+
+# ── Onboarding ───────────────────────────────────────────────────────────────
+
+@pytest.mark.anyio
+async def test_new_student_must_onboard_and_target_is_then_locked(client):
+    me = (await client.get("/api/v1/auth/me", headers=_h("alice"))).json()
+    assert me["onboarding_completed"] is False
+
+    done = await client.post("/api/v1/auth/me/onboarding", json=ONBOARDING, headers=_h("alice"))
+    assert done.status_code == 200, done.text
+    body = done.json()
+    assert body["onboarding_completed"] is True
+    assert (body["target_exam"], body["target_year"], body["optional_subject"], body["weekly_hours"]) == ("UPSC CSE", "2027", "Geography", "35")
+    assert body["subject_proficiency"] == {"History": 2, "Polity": 4}
+    assert body["preferred_language"] == "hi"
+
+    # persisted, and every later read agrees (cache hits included)
+    for _ in range(2):
+        me = (await client.get("/api/v1/auth/me", headers=_h("alice"))).json()
+        assert me["onboarding_completed"] is True and me["target_year"] == "2027"
+
+    # a second submission is refused
+    again = await client.post("/api/v1/auth/me/onboarding", json={**ONBOARDING, "target_year": "2028"}, headers=_h("alice"))
+    assert again.status_code == 409
+
+    # primary target fields can't be edited afterwards…
+    for field, value in (("target_exam", "Other"), ("target_year", "2028"), ("optional_subject", "History")):
+        r = await client.patch("/api/v1/auth/me", json={field: value}, headers=_h("alice"))
+        assert r.status_code == 403, (field, r.text)
+    # …re-sending the stored values is harmless, and the weekly goal stays editable
+    ok = await client.patch(
+        "/api/v1/auth/me",
+        json={"target_exam": "UPSC CSE", "target_year": "2027", "optional_subject": "Geography", "weekly_hours": "45"},
+        headers=_h("alice"),
+    )
+    assert ok.status_code == 200, ok.text
+    me = (await client.get("/api/v1/auth/me", headers=_h("alice"))).json()
+    assert (me["target_year"], me["weekly_hours"]) == ("2027", "45")
+
+    # admins see the answers
+    detail = (await client.get(f"/api/v1/users/{_state['users']['alice'][0]}", headers=_h("admin"))).json()
+    assert detail["subject_proficiency"] == {"History": 2, "Polity": 4}
+    assert detail["target_exam"] == "UPSC CSE"
+
+
+@pytest.mark.anyio
+async def test_onboarding_validation_and_roles(client):
+    bad_rating = await client.post(
+        "/api/v1/auth/me/onboarding", json={**ONBOARDING, "subject_proficiency": {"History": 6}}, headers=_h("bob")
+    )
+    assert bad_rating.status_code == 422
+    bad_lang = await client.post(
+        "/api/v1/auth/me/onboarding", json={**ONBOARDING, "preferred_language": "xx"}, headers=_h("bob")
+    )
+    assert bad_lang.status_code == 400
+    missing = await client.post("/api/v1/auth/me/onboarding", json={"target_year": "2027"}, headers=_h("bob"))
+    assert missing.status_code == 422
+    # nothing was saved by the failed attempts
+    assert (await client.get("/api/v1/auth/me", headers=_h("bob"))).json()["onboarding_completed"] is False
+
+    staff = await client.post("/api/v1/auth/me/onboarding", json=ONBOARDING, headers=_h("admin"))
+    assert staff.status_code == 403
+    assert (await client.get("/api/v1/auth/me", headers=_h("admin"))).json()["onboarding_completed"] is True
+
+
+# ── Challenges ───────────────────────────────────────────────────────────────
+
+async def _create(client, who, **extra):
+    payload = {"title": "Sprint", "question_count": 50, "visibility": "PUBLIC", **extra}
+    return await client.post("/api/v1/challenges", json=payload, headers=_h(who))
+
+
+@pytest.mark.anyio
+async def test_challenge_options_list_exams_with_their_years(client):
+    opts = (await client.get("/api/v1/challenges/options", headers=_h("alice"))).json()
+    by_name = {e["name"]: e["years"] for e in opts["exams"]}
+    assert by_name == {"UPSC Civil Services Examination": [2024, 2023], "MPSC Rajyaseva": [2023]}
+    assert opts["years"] == [2024, 2023]
+
+
+@pytest.mark.anyio
+async def test_challenge_questions_follow_exam_and_year_filters(client):
+    q = _state["qids"]
+
+    async def question_ids(challenge_id):
+        async with AsyncSession(test_engine) as s:
+            rows = (await s.exec(select(ChallengeQuestion.question_id).where(ChallengeQuestion.challenge_id == challenge_id))).all()
+        return set(rows)
+
+    upsc_all = await _create(client, "alice", exam_type_id=_state["upsc_type"])
+    assert upsc_all.status_code == 200, upsc_all.text
+    assert (upsc_all.json()["exam_name"], upsc_all.json()["years"]) == ("UPSC Civil Services Examination", [])
+    assert await question_ids(upsc_all.json()["id"]) == set(q["upsc2023"] + q["upsc2024"])
+
+    upsc_2024 = await _create(client, "alice", exam_type_id=_state["upsc_type"], years=[2024])
+    assert upsc_2024.json()["years"] == [2024]
+    assert await question_ids(upsc_2024.json()["id"]) == set(q["upsc2024"])
+
+    both_years_any_exam = await _create(client, "alice", years=[2023])
+    assert await question_ids(both_years_any_exam.json()["id"]) == set(q["upsc2023"] + q["mpsc2023"])
+
+    multi = await _create(client, "alice", exam_type_id=_state["mpsc_type"], years=[2023, 2024])
+    assert await question_ids(multi.json()["id"]) == set(q["mpsc2023"])
+
+    assert (await _create(client, "alice", exam_type_id=_state["mpsc_type"], years=[2024])).status_code == 400
+    assert (await _create(client, "alice", exam_type_id=99999)).status_code == 400
+
+
+@pytest.mark.anyio
+async def test_each_user_gets_only_one_attempt_per_challenge(client):
+    cid = (await _create(client, "alice", exam_type_id=_state["upsc_type"], years=[2024])).json()["id"]
+
+    first = await client.post(f"/api/v1/challenges/{cid}/attempts/start", headers=_h("bob"))
+    assert first.status_code == 200
+    attempt_id = first.json()["attempt_id"]
+
+    # an unfinished attempt resumes rather than starting a new one
+    resumed = await client.post(f"/api/v1/challenges/{cid}/attempts/start", headers=_h("bob"))
+    assert resumed.json()["attempt_id"] == attempt_id
+    mid = (await client.get(f"/api/v1/challenges/{cid}", headers=_h("bob"))).json()
+    assert (mid["has_in_progress"], mid["has_attempted"]) == (True, False)
+
+    assert (await client.post(f"/api/v1/challenges/attempts/{attempt_id}/submit", headers=_h("bob"))).status_code == 200
+
+    # once submitted, no second go — by id or by share token
+    again = await client.post(f"/api/v1/challenges/{cid}/attempts/start", headers=_h("bob"))
+    assert again.status_code == 409
+    token = (await client.get(f"/api/v1/challenges/{cid}", headers=_h("bob"))).json()["share_token"]
+    assert (await client.post(f"/api/v1/challenges/{token}/attempts/start", headers=_h("bob"))).status_code == 409
+
+    done = (await client.get(f"/api/v1/challenges/{cid}", headers=_h("bob"))).json()
+    assert (done["has_attempted"], done["has_in_progress"]) == (True, False)
+    # the list flag (challenges appear in your list once you created or were invited to them)
+    invite = await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "bob@ob.test"}, headers=_h("alice"))
+    assert invite.status_code == 204, invite.text
+    listed = next(c for c in (await client.get("/api/v1/challenges", headers=_h("bob"))).json() if c["id"] == cid)
+    assert listed["has_attempted"] is True
+
+    # it applies per user: the creator and others still get their own single attempt
+    assert (await client.post(f"/api/v1/challenges/{cid}/attempts/start", headers=_h("carol"))).status_code == 200
+    creator = await client.post(f"/api/v1/challenges/{cid}/attempts/start", headers=_h("alice"))
+    assert creator.status_code == 200
+    # …and the flags are per user
+    carol_view = (await client.get(f"/api/v1/challenges/{cid}", headers=_h("carol"))).json()
+    assert carol_view["has_attempted"] is False

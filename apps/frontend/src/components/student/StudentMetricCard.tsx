@@ -26,6 +26,22 @@ export function StudentMetricCard({
   return (
     <div
       onClick={onClick}
+      // Clickable cards behave as buttons for keyboard and screen-reader users.
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? `${title} — view details` : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      onFocus={() => onClick && setIsHovered(true)}
+      onBlur={() => setIsHovered(false)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{

@@ -39,6 +39,24 @@ export interface ChallengeSummary {
   expires_at?: string | null;
   attempt_count: number;
   my_best_score?: number | null;
+  subject_name?: string | null;
+  difficulty?: 'EASY' | 'MEDIUM' | 'HARD' | null;
+  exam_name?: string | null;
+  years?: number[];
+  /** Each user gets one attempt per challenge; true once it has been submitted. */
+  has_attempted?: boolean;
+  has_in_progress?: boolean;
+}
+
+export interface ChallengeExamOption {
+  id: number;
+  name: string;
+  years: number[];
+}
+
+export interface ChallengeOptions {
+  exams: ChallengeExamOption[];
+  years: number[];
 }
 
 export interface ChallengePublicPreview {
@@ -59,6 +77,8 @@ export interface CreateChallengePayload {
   question_count: number;
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
   subject_name?: string;
+  exam_type_id?: number;
+  years?: number[];
   time_limit_minutes: number;
   visibility: 'INVITE_ONLY' | 'PUBLIC';
   duration: ChallengeDuration;
@@ -140,6 +160,19 @@ export async function createChallenge(payload: CreateChallengePayload): Promise<
     body: JSON.stringify(payload),
   });
   return await parseJsonOrThrow(response);
+}
+
+export async function fetchChallengeOptions(): Promise<ChallengeOptions> {
+  try {
+    const response = await guardedFetch(`${API_BASE_URL}/challenges/options`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return { exams: [], years: [] };
+    return await response.json();
+  } catch {
+    return { exams: [], years: [] };
+  }
 }
 
 export async function listMyChallenges(): Promise<ChallengeSummary[]> {

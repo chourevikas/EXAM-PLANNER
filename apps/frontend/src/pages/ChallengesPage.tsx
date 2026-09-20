@@ -2,9 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Swords, Plus, Users, Globe, Trophy, Copy, Check, Crown, Clock, Flame } from 'lucide-react';
 import { StudentLayout } from '../components/student/StudentLayout';
+import { CreateChallengeModal } from '../components/challenges/CreateChallengeModal';
 import { listMyChallenges, ChallengeSummary, formatChallengeExpiry, isChallengeExpired } from '../services/challengeService';
 
 const FREE_CHALLENGE_LIMIT = 5;
+
+function isPremiumUser(): boolean {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}')?.subscription_tier === 'PREMIUM';
+  } catch {
+    return false;
+  }
+}
 
 function getCurrentUserId(): number | null {
   try {
@@ -22,6 +31,7 @@ export function ChallengesPage() {
   const [challenges, setChallenges] = useState<ChallengeSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -39,7 +49,9 @@ export function ChallengesPage() {
 
   const currentUserId = getCurrentUserId();
   const createdCount = challenges.filter((c) => c.creator_id === currentUserId).length;
-  const nearOrOverLimit = createdCount >= FREE_CHALLENGE_LIMIT;
+  // The free-plan cap doesn't apply to Premium students.
+  const premium = isPremiumUser();
+  const nearOrOverLimit = !premium && createdCount >= FREE_CHALLENGE_LIMIT;
 
   const handleCopyLink = (e: React.MouseEvent, token: string, id: number) => {
     e.stopPropagation();
@@ -62,13 +74,13 @@ export function ChallengesPage() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {!loading && (
+          {!loading && !premium && (
             <span style={{ fontSize: 12, fontWeight: 600, color: nearOrOverLimit ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
               {Math.min(createdCount, FREE_CHALLENGE_LIMIT)}/{FREE_CHALLENGE_LIMIT} free challenges used
             </span>
           )}
           <button
-            onClick={() => navigate('/challenges/new')}
+            onClick={() => setShowCreate(true)}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
               backgroundColor: 'var(--accent-primary)', color: '#fff',
@@ -151,6 +163,23 @@ export function ChallengesPage() {
               {c.description && (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>{c.description}</p>
               )}
+              {(c.exam_name || c.subject_name || (c.years && c.years.length > 0)) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {[c.exam_name, c.subject_name, ...(c.years && c.years.length ? [c.years.join(', ')] : [])]
+                    .filter(Boolean)
+                    .map((tag) => (
+                      <span
+                        key={String(tag)}
+                        style={{
+                          fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                          backgroundColor: 'rgba(120,120,120,0.12)', color: 'var(--text-muted)',
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap', alignItems: 'center' }}>
                 <span>{c.question_count} Questions</span>
                 <span>{c.time_limit_minutes} min</span>
@@ -181,7 +210,7 @@ export function ChallengesPage() {
                     padding: '6px 10px', borderRadius: 8, alignSelf: 'flex-start',
                   }}
                 >
-                  <Trophy size={13} /> Your best: {c.my_best_score} pts
+                  <Trophy size={13} /> {c.has_attempted ? 'Attempted' : 'Your best'}: {c.my_best_score} pts
                 </div>
               )}
               <button
@@ -199,6 +228,7 @@ export function ChallengesPage() {
           ))}
         </div>
       )}
+      {showCreate && <CreateChallengeModal onClose={() => setShowCreate(false)} />}
     </StudentLayout>
   );
 }

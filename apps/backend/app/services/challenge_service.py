@@ -3,13 +3,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict
 
 from fastapi import HTTPException
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models.user import User
 from app.db.models.question import Question, QuestionTranslation, QuestionOption, OptionTranslation
-from app.db.models.hierarchy import Subject, Topic, Subtopic
+from app.db.models.hierarchy import Subject, Topic, Subtopic, Exam
+from app.db.models.exam_type import ExamType
 from app.db.models.enums import QuestionStatus, LanguageCode
 from app.db.models.challenge import (
     Challenge,
@@ -31,6 +32,8 @@ from app.schemas.challenge import (
     SubmitChallengeAttemptResponse,
     LeaderboardEntry,
     ChallengeDuration,
+    ChallengeOptions,
+    ChallengeExamOption,
 )
 
 DURATION_DELTAS: Dict[ChallengeDuration, Optional[timedelta]] = {
@@ -43,12 +46,25 @@ DURATION_DELTAS: Dict[ChallengeDuration, Optional[timedelta]] = {
 }
 
 
+def _is_expired(expires_at: Optional[datetime]) -> bool:
+    if not expires_at:
+        return False
+    if expires_at.tzinfo is None:  # SQLite returns naive datetimes; they are stored as UTC
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at < datetime.now(timezone.utc)
+
+
 class ChallengeService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
     async def _sample_questions(
-        self, subject_name: Optional[str], difficulty, question_count: int
+        self,
+        subject_name: Optional[str],
+        difficulty,
+        question_count: int,
+        exam_type: Optional[ExamType] = None,
+        years: Optional[List[int]] = None,
     ) -> List[Question]:
         query = select(Question).where(Question.status == QuestionStatus.PUBLISHED)
         if subject_name:
@@ -58,22 +74,100 @@ class ChallengeService:
                 .join(Subject, Subject.id == Topic.subject_id)
                 .where(Subject.name.ilike(f"%{subject_name.strip()}%"))
             )
+        if exam_type or years:
+            query = query.join(Exam, Exam.id == Question.exam_id)
+        if exam_type:
+            query = query.where(
+                or_(
+                    Exam.exam_type_id == exam_type.id,
+                    func.lower(Exam.name).contains(exam_type.name.lower()),
+                )
+            )
+        if years:
+            query = query.where(func.coalesce(Question.source_year, Exam.source_year).in_(years))
         if difficulty:
             query = query.where(Question.difficulty == difficulty)
         query = query.order_by(func.random()).limit(question_count)
         res = await self.session.exec(query)
         return list(res.all())
 
+    async def get_options(self) -> ChallengeOptions:
+        """Exams and years that actually have published questions, so the create form
+        only offers combinations that can produce a challenge."""
+        year_expr = func.coalesce(Question.source_year, Exam.source_year)
+        rows = (
+            await self.session.exec(
+                select(ExamType.id, ExamType.name, year_expr)
+                .select_from(Question)
+                .join(Exam, Exam.id == Question.exam_id)
+                .join(ExamType, ExamType.id == Exam.exam_type_id)
+                .where(Question.status == QuestionStatus.PUBLISHED, ExamType.is_active == True)  # noqa: E712
+                .group_by(ExamType.id, ExamType.name, year_expr)
+            )
+        ).all()
+        exams: Dict[int, ChallengeExamOption] = {}
+        all_years = set()
+        for type_id, name, year in rows:
+            opt = exams.setdefault(type_id, ChallengeExamOption(id=type_id, name=name, years=[]))
+            if year:
+                opt.years.append(int(year))
+                all_years.add(int(year))
+        for opt in exams.values():
+            opt.years.sort(reverse=True)
+        return ChallengeOptions(
+            exams=sorted(exams.values(), key=lambda e: e.name),
+            years=sorted(all_years, reverse=True),
+        )
+
+    def _to_summary(
+        self,
+        c: Challenge,
+        creator: Optional[User],
+        attempt_count: int = 0,
+        my_best: Optional[float] = None,
+        my_statuses: Optional[set] = None,
+    ) -> ChallengeSummary:
+        my_statuses = my_statuses or set()
+        return ChallengeSummary(
+            id=c.id,
+            title=c.title,
+            description=c.description,
+            question_count=c.question_count,
+            time_limit_minutes=c.time_limit_minutes,
+            visibility=c.visibility,
+            status=c.status,
+            share_token=c.share_token,
+            creator_id=c.creator_id,
+            creator_name=creator.full_name if creator else None,
+            created_at=c.created_at,
+            expires_at=c.expires_at,
+            attempt_count=attempt_count,
+            my_best_score=my_best,
+            subject_name=c.subject_name,
+            difficulty=c.difficulty,
+            exam_name=c.exam_name,
+            years=[int(y) for y in (c.years or [])],
+            has_attempted=ChallengeAttemptStatus.SUBMITTED in my_statuses,
+            has_in_progress=ChallengeAttemptStatus.IN_PROGRESS in my_statuses,
+        )
+
     async def create_challenge(
         self, creator: User, payload: CreateChallengeRequest
     ) -> ChallengeSummary:
+        exam_type: Optional[ExamType] = None
+        if payload.exam_type_id:
+            exam_type = await self.session.get(ExamType, payload.exam_type_id)
+            if not exam_type or not exam_type.is_active:
+                raise HTTPException(status_code=400, detail="Selected exam is not available.")
+        years = sorted({int(y) for y in payload.years}, reverse=True)
+
         questions = await self._sample_questions(
-            payload.subject_name, payload.difficulty, payload.question_count
+            payload.subject_name, payload.difficulty, payload.question_count, exam_type, years
         )
         if not questions:
             raise HTTPException(
                 status_code=400,
-                detail="No published questions match the selected subject/difficulty. Try broadening your filters.",
+                detail="No published questions match the selected exam/year/subject/difficulty. Try broadening your filters.",
             )
 
         delta = DURATION_DELTAS[payload.duration]
@@ -86,6 +180,9 @@ class ChallengeService:
             question_count=len(questions),
             difficulty=payload.difficulty,
             subject_name=payload.subject_name,
+            exam_type_id=exam_type.id if exam_type else None,
+            exam_name=exam_type.name if exam_type else None,
+            years=years or None,
             time_limit_minutes=payload.time_limit_minutes,
             visibility=payload.visibility,
             share_token=secrets.token_urlsafe(12),
@@ -101,21 +198,7 @@ class ChallengeService:
 
         await self.session.commit()
         await self.session.refresh(challenge)
-
-        return ChallengeSummary(
-            id=challenge.id,
-            title=challenge.title,
-            description=challenge.description,
-            question_count=challenge.question_count,
-            time_limit_minutes=challenge.time_limit_minutes,
-            visibility=challenge.visibility,
-            status=challenge.status,
-            share_token=challenge.share_token,
-            creator_id=challenge.creator_id,
-            creator_name=creator.full_name,
-            created_at=challenge.created_at,
-            expires_at=challenge.expires_at,
-        )
+        return self._to_summary(challenge, creator)
 
     async def _get_challenge_or_404(self, challenge_id: int) -> Challenge:
         challenge = await self.session.get(Challenge, challenge_id)
@@ -156,7 +239,7 @@ class ChallengeService:
         if not challenge:
             raise HTTPException(status_code=404, detail="Challenge not found")
         creator = await self.session.get(User, challenge.creator_id)
-        is_expired = bool(challenge.expires_at and challenge.expires_at < datetime.now(timezone.utc))
+        is_expired = _is_expired(challenge.expires_at)
         return ChallengePublicPreview(
             id=challenge.id,
             title=challenge.title,
@@ -211,6 +294,19 @@ class ChallengeService:
             for row in (await self.session.exec(stats_stmt)).all():
                 stats_map[row[0]] = (row[1] or 0, row[2])
 
+        # 1b. Which of these the user has already submitted / has in progress
+        my_status_map: Dict[int, set] = {}
+        if c_ids:
+            mine = (
+                await self.session.exec(
+                    select(ChallengeAttempt.challenge_id, ChallengeAttempt.status).where(
+                        ChallengeAttempt.challenge_id.in_(c_ids), ChallengeAttempt.user_id == user.id
+                    )
+                )
+            ).all()
+            for cid, st in mine:
+                my_status_map.setdefault(cid, set()).add(st)
+
         # 2. Bulk load external creators in 1 query
         other_creator_ids = list({c.creator_id for c in combined if c.creator_id and c.creator_id != user.id})
         creators_map: Dict[int, User] = {}
@@ -222,22 +318,7 @@ class ChallengeService:
             attempt_count, my_best = stats_map.get(c.id, (0, None))
             creator = user if c.creator_id == user.id else creators_map.get(c.creator_id)
             summaries.append(
-                ChallengeSummary(
-                    id=c.id,
-                    title=c.title,
-                    description=c.description,
-                    question_count=c.question_count,
-                    time_limit_minutes=c.time_limit_minutes,
-                    visibility=c.visibility,
-                    status=c.status,
-                    share_token=c.share_token,
-                    creator_id=c.creator_id,
-                    creator_name=creator.full_name if creator else None,
-                    created_at=c.created_at,
-                    expires_at=c.expires_at,
-                    attempt_count=attempt_count,
-                    my_best_score=my_best,
-                )
+                self._to_summary(c, creator, attempt_count, my_best, my_status_map.get(c.id))
             )
         return summaries
 
@@ -259,22 +340,17 @@ class ChallengeService:
                 ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
             )
         )).one()
-        return ChallengeSummary(
-            id=challenge.id,
-            title=challenge.title,
-            description=challenge.description,
-            question_count=challenge.question_count,
-            time_limit_minutes=challenge.time_limit_minutes,
-            visibility=challenge.visibility,
-            status=challenge.status,
-            share_token=challenge.share_token,
-            creator_id=challenge.creator_id,
-            creator_name=creator.full_name if creator else None,
-            created_at=challenge.created_at,
-            expires_at=challenge.expires_at,
-            attempt_count=attempt_count or 0,
-            my_best_score=my_best,
+        my_statuses = set(
+            (
+                await self.session.exec(
+                    select(ChallengeAttempt.status).where(
+                        ChallengeAttempt.challenge_id == challenge.id,
+                        ChallengeAttempt.user_id == user.id,
+                    )
+                )
+            ).all()
         )
+        return self._to_summary(challenge, creator, attempt_count or 0, my_best, my_statuses)
 
     async def invite_user(self, challenge_id: int, inviter: User, email: str) -> None:
         challenge = await self._get_challenge_or_404(challenge_id)
@@ -375,7 +451,21 @@ class ChallengeService:
         )
         attempt = existing_res.first()
         if not attempt:
-            if challenge.expires_at and challenge.expires_at < datetime.now(timezone.utc):
+            already_submitted = (
+                await self.session.exec(
+                    select(ChallengeAttempt.id).where(
+                        ChallengeAttempt.challenge_id == challenge.id,
+                        ChallengeAttempt.user_id == user.id,
+                        ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
+                    )
+                )
+            ).first()
+            if already_submitted:
+                raise HTTPException(
+                    status_code=409,
+                    detail="You have already attempted this challenge. Each challenge can be attempted only once.",
+                )
+            if _is_expired(challenge.expires_at):
                 raise HTTPException(
                     status_code=400,
                     detail=f"This challenge closed on {challenge.expires_at.isoformat()} and is no longer accepting new attempts.",

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator
 from app.db.models.user import UserRole, UserStatus, SubscriptionTier
 
 
@@ -58,6 +58,9 @@ class UserOut(BaseModel):
     target_year: Optional[str] = None
     optional_subject: Optional[str] = None
     weekly_hours: Optional[str] = None
+    subject_proficiency: Optional[dict[str, int]] = None
+    # False until a student finishes first-login onboarding; always True for staff.
+    onboarding_completed: bool = True
     preferred_language: str = "en"
     free_questions_attempted: Optional[int] = 0
     total_questions_attempted: Optional[int] = 0
@@ -208,3 +211,29 @@ class UserDirectoryItemOut(BaseModel):
 
 class UpdateRolePayload(BaseModel):
     new_role: UserRole
+
+
+class OnboardingRequest(BaseModel):
+    """First-login questionnaire. Locks the student's primary target once saved."""
+    target_exam: str = Field(min_length=1, max_length=100)
+    target_year: str = Field(min_length=1, max_length=10)
+    optional_subject: Optional[str] = Field(default=None, max_length=150)
+    weekly_hours: str = Field(min_length=1, max_length=10)
+    preferred_language: str = "en"
+    # Self-rated proficiency per subject: 1 (weak) to 5 (strong).
+    subject_proficiency: dict[str, int] = Field(default_factory=dict)
+
+    @field_validator("subject_proficiency")
+    @classmethod
+    def _validate_proficiency(cls, v: dict[str, int]) -> dict[str, int]:
+        if len(v) > 60:
+            raise ValueError("Too many subjects")
+        cleaned = {}
+        for subject, rating in v.items():
+            name = subject.strip()
+            if not name or len(name) > 150:
+                raise ValueError("Invalid subject name")
+            if not 1 <= rating <= 5:
+                raise ValueError(f"Proficiency for '{name}' must be between 1 and 5")
+            cleaned[name] = rating
+        return cleaned

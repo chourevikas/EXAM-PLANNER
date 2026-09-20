@@ -359,6 +359,37 @@ export async function updateUserProfile(updateData: UserProfileUpdate, customTok
   return data;
 }
 
+export interface OnboardingPayload {
+  target_exam: string;
+  target_year: string;
+  optional_subject?: string;
+  weekly_hours: string;
+  preferred_language: string;
+  subject_proficiency: Record<string, number>;
+}
+
+/** Saves the first-login questionnaire; the server locks the primary target from then on. */
+export async function completeOnboarding(payload: OnboardingPayload): Promise<any> {
+  const token = localStorage.getItem('access_token');
+  if (!token) throw new Error('No access token found');
+
+  const res = await fetch(`${API_BASE_URL}/me/onboarding`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const detail = typeof body?.detail === 'string' ? body.detail : Array.isArray(body?.detail) ? body.detail[0]?.msg : null;
+    throw new Error(detail || 'Could not save your details. Please try again.');
+  }
+  const data = await res.json();
+  localStorage.setItem('user', JSON.stringify(data));
+  localStorage.setItem('preferred_language', data.preferred_language || payload.preferred_language);
+  window.dispatchEvent(new Event('user_profile_updated'));
+  return data;
+}
+
 export async function verifyEmail(token: string): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/verify-email`, {
     method: 'POST',

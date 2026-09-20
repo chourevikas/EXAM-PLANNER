@@ -122,6 +122,9 @@ export function ChallengeDetailPage() {
             <span>{challenge.question_count} Questions</span>
             <span>{challenge.time_limit_minutes} min</span>
             <span>Created by {challenge.creator_name || 'you'}</span>
+            {challenge.exam_name && <span>{challenge.exam_name}</span>}
+            {challenge.subject_name && <span>{challenge.subject_name}</span>}
+            {challenge.years && challenge.years.length > 0 && <span>{challenge.years.join(', ')}</span>}
             {challenge.expires_at && (
               <span
                 style={{
@@ -136,7 +139,20 @@ export function ChallengeDetailPage() {
           </div>
         </div>
 
-        {isChallengeExpired(challenge.expires_at) ? (
+        {challenge.has_attempted ? (
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap',
+              textAlign: 'center', padding: '14px', borderRadius: 10,
+              backgroundColor: 'rgba(245, 166, 35, 0.14)', color: '#7A4E00', fontWeight: 700, fontSize: 14,
+            }}
+          >
+            <Trophy size={16} />
+            You've completed this challenge
+            {typeof challenge.my_best_score === 'number' ? ` — you scored ${challenge.my_best_score} pts.` : '.'}
+            <span style={{ fontWeight: 500 }}>Each challenge can be attempted only once.</span>
+          </div>
+        ) : isChallengeExpired(challenge.expires_at) ? (
           <div
             style={{
               textAlign: 'center', padding: '14px', borderRadius: 10,
@@ -154,7 +170,7 @@ export function ChallengeDetailPage() {
               borderRadius: 10, padding: '14px', fontWeight: 700, fontSize: 15, cursor: 'pointer',
             }}
           >
-            Start Challenge <ArrowRight size={16} />
+            {challenge.has_in_progress ? 'Resume Challenge' : 'Start Challenge'} <ArrowRight size={16} />
           </button>
         )}
 

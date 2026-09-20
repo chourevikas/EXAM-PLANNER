@@ -138,6 +138,8 @@ async def client():
         await c.get("/api/v1/testimonials/admin/all")
         await get_cache().delete_pattern("*")
         yield c
+    # don't leak cached users (ids collide across modules' in-memory DBs) into later test modules
+    await get_cache().delete_pattern("*")
 
 
 # ── Admin sections ───────────────────────────────────────────────────────────

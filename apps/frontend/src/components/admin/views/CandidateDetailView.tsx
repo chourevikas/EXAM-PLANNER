@@ -782,6 +782,27 @@ export function CandidateDetailView({
               </div>
             ))}
           </div>
+
+          {candidate.subject_proficiency && Object.keys(candidate.subject_proficiency).length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Self-rated subject proficiency (1–5)</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {Object.entries(candidate.subject_proficiency)
+                  .sort((x, y) => x[1] - y[1])
+                  .map(([subject, rating]) => (
+                    <span
+                      key={subject}
+                      style={{
+                        fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+                        backgroundColor: 'var(--bg-subtle)', border: '1px solid #e2e8f0', color: 'var(--deep-navy)',
+                      }}
+                    >
+                      {subject} <span style={{ color: rating <= 2 ? '#DC2626' : rating >= 4 ? '#3A8B53' : '#D97706' }}>{rating}/5</span>
+                    </span>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Account System Details Card */}
