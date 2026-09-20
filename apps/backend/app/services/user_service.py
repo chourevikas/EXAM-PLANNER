@@ -10,6 +10,29 @@ from app.core.security import get_password_hash
 from app.core.exceptions import UserAlreadyExistsException, BaseAppException
 
 
+PROFILE_EXTRA_FIELDS = ("target_exam", "target_year", "optional_subject", "weekly_hours")
+
+
+async def get_profile_extras(session: AsyncSession, user_ids: List[int]) -> dict:
+    """Student-profile data the raw user row lacks: subscription tier + exam-preparation details.
+
+    Returns {user_id: {...}}; users without a student profile are simply absent.
+    """
+    if not user_ids:
+        return {}
+    from app.db.models.user import StudentProfile
+
+    rows = (await session.exec(select(StudentProfile).where(StudentProfile.user_id.in_(user_ids)))).all()
+    out = {}
+    for prof in rows:
+        tier = prof.subscription_tier
+        out[prof.user_id] = {
+            "subscription_tier": tier.value if hasattr(tier, "value") else str(tier),
+            **{f: getattr(prof, f) for f in PROFILE_EXTRA_FIELDS},
+        }
+    return out
+
+
 async def get_subscription_info(session: AsyncSession, user_id: int) -> dict:
     """Remaining time on the user's active paid subscription (display only)."""
     from datetime import datetime, timezone

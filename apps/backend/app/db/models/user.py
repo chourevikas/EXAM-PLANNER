@@ -170,6 +170,11 @@ class StudentProfile(SQLModel, table=True):
     total_xp: int = Field(default=0)
     level: int = Field(default=1)
     last_study_date: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
+    # Exam-preparation details the student sets on their profile page.
+    target_exam: Optional[str] = Field(default=None, max_length=100)
+    target_year: Optional[str] = Field(default=None, max_length=10)
+    optional_subject: Optional[str] = Field(default=None, max_length=150)
+    weekly_hours: Optional[str] = Field(default=None, max_length=10)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,

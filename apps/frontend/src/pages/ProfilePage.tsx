@@ -166,8 +166,20 @@ export function ProfilePage() {
     window.dispatchEvent(new Event('user_profile_updated'));
     window.dispatchEvent(new Event('storage'));
 
-    updateUserProfile({ full_name: fullName, profile_image: profileImage })
-      .catch(err => console.error("Failed to sync profile change with backend:", err));
+    updateUserProfile({
+      full_name: fullName,
+      profile_image: profileImage,
+      phone,
+      // Exam-preparation details are stored for students only (admins have no exam target).
+      ...(isAdmin || isSuperAdmin
+        ? {}
+        : {
+            target_exam: targetExam,
+            target_year: targetYear,
+            optional_subject: optionalSubject,
+            weekly_hours: weeklyGoalHours,
+          }),
+    }).catch(err => console.error("Failed to sync profile change with backend:", err));
 
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);

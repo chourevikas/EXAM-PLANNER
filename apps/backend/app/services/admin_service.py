@@ -85,6 +85,8 @@ class AdminService:
 
     async def list_all_users(self) -> List[UserDirectoryItemOut]:
         all_users = await self.repo.get_all_users_for_superadmin()
+        from app.services.user_service import get_profile_extras
+        extras = await get_profile_extras(self.session, [u.id for u in all_users])
         result = []
         for u in all_users:
             admin_prof = u.__dict__.get("admin_profile")
@@ -92,8 +94,8 @@ class AdminService:
             org_name = admin_prof.organization_name if admin_prof else None
             dept = admin_prof.department if admin_prof else None
             
-            target_exam = getattr(u, "target_exam", None)
-            target_year = getattr(u, "target_year", None)
+            target_exam = extras.get(u.id, {}).get("target_exam")
+            target_year = extras.get(u.id, {}).get("target_year")
 
             result.append(
                 UserDirectoryItemOut(

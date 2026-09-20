@@ -91,7 +91,9 @@ export function UsersView() {
 
     const matchesSearch =
       user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.target_exam?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.optional_subject?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesAccess = accessFilter === 'ALL' || user.status === accessFilter;
 
@@ -236,7 +238,7 @@ export function UsersView() {
             <Search size={16} color="var(--text-disabled)" />
             <input
               type="text"
-              placeholder="Search candidate name or email..."
+              placeholder="Search name, email or target exam..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -294,10 +296,10 @@ export function UsersView() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <table style={{ width: '100%', minWidth: 680, borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
+            <table style={{ width: '100%', minWidth: 820, borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-subtle)', borderBottom: '2px solid #e2e8f0' }}>
-                  {['Candidate Profile', 'Role', 'Subscription Plan', 'Access Status', 'Actions'].map((h, idx) => (
+                  {['Candidate Profile', 'Role', 'Target Exam', 'Subscription Plan', 'Access Status', 'Actions'].map((h, idx) => (
                     <th
                       key={h}
                       style={{
@@ -310,7 +312,7 @@ export function UsersView() {
                         letterSpacing: '0.06em',
                         borderBottom: '2px solid #e2e8f0',
                         borderTopLeftRadius: idx === 0 ? 8 : 0,
-                        borderTopRightRadius: idx === 4 ? 8 : 0
+                        borderTopRightRadius: idx === 5 ? 8 : 0
                       }}
                     >
                       {h}
@@ -321,7 +323,7 @@ export function UsersView() {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: 60, textAlign: 'center', color: 'var(--text-disabled)', fontSize: 14 }}>
+                    <td colSpan={6} style={{ padding: 60, textAlign: 'center', color: 'var(--text-disabled)', fontSize: 14 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
                         <Users size={36} color="var(--border-color)" />
                         <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>No candidate accounts found matching your search.</span>
@@ -407,6 +409,24 @@ export function UsersView() {
                           }}>
                             {u.role}
                           </span>
+                        </td>
+
+                        {/* Target Exam (what the student is preparing for) */}
+                        <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
+                          {u.target_exam || u.target_year ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--deep-navy)', whiteSpace: 'nowrap' }}>
+                                {`${u.target_exam || ''} ${u.target_year || ''}`.trim()}
+                              </span>
+                              {u.optional_subject && (
+                                <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Optional: {u.optional_subject}</span>
+                              )}
+                            </div>
+                          ) : u.role === 'STUDENT' ? (
+                            <span style={{ fontSize: 12.5, color: 'var(--text-disabled)', fontStyle: 'italic' }}>Not set</span>
+                          ) : (
+                            <span style={{ fontSize: 12.5, color: 'var(--text-disabled)' }}>—</span>
+                          )}
                         </td>
 
                         {/* Subscription Tier */}

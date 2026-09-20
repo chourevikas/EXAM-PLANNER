@@ -53,6 +53,11 @@ class UserOut(BaseModel):
     subscription_days_remaining: Optional[int] = None
     # Admin panel sections this admin may use; None means unrestricted.
     admin_permissions: Optional[list[str]] = None
+    # Exam-preparation details the student saved on their profile.
+    target_exam: Optional[str] = None
+    target_year: Optional[str] = None
+    optional_subject: Optional[str] = None
+    weekly_hours: Optional[str] = None
     preferred_language: str = "en"
     free_questions_attempted: Optional[int] = 0
     total_questions_attempted: Optional[int] = 0
