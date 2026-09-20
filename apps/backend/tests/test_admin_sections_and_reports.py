@@ -331,3 +331,16 @@ async def test_target_exam_saved_by_student_is_visible_to_admin(client):
 
     # Only Users-section admins see the directory.
     assert (await client.get("/api/v1/users", headers=_h("admin_qa"))).status_code == 403
+
+
+@pytest.mark.anyio
+async def test_plan_change_by_admin_is_reflected_on_every_student_read(client):
+    """The auth cache holds a User without its profile, so a cache hit used to
+    read every student as FREE from the second request after a plan change."""
+    sid, _ = _state["users"]["student2"]
+    for tier in ("PREMIUM", "FREE", "PREMIUM"):
+        upd = await client.put(f"/api/v1/users/{sid}", json={"subscription_tier": tier}, headers=_h("admin_open"))
+        assert upd.status_code == 200, upd.text
+        for _ in range(3):  # 1st read is a cache miss, the rest hit the cache
+            me = (await client.get("/api/v1/auth/me", headers=_h("student2"))).json()
+            assert me["subscription_tier"] == tier

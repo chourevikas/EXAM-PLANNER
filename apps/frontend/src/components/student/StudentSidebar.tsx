@@ -1,7 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  Menu,
   LayoutDashboard,
   Calendar,
   BookOpen,
@@ -30,7 +29,6 @@ export function StudentSidebar({
   user,
   collapsed,
   mobileOpen,
-  onToggleCollapse,
   onCloseMobile,
 }: StudentSidebarProps) {
   const location = useLocation();
@@ -157,96 +155,47 @@ export function StudentSidebar({
         aria-label="Main navigation"
         aria-hidden={isMobile && !mobileOpen ? 'true' : undefined}
       >
-        {/* Top Header Row with Borderless Hamburger Icon Button */}
-        <div
-          style={{
-            padding: isCollapsedDesktop ? '14px 0' : '16px 16px 6px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: isCollapsedDesktop ? 'center' : 'space-between',
-          }}
-        >
-          {!isCollapsedDesktop ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Label row — the header hamburger is the only sidebar toggle; mobile keeps a close X */}
+        {(!isCollapsedDesktop || isMobile) && (
+          <div
+            style={{
+              padding: '16px 16px 6px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span
+              style={{
+                fontSize: 11,
+                textTransform: 'uppercase',
+                fontWeight: 700,
+                color: 'rgba(255, 255, 255, 0.4)',
+                letterSpacing: '0.08em',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              }}
+            >
+              Main Navigation
+            </span>
+
+            {isMobile && (
               <button
-                onClick={onToggleCollapse}
+                onClick={onCloseMobile}
                 className="touch-target"
                 style={{
-                  background: 'transparent',
+                  background: 'none',
                   border: 'none',
-                  color: 'rgba(255, 255, 255, 0.75)',
+                  color: 'rgba(255, 255, 255, 0.6)',
                   cursor: 'pointer',
                   padding: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 'var(--radius)',
-                  transition: 'color 0.15s ease',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
-                title="Toggle Sidebar"
-                aria-label="Toggle Sidebar"
+                aria-label="Close navigation"
               >
-                <Menu size={18} />
+                <X size={18} />
               </button>
-
-              <span
-                style={{
-                  fontSize: 11,
-                  textTransform: 'uppercase',
-                  fontWeight: 700,
-                  color: 'rgba(255, 255, 255, 0.4)',
-                  letterSpacing: '0.08em',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                }}
-              >
-                Main Navigation
-              </span>
-            </div>
-          ) : (
-            <button
-              onClick={onToggleCollapse}
-              className="touch-target"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'rgba(255, 255, 255, 0.75)',
-                cursor: 'pointer',
-                padding: 4,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 'var(--radius)',
-                transition: 'color 0.15s ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--bg-card)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
-              title="Expand Sidebar"
-              aria-label="Expand Sidebar"
-            >
-              <Menu size={18} />
-            </button>
-          )}
-
-          {/* Mobile close button */}
-          {isMobile && (
-            <button
-              onClick={onCloseMobile}
-              className="touch-target"
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'rgba(255, 255, 255, 0.6)',
-                cursor: 'pointer',
-                padding: 4,
-              }}
-              aria-label="Close navigation"
-            >
-              <X size={18} />
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Primary Nav Links */}
         <nav

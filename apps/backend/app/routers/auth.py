@@ -430,7 +430,7 @@ async def _build_user_out_response(
         email=current_user.email,
         role=current_user.role,
         status=current_user.status,
-        subscription_tier=current_user.subscription_tier,
+        subscription_tier=prep.get("subscription_tier") or current_user.subscription_tier,
         profile_image=current_user.profile_image,
         phone=current_user.phone,
         subscription_ends_at=sub_info.get("subscription_ends_at"),

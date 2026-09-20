@@ -33,6 +33,23 @@ async def get_profile_extras(session: AsyncSession, user_ids: List[int]) -> dict
     return out
 
 
+async def get_subscription_tier(session: AsyncSession, user_id: int) -> str:
+    """Current plan straight from the DB.
+
+    The auth-cached User has no student_profile loaded, so its
+    `subscription_tier` property always reads FREE on a cache hit.
+    """
+    from app.db.models.user import StudentProfile
+
+    prof = (
+        await session.exec(select(StudentProfile).where(StudentProfile.user_id == user_id))
+    ).first()
+    if not prof:
+        return "FREE"
+    tier = prof.subscription_tier
+    return tier.value if hasattr(tier, "value") else str(tier)
+
+
 async def get_subscription_info(session: AsyncSession, user_id: int) -> dict:
     """Remaining time on the user's active paid subscription (display only)."""
     from datetime import datetime, timezone

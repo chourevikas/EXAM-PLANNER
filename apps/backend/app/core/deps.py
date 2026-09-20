@@ -533,7 +533,8 @@ async def require_challenge_quota(
 ) -> User:
     """Gates challenge creation: PREMIUM users are unlimited, FREE/GUEST users
     are capped at FREE_CHALLENGE_LIMIT challenges created (lifetime)."""
-    if current_user.subscription_tier == SubscriptionTier.PREMIUM:
+    from app.services.user_service import get_subscription_tier
+    if await get_subscription_tier(session, current_user.id) == SubscriptionTier.PREMIUM.value:
         return current_user
 
     from sqlalchemy import func

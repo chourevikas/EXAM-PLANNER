@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 
 import { updateUserProfile, fetchCurrentUser } from '../services/authService';
+import { useRefreshUserOnFocus } from '../hooks/useRefreshUserOnFocus';
 import { UserAvatar } from '../components/common/UserAvatar';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
 
@@ -144,6 +145,8 @@ export function ProfilePage() {
       console.error("Failed to fetch live user profile stats:", err);
     });
   }, []);
+
+  useRefreshUserOnFocus(fresh => setUser((prev: any) => ({ ...prev, ...fresh })));
 
   const handleSaveChanges = (e: React.FormEvent) => {
     e.preventDefault();

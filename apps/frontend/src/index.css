@@ -532,8 +532,8 @@ body {
   box-sizing: border-box;
 }
 
-/* Desktop: account for sidebar */
-@media (min-width: 769px) {
+/* Desktop: account for sidebar (breakpoint matches useBreakpoint's isTabletOrBelow, ≤834) */
+@media (min-width: 835px) {
   .student-content-area {
     margin-left: var(--sidebar-width);
   }
@@ -568,8 +568,8 @@ body {
   min-width: var(--sidebar-collapsed-width);
 }
 
-/* Mobile sidebar: slide-in drawer */
-@media (max-width: 768px) {
+/* Mobile/tablet sidebar: slide-in drawer (≤834 = useBreakpoint's isTabletOrBelow) */
+@media (max-width: 834px) {
   .app-sidebar {
     width: 280px;
     min-width: 280px;
