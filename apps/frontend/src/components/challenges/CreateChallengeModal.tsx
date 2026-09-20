@@ -5,7 +5,6 @@ import { Swords, Crown, X } from 'lucide-react';
 import {
   createChallenge,
   fetchChallengeOptions,
-  fetchSubjectNames,
   ChallengeQuotaError,
   ChallengeDuration,
   ChallengeOptions,
@@ -44,13 +43,13 @@ const twoCol: React.CSSProperties = {
 export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
   const navigate = useNavigate();
   const titleRef = useRef<HTMLInputElement>(null);
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [options, setOptions] = useState<ChallengeOptions>({ exams: [], years: [] });
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [options, setOptions] = useState<ChallengeOptions>({ exams: [], years: [], subject_years: {} });
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [examTypeId, setExamTypeId] = useState<number | ''>('');
   const [years, setYears] = useState<number[]>([]);
-  const [subjectName, setSubjectName] = useState('');
+  const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState<string>('');
   const [questionCount, setQuestionCount] = useState(10);
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(15);
@@ -61,8 +60,10 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
   const [limitReached, setLimitReached] = useState(false);
 
   useEffect(() => {
-    fetchSubjectNames().then(setSubjects);
-    fetchChallengeOptions().then(setOptions);
+    fetchChallengeOptions().then((o) => {
+      setOptions(o);
+      setOptionsLoaded(true);
+    });
     titleRef.current?.focus();
   }, []);
 
@@ -80,21 +81,37 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
     };
   }, [onClose, submitting]);
 
-  // Years on offer follow the chosen exam; with no exam chosen, every year that has questions.
-  const availableYears = useMemo(() => {
-    if (examTypeId === '') return options.years;
-    return options.exams.find((e) => e.id === examTypeId)?.years ?? [];
-  }, [examTypeId, options]);
+  const selectedExam = examTypeId === '' ? null : options.exams.find((e) => e.id === examTypeId) ?? null;
 
-  const handleExamChange = (value: string) => {
-    const nextId = value === '' ? '' : Number(value);
-    setExamTypeId(nextId);
-    const allowed = nextId === '' ? options.years : options.exams.find((e) => e.id === nextId)?.years ?? [];
-    setYears((prev) => prev.filter((y) => allowed.includes(y)));
-  };
+  // Years on offer follow the chosen exam; with no exam chosen, every year that has questions.
+  const availableYears = useMemo(
+    () => (selectedExam ? selectedExam.years : options.years),
+    [selectedExam, options.years]
+  );
+
+  // Subjects follow the chosen exam and, once years are picked, only those with questions in those years.
+  const availableSubjects = useMemo(() => {
+    const map = selectedExam ? selectedExam.subject_years : options.subject_years;
+    return Object.entries(map)
+      .filter(([, subjectYears]) => years.length === 0 || subjectYears.some((y) => years.includes(y)))
+      .map(([name]) => name)
+      .sort((a, b) => a.localeCompare(b));
+  }, [selectedExam, options.subject_years, years]);
+
+  // Never keep a selection the current exam/years can't produce.
+  useEffect(() => {
+    setYears((prev) => (prev.every((y) => availableYears.includes(y)) ? prev : prev.filter((y) => availableYears.includes(y))));
+  }, [availableYears]);
+  useEffect(() => {
+    setSubjectNames((prev) => (prev.every((n) => availableSubjects.includes(n)) ? prev : prev.filter((n) => availableSubjects.includes(n))));
+  }, [availableSubjects]);
+
+  const handleExamChange = (value: string) => setExamTypeId(value === '' ? '' : Number(value));
 
   const toggleYear = (year: number) =>
     setYears((prev) => (prev.includes(year) ? prev.filter((y) => y !== year) : [...prev, year]));
+  const toggleSubject = (name: string) =>
+    setSubjectNames((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +128,7 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
         description: description.trim() || undefined,
         question_count: questionCount,
         difficulty: (difficulty || undefined) as any,
-        subject_name: subjectName || undefined,
+        subject_names: subjectNames.length ? subjectNames : undefined,
         exam_type_id: examTypeId === '' ? undefined : examTypeId,
         years: years.length ? years : undefined,
         time_limit_minutes: timeLimitMinutes,
@@ -246,25 +263,57 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
                 />
               </div>
 
-              <div style={twoCol}>
-                <div>
-                  <label style={labelStyle} htmlFor="cc-exam">Exam</label>
-                  <select id="cc-exam" style={inputStyle} value={examTypeId} onChange={(e) => handleExamChange(e.target.value)}>
-                    <option value="">Any Exam</option>
-                    {options.exams.map((ex) => (
-                      <option key={ex.id} value={ex.id}>{ex.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle} htmlFor="cc-subject">Subject</label>
-                  <select id="cc-subject" style={inputStyle} value={subjectName} onChange={(e) => setSubjectName(e.target.value)}>
-                    <option value="">Any Subject</option>
-                    {subjects.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label style={labelStyle} htmlFor="cc-exam">Exam</label>
+                <select id="cc-exam" style={inputStyle} value={examTypeId} onChange={(e) => handleExamChange(e.target.value)}>
+                  <option value="">Any Exam</option>
+                  {options.exams.map((ex) => (
+                    <option key={ex.id} value={ex.id}>{ex.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>
+                  Subjects <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(pick one or more, or leave blank for all)</span>
+                </label>
+                {availableSubjects.length === 0 ? (
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                    {!optionsLoaded
+                      ? 'Loading subjects…'
+                      : years.length > 0
+                        ? 'No subjects have questions for the selected year(s). Questions will be drawn from the whole exam.'
+                        : selectedExam
+                          ? 'No subject breakdown is available for this exam yet. Questions will be drawn from the whole exam.'
+                          : 'No subjects available yet.'}
+                  </div>
+                ) : (
+                  <div role="group" aria-label="Subjects" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {availableSubjects.map((name) => {
+                      const on = subjectNames.includes(name);
+                      return (
+                        <button
+                          type="button"
+                          key={name}
+                          aria-pressed={on}
+                          onClick={() => toggleSubject(name)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: 20,
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            border: on ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                            backgroundColor: on ? 'var(--accent-bg)' : 'var(--bg-body)',
+                            color: 'var(--text-main)',
+                          }}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>

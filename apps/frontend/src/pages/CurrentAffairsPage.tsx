@@ -47,7 +47,7 @@ export function CurrentAffairsPage() {
 
   return (
     <StudentLayout pageTitle="Current Affairs">
-      <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 64 }}>
+      <div data-page-align="left" style={{ maxWidth: 800, margin: 0, paddingBottom: 64 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 24, color: 'var(--text-primary)' }}>Daily Current Affairs</h1>
         
         {loading ? (

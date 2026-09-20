@@ -9,9 +9,9 @@ from sqlalchemy.pool import StaticPool
 from app.fastapi_server import app
 from app.cache import get_cache
 from app.db.session import get_async_session
-from app.db.models.user import User, UserRole
+from app.db.models.user import User, UserRole, StudentProfile, SubscriptionTier
 from app.db.models.exam_type import ExamType
-from app.db.models.hierarchy import Exam
+from app.db.models.hierarchy import Exam, SyllabusVersion, Subject, Topic, Subtopic
 from app.db.models.question import Question, QuestionTranslation
 from app.db.models.challenge import ChallengeQuestion
 from app.db.models.enums import QuestionStatus, LanguageCode
@@ -76,6 +76,38 @@ async def _seed(session: AsyncSession):
             qids[key].append(q.id)
     await session.commit()
 
+    # Subjects: "Polity" and "Indian Polity & Governance" overlap as substrings on purpose.
+    version = SyllabusVersion(exam_id=exams["upsc2023"].id, version_code="v1")
+    session.add(version)
+    await session.commit()
+    await session.refresh(version)
+    subtopics = {}
+    for order, name in enumerate(("Polity", "History", "Indian Polity & Governance"), start=1):
+        subj = Subject(version_id=version.id, name=name, display_order=order)
+        session.add(subj)
+        await session.commit()
+        await session.refresh(subj)
+        topic = Topic(subject_id=subj.id, name=f"{name} topic")
+        session.add(topic)
+        await session.commit()
+        await session.refresh(topic)
+        sub = Subtopic(topic_id=topic.id, name=f"{name} subtopic")
+        session.add(sub)
+        await session.commit()
+        await session.refresh(sub)
+        subtopics[name] = sub.id
+    by_subject = {
+        "Polity": [qids["upsc2023"][0]],
+        "History": [qids["upsc2023"][1], qids["upsc2024"][0]],
+        "Indian Polity & Governance": [qids["upsc2023"][2]],
+    }
+    for name, ids in by_subject.items():
+        for qid in ids:
+            q = await session.get(Question, qid)
+            q.subtopic_id = subtopics[name]
+            session.add(q)
+    await session.commit()
+
     def user(name, role):
         return User(
             full_name=name,
@@ -88,6 +120,7 @@ async def _seed(session: AsyncSession):
         "alice": user("Alice", UserRole.STUDENT),
         "bob": user("Bob", UserRole.STUDENT),
         "carol": user("Carol", UserRole.STUDENT),
+        "dave": user("Dave", UserRole.STUDENT),  # premium: not bound by the free-plan challenge cap
         "admin": user("Admin", UserRole.ADMIN),
     }
     for u in users.values():
@@ -95,12 +128,15 @@ async def _seed(session: AsyncSession):
     await session.commit()
     for u in users.values():
         await session.refresh(u)
+    session.add(StudentProfile(user_id=users["dave"].id, subscription_tier=SubscriptionTier.PREMIUM))
+    await session.commit()
 
     _state.update(
         users={k: (u.id, u.role.value) for k, u in users.items()},
         upsc_type=etype.id,
         mpsc_type=other_type.id,
         qids=qids,
+        by_subject=by_subject,
     )
 
 
@@ -209,6 +245,16 @@ async def test_challenge_options_list_exams_with_their_years(client):
     assert by_name == {"UPSC Civil Services Examination": [2024, 2023], "MPSC Rajyaseva": [2023]}
     assert opts["years"] == [2024, 2023]
 
+    # subjects are per exam (and per year), built from published questions filed under a syllabus
+    subjects = {e["name"]: e["subject_years"] for e in opts["exams"]}
+    assert subjects["UPSC Civil Services Examination"] == {
+        "History": [2024, 2023],
+        "Indian Polity & Governance": [2023],
+        "Polity": [2023],
+    }
+    assert subjects["MPSC Rajyaseva"] == {}  # no syllabus data for this exam yet
+    assert opts["subject_years"] == subjects["UPSC Civil Services Examination"]
+
 
 @pytest.mark.anyio
 async def test_challenge_questions_follow_exam_and_year_filters(client):
@@ -275,3 +321,43 @@ async def test_each_user_gets_only_one_attempt_per_challenge(client):
     # …and the flags are per user
     carol_view = (await client.get(f"/api/v1/challenges/{cid}", headers=_h("carol"))).json()
     assert carol_view["has_attempted"] is False
+
+
+@pytest.mark.anyio
+async def test_challenge_subjects_are_multi_select_with_exact_matching(client):
+    by_subject = _state["by_subject"]
+
+    async def question_ids(challenge_id):
+        async with AsyncSession(test_engine) as s:
+            rows = (await s.exec(select(ChallengeQuestion.question_id).where(ChallengeQuestion.challenge_id == challenge_id))).all()
+        return set(rows)
+
+    one = await _create(client, "dave", subject_names=["Polity"])
+    assert one.status_code == 200, one.text
+    # exact match: "Polity" must not drag in "Indian Polity & Governance"
+    assert await question_ids(one.json()["id"]) == set(by_subject["Polity"])
+    assert one.json()["subject_names"] == ["Polity"]
+
+    two = await _create(client, "dave", subject_names=["Polity", "History"])
+    assert await question_ids(two.json()["id"]) == set(by_subject["Polity"] + by_subject["History"])
+    assert two.json()["subject_names"] == ["Polity", "History"]
+    assert two.json()["subject_name"] == "Polity, History"
+
+    # subjects combine with exam and year filters
+    combo = await _create(client, "dave", subject_names=["History"], exam_type_id=_state["upsc_type"], years=[2024])
+    assert await question_ids(combo.json()["id"]) == {_state["qids"]["upsc2024"][0]}
+
+    # the detail and list views return the subjects
+    detail = (await client.get(f"/api/v1/challenges/{two.json()['id']}", headers=_h("dave"))).json()
+    assert detail["subject_names"] == ["Polity", "History"]
+
+    # older clients sending a single subject_name keep their loose substring behaviour
+    legacy = await _create(client, "dave", subject_name="polity")
+    assert await question_ids(legacy.json()["id"]) == set(by_subject["Polity"] + by_subject["Indian Polity & Governance"])
+    assert legacy.json()["subject_names"] == ["polity"]
+
+    # nothing matches -> a clear 400
+    assert (await _create(client, "dave", subject_names=["Geography"])).status_code == 400
+    # blanks and duplicates are ignored
+    dedup = await _create(client, "dave", subject_names=["History", " history ", ""])
+    assert dedup.json()["subject_names"] == ["History"]

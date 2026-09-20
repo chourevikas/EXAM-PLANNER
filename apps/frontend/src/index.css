@@ -532,6 +532,12 @@ body {
   box-sizing: border-box;
 }
 
+/* Pages that opt in with data-page-align="left" (Announcements, Current Affairs, Bookmarks) hug the sidebar
+   instead of being centred in the leftover width on wide screens. */
+.student-content-main:has(> [data-page-align="left"]) {
+  margin-left: 0;
+}
+
 /* Desktop: account for sidebar (breakpoint matches useBreakpoint's isTabletOrBelow, ≤834) */
 @media (min-width: 835px) {
   .student-content-area {

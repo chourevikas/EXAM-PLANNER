@@ -280,9 +280,9 @@ export function BookmarksPage(): React.ReactElement {
   }, [bookmarks, searchQuery, difficultyFilter]);
 
   const pageContainerStyle: React.CSSProperties = {
-    padding: isMobile ? '16px 12px' : '24px 16px',
+    padding: isMobile ? '16px 0' : '24px 0', // the student layout already provides the side padding
     maxWidth: 960,
-    margin: '0 auto',
+    margin: 0,
     width: '100%',
     boxSizing: 'border-box',
   };
@@ -356,7 +356,7 @@ export function BookmarksPage(): React.ReactElement {
 
   return (
     <StudentLayout pageTitle="Bookmarked Questions">
-      <div style={pageContainerStyle}>
+      <div data-page-align="left" style={pageContainerStyle}>
         {/* Header */}
         <div style={headerWrapperStyle}>
           <div>

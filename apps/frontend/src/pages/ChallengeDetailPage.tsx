@@ -123,7 +123,9 @@ export function ChallengeDetailPage() {
             <span>{challenge.time_limit_minutes} min</span>
             <span>Created by {challenge.creator_name || 'you'}</span>
             {challenge.exam_name && <span>{challenge.exam_name}</span>}
-            {challenge.subject_name && <span>{challenge.subject_name}</span>}
+            {(challenge.subject_names && challenge.subject_names.length > 0 ? challenge.subject_names : challenge.subject_name ? [challenge.subject_name] : []).map((n) => (
+              <span key={n}>{n}</span>
+            ))}
             {challenge.years && challenge.years.length > 0 && <span>{challenge.years.join(', ')}</span>}
             {challenge.expires_at && (
               <span

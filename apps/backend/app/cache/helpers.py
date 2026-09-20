@@ -120,6 +120,20 @@ async def invalidate_question_cache(
     await invalidate_review_cache(q_id_str, exam_id)
 
 
+async def invalidate_study_activity_cache(user_id: str | int) -> None:
+    """Clears everything derived from a student's logged study activities.
+
+    Call after creating/changing a StudyActivity, otherwise the dashboard's "Today's Study Log",
+    the weekly schedule/insights and the streak stats keep serving their cached copies.
+    """
+    cache = get_cache()
+    uid = str(user_id)
+    await cache.delete(build_cache_key("analytics:activity_today", uid))
+    await cache.delete(build_cache_key("auth:me:stats", uid))
+    await cache.delete_pattern(f"*weekly_schedule*{uid}*")
+    await cache.delete_pattern(f"*weekly_insights*{uid}*")
+
+
 async def invalidate_user_cache(user_id: str | int, clerk_id: Optional[str] = None) -> None:
     """Invalidates user profile, permissions, streak/XP stats, and attempt history cache."""
     cache = get_cache()

@@ -18,6 +18,9 @@ from app.db.models.gamification import Badge, UserBadge
 from app.core.deps import get_current_user
 from app.services.gamification_service import GamificationService
 from app.services.email_service import send_pending_tasks_summary_email
+from app.config.logger import setup_logger
+
+logger = setup_logger("StudyPlanRouter")
 
 router = APIRouter(prefix="/study-plan", tags=["Study Plan & Gamification"])
 
@@ -876,12 +879,34 @@ class LogActivityRequest(SQLModel):
     subject: str
     topic: Optional[str] = None
     duration_minutes: int
-    activity_type: Optional[str] = "CONCEPT_REVISION"
+    activity_type: Optional[str] = "REVISION"
     questions_attempted: Optional[int] = None
     questions_correct: Optional[int] = None
     confidence_rating: Optional[int] = None  # 1 to 5
     notes: Optional[str] = None
     activity_date: Optional[str] = None
+
+# Study-task style names (used by the planner and older clients) -> StudyActivityType members.
+_LEGACY_ACTIVITY_TYPES = {
+    "CONCEPT_REVISION": StudyActivityType.REVISION,
+    "NOTES_REVIEW": StudyActivityType.REVISION,
+    "PRACTICE_MCQS": StudyActivityType.PYQ,
+    "PYQ_SOLVING": StudyActivityType.PYQ,
+    "TARGETED_MCQ_PRACTICE": StudyActivityType.PYQ,
+    "MOCK": StudyActivityType.MOCK_TEST,
+}
+
+
+def resolve_activity_type(raw: Optional[str]) -> StudyActivityType:
+    """Maps a client-supplied activity type onto the enum; unknown values become OTHER, missing ones REVISION."""
+    if not raw:
+        return StudyActivityType.REVISION
+    key = raw.strip().upper().replace(" ", "_")
+    try:
+        return StudyActivityType(key)
+    except ValueError:
+        return _LEGACY_ACTIVITY_TYPES.get(key, StudyActivityType.OTHER)
+
 
 @router.post("/activities")
 async def log_study_activity(
@@ -896,12 +921,7 @@ async def log_study_activity(
         except ValueError:
             pass
 
-    act_type_enum = StudyActivityType.CONCEPT_REVISION
-    if req.activity_type:
-        try:
-            act_type_enum = StudyActivityType(req.activity_type)
-        except ValueError:
-            pass
+    act_type_enum = resolve_activity_type(req.activity_type)
 
     new_activity = StudyActivity(
         user_id=current_user.id,
@@ -918,18 +938,21 @@ async def log_study_activity(
     )
     session.add(new_activity)
     await session.commit()
-    # Invalidate weekly schedule and user activity cache
+    # Everything derived from activities (today's log, weekly views, streak stats) is now stale.
     try:
-        from app.cache import get_cache
-        cache = get_cache()
-        await cache.delete_pattern(f"*weekly_schedule*{current_user.id}*")
-        await cache.delete_pattern(f"*weekly_insights*{current_user.id}*")
+        from app.cache import invalidate_study_activity_cache
+        await invalidate_study_activity_cache(current_user.id)
     except Exception:
         pass
 
     # Trigger Gamification Updates
-    gamification_service = GamificationService(session)
-    gamification_result = await gamification_service.check_and_update_daily_goal(current_user.id)
+    # The session is already saved; a gamification problem must not make the log look like it failed.
+    try:
+        gamification_service = GamificationService(session)
+        gamification_result = await gamification_service.check_and_update_daily_goal(current_user.id)
+    except Exception as exc:
+        logger.warning("Daily-goal update failed after logging study activity for user %s: %s", current_user.id, exc)
+        gamification_result = {"daily_goal_met": False, "message": "Study session saved."}
 
     return {
         "message": "Study session logged successfully!",

@@ -166,7 +166,7 @@ function NotificationDetail({ id, onBack }: { id: number; onBack: () => void }) 
   const destination = notif.link || notif.attachment;
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto' }}>
+    <div data-page-align="left" style={{ maxWidth: 720, margin: 0 }}>
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       <button
@@ -311,7 +311,7 @@ export function NotificationsPage() {
   return (
     <StudentLayout pageTitle="Announcements">
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-      <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 64 }}>
+      <div data-page-align="left" style={{ maxWidth: 800, margin: 0, paddingBottom: 64 }}>
         {/* Page Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
           <Bell size={24} color="var(--primary-red)" />

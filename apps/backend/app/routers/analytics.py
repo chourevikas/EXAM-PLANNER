@@ -241,6 +241,8 @@ async def create_study_activity(
     session.add(db_activity)
     await session.commit()
     await session.refresh(db_activity)
+    from app.cache import invalidate_study_activity_cache
+    await invalidate_study_activity_cache(current_user.id)
     return db_activity
 
 
@@ -276,6 +278,7 @@ async def get_todays_activities(
     for a in activities:
         out_list.append({
             "id": a.id,
+            "user_id": a.user_id,
             "subject": a.subject,
             "topic": a.topic,
             "duration_minutes": a.duration_minutes,
@@ -283,6 +286,7 @@ async def get_todays_activities(
             "questions_attempted": a.questions_attempted,
             "questions_correct": a.questions_correct,
             "confidence_rating": a.confidence_rating,
+            "score": a.score,
             "notes": a.notes,
             "date": a.date.isoformat() if a.date else None,
             "created_at": a.created_at.isoformat() if a.created_at else None,

@@ -60,20 +60,26 @@ class ChallengeService:
 
     async def _sample_questions(
         self,
-        subject_name: Optional[str],
+        subject_names: Optional[List[str]],
         difficulty,
         question_count: int,
         exam_type: Optional[ExamType] = None,
         years: Optional[List[int]] = None,
+        legacy_subject: Optional[str] = None,
     ) -> List[Question]:
         query = select(Question).where(Question.status == QuestionStatus.PUBLISHED)
-        if subject_name:
+        if subject_names or legacy_subject:
             query = (
                 query.join(Subtopic, Subtopic.id == Question.subtopic_id)
                 .join(Topic, Topic.id == Subtopic.topic_id)
                 .join(Subject, Subject.id == Topic.subject_id)
-                .where(Subject.name.ilike(f"%{subject_name.strip()}%"))
             )
+            if subject_names:
+                # Names come from the subject list, so match them exactly (case-insensitive):
+                # "Polity" must not also pull in "Indian Polity & Governance".
+                query = query.where(func.lower(Subject.name).in_([n.strip().lower() for n in subject_names]))
+            else:
+                query = query.where(Subject.name.ilike(f"%{legacy_subject.strip()}%"))
         if exam_type or years:
             query = query.join(Exam, Exam.id == Question.exam_id)
         if exam_type:
@@ -114,9 +120,34 @@ class ChallengeService:
                 all_years.add(int(year))
         for opt in exams.values():
             opt.years.sort(reverse=True)
+
+        # Which subjects have published questions, per exam and year. Only questions that are
+        # filed under a subtopic belong to a subject, so exams without a syllabus simply have none.
+        subject_rows = (
+            await self.session.exec(
+                select(ExamType.id, Subject.name, year_expr)
+                .select_from(Question)
+                .join(Exam, Exam.id == Question.exam_id)
+                .join(ExamType, ExamType.id == Exam.exam_type_id)
+                .join(Subtopic, Subtopic.id == Question.subtopic_id)
+                .join(Topic, Topic.id == Subtopic.topic_id)
+                .join(Subject, Subject.id == Topic.subject_id)
+                .where(Question.status == QuestionStatus.PUBLISHED, ExamType.is_active == True)  # noqa: E712
+                .group_by(ExamType.id, Subject.name, year_expr)
+            )
+        ).all()
+        overall: Dict[str, set] = {}
+        for type_id, subject, year in subject_rows:
+            if type_id not in exams or not subject or not year:
+                continue
+            exams[type_id].subject_years.setdefault(subject, []).append(int(year))
+            overall.setdefault(subject, set()).add(int(year))
+        for opt in exams.values():
+            opt.subject_years = {k: sorted(set(v), reverse=True) for k, v in sorted(opt.subject_years.items())}
         return ChallengeOptions(
             exams=sorted(exams.values(), key=lambda e: e.name),
             years=sorted(all_years, reverse=True),
+            subject_years={k: sorted(v, reverse=True) for k, v in sorted(overall.items())},
         )
 
     def _to_summary(
@@ -144,6 +175,7 @@ class ChallengeService:
             attempt_count=attempt_count,
             my_best_score=my_best,
             subject_name=c.subject_name,
+            subject_names=[str(n) for n in (c.subjects_list)],
             difficulty=c.difficulty,
             exam_name=c.exam_name,
             years=[int(y) for y in (c.years or [])],
@@ -161,8 +193,11 @@ class ChallengeService:
                 raise HTTPException(status_code=400, detail="Selected exam is not available.")
         years = sorted({int(y) for y in payload.years}, reverse=True)
 
+        # Trim, drop blanks, and de-duplicate case-insensitively (first spelling wins).
+        subject_names = list({n.strip().lower(): n.strip() for n in reversed(payload.subject_names) if n and n.strip()}.values())[::-1]
+        legacy_subject = (payload.subject_name or "").strip() or None
         questions = await self._sample_questions(
-            payload.subject_name, payload.difficulty, payload.question_count, exam_type, years
+            subject_names, payload.difficulty, payload.question_count, exam_type, years, legacy_subject
         )
         if not questions:
             raise HTTPException(
@@ -179,7 +214,8 @@ class ChallengeService:
             description=payload.description,
             question_count=len(questions),
             difficulty=payload.difficulty,
-            subject_name=payload.subject_name,
+            subject_name=(", ".join(subject_names) if subject_names else legacy_subject),
+            subject_names=subject_names or None,
             exam_type_id=exam_type.id if exam_type else None,
             exam_name=exam_type.name if exam_type else None,
             years=years or None,

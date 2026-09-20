@@ -40,6 +40,7 @@ export interface ChallengeSummary {
   attempt_count: number;
   my_best_score?: number | null;
   subject_name?: string | null;
+  subject_names?: string[];
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD' | null;
   exam_name?: string | null;
   years?: number[];
@@ -52,11 +53,14 @@ export interface ChallengeExamOption {
   id: number;
   name: string;
   years: number[];
+  /** subject name -> years in which this exam has published questions for it */
+  subject_years: Record<string, number[]>;
 }
 
 export interface ChallengeOptions {
   exams: ChallengeExamOption[];
   years: number[];
+  subject_years: Record<string, number[]>;
 }
 
 export interface ChallengePublicPreview {
@@ -76,7 +80,7 @@ export interface CreateChallengePayload {
   description?: string;
   question_count: number;
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
-  subject_name?: string;
+  subject_names?: string[];
   exam_type_id?: number;
   years?: number[];
   time_limit_minutes: number;
@@ -168,10 +172,10 @@ export async function fetchChallengeOptions(): Promise<ChallengeOptions> {
       method: 'GET',
       headers: getAuthHeaders(),
     });
-    if (!response.ok) return { exams: [], years: [] };
+    if (!response.ok) return { exams: [], years: [], subject_years: {} };
     return await response.json();
   } catch {
-    return { exams: [], years: [] };
+    return { exams: [], years: [], subject_years: {} };
   }
 }
 

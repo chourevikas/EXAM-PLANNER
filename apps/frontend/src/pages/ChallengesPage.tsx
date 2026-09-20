@@ -163,9 +163,9 @@ export function ChallengesPage() {
               {c.description && (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>{c.description}</p>
               )}
-              {(c.exam_name || c.subject_name || (c.years && c.years.length > 0)) && (
+              {(c.exam_name || (c.subject_names && c.subject_names.length > 0) || c.subject_name || (c.years && c.years.length > 0)) && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {[c.exam_name, c.subject_name, ...(c.years && c.years.length ? [c.years.join(', ')] : [])]
+                  {[c.exam_name, ...(c.subject_names && c.subject_names.length ? c.subject_names : [c.subject_name]), ...(c.years && c.years.length ? [c.years.join(', ')] : [])]
                     .filter(Boolean)
                     .map((tag) => (
                       <span

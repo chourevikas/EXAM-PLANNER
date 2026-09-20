@@ -43,7 +43,8 @@ class Challenge(SQLModel, table=True):
     description: Optional[str] = Field(default=None)
     question_count: int = Field(default=10)
     difficulty: Optional[DifficultyLevel] = Field(default=None)
-    subject_name: Optional[str] = Field(default=None, max_length=200)
+    subject_name: Optional[str] = Field(default=None, max_length=200)  # display text / legacy single subject
+    subject_names: Optional[list] = Field(default=None, sa_column=Column(PortableJSON))
     exam_type_id: Optional[int] = Field(default=None, foreign_key="exam_types.id", ondelete="SET NULL")
     exam_name: Optional[str] = Field(default=None, max_length=200)
     years: Optional[list] = Field(default=None, sa_column=Column(PortableJSON))
@@ -56,6 +57,13 @@ class Challenge(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
     expires_at: Optional[datetime] = Field(default=None, index=True, sa_type=DateTimeTZ)
+
+    @property
+    def subjects_list(self) -> list:
+        """Selected subjects; older challenges only stored a single subject_name."""
+        if self.subject_names:
+            return list(self.subject_names)
+        return [self.subject_name] if self.subject_name else []
 
     creator: Optional["User"] = Relationship(
         sa_relationship_kwargs={"primaryjoin": "Challenge.creator_id==User.id"}

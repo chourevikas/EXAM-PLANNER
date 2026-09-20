@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel
 from app.db.models.enums import DifficultyLevel
 from app.db.models.challenge import ChallengeVisibility, ChallengeStatus, ChallengeAttemptStatus
@@ -21,7 +21,8 @@ class CreateChallengeRequest(BaseModel):
     description: Optional[str] = None
     question_count: int = 10
     difficulty: Optional[DifficultyLevel] = None
-    subject_name: Optional[str] = None
+    subject_name: Optional[str] = None  # legacy single subject; prefer subject_names
+    subject_names: List[str] = []
     exam_type_id: Optional[int] = None
     years: List[int] = []
     time_limit_minutes: int = 15
@@ -45,6 +46,7 @@ class ChallengeSummary(BaseModel):
     attempt_count: int = 0
     my_best_score: Optional[float] = None
     subject_name: Optional[str] = None
+    subject_names: List[str] = []
     difficulty: Optional[DifficultyLevel] = None
     exam_name: Optional[str] = None
     years: List[int] = []
@@ -57,11 +59,15 @@ class ChallengeExamOption(BaseModel):
     id: int
     name: str
     years: List[int]
+    # subject name -> years in which this exam has published questions for it
+    subject_years: Dict[str, List[int]] = {}
 
 
 class ChallengeOptions(BaseModel):
     exams: List[ChallengeExamOption]
     years: List[int]
+    # Same shape as ChallengeExamOption.subject_years, across every exam
+    subject_years: Dict[str, List[int]] = {}
 
 
 class ChallengePublicPreview(BaseModel):

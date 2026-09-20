@@ -27,7 +27,7 @@ import { updateUserProfile, fetchCurrentUser } from '../services/authService';
 import { useRefreshUserOnFocus } from '../hooks/useRefreshUserOnFocus';
 import { UserAvatar } from '../components/common/UserAvatar';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
-import { WEEKLY_HOURS_OPTIONS } from '../constants/onboarding';
+import { WEEKLY_HOURS_OPTIONS, PROFICIENCY_LABELS } from '../constants/onboarding';
 
 const lockedFieldStyle: React.CSSProperties = {
   width: '100%',
@@ -729,6 +729,55 @@ export function ProfilePage() {
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Self-rated proficiency captured during onboarding */}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>
+                Subject Proficiency
+              </div>
+              {Object.keys(user.subject_proficiency || {}).length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>You haven't rated any subjects yet.</div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))', gap: 10 }}>
+                  {Object.entries(user.subject_proficiency as Record<string, number>)
+                    .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
+                    .map(([subject, rating]) => (
+                      <div
+                        key={subject}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 'var(--radius)',
+                          border: '1px solid var(--border-default)',
+                          backgroundColor: 'var(--bg-subtle)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{subject}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>{rating}/5</span>
+                        </div>
+                        <div
+                          role="img"
+                          aria-label={`${subject}: ${rating} out of 5, ${PROFICIENCY_LABELS[rating] || ''}`}
+                          style={{ display: 'flex', gap: 3 }}
+                        >
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <span
+                              key={n}
+                              style={{
+                                flex: 1,
+                                height: 6,
+                                borderRadius: 3,
+                                backgroundColor: n <= rating ? 'var(--primary-red)' : 'var(--border-default)',
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 5 }}>{PROFICIENCY_LABELS[rating] || ''}</div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
 
             <div

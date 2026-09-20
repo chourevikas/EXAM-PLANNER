@@ -21,18 +21,21 @@ const SUBJECT_OPTIONS = [
   'CSAT & Quantitative Aptitude'
 ];
 
+// Values match the backend's StudyActivityType enum.
 const ACTIVITY_TYPES = [
-  { value: 'CONCEPT_REVISION', label: '📖 Concept Revision' },
-  { value: 'PRACTICE_MCQS', label: '✍️ MCQ Practice' },
-  { value: 'PYQ_SOLVING', label: '📜 PYQ Solving' },
+  { value: 'REVISION', label: '📖 Revision' },
+  { value: 'NEW_TOPIC', label: '🆕 New Topic' },
+  { value: 'PYQ', label: '📜 PYQ / MCQ Practice' },
   { value: 'MOCK_TEST', label: '📝 Mock Test' },
-  { value: 'NOTES_REVIEW', label: '📑 Notes Review' }
+  { value: 'ANSWER_WRITING', label: '✍️ Answer Writing' },
+  { value: 'CURRENT_AFFAIRS', label: '📰 Current Affairs' },
+  { value: 'OTHER', label: '📌 Other' }
 ];
 
 export function LogStudyModal({ isOpen, onClose, onSuccess, initialSubject = '', initialTopic = '' }: LogStudyModalProps) {
   const [subject, setSubject] = useState(initialSubject || SUBJECT_OPTIONS[0]);
   const [topic, setTopic] = useState(initialTopic);
-  const [activityType, setActivityType] = useState('CONCEPT_REVISION');
+  const [activityType, setActivityType] = useState('REVISION');
   const [hours, setHours] = useState<number>(1);
   const [minutes, setMinutes] = useState<number>(0);
   const [questionsAttempted, setQuestionsAttempted] = useState<string>('');
