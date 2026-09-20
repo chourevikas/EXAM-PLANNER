@@ -414,6 +414,11 @@ async def _build_user_out_response(
         from app.services.user_service import get_subscription_info
         sub_info = await get_subscription_info(session, current_user.id)
 
+    prep = {}
+    if current_user.role == UserRole.STUDENT:
+        from app.services.user_service import get_profile_extras
+        prep = (await get_profile_extras(session, [current_user.id])).get(current_user.id, {})
+
     admin_permissions = None
     if current_user.role == UserRole.ADMIN:
         from app.core.deps import effective_admin_permissions
@@ -425,12 +430,16 @@ async def _build_user_out_response(
         email=current_user.email,
         role=current_user.role,
         status=current_user.status,
-        subscription_tier=current_user.subscription_tier,
+        subscription_tier=prep.get("subscription_tier") or current_user.subscription_tier,
         profile_image=current_user.profile_image,
         phone=current_user.phone,
         subscription_ends_at=sub_info.get("subscription_ends_at"),
         subscription_days_remaining=sub_info.get("subscription_days_remaining"),
         admin_permissions=admin_permissions,
+        target_exam=prep.get("target_exam"),
+        target_year=prep.get("target_year"),
+        optional_subject=prep.get("optional_subject"),
+        weekly_hours=prep.get("weekly_hours"),
         preferred_language=getattr(current_user, "preferred_language", "en") or "en",
         free_questions_attempted=stats.get("free_questions_attempted", 0),
         total_questions_attempted=stats.get("total_questions_attempted", 0),
@@ -473,6 +482,22 @@ async def update_current_user(
         db_user.profile_image = user_update.profile_image
     if user_update.phone is not None:
         db_user.phone = user_update.phone.strip()[:32] or None
+
+    # Exam-preparation details live on the student profile.
+    prep = {
+        "target_exam": (user_update.target_exam, 100),
+        "target_year": (user_update.target_year, 10),
+        "optional_subject": (user_update.optional_subject, 150),
+        "weekly_hours": (user_update.weekly_hours, 10),
+    }
+    if db_user.role == UserRole.STUDENT and any(v is not None for v, _ in prep.values()):
+        profile = (await session.exec(select(StudentProfile).where(StudentProfile.user_id == db_user.id))).first()
+        if profile is None:
+            profile = StudentProfile(user_id=db_user.id)
+        for field, (value, max_len) in prep.items():
+            if value is not None:
+                setattr(profile, field, value.strip()[:max_len] or None)
+        session.add(profile)
     if user_update.preferred_language is not None:
         from app.core.languages import normalize_language, is_supported_language
         if not is_supported_language(user_update.preferred_language):

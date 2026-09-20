@@ -234,9 +234,16 @@ function prefetchAdminView(viewId: string) {
           position: 'fixed',
           top: 60,
           left: 0,
-          bottom: 0,
+          // Bleed 120px below the viewport (and pad it back) so iOS Safari's collapsing toolbar can
+          // never expose page background under the sidebar.
+          bottom: -120,
+          paddingBottom: 120,
+          boxSizing: 'border-box',
           zIndex: 120,
-          transform: isMobile ? (mobileOpen ? 'translateX(0)' : 'translateX(-100%)') : 'none',
+          // Own compositing layer: keeps the fixed sidebar from scrolling with the page on iOS.
+          transform: isMobile ? (mobileOpen ? 'translate3d(0, 0, 0)' : 'translate3d(-100%, 0, 0)') : 'translateZ(0)',
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden',
           transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s ease, min-width 0.2s ease',
           borderRight: '1px solid rgba(255, 255, 255, 0.08)',
           overflow: 'hidden'

@@ -42,6 +42,11 @@ export interface User {
   subscription_ends_at?: string | null;
   subscription_days_remaining?: number | null;
   admin_permissions?: string[] | null;
+  // Exam-preparation details the student saved on their profile.
+  target_exam?: string | null;
+  target_year?: string | null;
+  optional_subject?: string | null;
+  weekly_hours?: string | null;
   free_questions_attempted?: number;
   current_streak?: number;
   total_xp?: number;

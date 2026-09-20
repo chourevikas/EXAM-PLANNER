@@ -433,6 +433,8 @@ export function AddMissingQuestionModal({
                     placeholder="Marks (+)"
                     style={{
                       flex: 1,
+                      minWidth: 0,
+                      boxSizing: 'border-box',
                       padding: '8px 10px',
                       borderRadius: 'var(--radius)',
                       border: '1px solid #CBD5E1',
@@ -447,6 +449,8 @@ export function AddMissingQuestionModal({
                     placeholder="Negative (-)"
                     style={{
                       flex: 1,
+                      minWidth: 0,
+                      boxSizing: 'border-box',
                       padding: '8px 10px',
                       borderRadius: 'var(--radius)',
                       border: '1px solid #CBD5E1',

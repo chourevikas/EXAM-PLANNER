@@ -164,10 +164,18 @@ async def list_users(
         return JSONResponse(content=cached_data)
 
     from fastapi.encoders import jsonable_encoder
+    from app.services.user_service import get_profile_extras, PROFILE_EXTRA_FIELDS
     user_service = UserService(session)
     users = await user_service.list_users(current_user=current_user, skip=skip, limit=limit)
     if users is not None:
         serialized = jsonable_encoder(users)
+        # The raw user row has no tier or exam-preparation details; they live on the student profile.
+        extras = await get_profile_extras(session, [u["id"] for u in serialized if u.get("id") is not None])
+        for u in serialized:
+            e = extras.get(u.get("id"), {})
+            u["subscription_tier"] = e.get("subscription_tier", "FREE")
+            for f in PROFILE_EXTRA_FIELDS:
+                u[f] = e.get(f)
         await cache.set(cache_key, serialized, ttl_seconds=600)
         return JSONResponse(content=serialized)
     return JSONResponse(content=[])
@@ -223,12 +231,12 @@ async def get_user(
         if data.get("id") is not None:
             uid = int(data["id"])
             out.update(await get_subscription_info(session, uid))
-            # The tier lives on StudentProfile, so it is absent from the raw user row.
-            from app.db.models.user import StudentProfile
-            prof = (
-                await session.exec(select(StudentProfile).where(StudentProfile.user_id == uid))
-            ).first()
-            out["subscription_tier"] = prof.subscription_tier.value if prof else "FREE"
+            # Tier and exam-preparation details live on StudentProfile, not the raw user row.
+            from app.services.user_service import get_profile_extras, PROFILE_EXTRA_FIELDS
+            e = (await get_profile_extras(session, [uid])).get(uid, {})
+            out["subscription_tier"] = e.get("subscription_tier", "FREE")
+            for f in PROFILE_EXTRA_FIELDS:
+                out[f] = e.get(f)
         return out
 
     cached_data = await cache.get(cache_key)

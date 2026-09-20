@@ -4,6 +4,7 @@ import { Logo } from '../components/common/Logo';
 import { Ico } from '../components/common/Icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
 import { fetchCurrentUser, syncGuestSessionsOnAuth } from '../services/authService';
+import { useRefreshUserOnFocus } from '../hooks/useRefreshUserOnFocus';
 import { listExams } from '../services/examService';
 import { guardedFetch } from '../utils/apiGuard';
 import { useUser } from '@clerk/clerk-react';
@@ -180,6 +181,8 @@ export function DashboardPage() {
   }, []);
 
 
+
+  useRefreshUserOnFocus(fresh => setUser((prev: any) => ({ ...prev, ...fresh })));
 
   const isFreeTier = user.subscription_tier !== 'PREMIUM';
 

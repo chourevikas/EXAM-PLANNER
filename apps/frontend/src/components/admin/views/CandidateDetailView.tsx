@@ -11,6 +11,7 @@ import {
   Clock,
   Globe,
   Phone,
+  Target,
   Edit3,
   CheckCircle,
   ShieldAlert,
@@ -723,6 +724,64 @@ export function CandidateDetailView({
               </span>
             </div>
           )}
+        </div>
+
+        {/* Exam Preparation Card: what the student told us on their profile */}
+        <div
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                flexShrink: 0,
+                borderRadius: 8,
+                backgroundColor: 'var(--bg-subtle)',
+                color: 'var(--primary-red)',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Target size={20} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--deep-navy)' }}>Exam Preparation</h4>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>Target set by the candidate</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+            {[
+              { label: 'Target Exam', value: candidate.target_exam },
+              { label: 'Target Year', value: candidate.target_year },
+              { label: 'Optional Subject', value: candidate.optional_subject },
+              { label: 'Weekly Study Goal', value: candidate.weekly_hours ? `${candidate.weekly_hours} hrs / week` : null },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ padding: 12, borderRadius: 8, backgroundColor: 'var(--bg-subtle)', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: value ? 600 : 500,
+                    color: value ? 'var(--deep-navy)' : 'var(--text-disabled)',
+                    fontStyle: value ? 'normal' : 'italic',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {value || 'Not set'}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Account System Details Card */}

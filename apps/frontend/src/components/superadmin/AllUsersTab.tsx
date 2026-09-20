@@ -311,7 +311,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                       {u.role === UserRole.STUDENT ? (
                         <div>
                           <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                            {u.target_exam || 'UPSC CSE'} {u.target_year || '2026'}
+                            {u.target_exam || u.target_year ? `${u.target_exam || ''} ${u.target_year || ''}`.trim() : 'Target exam not set'}
                           </div>
                           <div style={{ fontSize: 11.5, color: 'var(--text-subtle)' }}>Aspirant Candidate</div>
                         </div>

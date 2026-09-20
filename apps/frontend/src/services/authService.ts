@@ -324,7 +324,19 @@ export async function fetchCurrentUser(customToken?: string): Promise<any> {
   return data;
 }
 
-export async function updateUserProfile(updateData: { full_name?: string; profile_image?: string; email?: string; preferred_language?: string }, customToken?: string): Promise<any> {
+export interface UserProfileUpdate {
+  full_name?: string;
+  profile_image?: string;
+  email?: string;
+  preferred_language?: string;
+  phone?: string;
+  target_exam?: string;
+  target_year?: string;
+  optional_subject?: string;
+  weekly_hours?: string;
+}
+
+export async function updateUserProfile(updateData: UserProfileUpdate, customToken?: string): Promise<any> {
   const token = customToken || localStorage.getItem('access_token');
   if (!token) throw new Error('No access token found');
 

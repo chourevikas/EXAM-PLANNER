@@ -215,6 +215,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   const [loadingExams, setLoadingExams] = useState<boolean>(true);
   const [examSearchQuery, setExamSearchQuery] = useState<string>('');
   const [examStatusFilter, setExamStatusFilter] = useState<string>('ALL');
+  const [examTypeFilter, setExamTypeFilter] = useState<string>('ALL');
 
   // Review Questions State & Server-side Pagination (10 items/query)
   const [questionsList, setQuestionsList] = useState<QuestionDetailItem[]>([]);
@@ -814,7 +815,19 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   // VIEW 1: Exam Directory / Selection Hub View
   // -------------------------------------------------------------
   if (!selectedExam) {
+    // Exam-wise filter: one option per exam type (UPSC, MPSC, ...) that has papers in the list.
+    const examTypeOf = (exam: ExamPipelineStatusItem) =>
+      (exam.exam_type_code || exam.code.split(/[-_ ]/)[0] || 'other').toLowerCase();
+    const examTypeOptions = Object.entries(
+      examsList.reduce<Record<string, number>>((acc, exam) => {
+        const key = examTypeOf(exam);
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {})
+    ).sort(([a], [b]) => a.localeCompare(b));
+
     const filteredExams = examsList.filter((exam) => {
+      const matchesExamType = examTypeFilter === 'ALL' || examTypeOf(exam) === examTypeFilter;
       const matchesSearch =
         !examSearchQuery ||
         exam.name.toLowerCase().includes(examSearchQuery.toLowerCase()) ||
@@ -824,7 +837,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         examStatusFilter === 'ALL' ||
         (examStatusFilter === 'PENDING' && statusUpper.includes('PENDING')) ||
         (examStatusFilter === 'PUBLISHED' && statusUpper.includes('PUBLISHED'));
-      return matchesSearch && matchesStatus;
+      return matchesExamType && matchesSearch && matchesStatus;
     });
 
     return (
@@ -932,17 +945,18 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             backgroundColor: 'var(--bg-card)',
             borderRadius: 'var(--radius)',
             border: '1px solid #E2E8F0',
-            padding: '16px 20px',
-            marginBottom: 24,
+            padding: isMobile ? '14px' : '16px 20px',
+            marginBottom: isMobile ? 16 : 24,
             display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
             flexWrap: 'wrap',
-            alignItems: 'center',
+            alignItems: isMobile ? 'stretch' : 'center',
             justifyContent: 'space-between',
-            gap: 16,
+            gap: isMobile ? 12 : 16,
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
           }}
         >
-          <div style={{ position: 'relative', minWidth: 300, flex: 1 }}>
+          <div style={{ position: 'relative', minWidth: isMobile ? 0 : 300, flex: 1 }}>
             <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="text"
@@ -962,10 +976,43 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Status:</span>
+          <div
+            style={
+              isMobile
+                ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }
+                : { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }
+            }
+          >
+            {!isMobile && <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Exam:</span>}
+            <select
+              value={examTypeFilter}
+              onChange={(e) => setExamTypeFilter(e.target.value)}
+              aria-label="Filter by exam"
+              style={{
+                padding: '8px 12px',
+                borderRadius: 'var(--radius)',
+                border: '1px solid #CBD5E1',
+                fontSize: 13,
+                color: 'var(--deep-navy)',
+                backgroundColor: 'var(--bg-card)',
+                outline: 'none',
+                fontWeight: 500,
+                width: isMobile ? '100%' : undefined,
+                minWidth: 0,
+              }}
+            >
+              <option value="ALL">All Exams ({examsList.length})</option>
+              {examTypeOptions.map(([key, count]) => (
+                <option key={key} value={key}>
+                  {key.toUpperCase()} ({count})
+                </option>
+              ))}
+            </select>
+
+            {!isMobile && <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Status:</span>}
             <select
               value={examStatusFilter}
+              aria-label="Filter by status"
               onChange={(e) => setExamStatusFilter(e.target.value)}
               style={{
                 padding: '8px 12px',
@@ -976,9 +1023,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 backgroundColor: 'var(--bg-card)',
                 outline: 'none',
                 fontWeight: 500,
+                width: isMobile ? '100%' : undefined,
+                minWidth: 0,
               }}
             >
-              <option value="ALL">All Exams ({examsList.length})</option>
+              <option value="ALL">All Statuses</option>
               <option value="PENDING">Pending Review</option>
               <option value="PUBLISHED">Published (Live)</option>
             </select>
@@ -997,6 +1046,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
+                justifyContent: 'center',
+                gridColumn: isMobile ? '1 / -1' : undefined,
               }}
             >
               <RefreshCw size={14} className={loadingExams ? 'animate-spin' : ''} color="var(--text-muted)" />
@@ -1300,7 +1351,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           </div>
 
           {/* Action Buttons: Add Missing Question & Publish Package */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <button
               onClick={() => setIsAddMissingModalOpen(true)}
               style={{

@@ -114,6 +114,8 @@ async def invalidate_question_cache(
     q_id_str = str(question_id)
     await cache.delete_pattern(f"{prefix}:questions:detail:{q_id_str}*")
     await cache.delete_pattern(f"{prefix}:questions:list*")
+    # The admin dashboard shows the published-question count, which any question change can move.
+    await cache.delete_pattern(f"{prefix}:admin:overview_stats*")
 
     await invalidate_review_cache(q_id_str, exam_id)
 

@@ -304,3 +304,43 @@ async def test_exam_attempt_only_includes_published_questions(client):
     )
     assert res.status_code in (200, 201), res.text
     assert res.json()["total_questions"] == 2  # the unreviewed third question is excluded
+
+
+# ── Student exam-preparation details reach the admin Users page ─────────────
+
+@pytest.mark.anyio
+async def test_target_exam_saved_by_student_is_visible_to_admin(client):
+    sid, _ = _state["users"]["student2"]
+    patch = await client.patch(
+        "/api/v1/auth/me",
+        json={"target_exam": "UPSC CSE", "target_year": "2027", "optional_subject": "Geography", "weekly_hours": "40"},
+        headers=_h("student2"),
+    )
+    assert patch.status_code == 200, patch.text
+    me = (await client.get("/api/v1/auth/me", headers=_h("student2"))).json()
+    assert (me["target_exam"], me["target_year"], me["optional_subject"], me["weekly_hours"]) == ("UPSC CSE", "2027", "Geography", "40")
+
+    listing = (await client.get("/api/v1/users", headers=_h("admin_open"))).json()
+    row = next(u for u in listing if u["id"] == sid)
+    assert (row["target_exam"], row["target_year"], row["optional_subject"]) == ("UPSC CSE", "2027", "Geography")
+    other = next(u for u in listing if u["id"] != sid and u["role"] == "STUDENT")
+    assert other["target_exam"] is None  # nobody else is affected, and no invented default
+
+    detail = (await client.get(f"/api/v1/users/{sid}", headers=_h("admin_open"))).json()
+    assert detail["target_exam"] == "UPSC CSE" and detail["weekly_hours"] == "40"
+
+    # Only Users-section admins see the directory.
+    assert (await client.get("/api/v1/users", headers=_h("admin_qa"))).status_code == 403
+
+
+@pytest.mark.anyio
+async def test_plan_change_by_admin_is_reflected_on_every_student_read(client):
+    """The auth cache holds a User without its profile, so a cache hit used to
+    read every student as FREE from the second request after a plan change."""
+    sid, _ = _state["users"]["student2"]
+    for tier in ("PREMIUM", "FREE", "PREMIUM"):
+        upd = await client.put(f"/api/v1/users/{sid}", json={"subscription_tier": tier}, headers=_h("admin_open"))
+        assert upd.status_code == 200, upd.text
+        for _ in range(3):  # 1st read is a cache miss, the rest hit the cache
+            me = (await client.get("/api/v1/auth/me", headers=_h("student2"))).json()
+            assert me["subscription_tier"] == tier

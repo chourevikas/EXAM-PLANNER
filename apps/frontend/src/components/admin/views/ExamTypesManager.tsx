@@ -210,6 +210,7 @@ export function ExamTypesManager() {
               style={{
                 width: 36,
                 height: 36,
+                flexShrink: 0,
                 borderRadius: 'var(--radius)',
                 backgroundColor: 'rgba(var(--primary-red-rgb), 0.2)',
                 display: 'flex',

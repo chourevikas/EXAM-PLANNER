@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func, case, or_
 
-from app.db.models import Exam, Question, Subject, QuestionHierarchyLink, ExamStatus, PipelineRun
+from app.db.models import Exam, Question, QuestionStatus, Subject, QuestionHierarchyLink, ExamStatus, PipelineRun
 from app.db.models.analytics import ExamAttempt, ExamQuestionResponse, AttemptStatus
 from app.db.models.review import HumanReviewTask
 from app.db.models.hierarchy import Topic, Subtopic
@@ -85,6 +85,8 @@ class AdminService:
 
     async def list_all_users(self) -> List[UserDirectoryItemOut]:
         all_users = await self.repo.get_all_users_for_superadmin()
+        from app.services.user_service import get_profile_extras
+        extras = await get_profile_extras(self.session, [u.id for u in all_users])
         result = []
         for u in all_users:
             admin_prof = u.__dict__.get("admin_profile")
@@ -92,8 +94,8 @@ class AdminService:
             org_name = admin_prof.organization_name if admin_prof else None
             dept = admin_prof.department if admin_prof else None
             
-            target_exam = getattr(u, "target_exam", None)
-            target_year = getattr(u, "target_year", None)
+            target_exam = extras.get(u.id, {}).get("target_exam")
+            target_year = extras.get(u.id, {}).get("target_year")
 
             result.append(
                 UserDirectoryItemOut(
@@ -226,8 +228,16 @@ class AdminService:
         )
         complete_questions = complete_q_res.one() or 0
 
-        parse_percent = round((complete_questions / total_questions * 100), 1) if total_questions > 0 else 100.0
-        parse_badge = f"{int(parse_percent)}% Parsed" if total_questions > 0 else "100% Parsed"
+
+        # Published = live for students (extracted-but-unreviewed and rejected questions don't count).
+        published_res = await self.session.exec(
+            select(func.count(Question.id)).where(Question.status == QuestionStatus.PUBLISHED)
+        )
+        published_questions = published_res.one() or 0
+        awaiting = max(0, total_questions - published_questions)
+        published_badge = (
+            f"{awaiting:,} of {total_questions:,} not published" if awaiting else "All extracted questions live"
+        ) if total_questions > 0 else "No questions yet"
 
         # 3. AI Extraction Accuracy
         ai_accuracy = round((complete_questions / total_questions * 100), 1) if total_questions > 0 else 95.0
@@ -249,9 +259,9 @@ class AdminService:
                 icon_name="Upload",
             ),
             OverviewMetricOut(
-                title="Questions Extracted",
-                value=f"{total_questions:,}",
-                badge=parse_badge,
+                title="Published Questions",
+                value=f"{published_questions:,}",
+                badge=published_badge,
                 color="#10b981",
                 bg="rgba(16, 185, 129, 0.12)",
                 icon_name="FileText",

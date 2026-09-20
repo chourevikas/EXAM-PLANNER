@@ -123,6 +123,7 @@ body {
   background-color: var(--bg-body);
   color: var(--text-main);
   overflow-x: hidden;
+  overflow-x: clip; /* see index.css: keeps fixed chrome fixed on iOS Safari */
   -webkit-font-smoothing: antialiased;
   transition:
     background-color 0.3s ease,

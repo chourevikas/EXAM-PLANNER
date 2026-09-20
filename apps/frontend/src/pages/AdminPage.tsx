@@ -164,7 +164,7 @@ export function AdminPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: 'Inter, sans-serif', color: 'var(--deep-navy)', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: 'Inter, sans-serif', color: 'var(--deep-navy)', overflowX: 'clip' }}>
       
       {/* Full-width Top Header (fixed at top: 0) */}
       <AdminTopNav 
@@ -205,7 +205,7 @@ export function AdminPage() {
             flex: 1, 
             overflowY: 'auto', 
             background: '#F7F7F5', 
-            padding: isMobile ? '16px 12px' : isTabletOrBelow ? '20px 20px' : '24px 32px', 
+            padding: isMobile ? '12px 10px' : isTabletOrBelow ? '14px 14px' : '14px 16px', 
             boxSizing: 'border-box' 
           }}>
             <Suspense fallback={<AdminViewSkeleton />}>

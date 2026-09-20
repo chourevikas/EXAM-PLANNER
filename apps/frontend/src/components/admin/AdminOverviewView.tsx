@@ -702,11 +702,11 @@ export function AdminOverviewView({ onNavigate, permissions }: AdminOverviewView
           onClick={can('review') ? () => onNavigate('review') : undefined}
         />
 
-        {/* Card 2: Questions Extracted -> Question Bank Catalog */}
+        {/* Card 2: Published Questions -> Question Bank Catalog */}
         <MetricCard
-          title="Questions Extracted"
+          title="Published Questions"
           value={stats?.metrics?.[1]?.value || '0'}
-          supportingText={stats?.metrics?.[1]?.badge || (isDataLoading ? 'Loading...' : 'Extracted questions')}
+          supportingText={stats?.metrics?.[1]?.badge || (isDataLoading ? 'Loading...' : 'Live for students')}
           icon={<Layers size={18} color="var(--primary-red)" />}
           isLoading={isDataLoading}
           onClick={can('questions') ? () => onNavigate('questions') : undefined}
@@ -714,6 +714,7 @@ export function AdminOverviewView({ onNavigate, permissions }: AdminOverviewView
 
         {/* Card 3: Reported Questions -> Reported Questions view */}
         {can('reported-questions') && (
+          <div style={{ gridColumn: isMobile ? '1 / -1' : undefined, display: 'flex', flexDirection: 'column' }}>
           <MetricCard
             title="Reported Questions"
             value={String(reported?.open_questions ?? 0)}
@@ -728,6 +729,7 @@ export function AdminOverviewView({ onNavigate, permissions }: AdminOverviewView
             isLoading={!reported}
             onClick={() => onNavigate('reported-questions')}
           />
+          </div>
         )}
 
       </div>
