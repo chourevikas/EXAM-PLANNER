@@ -219,6 +219,8 @@ export async function retryPipelineTask(examId: number | string, language: strin
 }
 
 export interface ExamPipelineStatusItem {
+  exam_type_code?: string | null;
+  exam_type_name?: string | null;
   id: number | string;
   code: string;
   name: string;

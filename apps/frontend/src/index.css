@@ -133,6 +133,25 @@ td {
   border-radius: var(--radius);
 }
 
+/* Grid items default to min-width:auto, so one wide child (a table, a long word) stretches its whole
+   track past the screen. Let grid items shrink; an explicit min-width in inline styles still wins. */
+:where([style*="display: grid"]) > * {
+  min-width: 0;
+}
+
+/* Small screens: a table that does not fit scrolls sideways inside its card instead of being cut
+   off. !important is needed to beat the inline `overflow: hidden` used for rounded corners. */
+@media (max-width: 900px) {
+  :where(div, section, article):has(> table),
+  :where(div, section, article):has(> div > table) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  main table {
+    min-width: 560px;
+  }
+}
+
 /* Tables: rows/cells stay square, but the table and its wrapper round and clip so the
    shaded header row follows the rounded corners. */
 table {
@@ -161,6 +180,9 @@ body {
     -apple-system,
     sans-serif;
   overflow-x: hidden;
+  /* `clip` keeps the horizontal cut-off without turning body into a scroll container, which on
+     iOS Safari makes position:fixed chrome (admin sidebar) scroll with the page. */
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   /* Use dynamic viewport height to handle mobile browser chrome */
   min-height: 100dvh;
