@@ -1392,7 +1392,11 @@ export function GuestExamPage() {
   // All up to 10 recommended items to display for Guest mode
   const activeRecExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]).map((e) => e.toLowerCase());
   const displayRecs = activeRecExams.length > 0 
-    ? recommendedPool.filter((q) => !q.exam_name || activeRecExams.includes(q.exam_name.toLowerCase())).slice(0, 10)
+    ? recommendedPool.filter((q) => {
+        if (!q.exam_name) return true;
+        const canonical = extractCanonicalExamName(q.exam_name).toLowerCase();
+        return activeRecExams.includes(canonical) || activeRecExams.includes(q.exam_name.toLowerCase());
+      }).slice(0, 10)
     : [];
 
   // Switch Question
