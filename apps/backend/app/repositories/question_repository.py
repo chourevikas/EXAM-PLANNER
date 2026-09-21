@@ -115,13 +115,15 @@ class QuestionRepository:
                 if e.strip() and e.strip().lower() not in ("all", "all exams", "all levels")
             ]
             if exam_tokens:
-                exam_clauses = [
-                    or_(
-                        func.lower(Exam.name).contains(tok),
-                        func.lower(Exam.code).contains(tok),
+                exam_clauses = []
+                for tok in exam_tokens:
+                    match_tok = "upsc" if tok == "upsc cse" else tok
+                    exam_clauses.append(
+                        or_(
+                            func.lower(Exam.name).contains(match_tok),
+                            func.lower(Exam.code).contains(match_tok),
+                        )
                     )
-                    for tok in exam_tokens
-                ]
                 id_stmt = id_stmt.where(or_(*exam_clauses))
         if difficulty and difficulty.strip() and difficulty.strip().lower() not in ("all", "all levels", "all difficulties"):
             diff_clean = difficulty.strip().upper()
