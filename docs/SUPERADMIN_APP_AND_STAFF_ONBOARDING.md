@@ -1,10 +1,10 @@
 # Super Admin app, staff onboarding and remaining hardening
 
-Status as of 2026-09-21. The first three sections are built and tested; the rest is the remaining plan.
+Status as of 2026-09-22. Sections 1-4 are built and tested. "Before you deploy" lists what only an operator can do.
 
 ## Why
 
-Super Admin used to be a route in the same Vite app (and the same browser origin) as the student app, with a 30-day access token in `localStorage`. An XSS bug anywhere in the student app could have stolen a Super Admin token. Separating the Super Admin UI onto its own origin isolates that storage, and lets us apply stricter CSP and network rules to it. A separate origin does **not** replace server-side authorization; see "Remaining".
+Super Admin used to be a route in the same Vite app (and the same browser origin) as the student app, with a 30-day access token in `localStorage`. An XSS bug anywhere in the student app could have stolen a Super Admin token. Separating the Super Admin UI onto its own origin isolates that storage, and lets us apply stricter CSP and network rules to it. A separate origin does **not** replace server-side authorization; see "Hardening" and "Not done".
 
 ## 1. Role-escalation fixes (backend)
 
@@ -31,29 +31,56 @@ Note: a backend with AWS credentials (the dev `.env` has them) really sends this
 - The main app (`apps/frontend`) no longer contains `/superadmin`. If a Super Admin signs in there, the session is revoked immediately, nothing is stored, and they are pointed at `VITE_SUPERADMIN_URL`. Admins and Teachers created by a Super Admin sign in on the main app and are forced to `/change-password` first.
 - Local run: `npm install` at the repo root (both apps are workspaces), then `npm run dev --workspace apps/superadmin`.
 
-## Remaining
+## 4. Hardening (built)
 
-Server-side (highest value first):
-- **Enforce the separation on the server.** Today the main app's UI refuses Super Admins, but `/auth/login` will still issue them a token to any client. Add an audience/host check (for example an `aud=superadmin` claim or an origin allowlist verified in `get_current_user`) so a Super Admin token only works from the Super Admin app.
-- CORS: replace `"*"` with an env-driven allowlist (`fastapi_server.py`, `storage/s3.py`).
-- Rate limiting and lockout on `/auth/login` and `/auth/clerk-exchange`.
-- Replace default `SECRET_KEY` and `SUPERADMIN_PASSWORD` (`config/settings.py`); rotate if the defaults were ever used.
-- Clerk sign-in links to existing accounts by email without a verified-email check, which can take over a password-based admin. Block Clerk linking for ADMIN and SUPER_ADMIN.
-- Cookies: `Secure=True`, explicit `Path`; shorter access-token lifetime for staff; make logout invalidate access tokens; gate `/docs`, `/redoc`, `openapi.json` in production.
+**Sign-in and sessions**
+- **Authenticator app (TOTP) for Super Admins**, mandatory by default (`SUPERADMIN_MFA_REQUIRED`). A Super Admin without one can sign in with the password but is confined to enrolment (`403 MFA_SETUP_REQUIRED`) until they scan the QR code and confirm a code. Enrolment issues 8 one-time recovery codes (shown once, stored hashed). Codes cannot be replayed. Secrets are encrypted at rest with a key derived from `SECRET_KEY`.
+- Lost authenticator and no recovery codes: run `python -m app.scripts.reset_mfa <email>` on the server; the next sign-in forces a new enrolment. Rotating `SECRET_KEY` also invalidates enrolled authenticators.
+- **Lockout**: 5 failed sign-ins (`LOGIN_MAX_FAILED_ATTEMPTS`) lock that email for 15 minutes (`LOGIN_LOCKOUT_MINUTES`) with `429` + `Retry-After`; wrong current-password attempts on change-password and wrong MFA codes count too. Trade-off: someone can deliberately lock a known address for 15 minutes. It only blocks new sign-ins, never existing sessions.
+- **Short Super Admin sessions**: access tokens last 30 minutes (`SUPERADMIN_ACCESS_TOKEN_EXPIRE_MINUTES`); the app refreshes silently. Admin and Teacher tokens are unchanged (30 days).
+- Refresh cookie: `Secure` when `COOKIE_SECURE=true`; `SameSite=Strict` for the Super Admin app, `Lax` otherwise.
+- Google (Clerk) sign-in can no longer be linked to an existing Admin/Teacher/Super Admin account by matching email, and never works for a Super Admin (it would skip the second factor). Staff who already had a linked Google identity keep working.
 
-Infra (outside the repo, needs a decision on where TLS terminates):
-- DNS + certificate for the Super Admin host; add an `examplanner-superadmin` service to `docker-compose.prod.yml` and a build/push job in `.github/workflows/docker-publish.yml`.
-- Pass `VITE_SUPERADMIN_URL` as a build arg when building the main app image (the Dockerfile accepts it; it is empty in production builds if unset).
-- Network controls on the Super Admin host: VPN or IP allowlist (or Cloudflare Access).
+**Where a Super Admin can act from**
+- With `SUPERADMIN_APP_ENFORCED=true`, a Super Admin can sign in, refresh and call the API only through the Super Admin app, identified by the `X-Client-App: superadmin` header its nginx (and the Vite dev proxy) sets; the main app's nginx sets `web`. From anywhere else sign-in looks exactly like a wrong password and an existing token gets `403 SUPERADMIN_APP_REQUIRED`. **Off by default** so nothing locks out before that app is live.
+- This is only a hard guarantee if callers cannot reach the API directly and forge the header, so keep port 8000 private (the prod compose still publishes it; restrict it in the security group or bind it to loopback).
+- `SUPER_ADMIN` can no longer be granted through the API (`PUT /users/{id}`, `POST /admin/users/{id}/role`, the UI dropdown). Provision Super Admins with `app.scripts.init_superadmin`.
 
-Hardening and cleanup:
-- MFA for staff (the profile "Two-Factor" toggle is not real). Audit log for staff creation, credential resends and role changes.
-- The "Pending Approvals" tab and `/admin/approve|reject` are now vestigial (nobody can sign up as a pending admin). Remove them in a later cleanup.
-- The role dropdown in the Super Admin users tab can still promote to `SUPER_ADMIN` through `POST /admin/users/{id}/role`. That is Super Admin only, but consider removing it.
-- Admins and Teachers stay in the main app. Moving them to their own origin is the same pattern as this app if wanted later.
+**Audit trail**
+- `admin_action_logs` (migration 052) records staff creation, credential resends, role changes, suspend/reactivate, deletes, Super Admin sign-ins and failures, lockouts, password changes, MFA enrolment/recovery-code use/reset. `GET /admin/action-logs` (Super Admin only) feeds the new **Activity Log** tab.
+
+**Configuration hygiene**
+- CORS is an explicit allowlist (dev origins, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`); no wildcard. Production traffic is same-origin through nginx.
+- In production `/docs`, `/redoc` and `openapi.json` are disabled.
+- **In production the API refuses to start with the built-in default `SECRET_KEY`** (anyone could forge tokens with it), and `init_superadmin` refuses the default password. Outside production it only warns.
+- Removed: the Pending Approvals tab and card (nobody can sign up as a pending admin any more). The `/admin/approve|reject` endpoints and the Approval Audit Logs tab remain for history.
+
+## 5. Delivery (built)
+
+- `docker-compose.prod.yml`: new `superadmin` service (`examplanner-superadmin` image), bound to `127.0.0.1:3010`.
+- `.github/workflows/docker-publish.yml`: new build/push job for that image; the deploy job waits for it; the main web image is built with `VITE_SUPERADMIN_URL=${{ vars.SUPERADMIN_URL }}`.
+- `.env.example` documents the new settings.
+
+## Before you deploy (operator checklist)
+
+1. **Set `SECRET_KEY` in the production environment first** (long random value). Otherwise the API will not start. This signs every user out once.
+2. Set `COOKIE_SECURE=true` if the site is served over HTTPS; set `SUPERADMIN_PASSWORD`/`SUPERADMIN_EMAIL` to real values.
+3. Create a GitHub Actions **repository variable** `SUPERADMIN_URL` (e.g. `https://superadmin.<domain>`), otherwise the main app cannot tell a Super Admin where to sign in.
+4. DNS, a TLS certificate and a reverse-proxy server block for the Super Admin host that forwards to `127.0.0.1:3010`; restrict that host (VPN / IP allowlist / Cloudflare Access).
+5. Make port 8000 unreachable from outside (or bind it to loopback) before turning on `SUPERADMIN_APP_ENFORCED=true`; turn that on only once the Super Admin host works.
+6. Each existing Super Admin will be asked to enrol an authenticator at their next sign-in on the Super Admin app. Do that promptly and store the recovery codes.
+7. The deploy step runs `alembic upgrade head || true`, so check the migration really applied (`alembic current` shows `052_superadmin_mfa_action_log`); a failed migration is silent.
+
+## Not done
+
+- **Access-token revocation on logout**: tokens are self-contained JWTs, so logout ends the refresh session but an already-issued access token works until it expires. Super Admin tokens expire in 30 minutes; Admin/Teacher tokens still last 30 days.
+- **MFA for Admins and Teachers**, and a shorter lifetime for their tokens (the main app's staff screens use plain `fetch` without 401-retry, so this needs frontend work first).
+- **S3 bucket CORS** is still `*`. It is credential-less and only affects reads of already-public objects; changing it rewrites the live bucket policy at every start, so it needs the exact production origins first.
+- **Rate limiting `/auth/clerk-exchange`**: it requires a token signed by Clerk, so it cannot be brute-forced; it is not throttled.
+- Moving Admin/Teacher to their own origin (same pattern as the Super Admin app).
 
 ## Tests
 
-- Backend: `tests/test_role_escalation.py`, `tests/test_staff_creation.py` (HTTP-level: creation, single email, gate, change-password, resend, sub-admin, email failure).
-- Browser (Playwright, run manually): Super Admin login and creation flow, student sign-up, staff forced password change on the main app, resend, and the separation checks in both directions.
+- Backend: `tests/test_role_escalation.py`, `tests/test_staff_creation.py`, `tests/test_superadmin_hardening.py` (lockout, MFA enrolment and sign-in, replay, recovery codes, app confinement, cookies, Clerk linking, audit log, CORS, production secret check), `tests/test_totp.py` (RFC 6238 vectors). `tests/conftest.py` turns Super Admin MFA off for other tests.
+- Browser (Playwright, run manually against a backend with mail disabled): Super Admin login, forced authenticator enrolment (QR, recovery codes), TOTP and recovery-code sign-in, replay refusal, staff creation, activity log, student sign-up, staff forced password change, app separation and lockout.
 - Known failing before this work, unrelated: `test_admin_notifications`, `test_bookmarks`, `test_exam_deletion_and_overwrite` (stale against current routers / dev-DB dependent).
