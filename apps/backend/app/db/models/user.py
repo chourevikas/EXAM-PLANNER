@@ -37,6 +37,13 @@ class User(SQLModel, table=True):
     )
     status: UserStatus = Field(default=UserStatus.ACTIVE)
     is_verified: bool = Field(default=False)
+    # True while the account still uses a temporary password emailed by a Super Admin.
+    must_change_password: bool = Field(default=False)
+    # Super Admin TOTP authenticator (secret is encrypted at rest; see app/core/totp.py).
+    totp_secret: Optional[str] = Field(default=None)
+    totp_enabled: bool = Field(default=False)
+    totp_last_step: Optional[int] = Field(default=None, sa_type=BigIntPK)
+    totp_recovery_hashes: Optional[List[str]] = Field(default=None, sa_column=Column(PortableJSON))
     profile_image: Optional[str] = Field(default=None)
     phone: Optional[str] = Field(default=None, max_length=32)
     timezone: str = Field(default="Asia/Kolkata", max_length=100)
@@ -51,6 +58,16 @@ class User(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
     )
+
+    @property
+    def mfa_enabled(self) -> bool:
+        return bool(self.totp_enabled)
+
+    @property
+    def mfa_setup_required(self) -> bool:
+        from app.core.session_policy import mfa_setup_required
+
+        return mfa_setup_required(self)
 
     # Relationships
     student_profile: Optional["StudentProfile"] = Relationship(
@@ -238,6 +255,30 @@ class AdminApprovalLog(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
+    )
+
+
+class AdminActionLog(SQLModel, table=True):
+    """Security-relevant staff actions (who did what to whom). Append-only."""
+
+    __tablename__ = "admin_action_logs"
+
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
+    actor_id: Optional[int] = Field(
+        default=None, foreign_key="users.id", ondelete="SET NULL", index=True
+    )
+    actor_email: Optional[str] = Field(default=None, max_length=255)
+    action: str = Field(max_length=64, index=True)
+    target_user_id: Optional[int] = Field(
+        default=None, foreign_key="users.id", ondelete="SET NULL", index=True
+    )
+    target_email: Optional[str] = Field(default=None, max_length=255)
+    details: Optional[dict] = Field(default=None, sa_column=Column(PortableJSON))
+    ip_address: Optional[str] = Field(default=None, max_length=64)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+        index=True,
     )
 
 

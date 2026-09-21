@@ -20,6 +20,7 @@
   "homepage": "https://github.com/examplanner/exam-planner#readme",
   "private": true,
   "workspaces": [
-    "apps/frontend"
+    "apps/frontend",
+    "apps/superadmin"
   ]
 }

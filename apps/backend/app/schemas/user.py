@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 from app.db.models.user import UserRole, UserStatus, SubscriptionTier
 
 
@@ -15,6 +15,17 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+
+
+class StaffCreate(BaseModel):
+    """Payload for a Super Admin creating a staff account; the password is generated server-side."""
+
+    email: EmailStr
+    full_name: str = Field(min_length=1, max_length=255)
+    role: UserRole
+    # Sub-admin: an ADMIN limited to the permissions of this custom role.
+    custom_role_id: Optional[int] = None
+    preferred_language: Optional[str] = "en"
 
 
 class UserUpdate(BaseModel):
@@ -45,3 +56,8 @@ class UserRead(UserBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StaffCreateOut(BaseModel):
+    user: UserRead
+    email_sent: bool

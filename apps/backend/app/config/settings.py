@@ -54,6 +54,34 @@ class Settings(BaseSettings):
     SUPERADMIN_PASSWORD: str = Field(default="SuperAdmin#2026!")
     SUPERADMIN_NAME: str = Field(default="System Super Admin")
 
+    # Super Admin hardening
+    SUPERADMIN_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=30, description="Access-token lifetime for SUPER_ADMIN sessions (they refresh silently)."
+    )
+    SUPERADMIN_APP_ENFORCED: bool = Field(
+        default=False,
+        description=(
+            "When true, SUPER_ADMIN may only sign in and call the API through the Super Admin app, "
+            "identified by the X-Client-App header its reverse proxy sets. Turn on only once that app is "
+            "live, and keep the API port private so the header cannot be supplied by a direct caller."
+        ),
+    )
+    SUPERADMIN_MFA_REQUIRED: bool = Field(
+        default=True, description="Super Admins must enrol a TOTP authenticator and use it at every sign-in."
+    )
+
+    # Browser-facing hardening
+    CORS_ALLOWED_ORIGINS: str = Field(
+        default="", description="Comma-separated extra origins allowed by CORS (FRONTEND_URL is always allowed)."
+    )
+    COOKIE_SECURE: bool = Field(
+        default=False, description="Set the Secure flag on the refresh cookie. Enable when served over HTTPS."
+    )
+
+    # Login brute-force protection (per email address)
+    LOGIN_MAX_FAILED_ATTEMPTS: int = Field(default=5)
+    LOGIN_LOCKOUT_MINUTES: int = Field(default=15)
+
     # Clerk Authentication
     CLERK_SECRET_KEY: Optional[str] = Field(default=None)
     CLERK_WEBHOOK_SECRET: Optional[str] = Field(default=None)
@@ -284,3 +312,32 @@ def get_settings(force_reload: bool = False) -> Settings:
 
 # Global singleton alias for backward compatibility across modules
 settings = get_settings()
+
+
+_INSECURE_SECRET_KEY = "secret-key-change-in-production-1234567890"
+_INSECURE_SUPERADMIN_PASSWORD = "SuperAdmin#2026!"
+
+
+def assert_production_secrets(cfg: "Settings") -> None:
+    """Refuse to start a production API that signs tokens with the published default key.
+
+    Anyone who knows the default SECRET_KEY can mint valid tokens for any user, including Super Admins.
+    Outside production this only logs a warning.
+    """
+    import logging
+
+    log = logging.getLogger("Settings")
+    is_production = cfg.ENVIRONMENT.lower() in ("production", "prod")
+
+    if cfg.SECRET_KEY == _INSECURE_SECRET_KEY:
+        if is_production:
+            raise RuntimeError(
+                "SECRET_KEY is still the built-in default. Set a long random SECRET_KEY in the environment "
+                "before running in production (note: changing it signs every user out)."
+            )
+        log.warning("SECRET_KEY is the built-in default; fine for local development only.")
+
+    if cfg.SUPERADMIN_PASSWORD == _INSECURE_SUPERADMIN_PASSWORD and is_production:
+        log.error(
+            "SUPERADMIN_PASSWORD is the built-in default. Do not run init_superadmin with it in production."
+        )

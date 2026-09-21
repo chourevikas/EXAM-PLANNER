@@ -1,22 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useClerk } from '@clerk/clerk-react';
-import { logoutUser } from '../../services/authService';
+import { logout } from '../../services/authService';
+import { getStoredUser } from '../../services/http';
 import { Logo } from '../common/Logo';
 import { Search, LogOut, User, X } from 'lucide-react';
 import { SuperAdminTab } from './SuperAdminTabNav';
+import { User as AppUser } from '../../types/auth';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface SuperAdminTopNavProps {
   activeTab: SuperAdminTab;
   onNavigate: (tab: SuperAdminTab) => void;
   onToggleSidebar?: () => void;
+  onSignedOut: () => void;
 }
 
-export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: SuperAdminTopNavProps) {
+export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar, onSignedOut }: SuperAdminTopNavProps) {
   const navigate = useNavigate();
-  const clerk = useClerk();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user: Partial<AppUser> = getStoredUser() || {};
   const [showProfileCard, setShowProfileCard] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,15 +62,9 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
   const userInitials = getInitials(user.full_name, user.email);
 
   const handleSignOut = async () => {
-    logoutUser();
-    if (clerk && clerk.signOut) {
-      try {
-        await clerk.signOut();
-      } catch (e) {
-        console.warn('Clerk signout error:', e);
-      }
-    }
-    window.location.href = '/';
+    await logout();
+    onSignedOut();
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -94,7 +89,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
     >
       {/* 1. Left Section: Clean Brand Logo */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
-        <div style={{ cursor: 'pointer' }} onClick={() => onNavigate('pending')}>
+        <div style={{ cursor: 'pointer' }} onClick={() => onNavigate('users')}>
           <Logo inverted={true} />
         </div>
       </div>
@@ -151,7 +146,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
         )}
     {/* Quick Admin Profile Button */}
     <button
-      onClick={() => navigate('/profile')}
+      onClick={() => navigate('/change-password')}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -174,7 +169,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
       }}
     >
       <User size={14} color="var(--bg-card)" />
-      <span>Admin Profile</span>
+      <span>Change password</span>
     </button>
 
 
@@ -246,10 +241,12 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {[
-              { id: 'pending' as SuperAdminTab, label: 'Pending Question Approvals' },
-              { id: 'rejected' as SuperAdminTab, label: 'Rejected Questions' },
-              { id: 'audit' as SuperAdminTab, label: 'Audit Log' },
-              { id: 'analytics' as SuperAdminTab, label: 'Platform Analytics' },
+              { id: 'users' as SuperAdminTab, label: 'All Users & Roles' },
+              { id: 'active' as SuperAdminTab, label: 'Active Admins' },
+              { id: 'activity' as SuperAdminTab, label: 'Activity Log' },
+              { id: 'audit' as SuperAdminTab, label: 'Approval Audit Logs' },
+              { id: 'roles-permissions' as SuperAdminTab, label: 'Roles & Permissions' },
+              { id: 'testimonials' as SuperAdminTab, label: 'Testimonial Approvals' },
             ]
               .filter(tab => tab.label.toLowerCase().includes(searchQuery.toLowerCase()))
               .map(tab => (

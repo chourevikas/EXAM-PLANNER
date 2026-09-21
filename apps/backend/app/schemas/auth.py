@@ -18,6 +18,8 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
     role: Optional[UserRole] = None
+    # Authenticator code (or a one-time recovery code) for accounts with MFA enabled.
+    otp: Optional[str] = None
 
 
 class StudentProfileOut(BaseModel):
@@ -61,6 +63,11 @@ class UserOut(BaseModel):
     subject_proficiency: Optional[dict[str, int]] = None
     # False until a student finishes first-login onboarding; always True for staff.
     onboarding_completed: bool = True
+    # True while the account still uses an emailed temporary password.
+    must_change_password: bool = False
+    # Super Admin authenticator app: enrolled / must be enrolled before anything else is usable.
+    mfa_enabled: bool = False
+    mfa_setup_required: bool = False
     preferred_language: str = "en"
     free_questions_attempted: Optional[int] = 0
     total_questions_attempted: Optional[int] = 0
@@ -113,6 +120,11 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class VerifyEmailRequest(BaseModel):
@@ -237,3 +249,29 @@ class OnboardingRequest(BaseModel):
                 raise ValueError(f"Proficiency for '{name}' must be between 1 and 5")
             cleaned[name] = rating
         return cleaned
+
+
+class MfaSetupOut(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class MfaVerifyRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=12)
+
+
+class MfaVerifyOut(BaseModel):
+    # Shown once; only their hashes are stored.
+    recovery_codes: list[str]
+
+
+class AdminActionLogOut(BaseModel):
+    id: int
+    actor_email: Optional[str] = None
+    action: str
+    target_email: Optional[str] = None
+    details: Optional[dict] = None
+    ip_address: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

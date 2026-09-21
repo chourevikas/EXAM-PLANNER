@@ -122,6 +122,7 @@ async def get_or_create_user_from_clerk(
         res_email = await session.exec(query_email)
         user = res_email.one_or_none()
         if user:
+            _refuse_staff_email_linking(user)
             user.clerk_id = clerk_id
             if name and (not user.full_name or user.full_name in placeholder_names):
                 user.full_name = name
@@ -143,6 +144,7 @@ async def get_or_create_user_from_clerk(
             await session.exec(select(User).where(User.email == target_email))
         ).one_or_none()
         if existing_email_user:
+            _refuse_staff_email_linking(existing_email_user)
             existing_email_user.clerk_id = clerk_id
             if name and (not existing_email_user.full_name or existing_email_user.full_name in placeholder_names):
                 existing_email_user.full_name = name
@@ -175,6 +177,41 @@ async def get_or_create_user_from_clerk(
     if user.status != UserStatus.ACTIVE:
         raise HTTPException(status_code=400, detail="Inactive user account")
     return user
+
+
+def _refuse_staff_email_linking(user: User) -> None:
+    """A Clerk identity must never be attached to an existing staff account just because the email matches.
+
+    Staff accounts sign in with email + password (and MFA for Super Admins). Linking by email would let
+    anyone who can create a Clerk account with a staff address take that account over.
+    """
+    if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff accounts sign in with their email and password.",
+        )
+
+
+# A user still on an emailed temporary password may only reach these until they change it.
+_PASSWORD_CHANGE_ALLOWED_SUFFIXES = ("/auth/me", "/auth/change-password", "/auth/logout")
+# A Super Admin who has not enrolled an authenticator yet may only enrol it.
+_MFA_SETUP_ALLOWED_SUFFIXES = _PASSWORD_CHANGE_ALLOWED_SUFFIXES + ("/auth/mfa/setup", "/auth/mfa/verify")
+
+
+def _enforce_session_policy(request: Request, user: User) -> None:
+    """Extra conditions on an otherwise valid token (temp password, app separation, MFA enrolment)."""
+    from app.core.session_policy import mfa_setup_required, superadmin_app_allowed
+
+    path = request.url.path.rstrip("/")
+
+    if getattr(user, "must_change_password", False) and not path.endswith(_PASSWORD_CHANGE_ALLOWED_SUFFIXES):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="PASSWORD_CHANGE_REQUIRED")
+
+    if user.role == UserRole.SUPER_ADMIN:
+        if not superadmin_app_allowed(request):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="SUPERADMIN_APP_REQUIRED")
+        if mfa_setup_required(user) and not path.endswith(_MFA_SETUP_ALLOWED_SUFFIXES):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="MFA_SETUP_REQUIRED")
 
 
 async def get_current_user(
@@ -238,6 +275,7 @@ async def get_current_user(
             if cached_user and isinstance(cached_user, dict):
                 user = User.model_validate(cached_user)
                 if user.status == UserStatus.ACTIVE:
+                    _enforce_session_policy(request, user)
                     return user
 
 
@@ -250,6 +288,7 @@ async def get_current_user(
                     await cache.set(cache_key, user_dict, ttl_seconds=300)
                     if user.clerk_id:
                         await cache.set(f"ep:user:clerk:{user.clerk_id}", user_dict, ttl_seconds=300)
+                    _enforce_session_policy(request, user)
                     return user
             except (ValueError, TypeError):
                 pass

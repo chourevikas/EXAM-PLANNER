@@ -3,7 +3,7 @@ import jwt
 import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Tuple, Optional
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models.user import User, UserRole, UserStatus
@@ -26,6 +26,9 @@ from app.core.exceptions import (
 )
 from app.config.settings import settings
 from app.services.email_service import email_service
+from app.services import audit_service
+from app.core import rate_limit, totp
+from app.core.session_policy import superadmin_app_allowed
 
 from app.config.logger import setup_logger
 
@@ -49,6 +52,15 @@ class AuthService:
     async def register_user(
         self, user_in: UserRegister
     ) -> Tuple[TokenResponse, Optional[str]]:
+        # Public sign-up only ever creates students. Staff accounts are created by a Super Admin
+        # (UserService.create_staff_user). Checked first so a rejected request has no side effects
+        # (e.g. archiving a suspended account's email).
+        if user_in.role not in (None, UserRole.STUDENT):
+            raise HTTPException(
+                status_code=403,
+                detail="Only student accounts can be self-registered.",
+            )
+
         existing_user = await self.user_repo.get_by_email(user_in.email)
         if existing_user:
             if existing_user.status == UserStatus.SUSPENDED:
@@ -71,7 +83,7 @@ class AuthService:
                 raise UserAlreadyExistsException(user_in.email)
 
         hashed_pw = get_password_hash(user_in.password)
-        user_role = user_in.role or UserRole.STUDENT
+        user_role = UserRole.STUDENT
 
         user = await self.user_repo.create_user(
             email=user_in.email,
@@ -152,7 +164,11 @@ class AuthService:
 
         return token_response, refresh_token
 
-    async def authenticate_user(self, user_in: UserLogin) -> Tuple[TokenResponse, str]:
+    async def authenticate_user(
+        self, user_in: UserLogin, request: Optional[Request] = None
+    ) -> Tuple[TokenResponse, str]:
+        await rate_limit.ensure_not_locked(user_in.email)
+
         user = await self.user_repo.get_by_email_for_auth(user_in.email)
         # Always run bcrypt (even for missing users) to prevent timing-based user enumeration
         _DUMMY_HASH = "$2b$12$placeholderHashToPreventTimingLeakOnMissingUser000000000"
@@ -160,6 +176,7 @@ class AuthService:
         loop = asyncio.get_event_loop()
         password_ok = await loop.run_in_executor(None, verify_password, user_in.password, hash_to_check)
         if not user or not password_ok:
+            await self._register_failed_login(user_in.email, user, request, reason="bad_password")
             raise InvalidCredentialsException()
 
         if user.status == UserStatus.PENDING:
@@ -175,6 +192,20 @@ class AuthService:
         if user_in.role and user.role != user_in.role:
             raise RoleMismatchException(
                 actual_role=user.role.value, requested_role=user_in.role.value
+            )
+
+        if user.role == UserRole.SUPER_ADMIN:
+            if not superadmin_app_allowed(request):
+                # Same answer as a wrong password: do not reveal that the account exists or its role.
+                await self._register_failed_login(user_in.email, user, request, reason="wrong_app")
+                raise InvalidCredentialsException()
+            if user.totp_enabled:
+                await self._verify_second_factor(user, user_in, request)
+
+        await rate_limit.reset(user_in.email)
+        if user.role == UserRole.SUPER_ADMIN:
+            await audit_service.record_admin_action(
+                self.session, audit_service.SUPERADMIN_LOGIN, actor=user, request=request
             )
 
         access_token = create_access_token(subject=user.id, role=user.role.value)
@@ -201,6 +232,59 @@ class AuthService:
         )
 
         return token_response, refresh_token
+
+    async def _register_failed_login(
+        self, email: str, user: Optional[User], request: Optional[Request], reason: str
+    ) -> None:
+        locked = await rate_limit.record_failure(email)
+        if user is not None and user.role == UserRole.SUPER_ADMIN:
+            await audit_service.record_admin_action(
+                self.session,
+                audit_service.SUPERADMIN_LOGIN_FAILED,
+                target=user,
+                details={"reason": reason, "locked": locked},
+                request=request,
+            )
+        elif locked:
+            await audit_service.record_admin_action(
+                self.session, audit_service.LOGIN_LOCKED, target_email=email, request=request
+            )
+
+    async def _verify_second_factor(
+        self, user: User, user_in: UserLogin, request: Optional[Request]
+    ) -> None:
+        """Check the authenticator code (or a one-time recovery code) for an MFA-enabled account."""
+        code = (user_in.otp or "").strip()
+        if not code:
+            raise HTTPException(status_code=401, detail="MFA_REQUIRED")
+
+        if totp.looks_like_recovery_code(code):
+            hashes = list(user.totp_recovery_hashes or [])
+            digest = totp.hash_recovery_code(code)
+            if digest in hashes:
+                hashes.remove(digest)
+                user.totp_recovery_hashes = hashes
+                self.session.add(user)
+                await self.session.commit()
+                await audit_service.record_admin_action(
+                    self.session,
+                    audit_service.MFA_RECOVERY_CODE_USED,
+                    actor=user,
+                    details={"remaining": len(hashes)},
+                    request=request,
+                )
+                return
+        else:
+            secret = totp.decrypt_secret(user.totp_secret) if user.totp_secret else None
+            step = totp.verify(secret, code, user.totp_last_step) if secret else None
+            if step is not None:
+                user.totp_last_step = step
+                self.session.add(user)
+                await self.session.commit()
+                return
+
+        await self._register_failed_login(user.email, user, request, reason="bad_otp")
+        raise HTTPException(status_code=401, detail="Invalid authentication code.")
 
     async def exchange_clerk_token(self, user: User) -> Tuple[TokenResponse, str]:
         """Issues our own access/refresh token pair for a User already resolved
@@ -282,15 +366,62 @@ class AuthService:
             user = await self.user_repo.get_by_id(user_id_str)
             if user:
                 user.password_hash = get_password_hash(new_password)
+                user.must_change_password = False
                 self.session.add(user)
                 await self.session.commit()
+                from app.cache import invalidate_user_cache
+                await invalidate_user_cache(str(user.id), user.clerk_id)
                 return True
         except jwt.PyJWTError:
             return False
         return False
 
+    async def change_password(
+        self, user_id: int | str, current_password: str, new_password: str
+    ) -> Tuple[TokenResponse, str]:
+        """Change a signed-in user's password and start a fresh session (all older sessions are revoked)."""
+        user = await self.user_repo.get_by_id(user_id)
+        if not user or not user.password_hash:
+            raise HTTPException(status_code=400, detail="This account has no password to change.")
+
+        await rate_limit.ensure_not_locked(user.email)
+        loop = asyncio.get_event_loop()
+        if not await loop.run_in_executor(None, verify_password, current_password, user.password_hash):
+            await rate_limit.record_failure(user.email)
+            raise HTTPException(status_code=400, detail="Current password is incorrect.")
+        if new_password == current_password:
+            raise HTTPException(status_code=400, detail="New password must be different from the current one.")
+
+        user.password_hash = get_password_hash(new_password)
+        user.must_change_password = False
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+
+        from app.cache import invalidate_user_cache
+        await invalidate_user_cache(str(user.id), user.clerk_id)
+
+        access_token = create_access_token(subject=user.id, role=user.role.value)
+        refresh_token = create_refresh_token(subject=user.id, role=user.role.value)
+        await self.user_repo.perform_login_housekeeping_and_save_token(
+            user_id=user.id,
+            token_hash=get_token_hash(refresh_token),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        )
+        return (
+            TokenResponse(
+                access_token=access_token,
+                token_type="bearer",
+                user=user,
+                redirect_url=self.get_role_redirect(user.role),
+                is_pending_approval=False,
+                message="Password changed successfully.",
+            ),
+            refresh_token,
+        )
+
     async def refresh_access_token(
-        self, plain_refresh_token: str
+        self, plain_refresh_token: str, request: Optional[Request] = None
     ) -> Tuple[TokenResponse, str]:
         """Validate an active refresh token, rotate it, and issue a fresh access token."""
         try:
@@ -320,6 +451,9 @@ class AuthService:
         user = await self.user_repo.get_by_id(user_id_str)
         if not user or user.status != UserStatus.ACTIVE:
             raise HTTPException(status_code=401, detail="User is inactive or no longer exists")
+
+        if user.role == UserRole.SUPER_ADMIN and not superadmin_app_allowed(request):
+            raise HTTPException(status_code=401, detail="Refresh token has been revoked or expired")
 
         user_role = user.role
         user_id = user.id

@@ -51,6 +51,8 @@ export interface User {
   subject_proficiency?: Record<string, number> | null;
   // False until a student completes onboarding; undefined on sessions older than the feature.
   onboarding_completed?: boolean;
+  // True while the account still uses an emailed temporary password.
+  must_change_password?: boolean;
   free_questions_attempted?: number;
   current_streak?: number;
   total_xp?: number;

@@ -21,6 +21,7 @@ from app.db.models.user import (
     StudentProfile,
     AdminProfile,
     AdminApprovalLog,
+    AdminActionLog,
     RefreshToken,
     QuestionBookmark,
 )

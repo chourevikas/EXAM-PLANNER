@@ -19,14 +19,15 @@ import { fetchPredictedRank, PredictedRankResponse } from '../services/analytics
 import { ChevronLeft, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { formatEnum } from '../utils/formatEnum';
+import { SUPERADMIN_APP_URL, isSuperAdmin } from '../utils/superAdminApp';
 
 export function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
 
   useEffect(() => {
-    if (user?.role === 'SUPER_ADMIN') {
-      navigate('/superadmin', { replace: true });
+    if (isSuperAdmin(user)) {
+      if (SUPERADMIN_APP_URL) window.location.replace(SUPERADMIN_APP_URL);
     } else if (user?.role === 'ADMIN') {
       navigate('/admin', { replace: true });
     } else if (user?.role === 'TEACHER') {

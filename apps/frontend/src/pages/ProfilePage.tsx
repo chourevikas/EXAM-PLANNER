@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { SuperAdminTopNav } from '../components/superadmin/SuperAdminTopNav';
-import { SuperAdminSidebar } from '../components/superadmin/SuperAdminSidebar';
 import { AdminTopNav } from '../components/admin/AdminTopNav';
 import { AdminSidebar } from '../components/admin/AdminSidebar';
 import {
@@ -1079,47 +1077,6 @@ export function ProfilePage() {
       </form>
     </>
   );
-
-  if (isSuperAdmin) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: 'var(--deep-navy)', overflowX: 'hidden' }}>
-        <SuperAdminTopNav
-          activeTab={'all_users' as any}
-          onNavigate={() => navigate('/super-admin')}
-          onToggleSidebar={() => setSidebarCollapsed(prev => !prev)}
-        />
-        <div style={{ display: 'flex', flex: 1, marginTop: 60 }}>
-          <SuperAdminSidebar
-            activeTab={'all_users' as any}
-            onNavigate={() => navigate('/super-admin')}
-            collapsed={sidebarCollapsed}
-            onToggle={() => setSidebarCollapsed(prev => !prev)}
-            pendingCount={0}
-            pendingTestimonialsCount={0}
-            mobileOpen={mobileOpen}
-            onCloseMobile={() => setMobileOpen(false)}
-          />
-          <div
-            style={{
-              flex: 1,
-              marginLeft: isMobile ? 0 : (sidebarCollapsed ? 68 : 240),
-              display: 'flex',
-              flexDirection: 'column',
-              minWidth: 0,
-              transition: 'margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-              width: '100%',
-            }}
-          >
-            <main style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '18px 20px' : '28px 36px', boxSizing: 'border-box' }}>
-              <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-                {profileContent}
-              </div>
-            </main>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (isAdmin) {
     return (

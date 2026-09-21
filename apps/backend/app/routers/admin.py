@@ -2,6 +2,7 @@ from typing import List, Optional, Union
 from fastapi import (
     APIRouter,
     Depends,
+    Request,
     UploadFile,
     File,
     Form,
@@ -26,6 +27,7 @@ from app.schemas.auth import (
     AdminOverviewStatsOut,
     UserDirectoryItemOut,
     UpdateRolePayload,
+    AdminActionLogOut,
 )
 from app.schemas.question import (
     QuestionDetailResponse,
@@ -36,6 +38,7 @@ from app.schemas.question import (
 )
 from app.schemas.platform_analytics import PlatformAnalyticsResponse
 from app.services.admin_service import AdminService
+from app.services import audit_service
 
 from app.services.question_service import QuestionService
 from app.core.deps import require_roles, require_admin_section
@@ -149,13 +152,27 @@ async def list_all_users(
 async def update_user_role(
     user_id: str,
     payload: UpdateRolePayload,
+    request: Request,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
     from app.cache import invalidate_user_cache, get_cache
 
+    # SUPER_ADMIN accounts are provisioned out-of-band (init_superadmin), never granted through the API.
+    if payload.new_role == UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Super Admin role cannot be assigned")
+
     service = AdminService(session)
     res = await service.update_user_role(user_id=user_id, new_role=payload.new_role)
+    await audit_service.record_admin_action(
+        session,
+        audit_service.ROLE_CHANGED,
+        actor=current_user,
+        target_id=int(user_id) if str(user_id).isdigit() else None,
+        target_email=getattr(res, "email", None),
+        details={"to": payload.new_role.value},
+        request=request,
+    )
     await invalidate_user_cache(str(user_id))
     await get_cache().delete_pattern("ep:admin:*")
     return res
@@ -199,6 +216,7 @@ async def reject_admin_request(
 @router.post("/suspend/{user_id}", response_model=UserOut)
 async def suspend_admin_user(
     user_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
@@ -206,6 +224,14 @@ async def suspend_admin_user(
 
     service = AdminService(session)
     res = await service.suspend_admin_user(user_id=user_id)
+    await audit_service.record_admin_action(
+        session,
+        audit_service.USER_SUSPENDED,
+        actor=current_user,
+        target_id=int(user_id) if str(user_id).isdigit() else None,
+        target_email=getattr(res, "email", None),
+        request=request,
+    )
     await invalidate_user_cache(str(user_id))
     await get_cache().delete_pattern("ep:admin:overview_stats*")
     return res
@@ -214,6 +240,7 @@ async def suspend_admin_user(
 @router.post("/reactivate/{user_id}", response_model=UserOut)
 async def reactivate_admin_user(
     user_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
@@ -224,9 +251,36 @@ async def reactivate_admin_user(
         res = await service.reactivate_admin_user(user_id=user_id)
     except ValueError as val_err:
         raise HTTPException(status_code=400, detail=str(val_err))
+    await audit_service.record_admin_action(
+        session,
+        audit_service.USER_REACTIVATED,
+        actor=current_user,
+        target_id=int(user_id) if str(user_id).isdigit() else None,
+        target_email=getattr(res, "email", None),
+        request=request,
+    )
     await invalidate_user_cache(str(user_id))
     await get_cache().delete_pattern("ep:admin:overview_stats*")
     return res
+
+
+@router.get("/action-logs", response_model=List[AdminActionLogOut])
+async def get_admin_action_logs(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    action: Optional[str] = Query(None, max_length=64),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
+):
+    """Newest-first log of staff creation, credential resends, role changes, suspensions, MFA and Super Admin sign-ins."""
+    from sqlalchemy import desc, select as sa_select
+    from app.db.models.user import AdminActionLog
+
+    stmt = sa_select(AdminActionLog).order_by(desc(AdminActionLog.created_at), desc(AdminActionLog.id))
+    if action:
+        stmt = stmt.where(AdminActionLog.action == action)
+    rows = (await session.execute(stmt.limit(limit).offset(offset))).scalars().all()
+    return rows
 
 
 @router.get("/audit-logs", response_model=List[AdminApprovalLogOut])

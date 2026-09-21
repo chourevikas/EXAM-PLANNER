@@ -4,6 +4,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
+# Where Super Admins are sent to sign in (the separate Super Admin app), e.g. https://superadmin.example.com
+ARG VITE_SUPERADMIN_URL
+ENV VITE_SUPERADMIN_URL=$VITE_SUPERADMIN_URL
+
 ENV VITE_CLERK_PUBLISHABLE_KEY=pk_test_YW1hemVkLXN0YXJsaW5nLTQ2LmNsZXJrLmFjY291bnRzLmRldiQ
 
 COPY . .

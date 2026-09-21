@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserDirectoryItem, UserRole, UserStatus, Role } from '../../types/auth';
-import { Search, RefreshCw, Users, Shield, GraduationCap, UserCheck, ChevronDown } from 'lucide-react';
+import { Search, RefreshCw, Users, Shield, GraduationCap, UserCheck, ChevronDown, UserPlus } from 'lucide-react';
 
 interface AllUsersTabProps {
   users: UserDirectoryItem[];
@@ -11,9 +11,11 @@ interface AllUsersTabProps {
   assignableRoles?: Role[];
   onSuspend?: (userId: number | string, userName: string) => void;
   onReactivate?: (userId: number | string, userName: string) => void;
+  onCreateUser?: () => void;
+  onResendCredentials?: (userId: number | string, userName: string) => void;
 }
 
-export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAssignment, assignableRoles = [], onSuspend, onReactivate }: AllUsersTabProps) {
+export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAssignment, assignableRoles = [], onSuspend, onReactivate, onCreateUser, onResendCredentials }: AllUsersTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
 
@@ -81,26 +83,51 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
           </p>
         </div>
 
-        <button
-          onClick={onRefresh}
-          style={{
-            padding: '9px 18px',
-            fontSize: 13,
-            fontWeight: 600,
-            borderRadius: 'var(--radius)',
-            border: '1px solid var(--border-color)',
-            background: 'var(--bg-body)',
-            color: 'var(--text-main)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            transition: 'all 0.15s ease',
-          }}
-        >
-          <RefreshCw size={14} className={loading ? 'spin' : ''} />
-          <span>Refresh Directory</span>
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {onCreateUser && (
+            <button
+              id="create-staff-open"
+              type="button"
+              onClick={onCreateUser}
+              style={{
+                padding: '9px 18px',
+                fontSize: 13,
+                fontWeight: 700,
+                borderRadius: 'var(--radius)',
+                border: 'none',
+                background: 'var(--primary-red)',
+                color: '#fff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <UserPlus size={14} />
+              <span>Create user</span>
+            </button>
+          )}
+          <button
+            onClick={onRefresh}
+            style={{
+              padding: '9px 18px',
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-body)',
+              color: 'var(--text-main)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <span>Refresh Directory</span>
+          </button>
+        </div>
       </div>
 
       {/* Role Breakdown Badges */}
@@ -335,6 +362,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                         <select
                           value={u.custom_role_id ? `role:${u.custom_role_id}` : u.role}
+                          disabled={u.role === UserRole.SUPER_ADMIN}
                           onChange={(e) => {
                             const val = e.target.value;
                             if (val.startsWith('role:')) {
@@ -359,7 +387,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                           <optgroup label="Standard Roles">
                             <option value={UserRole.STUDENT}>STUDENT</option>
                             <option value={UserRole.ADMIN}>ADMIN</option>
-                            <option value={UserRole.SUPER_ADMIN}>SUPER_ADMIN</option>
+                            {u.role === UserRole.SUPER_ADMIN && <option value={UserRole.SUPER_ADMIN}>SUPER_ADMIN</option>}
                           </optgroup>
                           {assignableRoles.length > 0 && (
                             <optgroup label="Custom & Teacher Roles">
@@ -371,6 +399,26 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                             </optgroup>
                           )}
                         </select>
+
+                        {onResendCredentials && (u.role === UserRole.ADMIN || u.role === UserRole.TEACHER) && !isSuspended && (
+                          <button
+                            type="button"
+                            onClick={() => onResendCredentials(u.id, u.full_name)}
+                            title="Email a new temporary password (the current one stops working)"
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              borderRadius: 'var(--radius)',
+                              border: '1px solid var(--border-color)',
+                              background: 'var(--bg-card)',
+                              color: 'var(--text-main)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✉️ Resend password
+                          </button>
+                        )}
 
                         {u.role !== UserRole.SUPER_ADMIN && (
                           isSuspended ? (

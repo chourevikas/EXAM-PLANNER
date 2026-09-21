@@ -39,9 +39,13 @@ def create_access_token(
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        # Super Admin tokens are short-lived; their app refreshes silently.
+        minutes = (
+            settings.SUPERADMIN_ACCESS_TOKEN_EXPIRE_MINUTES
+            if role == "SUPER_ADMIN"
+            else settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
+        expire = datetime.now(timezone.utc) + timedelta(minutes=minutes)
 
     to_encode = {"exp": expire, "sub": str(subject), "role": role, "type": "access"}
     encoded_jwt = jwt.encode(

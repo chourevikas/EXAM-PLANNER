@@ -1,17 +1,18 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status, HTTPException, Response
+from fastapi import APIRouter, Depends, status, HTTPException, Response, Request
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, col, and_, func
 
 from app.db.session import get_async_session
-from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.schemas.user import StaffCreate, StaffCreateOut, UserRead, UserUpdate
 from app.services.user_service import UserService
 from app.db.models.user import User, UserRole, QuestionBookmark
 from app.db.models.question import Question, QuestionTranslation
 from app.db.models.enums import LanguageCode
 from app.core.deps import get_current_user, require_roles, require_admin_section
 from app.cache import get_cache, build_cache_key, invalidate_user_cache
+from app.services import audit_service
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -181,16 +182,52 @@ async def list_users(
     return JSONResponse(content=[])
 
 
-@router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def create_user(
-    user_in: UserCreate,
+@router.post(
+    "",
+    response_model=StaffCreateOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create an Admin/Teacher (or sub-admin); a temporary password is emailed",
+)
+async def create_staff_user(
+    payload: StaffCreate,
+    request: Request,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
-    user_service = UserService(session)
-    user = await user_service.create_user(user_in)
+    user, email_sent = await UserService(session).create_staff_user(payload, created_by=current_user)
     await invalidate_user_cache(str(user.id))
-    return user
+    await audit_service.record_admin_action(
+        session,
+        audit_service.STAFF_CREATED,
+        actor=current_user,
+        target=user,
+        details={"role": user.role.value, "custom_role_id": payload.custom_role_id, "email_sent": email_sent},
+        request=request,
+    )
+    return StaffCreateOut(user=UserRead.model_validate(user), email_sent=email_sent)
+
+
+@router.post(
+    "/{user_id}/resend-credentials",
+    response_model=StaffCreateOut,
+    summary="Issue a new temporary password to an Admin/Teacher and email it",
+)
+async def resend_staff_credentials(
+    user_id: int | str,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
+):
+    user, email_sent = await UserService(session).reset_staff_credentials(user_id)
+    await audit_service.record_admin_action(
+        session,
+        audit_service.STAFF_CREDENTIALS_RESENT,
+        actor=current_user,
+        target=user,
+        details={"email_sent": email_sent},
+        request=request,
+    )
+    return StaffCreateOut(user=UserRead.model_validate(user), email_sent=email_sent)
 
 
 @router.get("/lookup", response_model=Optional[UserRead], summary="Look Up a User by Exact Email (for inviting to a Challenge)")
@@ -257,11 +294,12 @@ async def get_user(
 async def update_user(
     user_id: int | str,
     user_in: UserUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_admin_section("admin.users")),
 ):
     user_service = UserService(session)
-    user = await user_service.update_user(user_id, user_in, current_user=current_user)
+    user = await user_service.update_user(user_id, user_in, current_user=current_user, request=request)
     await invalidate_user_cache(str(user_id))
     return user
 
@@ -269,10 +307,11 @@ async def update_user(
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: int | str,
+    request: Request,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
     user_service = UserService(session)
-    await user_service.delete_user(user_id)
+    await user_service.delete_user(user_id, actor=current_user, request=request)
     await invalidate_user_cache(str(user_id))
     return None
