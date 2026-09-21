@@ -721,12 +721,26 @@ export function GuestExamPage() {
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
   const [isRecsExhausted, setIsRecsExhausted] = useState(false);
 
-  const [recExamToggles, setRecExamToggles] = useState<ExamFilterToggles>({
-    UPSC: true,
-    MPPSC: false,
-    BPSC: false,
-    UPPCS: false,
-  });
+  const [recExamToggles, setRecExamToggles] = useState<ExamFilterToggles>({});
+
+  // Dynamically initialize cross-exam toggles based on DB available exams
+  useEffect(() => {
+    if (availableExams.length > 0 && Object.keys(recExamToggles).length === 0) {
+      const initialToggles: ExamFilterToggles = {};
+      availableExams.forEach((e) => {
+        initialToggles[e] = false;
+      });
+      const canonicalTarget = extractCanonicalExamName(gExam);
+      if (availableExams.includes(canonicalTarget)) {
+        initialToggles[canonicalTarget] = true;
+      } else if (availableExams.includes('UPSC CSE')) {
+        initialToggles['UPSC CSE'] = true;
+      } else if (availableExams.length > 0) {
+        initialToggles[availableExams[0]] = true;
+      }
+      setRecExamToggles(initialToggles);
+    }
+  }, [availableExams, gExam, recExamToggles]);
 
   const toggleRecExam = useCallback((examName: string) => {
     setRecExamToggles((prev) => {
