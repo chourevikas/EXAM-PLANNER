@@ -166,7 +166,7 @@ function NotificationDetail({ id, onBack }: { id: number; onBack: () => void }) 
   const destination = notif.link || notif.attachment;
 
   return (
-    <div data-page-align="left" style={{ maxWidth: 720, margin: 0 }}>
+    <div style={{ width: '100%' }}>
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       <button
@@ -311,17 +311,24 @@ export function NotificationsPage() {
   return (
     <StudentLayout pageTitle="Announcements">
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-      <div data-page-align="left" style={{ maxWidth: 800, margin: 0, paddingBottom: 64 }}>
-        {/* Page Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <Bell size={24} color="var(--primary-red)" />
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #111827)' }}>
-            Announcements
-          </h1>
-        </div>
-        <p style={{ margin: '0 0 24px', fontSize: 14, color: 'var(--text-secondary, #6B7280)' }}>
-          Stay up to date with the latest study materials, videos, and updates from your mentors.
-        </p>
+      <div style={{ paddingBottom: 64, width: '100%' }}>
+        {/* Header Hero Banner */}
+        <section style={{
+          marginBottom: 32, padding: 32, borderRadius: 'var(--radius)',
+          backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
+          boxShadow: 'var(--shadow-color-base)',
+          backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.08) 0%, rgba(34,197,94,0.06) 100%)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20
+        }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 'var(--radius)', marginBottom: 10, border: '1px solid var(--accent-border)' }}>
+              <Bell size={14} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Alerts & Updates</span>
+            </div>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Announcements</h1>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Stay up to date with the latest study materials, videos, and updates from your mentors.</p>
+          </div>
+        </section>
 
         {/* Content Type Filters */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>

@@ -138,6 +138,8 @@ export interface QuestionOut {
   passage_text_hindi?: string | null;
   passage_text_hi?: string | null;
   passage_translations?: Record<string, string>;
+  exam_name?: string;
+  source_year?: number | string;
 }
 
 export interface NavigationMeta {

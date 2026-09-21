@@ -1376,7 +1376,10 @@ export function GuestExamPage() {
   };
 
   // All up to 10 recommended items to display for Guest mode
-  const displayRecs = recommendedPool.slice(0, 10);
+  const activeRecExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]).map((e) => e.toLowerCase());
+  const displayRecs = activeRecExams.length > 0 
+    ? recommendedPool.filter((q) => !q.exam_name || activeRecExams.includes(q.exam_name.toLowerCase())).slice(0, 10)
+    : [];
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -4173,6 +4176,7 @@ export function GuestExamPage() {
               onSelectOption={handleSelectRecommendationOption}
               examFilterToggles={recExamToggles}
               onToggleExamFilter={toggleRecExam}
+              availableExams={availableExams}
               language={language}
             />
           </div>
@@ -4265,6 +4269,7 @@ export function GuestExamPage() {
               onSelectOption={handleSelectRecommendationOption}
               examFilterToggles={recExamToggles}
               onToggleExamFilter={toggleRecExam}
+              availableExams={availableExams}
               language={language}
             />
           </aside>

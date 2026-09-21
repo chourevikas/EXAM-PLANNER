@@ -823,7 +823,10 @@ export function StudentPracticeExamPage() {
     }
   };
 
-  const displayRecs = recommendedPool;
+  const activeRecExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]).map((e) => e.toLowerCase());
+  const displayRecs = activeRecExams.length > 0 
+    ? recommendedPool.filter((q) => !q.exam_name || activeRecExams.includes(q.exam_name.toLowerCase()))
+    : [];
 
   // Mobile Responsiveness
   const { isTabletOrBelow } = useBreakpoint();
@@ -3682,6 +3685,7 @@ export function StudentPracticeExamPage() {
               onSelectOption={handleSelectRecommendationOption}
               examFilterToggles={recExamToggles}
               onToggleExamFilter={toggleRecExam}
+              availableExams={availableExams}
               language={language}
             />
           </div>

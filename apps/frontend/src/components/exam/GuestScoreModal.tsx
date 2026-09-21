@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, RotateCcw, CheckCircle2, XCircle, MinusCircle, PartyPopper, LogIn, UserPlus, X, Home, Award } from 'lucide-react';
+import { ArrowRight, RotateCcw, CheckCircle2, XCircle, MinusCircle, PartyPopper, LogIn, UserPlus, X, Home, Award, Loader2 } from 'lucide-react';
 import { AuthModal, AuthMode } from '../auth/AuthModal';
 
 interface GuestScoreModalProps {
@@ -28,6 +28,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
   const navigate = useNavigate();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('signup');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const token = localStorage.getItem('access_token');
   const user = localStorage.getItem('user');
@@ -40,13 +41,27 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
     setAuthModalOpen(true);
   };
 
-  const handlePrimaryAction = () => {
+  const handlePrimaryAction = async () => {
     if (!isLoggedIn) {
       handleOpenAuth('signup');
       return;
     }
+    
+    // Attempt to sync the guest session immediately since user is logged in
+    try {
+      if (token) {
+        setIsSyncing(true);
+        const { syncGuestSessionsOnAuth } = await import('../../services/authService');
+        await syncGuestSessionsOnAuth(token);
+      }
+    } catch (err) {
+      console.warn('Failed to sync guest session:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+
     onClose();
-    const targetId = scoreData.attemptId || sessionStorage.getItem('latest_synced_attempt_id');
+    const targetId = sessionStorage.getItem('latest_synced_attempt_id') || scoreData.attemptId;
     if (targetId) {
       navigate(`/analytics?attemptId=${encodeURIComponent(targetId)}`);
     } else {
@@ -356,34 +371,50 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               <button
                 type="button"
                 onClick={handlePrimaryAction}
+                disabled={isSyncing}
                 style={{
                   flex: 1,
-                  height: 48,
+                  height: 52,
+                  padding: '0 24px',
                   borderRadius: 'var(--radius)',
                   border: 'none',
                   backgroundColor: 'var(--primary-red)',
                   color: 'var(--bg-card)',
                   fontSize: 14,
                   fontWeight: 800,
-                  cursor: 'pointer',
+                  cursor: isSyncing ? 'not-allowed' : 'pointer',
+                  opacity: isSyncing ? 0.7 : 1,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 6,
+                  gap: 8,
                   boxShadow: '0 6px 16px rgba(var(--primary-red-rgb), 0.35)',
                   transition: 'transform 0.18s ease, background-color 0.18s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
-                  e.currentTarget.style.transform = 'scale(1.02)';
+                  if (!isSyncing) {
+                    e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
+                    e.currentTarget.style.transform = 'scale(1.02)';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--primary-red)';
-                  e.currentTarget.style.transform = 'scale(1)';
+                  if (!isSyncing) {
+                    e.currentTarget.style.backgroundColor = 'var(--primary-red)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }
                 }}
               >
-                <span>{isLoggedIn ? 'View Full Diagnostic Report' : 'Sign In / Sign Up to Analyze'}</span>
-                <ArrowRight size={16} strokeWidth={2.5} />
+                {isSyncing ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Syncing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{isLoggedIn ? 'View Full Diagnostic Report' : 'Sign In / Sign Up to Analyze'}</span>
+                    <ArrowRight size={16} strokeWidth={2.5} />
+                  </>
+                )}
               </button>
 
               {/* Secondary Retake Button */}

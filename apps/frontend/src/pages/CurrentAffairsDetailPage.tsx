@@ -46,7 +46,7 @@ export function CurrentAffairsDetailPage() {
 
   return (
     <StudentLayout pageTitle="Read Article">
-      <div data-page-align="left" style={{ maxWidth: 800, margin: 0, paddingBottom: 64 }}>
+      <div style={{ paddingBottom: 64, width: '100%' }}>
         <button 
           onClick={() => navigate('/current-affairs')}
           style={{ 

@@ -281,7 +281,6 @@ export function BookmarksPage(): React.ReactElement {
 
   const pageContainerStyle: React.CSSProperties = {
     padding: isMobile ? '16px 0' : '24px 0', // the student layout already provides the side padding
-    maxWidth: 960,
     margin: 0,
     width: '100%',
     boxSizing: 'border-box',
@@ -356,17 +355,22 @@ export function BookmarksPage(): React.ReactElement {
 
   return (
     <StudentLayout pageTitle="Bookmarked Questions">
-      <div data-page-align="left" style={pageContainerStyle}>
-        {/* Header */}
-        <div style={headerWrapperStyle}>
+      <div style={pageContainerStyle}>
+        {/* Header Hero Banner */}
+        <section style={{
+          marginBottom: 32, padding: 32, borderRadius: 'var(--radius)',
+          backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
+          boxShadow: 'var(--shadow-color-base)',
+          backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.08) 0%, rgba(34,197,94,0.06) 100%)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20
+        }}>
           <div>
-            <h1 style={titleStyle}>
-              <Bookmark size={22} color="#334EAC" />
-              Bookmarked Questions
-            </h1>
-            <p style={SUBTITLE_STYLE}>
-              Review and practice questions you saved for later revision.
-            </p>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 'var(--radius)', marginBottom: 10, border: '1px solid var(--accent-border)' }}>
+              <Bookmark size={14} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Revision Materials</span>
+            </div>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Bookmarked Questions</h1>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Review and practice questions you saved for later revision.</p>
           </div>
           <button
             type="button"
@@ -377,7 +381,7 @@ export function BookmarksPage(): React.ReactElement {
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
           </button>
-        </div>
+        </section>
 
         {/* Search and Filters */}
         {bookmarks.length > 0 && (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Globe } from 'lucide-react';
 import { Spinner } from '../components/common/Spinner';
 
 export function CurrentAffairsPage() {
@@ -28,15 +28,14 @@ export function CurrentAffairsPage() {
     fetchAffairs();
   }, []);
 
+  // Group affairs by date
   const groupedAffairs = useMemo(() => {
     const groups: Record<string, any[]> = {};
-    affairs.forEach(affair => {
-      const dateStr = new Date(affair.date).toISOString().split('T')[0];
-      if (!groups[dateStr]) groups[dateStr] = [];
-      groups[dateStr].push(affair);
+    affairs.forEach(a => {
+      const date = new Date(a.published_at || a.created_at || a.date).toLocaleDateString();
+      if (!groups[date]) groups[date] = [];
+      groups[date].push(a);
     });
-    
-    // Sort dates descending
     return Object.keys(groups)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
       .map(date => ({
@@ -47,8 +46,24 @@ export function CurrentAffairsPage() {
 
   return (
     <StudentLayout pageTitle="Current Affairs">
-      <div data-page-align="left" style={{ maxWidth: 800, margin: 0, paddingBottom: 64 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 24, color: 'var(--text-primary)' }}>Daily Current Affairs</h1>
+      <div style={{ paddingBottom: 64, width: '100%' }}>
+        {/* Header Hero Banner */}
+        <section style={{
+          marginBottom: 32, padding: 32, borderRadius: 'var(--radius)',
+          backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
+          boxShadow: 'var(--shadow-color-base)',
+          backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.08) 0%, rgba(34,197,94,0.06) 100%)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20
+        }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 'var(--radius)', marginBottom: 10, border: '1px solid var(--accent-border)' }}>
+              <Globe size={14} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Daily Updates</span>
+            </div>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Current Affairs</h1>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Stay updated with the latest news and international relations.</p>
+          </div>
+        </section>
         
         {loading ? (
           <Spinner size={36} label="Loading articles…" />

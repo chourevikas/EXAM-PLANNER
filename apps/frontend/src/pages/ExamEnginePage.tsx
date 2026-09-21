@@ -9,6 +9,7 @@ import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { ExamSubmitModal } from '../components/exam/ExamSubmitModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { syncGuestSessionsOnAuth } from '../services/authService';
 import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, RefreshCw } from 'lucide-react';
 import {
   startExamAttempt,
@@ -47,6 +48,10 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const [searchParams] = useSearchParams();
   const isDark = false;
 
+  const token = localStorage.getItem('access_token');
+  const user = localStorage.getItem('user');
+  const isLoggedIn = Boolean(token && user);
+
   const isGuestMode = isGuest || location.pathname === '/guest-exam';
 
   // ─── Session State ───────────────────────────────────────────────────────────
@@ -74,11 +79,13 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const [isRevealing, setIsRevealing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('signup');
+  const [isSyncingGuest, setIsSyncingGuest] = useState(false);
+
   // Guest Scorecard Modal State
   const [showGuestScoreModal, setShowGuestScoreModal] = useState(false);
   const [guestScoreData, setGuestScoreData] = useState<any>(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<AuthMode>('signup');
   const [isPYQ, setIsPYQ] = useState<boolean>(false);
 
   // Preloaded All Questions for Zero-Lag Client-Side Caching & Language Switching
@@ -1528,30 +1535,83 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             {/* Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode('signup');
-                    setAuthModalOpen(true);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    borderRadius: 'var(--radius)',
-                    border: 'none',
-                    backgroundColor: 'var(--primary-red)',
-                    color: 'var(--bg-card)',
-                    fontSize: 14,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                  }}
-                >
-                  <UserPlus size={16} /> Sign Up / Sign In to Analyze
-                </button>
+                {isLoggedIn ? (
+                  <button
+                    type="button"
+                    disabled={isSyncingGuest}
+                    onClick={async () => {
+                      if (token) {
+                        try {
+                          setIsSyncingGuest(true);
+                          await syncGuestSessionsOnAuth(token);
+                        } catch (err) {
+                          console.warn('Failed to sync guest session:', err);
+                        } finally {
+                          setIsSyncingGuest(false);
+                        }
+                      }
+                      setShowGuestScoreModal(false);
+                      const targetId = sessionStorage.getItem('latest_synced_attempt_id') || guestScoreData?.attemptId;
+                      if (targetId) {
+                        navigate(`/analytics?attemptId=${encodeURIComponent(targetId)}`);
+                      } else {
+                        navigate('/analytics');
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      borderRadius: 'var(--radius)',
+                      border: 'none',
+                      backgroundColor: 'var(--primary-red)',
+                      color: 'var(--bg-card)',
+                      fontSize: 14,
+                      fontWeight: 800,
+                      cursor: isSyncingGuest ? 'not-allowed' : 'pointer',
+                      opacity: isSyncingGuest ? 0.7 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {isSyncingGuest ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Syncing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={16} /> Generate Diagnostic Report
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signup');
+                      setAuthModalOpen(true);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      borderRadius: 'var(--radius)',
+                      border: 'none',
+                      backgroundColor: 'var(--primary-red)',
+                      color: 'var(--bg-card)',
+                      fontSize: 14,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <UserPlus size={16} /> Sign Up / Sign In to Analyze
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => navigate('/')}
