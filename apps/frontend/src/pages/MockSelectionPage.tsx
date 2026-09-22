@@ -7,7 +7,10 @@ import {
   formatCanonicalExamTitle,
   fetchMasterSyllabus,
   fetchExamsByYear,
+  listCandidateAttempts,
+  getExamAttemptStatus,
 } from '../services/examService';
+import { guardedFetch } from '../utils/apiGuard';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
 import { formatTaxonomyParam } from '../utils/taxonomyParam';
@@ -22,6 +25,9 @@ import {
   ChevronDown,
   Check,
   Search,
+  Target,
+  Trophy,
+  Crown,
 } from 'lucide-react';
 
 interface DisplayMock {
@@ -58,6 +64,13 @@ export function MockSelectionPage() {
   const [selectedTopicsList, setSelectedTopicsList] = useState<string[]>([]);
   const [selectedSubtopicsList, setSelectedSubtopicsList] = useState<string[]>([]);
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All Levels');
+
+  // Resume banner, weak-area & recent-attempt insights (below the builder form)
+  const [resumeAttempt, setResumeAttempt] = useState<any>(null);
+  const [isResumeLoading, setIsResumeLoading] = useState<boolean>(true);
+  const [subjectPerformance, setSubjectPerformance] = useState<any[]>([]);
+  const [recentAttempts, setRecentAttempts] = useState<any[]>([]);
+  const [isInsightsLoading, setIsInsightsLoading] = useState<boolean>(true);
 
   // Popover state
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -228,6 +241,88 @@ export function MockSelectionPage() {
 
     fetchLiveMocksAndAttempts();
   }, []);
+
+  // Resume banner — most recent in-progress attempt (any exam type)
+  useEffect(() => {
+    async function loadResumeAttempt() {
+      setIsResumeLoading(true);
+      try {
+        const inProgress = await listCandidateAttempts({ status: 'IN_PROGRESS', limit: 1 });
+        if (inProgress.length > 0) {
+          const status = await getExamAttemptStatus(inProgress[0].attempt_id);
+          setResumeAttempt(status);
+        } else {
+          setResumeAttempt(null);
+        }
+      } catch (err) {
+        console.warn('Failed to load resume attempt:', err);
+        setResumeAttempt(null);
+      } finally {
+        setIsResumeLoading(false);
+      }
+    }
+    loadResumeAttempt();
+  }, []);
+
+  // Weak-area & recent-attempt insights (same endpoints as the student dashboard)
+  useEffect(() => {
+    async function loadInsights() {
+      setIsInsightsLoading(true);
+      try {
+        const token = localStorage.getItem('access_token');
+        const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        const [statsRes, subjectRes] = await Promise.allSettled([
+          guardedFetch('/api/v1/attempts/student-dashboard-stats', { headers: authHeaders }).then((r) => (r.ok ? r.json() : null)),
+          guardedFetch('/api/v1/analytics/subject-performance', { headers: authHeaders }).then((r) => (r.ok ? r.json() : null)),
+        ]);
+
+        if (statsRes.status === 'fulfilled' && Array.isArray(statsRes.value?.recentAttempts)) {
+          const registered = statsRes.value.recentAttempts.filter((a: any) => !a.isGuestSynced);
+          setRecentAttempts(registered.slice(0, 5));
+        }
+        if (subjectRes.status === 'fulfilled' && Array.isArray(subjectRes.value)) {
+          setSubjectPerformance(subjectRes.value);
+        }
+      } catch (err) {
+        console.warn('Failed to load practice insights:', err);
+      } finally {
+        setIsInsightsLoading(false);
+      }
+    }
+    loadInsights();
+  }, []);
+
+  // Weakest subjects (lowest accuracy first) — powers "Focus on these next" and coverage
+  const weakSubjects = useMemo(() => {
+    return subjectPerformance
+      .filter((s: any) => s.total_attempted > 0)
+      .sort((a: any, b: any) => a.accuracy - b.accuracy)
+      .slice(0, 3);
+  }, [subjectPerformance]);
+
+  const maxSubjectAttempts = useMemo(() => {
+    return subjectPerformance.reduce((max: number, s: any) => Math.max(max, s.total_attempted || 0), 0);
+  }, [subjectPerformance]);
+
+  // Starts a practice test scoped to a single subject, reusing the same query-param
+  // contract as handleStartPracticeTest below — does not touch the builder form's state.
+  const startPracticeFor = (subject: string) => {
+    const queryParams = new URLSearchParams();
+    if (selectedExamsList.length > 0) {
+      queryParams.set('exam', selectedExamsList.join(','));
+    } else if (selectedExam) {
+      queryParams.set('exam', selectedExam);
+    }
+    if (selectedYearsList.length > 0) {
+      queryParams.set('year', formatTaxonomyParam(selectedYearsList));
+    } else if (yearOptions.length > 0) {
+      queryParams.set('year', yearOptions[0]);
+    } else if (selectedYear) {
+      queryParams.set('year', selectedYear);
+    }
+    queryParams.set('subject', subject);
+    navigate(`/practice-exam?${queryParams.toString()}`);
+  };
 
   // Subjects list from master syllabus
   const subjectsList = useMemo<string[]>(() => {
@@ -1242,6 +1337,370 @@ export function MockSelectionPage() {
             </button>
           </div>
         </form>
+      </section>
+
+      {/* Resume in-progress attempt banner */}
+      {!isResumeLoading && resumeAttempt && (() => {
+        const total = resumeAttempt.response_summary?.total || resumeAttempt.total_questions || 0;
+        const answered = resumeAttempt.response_summary?.answered_count || 0;
+        const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+        const minsLeft = Math.max(1, Math.round((resumeAttempt.remaining_seconds || 0) / 60));
+        return (
+          <section
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              flexWrap: 'wrap',
+              marginBottom: 28,
+              padding: '16px 20px',
+              borderRadius: 'var(--radius)',
+              background: 'linear-gradient(100deg, #EEF0FF 0%, #F7F4FF 60%, #FFF0F2 100%)',
+              border: '1px solid #D3D6FF',
+            }}
+          >
+            <div
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: '50%',
+                flex: 'none',
+                display: 'grid',
+                placeItems: 'center',
+                background: `conic-gradient(var(--primary-red) ${pct * 3.6}deg, #E9EBF5 0deg)`,
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: '#F6F5FF',
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: 'var(--deep-navy)',
+                }}
+              >
+                {pct}%
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)' }}>
+                Continue your {resumeAttempt.exam_name || 'practice'} test
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                {answered} of {total} answered &middot; {minsLeft} minute{minsLeft === 1 ? '' : 's'} left
+              </div>
+            </div>
+            <Link
+              to={`/exam/${resumeAttempt.exam_id}?type=PYQ`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                height: 40,
+                padding: '0 18px',
+                borderRadius: 'var(--radius)',
+                background: 'var(--primary-red)',
+                color: 'var(--bg-card)',
+                fontWeight: 700,
+                fontSize: 13.5,
+                textDecoration: 'none',
+                flex: 'none',
+              }}
+            >
+              <PlayCircle size={16} fill="var(--bg-card)" color="var(--primary-red)" />
+              Resume test
+            </Link>
+          </section>
+        );
+      })()}
+
+      {/* Weak areas + Recent attempts */}
+      <section
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))',
+          gap: 24,
+          marginBottom: 28,
+        }}
+      >
+        {/* Focus on these next */}
+        <div
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid #E5E7EB',
+            borderRadius: 'var(--radius)',
+            padding: '22px 24px',
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+            <Target size={17} color="var(--primary-red)" />
+            <h2 style={{ fontSize: 16.5, fontWeight: 800, color: 'var(--deep-navy)', margin: 0 }}>
+              Focus on these next
+            </h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px 0' }}>
+            Your lowest-scoring subjects. Tap one to start practising it.
+          </p>
+
+          {isInsightsLoading ? (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              Loading your weak areas...
+            </div>
+          ) : weakSubjects.length === 0 ? (
+            <div style={{ padding: '24px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: 13 }}>
+              Attempt a few questions to see your weak areas here.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {weakSubjects.map((w: any) => {
+                const acc = Math.round(w.accuracy || 0);
+                const status = acc >= 70 ? 'high-accuracy' : acc >= 40 ? 'moderate-accuracy' : 'low-accuracy';
+                return (
+                  <button
+                    key={w.subject}
+                    type="button"
+                    onClick={() => startPracticeFor(w.subject)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      padding: '12px 14px',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius)',
+                      backgroundColor: 'var(--bg-subtle)',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)' }}>
+                        {formatEnum(w.subject)}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
+                        {w.total_correct} of {w.total_attempted} correct
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 'none' }}>
+                      <StatusBadge status={status} label={`${acc}%`} size="sm" />
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--primary-red)' }}>Start</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Recent attempts */}
+        <div
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid #E5E7EB',
+            borderRadius: 'var(--radius)',
+            padding: '22px 24px',
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+            <Trophy size={17} color="var(--primary-red)" />
+            <h2 style={{ fontSize: 16.5, fontWeight: 800, color: 'var(--deep-navy)', margin: 0 }}>
+              Recent attempts
+            </h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px 0' }}>
+            Your latest practice sessions.
+          </p>
+
+          {isInsightsLoading ? (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              Loading recent attempts...
+            </div>
+          ) : recentAttempts.length === 0 ? (
+            <div style={{ padding: '24px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: 13 }}>
+              No attempts recorded yet.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {recentAttempts.map((a: any, idx: number) => {
+                const acc = Math.round(a.accuracy || 0);
+                const status = acc >= 70 ? 'high-accuracy' : acc >= 40 ? 'moderate-accuracy' : 'low-accuracy';
+                return (
+                  <div
+                    key={a.id}
+                    onClick={() => navigate(`/analytics?attemptId=${a.id}`)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      padding: '12px 4px',
+                      borderTop: idx === 0 ? 'none' : '1px solid var(--border-color)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {a.topicName}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
+                        {a.targetExam} &middot; {new Date(a.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', flex: 'none' }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--deep-navy)' }}>
+                        {a.score}/{a.totalMarksPossible}
+                      </div>
+                      <StatusBadge status={status} label={`${acc}%`} size="sm" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Subject practice coverage */}
+      <section
+        style={{
+          marginBottom: 28,
+          padding: '22px 24px',
+          borderRadius: 'var(--radius)',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid #E5E7EB',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <BarChart2 size={17} color="var(--primary-red)" />
+          <h2 style={{ fontSize: 16.5, fontWeight: 800, color: 'var(--deep-navy)', margin: 0 }}>
+            Subject practice coverage
+          </h2>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px 0' }}>
+          Questions attempted per subject, relative to your most-practised subject. Tap a subject to practise it.
+        </p>
+
+        {isInsightsLoading ? (
+          <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+            Loading coverage...
+          </div>
+        ) : subjectPerformance.length === 0 ? (
+          <div style={{ padding: '24px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: 13 }}>
+            No subjects attempted yet.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[...subjectPerformance]
+              .sort((a: any, b: any) => (b.total_attempted || 0) - (a.total_attempted || 0))
+              .map((s: any) => {
+                const attempted = s.total_attempted || 0;
+                const pct = maxSubjectAttempts > 0 ? Math.round((attempted / maxSubjectAttempts) * 100) : 0;
+                return (
+                  <button
+                    key={s.subject}
+                    type="button"
+                    onClick={() => startPracticeFor(s.subject)}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '140px 1fr 90px',
+                      gap: 12,
+                      alignItems: 'center',
+                      padding: '8px 6px',
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--deep-navy)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {formatEnum(s.subject)}
+                    </span>
+                    <span style={{ height: 10, borderRadius: 5, backgroundColor: 'var(--bg-subtle)', overflow: 'hidden', display: 'block' }}>
+                      <span
+                        style={{
+                          display: 'block',
+                          height: '100%',
+                          width: `${Math.max(attempted > 0 ? 4 : 0, pct)}%`,
+                          borderRadius: 5,
+                          background: 'linear-gradient(90deg, var(--primary-red), #8B7CFF)',
+                        }}
+                      />
+                    </span>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-muted)', textAlign: 'right' }}>
+                      {attempted} attempted
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
+        )}
+      </section>
+
+      {/* PRO teaser */}
+      <section
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 24,
+          flexWrap: 'wrap',
+          marginBottom: 36,
+          padding: '22px 24px',
+          borderRadius: 'var(--radius)',
+          background: '#111111',
+          border: '1px solid #F2B623',
+        }}
+      >
+        <div
+          style={{
+            width: 46,
+            height: 46,
+            borderRadius: 'var(--radius)',
+            flex: 'none',
+            display: 'grid',
+            placeItems: 'center',
+            background: 'rgba(242, 182, 35, 0.12)',
+          }}
+        >
+          <Crown size={22} color="#F2B623" />
+        </div>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#F2B623', fontWeight: 800, fontSize: 15 }}>
+            Where you lose marks
+            <span style={{ fontSize: 10.5, fontWeight: 800, background: '#F2B623', color: '#141C31', padding: '2px 8px', borderRadius: 6, letterSpacing: '0.02em' }}>
+              PRO
+            </span>
+          </div>
+          <p style={{ fontSize: 12.5, color: 'rgba(255, 255, 255, 0.7)', margin: '4px 0 0 0', lineHeight: 1.5 }}>
+            AI insights read your recent attempts and point out the patterns behind your wrong answers — unlock deeper analytics and unlimited practice tests.
+          </p>
+        </div>
+        <Link
+          to="/pricing"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            height: 42,
+            padding: '0 18px',
+            borderRadius: 'var(--radius)',
+            border: '1px solid #F2B623',
+            backgroundColor: 'transparent',
+            color: '#F2B623',
+            fontWeight: 700,
+            fontSize: 13.5,
+            textDecoration: 'none',
+            flex: 'none',
+          }}
+        >
+          <Crown size={15} /> Explore PRO
+        </Link>
       </section>
 
       {/* Full-Length & Curated Test Series Section (Code preserved, hidden from UI) */}
