@@ -51,9 +51,19 @@ function usePublishedExams() {
           listExams('PUBLISHED', true, token || undefined),
           getAttemptStatusByExam(token || undefined),
         ]);
-        const published = liveExams.filter(
-          (e) => e.is_active === true && (e.status === 'PUBLISHED' || e.status === 'ExamStatus.PUBLISHED'),
-        );
+        const published = liveExams.filter((e) => {
+          if (!e.is_active || (e.status !== 'PUBLISHED' && e.status !== 'ExamStatus.PUBLISHED')) return false;
+          
+          const nameToExtract = e.name || e.title || e.exam_name || e.code || '';
+          const lowerName = nameToExtract.toLowerCase();
+          
+          // Ignore dynamic/simulation exams
+          if (lowerName.includes('subject-wise') || lowerName.includes('simulation') || e.code?.startsWith('DYN_')) {
+            return false;
+          }
+          
+          return true;
+        });
         setExams(
           published.map((e) => {
             const att = statusByExam[String(e.id)];
@@ -410,6 +420,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
   const [availableExams, setAvailableExams] = useState<string[]>([]);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [examToYears, setExamToYears] = useState<Record<string, number[]>>({});
   const [loading, setLoading] = useState(true);
 
   // Form state
@@ -437,20 +448,45 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
         ]);
         if (syllabus) setMasterSyllabus(syllabus);
         if (yearsData?.years) setAvailableYears([...yearsData.years].sort((a: number, b: number) => b - a));
+        
         const names: string[] = [];
+        const mapping: Record<string, Set<number>> = {};
+        
         if (Array.isArray(publishedExams)) {
           publishedExams.forEach((e: any) => {
-            const c = extractCanonicalExamName(e.name || e.title || e.exam_name || e.code);
-            if (c) names.push(c);
+            const nameToExtract = e.name || e.title || e.exam_name || e.code || '';
+            const lowerName = nameToExtract.toLowerCase();
+            
+            // Ignore dynamic/simulation exams
+            if (lowerName.includes('subject-wise') || lowerName.includes('simulation') || e.code?.startsWith('DYN_')) {
+              return;
+            }
+            
+            const c = extractCanonicalExamName(nameToExtract);
+            if (c) {
+              names.push(c);
+              const year = e.source_year || e.year;
+              if (year) {
+                if (!mapping[c]) mapping[c] = new Set();
+                mapping[c].add(Number(year));
+              }
+            }
           });
         }
+        
+        const finalMapping: Record<string, number[]> = {};
+        for (const ex in mapping) {
+          finalMapping[ex] = Array.from(mapping[ex]).sort((a, b) => b - a);
+        }
+        setExamToYears(finalMapping);
+        
         const distinct = Array.from(new Set(names)) as string[];
         distinct.sort((a, b) => (a === 'UPSC CSE' ? -1 : b === 'UPSC CSE' ? 1 : a.localeCompare(b)));
         setAvailableExams(distinct.length > 0 ? distinct : ['UPSC CSE']);
         
         // Filter dynamic attempts
         if (Array.isArray(allAttempts)) {
-           const dynAttempts = allAttempts.filter(a => a.exam?.code?.startsWith('DYN_') || a.exam_name?.includes('Subject-wise Simulation'));
+           const dynAttempts = allAttempts.filter(a => a.exam?.code?.startsWith('DYN_') || a.exam_name?.includes('Subject-wise Simulation') || a.exam_name?.includes('Simulation'));
            setPastAttempts(dynAttempts);
         }
       } catch (_) {}
@@ -519,16 +555,16 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   };
 
   const selStyle = {
-    appearance: 'none' as const, width: '100%', height: 48, padding: '0 40px 0 14px',
+    appearance: 'none' as const, width: '100%', height: 40, padding: '0 32px 0 12px',
     border: '1px solid var(--border-default)', borderRadius: 'var(--radius)',
-    background: 'var(--bg-subtle)', fontWeight: 600, fontSize: 14.5,
+    background: 'var(--bg-subtle)', fontWeight: 600, fontSize: 13.5,
     color: 'var(--text-primary)', outline: 'none',
   };
   const chipStyle = (active: boolean) => ({
-    height: 38, padding: '0 16px', borderRadius: 999, border: `1px solid ${active ? 'var(--accent-primary)' : 'var(--border-default)'}`,
+    height: 32, padding: '0 12px', borderRadius: 999, border: `1px solid ${active ? 'var(--accent-primary)' : 'var(--border-default)'}`,
     background: active ? 'var(--accent-primary)' : 'var(--bg-card)', color: active ? '#fff' : 'var(--text-secondary)',
-    fontWeight: 600, fontSize: 13.5, display: 'inline-flex', alignItems: 'center', gap: 6,
-    cursor: 'pointer', transition: 'all 0.15s ease', boxShadow: active ? '0 6px 14px -6px rgba(79,70,229,.6)' : 'none',
+    fontWeight: 600, fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6,
+    cursor: 'pointer', transition: 'all 0.15s ease', boxShadow: active ? '0 4px 10px -4px rgba(79,70,229,.6)' : 'none',
   });
 
   return (
@@ -542,29 +578,29 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
 
       <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius)', overflow: 'hidden', boxShadow: '0 2px 8px rgba(15,23,42,.06)' }}>
         {/* Dark header */}
-        <div style={{ padding: '22px 26px', background: 'radial-gradient(120% 90% at 100% 0,rgba(217,36,58,.3) 0,transparent 60%),linear-gradient(120deg,#141c31 0%,#241c4a 65%,#33193c 100%)', color: '#fff', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 46, height: 46, borderRadius: 14, background: 'linear-gradient(135deg,#6d5ef0,#4f46e5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 20px -8px rgba(79,70,229,.9)' }}><Zap size={20} fill="#fff" color="#fff" /></div>
+        <div style={{ padding: '16px 20px', background: 'radial-gradient(120% 90% at 100% 0,rgba(217,36,58,.3) 0,transparent 60%),linear-gradient(120deg,#141c31 0%,#241c4a 65%,#33193c 100%)', color: '#fff', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#6d5ef0,#4f46e5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 20px -8px rgba(79,70,229,.9)' }}><Zap size={18} fill="#fff" color="#fff" /></div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.015em' }}>Build your test set</div>
-            <div style={{ fontSize: 13, color: '#b9c3e2', marginTop: 2 }}>Filter questions by exam, subject, topic and year</div>
+            <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.015em' }}>Build your test set</div>
+            <div style={{ fontSize: 12, color: '#b9c3e2', marginTop: 2 }}>Filter questions by exam, subject, topic and year</div>
           </div>
         </div>
 
-        <form onSubmit={handleStart} style={{ padding: '26px 28px 28px', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <form onSubmit={handleStart} style={{ padding: '20px 24px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           {loading ? (
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}><div className="spinner" style={{ marginBottom: 8 }} />Loading...</div>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}><div className="spinner" style={{ marginBottom: 8 }} />Loading...</div>
           ) : (
             <>
               {/* Exam chips */}
               <div>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Exam (pick one or more)</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Exam (pick one or more)</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   <button type="button" onClick={() => toggleExam('all')} style={chipStyle(selExams.includes('all'))}>All exams</button>
                   {availableExams.map((ex) => (
                     <button type="button" key={ex} onClick={() => toggleExam(ex)} style={chipStyle(selExams.includes(ex))}>{ex}</button>
                   ))}
                 </div>
-                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 7 }}>Questions will be pulled from every exam you select</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>Questions will be pulled from every exam you select</div>
               </div>
 
               {/* Subject + Topic */}
@@ -607,9 +643,19 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
                   <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Years (optional)</span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     <button type="button" onClick={() => toggleYear('all')} style={chipStyle(selYears.includes('all'))}>All years</button>
-                    {availableYears.slice(0, 6).map((yr) => (
-                      <button type="button" key={yr} onClick={() => toggleYear(String(yr))} style={chipStyle(selYears.includes(String(yr)))}>{yr}</button>
-                    ))}
+                    {(() => {
+                      let yearsToShow = availableYears;
+                      if (!selExams.includes('all')) {
+                        const yearsSet = new Set<number>();
+                        selExams.forEach(ex => {
+                          if (examToYears[ex]) examToYears[ex].forEach(yr => yearsSet.add(yr));
+                        });
+                        yearsToShow = Array.from(yearsSet).sort((a, b) => b - a);
+                      }
+                      return yearsToShow.slice(0, 6).map((yr) => (
+                        <button type="button" key={yr} onClick={() => toggleYear(String(yr))} style={chipStyle(selYears.includes(String(yr)))}>{yr}</button>
+                      ));
+                    })()}
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 6 }}>Pick one or more years, or leave on "All years"</div>
                 </div>
