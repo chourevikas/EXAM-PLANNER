@@ -229,6 +229,8 @@ export interface ExamItem {
   id: number | string;
   code: string;
   name: string;
+  title?: string;
+  exam_name?: string;
   exam_type: 'PYQ' | 'STATIC_MOCK' | string;
   stage?: string;
   subject_code?: string;
@@ -299,6 +301,7 @@ export function formatCanonicalExamTitle(exam: ExamItem): string {
 export interface AttemptHistoryItem {
   attempt_id: number | string;
   exam_id: number | string;
+  exam?: ExamItem;
   exam_name: string;
   mode: string;
   status: 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED' | 'EVALUATED' | string;
