@@ -25,7 +25,7 @@ from app.db.models import (
     Topic,
     Subtopic,
 )
-from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus
+from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus, ExamStatus
 from app.schemas.exam_attempt import (
     StartExamRequest,
     StartExamResponse,
