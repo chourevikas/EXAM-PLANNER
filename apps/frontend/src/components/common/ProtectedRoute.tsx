@@ -81,6 +81,10 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     try {
       const user = JSON.parse(userJson!);
       userRole = user.role;
+      // Emailed temporary password: nothing else is usable until the user picks their own.
+      if (user.must_change_password) {
+        return <Navigate to="/change-password" replace />;
+      }
     } catch (err) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');

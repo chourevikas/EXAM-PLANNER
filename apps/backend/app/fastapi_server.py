@@ -41,6 +41,9 @@ from app.routers.site_settings import router as site_settings_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.config.settings import assert_production_secrets
+
+    assert_production_secrets(settings)
     await async_init_db()
     await warm_connection_pool()
 
@@ -115,25 +118,40 @@ async def lifespan(app: FastAPI):
             pass
 
 
+_IS_PRODUCTION = settings.ENVIRONMENT.lower() in ("production", "prod")
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # API docs are for development; do not publish the schema of a production API.
+    openapi_url=None if _IS_PRODUCTION else f"{settings.API_V1_STR}/openapi.json",
+    docs_url=None if _IS_PRODUCTION else "/docs",
+    redoc_url=None if _IS_PRODUCTION else "/redoc",
     lifespan=lifespan,
 )
 
-# Comprehensive CORS Configuration
+_DEV_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://localhost:4174",
+]
+
+
+def build_cors_origins() -> list[str]:
+    """Explicit allowlist: local dev origins, FRONTEND_URL and CORS_ALLOWED_ORIGINS. Never a wildcard."""
+    extra = [o.strip().rstrip("/") for o in settings.CORS_ALLOWED_ORIGINS.split(",") if o.strip()]
+    origins = [*_DEV_ORIGINS, settings.FRONTEND_URL.rstrip("/"), *extra]
+    return sorted({o for o in origins if o and o != "*"})
+
+
+# CORS: production traffic is same-origin through the web proxies, so this mainly serves local dev.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:4173",
-        "*",
-    ],
+    allow_origins=build_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

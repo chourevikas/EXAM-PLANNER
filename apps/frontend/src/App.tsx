@@ -41,8 +41,8 @@ const ExamEnginePage = lazy(() =>
   import('./pages/ExamEnginePage').then((m) => ({ default: m.ExamEnginePage })),
 );
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
-const SuperAdminPage = lazy(() =>
-  import('./pages/SuperAdminPage').then((m) => ({ default: m.SuperAdminPage })),
+const ChangePasswordPage = lazy(() =>
+  import('./pages/ChangePasswordPage').then((m) => ({ default: m.ChangePasswordPage })),
 );
 const TeacherPage = lazy(() =>
   import('./pages/TeacherPage').then((m) => ({ default: m.TeacherPage })),
@@ -142,6 +142,7 @@ export default function App() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/guest-exam" element={<GuestExamPage />} />
           <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
           <Route path="/exams" element={<ExamsPage />} />
@@ -218,14 +219,6 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
                 <AdminPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/superadmin"
-            element={
-              <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
-                <SuperAdminPage />
               </ProtectedRoute>
             }
           />

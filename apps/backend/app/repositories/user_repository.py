@@ -63,8 +63,12 @@ class UserRepository:
         organization_name: Optional[str] = None,
         department: Optional[str] = None,
         preferred_language: str = "en",
+        status: Optional[UserStatus] = None,
+        is_verified: bool = False,
+        must_change_password: bool = False,
     ) -> User:
-        status = UserStatus.PENDING if role == UserRole.ADMIN else UserStatus.ACTIVE
+        if status is None:
+            status = UserStatus.PENDING if role == UserRole.ADMIN else UserStatus.ACTIVE
 
         new_user = User(
             email=email.lower(),
@@ -74,8 +78,9 @@ class UserRepository:
             status=status,
             preferred_language=preferred_language or "en",
             is_active=True,
-            is_verified=False,
+            is_verified=is_verified,
             email_verified=False,
+            must_change_password=must_change_password,
         )
         self.session.add(new_user)
         await self.session.flush()

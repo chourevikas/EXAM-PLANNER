@@ -20,6 +20,10 @@ from app.schemas.auth import (
     UserUpdate,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    ChangePasswordRequest,
+    MfaSetupOut,
+    MfaVerifyRequest,
+    MfaVerifyOut,
     VerifyEmailRequest,
     OnboardingRequest,
 )
@@ -28,6 +32,8 @@ from app.config.settings import settings
 from app.services.auth_service import AuthService
 from app.core.deps import get_current_user, require_roles, verify_clerk_token, get_or_create_user_from_clerk
 from app.cache import get_cache, build_cache_key
+from app.core import rate_limit, totp
+from app.services import audit_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -174,11 +180,25 @@ async def _sync_student_profile_bg(sync_data: dict):
 
 
 
+def _set_refresh_cookie(response: Response, request: Request, token: str) -> None:
+    """Refresh-token cookie: httpOnly, Secure when configured, SameSite=Strict for the Super Admin app."""
+    from app.core.session_policy import SUPERADMIN_APP, client_app
+
+    response.set_cookie(
+        key="refresh_token",
+        value=token,
+        httponly=True,
+        samesite="strict" if client_app(request) == SUPERADMIN_APP else "lax",
+        secure=settings.COOKIE_SECURE,
+    )
+
+
 @router.post(
     "/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED
 )
 async def register(
     user_in: UserRegister,
+    request: Request,
     response: Response,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -186,38 +206,28 @@ async def register(
     token_response, refresh_token = await auth_service.register_user(user_in)
 
     if refresh_token:
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            samesite="lax",
-            secure=False,
-        )
+        _set_refresh_cookie(response, request, refresh_token)
     return token_response
 
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
     user_in: UserLogin,
+    request: Request,
     response: Response,
     session: AsyncSession = Depends(get_async_session),
 ):
     auth_service = AuthService(session)
-    token_response, refresh_token = await auth_service.authenticate_user(user_in)
+    token_response, refresh_token = await auth_service.authenticate_user(user_in, request)
 
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        samesite="lax",
-        secure=False,
-    )
+    _set_refresh_cookie(response, request, refresh_token)
     return token_response
 
 
 @router.post("/clerk-exchange", response_model=TokenResponse)
 async def clerk_exchange(
     body: ClerkExchangeRequest,
+    request: Request,
     response: Response,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -282,16 +292,17 @@ async def clerk_exchange(
         session, clerk_id, clerk_email, clerk_name, clerk_image
     )
 
+    # Super Admins must use password + authenticator; a Google sign-in would bypass the second factor.
+    if user.role == UserRole.SUPER_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super Admin accounts sign in with their email, password and authenticator code.",
+        )
+
     auth_service = AuthService(session)
     token_response, refresh_token = await auth_service.exchange_clerk_token(user)
 
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        samesite="lax",
-        secure=False,
-    )
+    _set_refresh_cookie(response, request, refresh_token)
     return token_response
 
 
@@ -315,15 +326,9 @@ async def refresh_token(
         )
 
     auth_service = AuthService(session)
-    token_response, new_refresh_token = await auth_service.refresh_access_token(token)
+    token_response, new_refresh_token = await auth_service.refresh_access_token(token, request)
 
-    response.set_cookie(
-        key="refresh_token",
-        value=new_refresh_token,
-        httponly=True,
-        samesite="lax",
-        secure=False,
-    )
+    _set_refresh_cookie(response, request, new_refresh_token)
     return token_response
 
 
@@ -392,6 +397,93 @@ async def reset_password(
     return {"message": "Password reset successfully"}
 
 
+@router.post("/change-password", response_model=TokenResponse)
+async def change_password(
+    req: ChangePasswordRequest,
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    token_response, refresh_token = await AuthService(session).change_password(
+        current_user.id, req.current_password, req.new_password
+    )
+    if current_user.role != UserRole.STUDENT:
+        await audit_service.record_admin_action(
+            session, audit_service.PASSWORD_CHANGED, actor=current_user, request=request
+        )
+    _set_refresh_cookie(response, request, refresh_token)
+    return token_response
+
+
+@router.post("/mfa/setup", response_model=MfaSetupOut)
+async def mfa_setup(
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Start (or restart) enrolling an authenticator app. Not active until /mfa/verify succeeds."""
+    user = await AuthService(session).user_repo.get_by_id(current_user.id)
+    if user.totp_enabled:
+        raise HTTPException(status_code=400, detail="An authenticator is already enrolled.")
+
+    # Reuse a pending secret so reloading the page does not invalidate a QR code already scanned.
+    secret = totp.decrypt_secret(user.totp_secret) if user.totp_secret else None
+    if not secret:
+        # Compare-and-swap: if two requests race (e.g. a double page load), exactly one secret is stored
+        # and both callers are handed that stored one.
+        from sqlalchemy import update as sa_update
+
+        previous = user.totp_secret
+        swap_condition = User.totp_secret.is_(None) if previous is None else (User.totp_secret == previous)
+        await session.execute(
+            sa_update(User)
+            .where(User.id == user.id, swap_condition)
+            .values(totp_secret=totp.encrypt_secret(totp.generate_secret()), totp_last_step=None)
+        )
+        await session.commit()
+        await session.refresh(user)
+        secret = totp.decrypt_secret(user.totp_secret)
+        from app.cache import invalidate_user_cache
+
+        await invalidate_user_cache(str(user.id), user.clerk_id)
+    return MfaSetupOut(secret=secret, otpauth_uri=totp.provisioning_uri(secret, user.email))
+
+
+@router.post("/mfa/verify", response_model=MfaVerifyOut)
+async def mfa_verify(
+    body: MfaVerifyRequest,
+    request: Request,
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Confirm the authenticator works, switch MFA on, and return one-time recovery codes (shown once)."""
+    user = await AuthService(session).user_repo.get_by_id(current_user.id)
+    if user.totp_enabled:
+        raise HTTPException(status_code=400, detail="An authenticator is already enrolled.")
+    secret = totp.decrypt_secret(user.totp_secret) if user.totp_secret else None
+    if not secret:
+        raise HTTPException(status_code=400, detail="Start the setup first.")
+
+    await rate_limit.ensure_not_locked(user.email)
+    step = totp.verify(secret, body.code)
+    if step is None:
+        await rate_limit.record_failure(user.email)
+        raise HTTPException(status_code=400, detail="That code is not valid. Check the time on your device and try again.")
+
+    recovery_codes = totp.generate_recovery_codes()
+    user.totp_enabled = True
+    user.totp_last_step = step
+    user.totp_recovery_hashes = [totp.hash_recovery_code(c) for c in recovery_codes]
+    session.add(user)
+    await session.commit()
+    from app.cache import invalidate_user_cache
+
+    await invalidate_user_cache(str(user.id), user.clerk_id)
+    await rate_limit.reset(user.email)
+    await audit_service.record_admin_action(session, audit_service.MFA_ENABLED, actor=user, request=request)
+    return MfaVerifyOut(recovery_codes=recovery_codes)
+
+
 async def _build_user_out_response(
     current_user: User,
     session: AsyncSession,
@@ -444,6 +536,9 @@ async def _build_user_out_response(
         subject_proficiency=prep.get("subject_proficiency"),
         # Only students onboard; a student with no profile row hasn't yet.
         onboarding_completed=(current_user.role != UserRole.STUDENT) or bool(prep.get("onboarding_completed", False)),
+        must_change_password=bool(getattr(current_user, "must_change_password", False)),
+        mfa_enabled=bool(getattr(current_user, "totp_enabled", False)),
+        mfa_setup_required=bool(getattr(current_user, "mfa_setup_required", False)),
         preferred_language=getattr(current_user, "preferred_language", "en") or "en",
         free_questions_attempted=stats.get("free_questions_attempted", 0),
         total_questions_attempted=stats.get("total_questions_attempted", 0),

@@ -1,23 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { AdminApprovalRequest, AdminApprovalLog, SystemStats, UserDirectoryItem } from '../types/auth';
 import {
-  fetchPendingAdminRequests,
   fetchActiveAdmins,
-  approveAdminRequest,
-  rejectAdminRequest,
   suspendAdmin,
   reactivateAdmin,
   fetchAuditLogs,
   fetchSystemStats,
   fetchPlatformUsers,
   updateUserRole,
+  createStaffUser,
+  resendStaffCredentials,
+  StaffCreatePayload,
+  AdminActionLogEntry,
+  fetchActionLogs,
 } from '../services/adminService';
 
 import { SuperAdminSidebar } from '../components/superadmin/SuperAdminSidebar';
 import { SuperAdminTopNav } from '../components/superadmin/SuperAdminTopNav';
 import { SuperAdminStats } from '../components/superadmin/SuperAdminStats';
 import { SuperAdminTab, SuperAdminTabNav } from '../components/superadmin/SuperAdminTabNav';
-import { PendingApprovalsTab } from '../components/superadmin/PendingApprovalsTab';
+import { ActivityLogTab } from '../components/superadmin/ActivityLogTab';
 import { ActiveAdminsTab } from '../components/superadmin/ActiveAdminsTab';
 import { AuditLogsTab } from '../components/superadmin/AuditLogsTab';
 import { AllUsersTab } from '../components/superadmin/AllUsersTab';
@@ -25,7 +27,7 @@ import { RolesPermissionsTab } from '../components/superadmin/RolesPermissionsTa
 import { Role } from '../types/auth';
 import { fetchRoles, updateUserRoleAssignment } from '../services/rolesService';
 import { TestimonialApprovalsTab } from '../components/superadmin/TestimonialApprovalsTab';
-import { RejectionModal } from '../components/superadmin/RejectionModal';
+import { CreateStaffModal } from '../components/superadmin/CreateStaffModal';
 import {
   TestimonialItem,
   fetchAllTestimonialsForAdmin,
@@ -34,8 +36,9 @@ import {
   deleteTestimonial as deleteTestimonialApi,
 } from '../services/testimonialService';
 
-export function SuperAdminPage() {
-  const [activeTab, setActiveTab] = useState<SuperAdminTab>('pending');
+export function SuperAdminPage({ onSignedOut }: { onSignedOut: () => void }) {
+  const [activeTab, setActiveTab] = useState<SuperAdminTab>('users');
+  const [createStaffOpen, setCreateStaffOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -43,8 +46,8 @@ export function SuperAdminPage() {
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  const [pendingRequests, setPendingRequests] = useState<AdminApprovalRequest[]>([]);
-  const [pendingLoading, setPendingLoading] = useState(true);
+  const [actionLogs, setActionLogs] = useState<AdminActionLogEntry[]>([]);
+  const [actionLogsLoading, setActionLogsLoading] = useState(true);
 
   const [activeAdmins, setActiveAdmins] = useState<AdminApprovalRequest[]>([]);
   const [activeLoading, setActiveLoading] = useState(true);
@@ -62,7 +65,6 @@ export function SuperAdminPage() {
 
   const [processingId, setProcessingId] = useState<number | string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; isError: boolean } | null>(null);
-  const [rejectionTarget, setRejectionTarget] = useState<{ id: number | string; name: string } | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -84,7 +86,7 @@ export function SuperAdminPage() {
 
   const loadAllData = async () => {
     loadStats();
-    loadPending();
+    loadActionLogs();
     loadActive();
     loadLogs();
     loadUsers();
@@ -137,15 +139,14 @@ export function SuperAdminPage() {
     }
   };
 
-  const loadPending = async () => {
-    setPendingLoading(true);
+  const loadActionLogs = async () => {
+    setActionLogsLoading(true);
     try {
-      const data = await fetchPendingAdminRequests();
-      setPendingRequests(data);
+      setActionLogs(await fetchActionLogs());
     } catch (err: any) {
-      setToastMessage({ text: err.message || 'Failed to fetch pending requests.', isError: true });
+      console.error('Failed activity log fetch:', err);
     } finally {
-      setPendingLoading(false);
+      setActionLogsLoading(false);
     }
   };
 
@@ -177,42 +178,14 @@ export function SuperAdminPage() {
     loadAllData();
   }, []);
 
+  // The log changes with every action, so re-read it whenever its tab is opened.
+  useEffect(() => {
+    if (activeTab === 'activity') loadActionLogs();
+  }, [activeTab]);
+
   const showToast = (text: string, isError = false) => {
     setToastMessage({ text, isError });
     setTimeout(() => setToastMessage(null), 4000);
-  };
-
-  const handleApprove = async (id: number | string, name: string) => {
-    setProcessingId(id);
-    try {
-      await approveAdminRequest(id);
-      showToast(`Successfully approved admin access for ${name}`);
-      loadAllData();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to approve admin', true);
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleOpenRejection = (id: number | string, name: string) => {
-    setRejectionTarget({ id, name });
-  };
-
-  const handleConfirmRejection = async (reason: string) => {
-    if (!rejectionTarget) return;
-    const { id, name } = rejectionTarget;
-    setProcessingId(id);
-    try {
-      await rejectAdminRequest(id, reason);
-      showToast(`Rejected request for ${name}`);
-      setRejectionTarget(null);
-      loadAllData();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to reject request', true);
-    } finally {
-      setProcessingId(null);
-    }
   };
 
   const handleSuspend = async (id: number | string, name: string) => {
@@ -262,6 +235,32 @@ export function SuperAdminPage() {
     }
   };
 
+  const handleCreateStaff = async (payload: StaffCreatePayload) => {
+    const { user, email_sent } = await createStaffUser(payload);
+    setCreateStaffOpen(false);
+    showToast(
+      email_sent
+        ? `Created ${user.full_name}. A temporary password was emailed to ${user.email}.`
+        : `Created ${user.full_name}, but the email could not be sent. Use "Resend password" to try again.`,
+      !email_sent,
+    );
+    loadUsers();
+    loadStats();
+  };
+
+  const handleResendCredentials = async (userId: number | string, userName: string) => {
+    if (!window.confirm(`Email ${userName} a new temporary password? Their current password will stop working.`)) return;
+    try {
+      const { email_sent } = await resendStaffCredentials(userId);
+      showToast(
+        email_sent ? `A new temporary password was emailed to ${userName}.` : `Password reset for ${userName}, but the email could not be sent.`,
+        !email_sent,
+      );
+    } catch (err: any) {
+      showToast(err.message || 'Failed to resend credentials', true);
+    }
+  };
+
   const handleApproveTestimonial = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
@@ -304,17 +303,6 @@ export function SuperAdminPage() {
 
   const renderActiveTabContent = () => {
     switch (activeTab) {
-      case 'pending':
-        return (
-          <PendingApprovalsTab
-            requests={pendingRequests}
-            loading={pendingLoading}
-            processingId={processingId}
-            onApprove={handleApprove}
-            onReject={handleOpenRejection}
-            onRefresh={loadPending}
-          />
-        );
       case 'active':
         return (
           <ActiveAdminsTab
@@ -326,6 +314,8 @@ export function SuperAdminPage() {
             onRefresh={loadActive}
           />
         );
+      case 'activity':
+        return <ActivityLogTab logs={actionLogs} loading={actionLogsLoading} onRefresh={loadActionLogs} />;
       case 'audit':
         return (
           <AuditLogsTab
@@ -343,6 +333,8 @@ export function SuperAdminPage() {
             onRoleChange={handleRoleChange}
             onRoleAssignment={handleRoleAssignment}
             assignableRoles={assignableRoles}
+            onCreateUser={() => setCreateStaffOpen(true)}
+            onResendCredentials={handleResendCredentials}
           />
         );
       case 'roles-permissions':
@@ -371,6 +363,7 @@ export function SuperAdminPage() {
         activeTab={activeTab}
         onNavigate={setActiveTab}
         onToggleSidebar={handleToggleSidebar}
+        onSignedOut={onSignedOut}
       />
 
       {/* Main Container below Top Header (marginTop: 60px) */}
@@ -384,7 +377,6 @@ export function SuperAdminPage() {
           }}
           collapsed={sidebarCollapsed}
           onToggle={handleToggleSidebar}
-          pendingCount={pendingRequests.length}
           pendingTestimonialsCount={testimonials.filter((t) => t.status === 'PENDING').length}
           mobileOpen={mobileOpen}
           onCloseMobile={() => setMobileOpen(false)}
@@ -482,7 +474,6 @@ export function SuperAdminPage() {
               <SuperAdminTabNav
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                pendingCount={pendingRequests.length}
                 pendingTestimonialsCount={testimonials.filter((t) => t.status === 'PENDING').length}
               />
 
@@ -493,13 +484,13 @@ export function SuperAdminPage() {
         </div>
       </div>
 
-      {/* Rejection Modal Popup */}
-      <RejectionModal
-        isOpen={Boolean(rejectionTarget)}
-        adminName={rejectionTarget?.name || ''}
-        onClose={() => setRejectionTarget(null)}
-        onConfirm={handleConfirmRejection}
+      <CreateStaffModal
+        isOpen={createStaffOpen}
+        customRoles={assignableRoles}
+        onClose={() => setCreateStaffOpen(false)}
+        onCreate={handleCreateStaff}
       />
+
     </div>
   );
 }

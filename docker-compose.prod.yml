@@ -19,6 +19,18 @@ services:
       - app-network
     restart: unless-stopped
 
+  # Super Admin app (its own origin). Bound to loopback: put a TLS-terminating reverse proxy for the
+  # Super Admin host in front of it, and restrict that host (VPN / IP allowlist).
+  superadmin:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/examplanner-superadmin:latest
+    ports:
+      - "127.0.0.1:3010:80"
+    depends_on:
+      - api
+    networks:
+      - app-network
+    restart: unless-stopped
+
 
 networks:
   app-network:

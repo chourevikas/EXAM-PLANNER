@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { TestimonialApprovalsTab } from '../../superadmin/TestimonialApprovalsTab';
+import { TestimonialApprovalsTab } from '../TestimonialApprovalsTab';
 import {
   fetchAllTestimonialsForAdmin,
   approveTestimonial,

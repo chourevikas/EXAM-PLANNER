@@ -292,6 +292,61 @@ async def send_password_reset_email(email: str, token: str):
 
 
 
+async def send_staff_welcome_email(email: str, user_name: str, role_label: str, temp_password: str):
+    """Emails a newly created staff member their temporary password. Never logs the password."""
+    from html import escape
+
+    login_url = f"{settings.FRONTEND_URL}/signin"
+    html = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #DC2626; padding: 24px; border-radius: 12px; text-align: center; color: white;">
+                <h2 style="margin: 0; font-size: 22px;">Welcome to ExamPlanner</h2>
+            </div>
+
+            <p style="margin-top: 24px;">Hi {escape(user_name)},</p>
+            <p>A Super Admin has created an ExamPlanner <strong>{escape(role_label)}</strong> account for you.</p>
+
+            <p style="margin-bottom: 4px;">Sign in with this email address and the temporary password below:</p>
+            <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center; font-family: monospace; font-size: 20px; letter-spacing: 1px;">{escape(temp_password)}</div>
+
+            <p style="margin-top: 20px;">You will be asked to choose a new password the first time you sign in. The temporary password stops working after that.</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <a href="{login_url}" style="background-color: #DC2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Sign in</a>
+            </div>
+
+            <p style="color: #666; font-size: 13px;">If you weren't expecting this email, please ignore it or contact support.</p>
+        </body>
+    </html>
+    """
+
+    message = MessageSchema(
+        subject="Your ExamPlanner account is ready",
+        recipients=[email],
+        body=html,
+        subtype=MessageType.html
+    )
+
+    try:
+        if settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            fm = FastMail(get_fastmail_config())
+            await fm.send_message(message)
+            logger.info(f"Staff welcome email sent successfully to {email}")
+            return True
+
+        ses_ok = await _send_via_aws_ses([str(email)], message.subject, html)
+        if ses_ok:
+            return True
+
+        # Dev fallback: no mail transport configured. Deliberately does not log the password.
+        logger.info(f"📧 [DEV] Staff welcome email simulated for {email} (no mail transport configured)")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send staff welcome email to {email}: {e}")
+        return False
+
+
 async def send_broadcast_notification_email(
     email: str,
     user_name: str,
@@ -435,6 +490,9 @@ class AppEmailService:
     async def send_verification_email(self, email: str, token: str):
         return await send_verification_email(email, token)
         
+    async def send_staff_welcome_email(self, email: str, user_name: str, role_label: str, temp_password: str):
+        return await send_staff_welcome_email(email, user_name, role_label, temp_password)
+
     async def send_password_reset_email(self, email: str, token: str):
         return await send_password_reset_email(email, token)
 

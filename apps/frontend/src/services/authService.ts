@@ -1,8 +1,29 @@
 import { UserRole, AuthResponse } from '../types/auth';
+import { SUPERADMIN_APP_URL } from '../utils/superAdminApp';
 import { getGuestAttempts, clearGuestAttempts } from '../utils/guestStorage';
 import { guardedFetch, registerTokenRefreshHandler } from '../utils/apiGuard';
 
 const API_BASE_URL = '/api/v1/auth';
+
+/**
+ * Super Admin sessions must never live in this app's browser storage (see utils/superAdminApp).
+ * The server has just issued a session, so revoke it and send the user to the Super Admin app.
+ */
+async function rejectSuperAdminSession(data: AuthResponse): Promise<void> {
+  if (data.user?.role !== UserRole.SUPER_ADMIN) return;
+  if (data.access_token) {
+    await fetch(`${API_BASE_URL}/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${data.access_token}` },
+    }).catch(() => undefined);
+  }
+  throw new Error(
+    SUPERADMIN_APP_URL
+      ? `Super Admin accounts sign in at ${SUPERADMIN_APP_URL}`
+      : 'Super Admin accounts sign in on the separate Super Admin portal.',
+  );
+}
 
 let activeRefreshPromise: Promise<string> | null = null;
 let refreshTimerId: any = null;
@@ -76,6 +97,7 @@ export async function refreshAccessToken(): Promise<string> {
       }
 
       const data: AuthResponse = await res.json();
+      await rejectSuperAdminSession(data);
       if (data.access_token) {
         localStorage.setItem('access_token', data.access_token);
         if (data.user) {
@@ -175,6 +197,7 @@ export async function loginUser(email: string, password: string, role?: UserRole
   }
 
   const data: AuthResponse = await res.json();
+  await rejectSuperAdminSession(data);
   if (data.access_token && data.user) {
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
@@ -218,6 +241,7 @@ export async function exchangeClerkToken(
   }
 
   const data: AuthResponse = await res.json();
+  await rejectSuperAdminSession(data);
   if (data.access_token && data.user) {
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
@@ -427,4 +451,34 @@ export async function resetPassword(token: string, newPassword: string): Promise
     const errorData = await res.json().catch(() => ({ detail: 'Reset failed' }));
     throw new Error(errorData.detail || 'Invalid or expired reset link.');
   }
+}
+
+/**
+ * Sets a new password for the signed-in user (also clears the temporary-password flag) and
+ * replaces the stored session with the fresh one the server issues.
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<AuthResponse> {
+  const token = localStorage.getItem('access_token');
+  if (!token) throw new Error('You are signed out. Please sign in again.');
+
+  const res = await fetch(`${API_BASE_URL}/change-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    credentials: 'include',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const detail = typeof body?.detail === 'string' ? body.detail : Array.isArray(body?.detail) ? body.detail[0]?.msg : null;
+    throw new Error(detail || 'Could not change the password.');
+  }
+
+  const data: AuthResponse = await res.json();
+  if (data.access_token && data.user) {
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    scheduleProactiveRefresh(data.access_token);
+    window.dispatchEvent(new Event('user_profile_updated'));
+  }
+  return data;
 }

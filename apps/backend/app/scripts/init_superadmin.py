@@ -27,6 +27,12 @@ async def init_superadmin():
     password = getattr(settings, "SUPERADMIN_PASSWORD", "SuperAdmin#2026!")
     full_name = getattr(settings, "SUPERADMIN_NAME", "System Super Admin")
 
+    if settings.ENVIRONMENT.lower() in ("production", "prod") and password == "SuperAdmin#2026!":
+        raise SystemExit(
+            "Refusing to create/reset the Super Admin with the built-in default SUPERADMIN_PASSWORD in production. "
+            "Set SUPERADMIN_PASSWORD (and SUPERADMIN_EMAIL) in the environment first."
+        )
+
     async with managed_async_session() as session:
         # Search for super admin by email or role
         stmt = select(User).where(User.email == email)

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldAlert, Users, GraduationCap } from 'lucide-react';
+import { Users, GraduationCap } from 'lucide-react';
 import { SystemStats } from '../../types/auth';
 import { SuperAdminTab } from './SuperAdminTabNav';
 
@@ -21,17 +21,6 @@ export function SuperAdminStats({ stats, loading, onSelectTab }: SuperAdminStats
     icon: any;
     targetTab: SuperAdminTab;
   }[] = [
-    {
-      title: 'Pending Approvals',
-      value: loading ? '...' : stats?.pending_admins_count ?? 0,
-      badge: 'Action Required',
-      badgeColor: '#F47B35',
-      color: '#F47B35',
-      bg: 'rgba(249, 115, 22, 0.12)',
-      border: 'rgba(249, 115, 22, 0.25)',
-      icon: ShieldAlert,
-      targetTab: 'pending',
-    },
     {
       title: 'Active Admins',
       value: loading ? '...' : stats?.active_admins_count ?? 0,
