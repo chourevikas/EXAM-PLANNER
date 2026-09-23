@@ -34,6 +34,7 @@ class ExamStatus(str, enum.Enum):
     PENDING_HUMAN_REVIEW = "PENDING_HUMAN_REVIEW"
     PUBLISHED = "PUBLISHED"
     REJECTED = "REJECTED"
+    ARCHIVED = "ARCHIVED"
 
 
 class DifficultyLevel(str, enum.Enum):
