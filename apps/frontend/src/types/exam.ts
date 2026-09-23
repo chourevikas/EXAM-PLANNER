@@ -51,6 +51,12 @@ export interface StartExamRequest {
   mode?: AttemptMode;
   force_new?: boolean;
   language?: string;
+  dynamic_subject?: string;
+  dynamic_topic?: string;
+  dynamic_subtopic?: string;
+  dynamic_exams?: string;
+  dynamic_years?: string;
+  dynamic_limit?: number;
 }
 
 export interface SaveResponseRequest {

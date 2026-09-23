@@ -20,8 +20,12 @@ from app.db.models import (
     UserTestAttempt,
     UserQuestionResponse,
     QuestionSwitchLog,
+    QuestionHierarchyLink,
+    Subject,
+    Topic,
+    Subtopic,
 )
-from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, UserStatus, LanguageCode, QuestionStatus
+from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus
 from app.schemas.exam_attempt import (
     StartExamRequest,
     StartExamResponse,
@@ -72,16 +76,44 @@ class ExamSessionService:
             req, user_id = user_id, req
 
         raw_exam_id = req.exam_id if hasattr(req, "exam_id") else req
-
-        # Resolve Exam by integer ID or string code/slug
-        exam = None
         req_exam_str = str(raw_exam_id)
+        is_dynamic = req_exam_str.lower() == "dynamic" or req_exam_str.startswith("DYN_")
+        
+        exam = None
 
-        try:
-            parsed_id = int(req_exam_str)
-            exam = await self.session.get(Exam, parsed_id)
-        except (ValueError, TypeError):
-            pass
+        if is_dynamic:
+            if req_exam_str.startswith("DYN_"):
+                # It's an existing dynamic exam (retake or resume)
+                exam_res = await self.session.exec(select(Exam).where(Exam.code == req_exam_str))
+                exam = exam_res.first()
+            else:
+                # It's a new dynamic exam
+                title_parts = []
+                if getattr(req, 'dynamic_subject', None) and req.dynamic_subject != 'all': title_parts.append(req.dynamic_subject)
+                if getattr(req, 'dynamic_topic', None) and req.dynamic_topic != 'all': title_parts.append(req.dynamic_topic)
+                title = " - ".join(title_parts) if title_parts else "Subject-wise Simulation"
+                limit = getattr(req, 'dynamic_limit', 100) or 100
+                
+                exam = Exam(
+                    code=f"DYN_{user_id}_{int(datetime.now().timestamp())}",
+                    name=title,
+                    is_active=True,
+                    status=ExamStatus.ARCHIVED,
+                    total_duration_minutes=int(limit * 1.2),
+                    total_questions=limit,
+                    exam_type=QuestionSourceType.PYQ,
+                )
+                self.session.add(exam)
+                await self.session.flush()
+                req_exam_str = str(exam.code)
+                req.exam_id = exam.code
+
+        if not exam:
+            try:
+                parsed_id = int(req_exam_str)
+                exam = await self.session.get(Exam, parsed_id)
+            except (ValueError, TypeError):
+                pass
 
         if not exam:
             exam_res = await self.session.exec(select(Exam).where(Exam.code == req_exam_str))
@@ -131,7 +163,7 @@ class ExamSessionService:
 
                 return StartExamResponse(
                     attempt_id=str(existing_attempt.id),
-                    exam_id=str(exam.id),
+                    exam_id=str(exam.code if exam.code.startswith("DYN_") else exam.id),
                     status=existing_attempt.status,
                     mode=existing_attempt.mode,
                     started_at=existing_attempt.started_at,
@@ -143,15 +175,45 @@ class ExamSessionService:
                     questions_folder_url=None,
                 )
 
-        # Fast Question Metadata Retrieval using DB index scan or folder
-
-        q_stmt = (
-            select(Question.id, Question.question_number_in_paper, Question.expected_time_seconds)
-            .where(Question.exam_id == exam.id, Question.status == QuestionStatus.PUBLISHED)
-            .order_by(col(Question.question_number_in_paper))
-        )
-        q_res = await self.session.exec(q_stmt)
-        q_rows = q_res.all()
+        q_rows = []
+        if is_dynamic and req_exam_str.startswith("DYN_") and getattr(req, 'force_new', False):
+            # Fetch questions from previous attempt of this dynamic exam
+            last_attempt_res = await self.session.exec(
+                select(ExamAttempt).where(ExamAttempt.exam_id == exam.id, ExamAttempt.user_id == user_id).order_by(desc(ExamAttempt.id))
+            )
+            last_attempt = last_attempt_res.first()
+            if last_attempt:
+                old_resp_res = await self.session.exec(
+                    select(ExamQuestionResponse.question_id, ExamQuestionResponse.expected_time_seconds)
+                    .where(ExamQuestionResponse.attempt_id == last_attempt.id)
+                    .order_by(ExamQuestionResponse.id)
+                )
+                for i, r in enumerate(old_resp_res.all()):
+                    q_rows.append((r.question_id, i + 1, r.expected_time_seconds))
+                    
+        if not q_rows:
+            if is_dynamic:
+                from sqlalchemy.sql.expression import func
+                limit = getattr(req, 'dynamic_limit', 100) or 100
+                q_stmt = select(Question.id, Question.question_number_in_paper, Question.expected_time_seconds).where(Question.status == QuestionStatus.PUBLISHED)
+                
+                # Dynamic filtering
+                if getattr(req, 'dynamic_subject', None) and req.dynamic_subject != 'all':
+                    q_stmt = q_stmt.join(QuestionHierarchyLink).join(Subject).where(Subject.name == req.dynamic_subject)
+                
+                # We limit the number of questions and randomize
+                q_stmt = q_stmt.order_by(func.random()).limit(limit)
+                q_res = await self.session.exec(q_stmt)
+                for i, r in enumerate(q_res.all()):
+                    q_rows.append((r.id, i + 1, r.expected_time_seconds))
+            else:
+                q_stmt = (
+                    select(Question.id, Question.question_number_in_paper, Question.expected_time_seconds)
+                    .where(Question.exam_id == exam.id, Question.status == QuestionStatus.PUBLISHED)
+                    .order_by(col(Question.question_number_in_paper))
+                )
+                q_res = await self.session.exec(q_stmt)
+                q_rows = q_res.all()
 
         total_q_count = len(q_rows)
         if total_q_count == 0:
@@ -159,6 +221,17 @@ class ExamSessionService:
 
         duration_sec = (exam.total_duration_minutes or 120) * 60
         now_dt = datetime.now(timezone.utc)
+        
+        # Save dynamic filters to report_metadata_json
+        metadata = {}
+        if is_dynamic:
+            metadata = {
+                "dynamic_subject": getattr(req, "dynamic_subject", "all"),
+                "dynamic_topic": getattr(req, "dynamic_topic", "all"),
+                "dynamic_subtopic": getattr(req, "dynamic_subtopic", "all"),
+                "dynamic_years": getattr(req, "dynamic_years", "all"),
+                "dynamic_exams": getattr(req, "dynamic_exams", "all")
+            }
 
         # Create ExamAttempt
         attempt = ExamAttempt(
@@ -170,6 +243,7 @@ class ExamSessionService:
             max_duration_seconds=duration_sec,
             total_questions=total_q_count,
             current_question_index=1,
+            report_metadata_json=metadata if is_dynamic else None
         )
         self.session.add(attempt)
 
@@ -224,325 +298,25 @@ class ExamSessionService:
                 )
             )
 
-        if exam_responses:
-            self.session.add_all(exam_responses)
-            await self.session.flush()
-
-            user_responses = [
-                UserQuestionResponse(
-                    attempt_id=user_test_attempt.id,
-                    exam_response_id=resp.id,
-                    question_id=resp.question_id,
-                    time_taken_seconds=0,
-                )
-                for resp in exam_responses
-            ]
-            self.session.add_all(user_responses)
-            await self.session.commit()
-
-        # Load first question directly from the database
-        q_nav = await self.get_question(
-            attempt_id=attempt.id,
-            user_id=user_id,
-            question_number=1,
-            language=req.language or "ENGLISH",
-        )
-
-        # Pre-cache full questions and solutions data from DB into memory/Redis for instant evaluation
-        cached_eid = exam.id
-        cached_code = exam.code
-        async def _precache_exam_solutions():
-            try:
-                from app.engine.post_submission_pipeline import load_exam_solutions_data
-                from app.db.session import managed_async_session
-                async with managed_async_session() as pre_sess:
-                    await load_exam_solutions_data(cached_eid, pre_sess)
-            except Exception as precache_err:
-                logger.warning(f"Exam solutions background pre-cache warning for exam '{cached_code}': {precache_err}")
-
-        asyncio.create_task(_precache_exam_solutions())
+        self.session.add_all(exam_responses)
+        await self.session.commit()
+        
+        # We need to fetch the first question again correctly
+        status_res = await self.get_exam_status(attempt.id, user_id)
+        q_nav = await self.get_question(attempt.id, user_id, 1, language=req.language or "ENGLISH")
 
         return StartExamResponse(
             attempt_id=str(attempt.id),
-            exam_id=str(exam.id),
+            exam_id=str(exam.code if exam.code.startswith("DYN_") else exam.id),
             status=attempt.status,
             mode=attempt.mode,
             started_at=attempt.started_at,
             max_duration_seconds=attempt.max_duration_seconds,
-            total_questions=attempt.total_questions,
+            total_questions=total_q_count,
             first_question=q_nav,
             palette=palette_items,
             questions_presigned_url=None,
             questions_folder_url=None,
-        )
-
-    async def get_question(
-        self,
-        attempt_id: int | str,
-        user_id: int,
-        question_number: int,
-        language: Optional[str] = "ENGLISH",
-    ) -> QuestionNavResponse:
-        attempt = await self._get_attempt_safe(attempt_id, user_id)
-        if attempt.status != AttemptStatus.IN_PROGRESS:
-            raise HTTPException(
-                status_code=403, detail="ATTEMPT_ALREADY_SUBMITTED: Attempt is no longer in progress."
-            )
-
-        if question_number < 1 or question_number > attempt.total_questions:
-            raise HTTPException(
-                status_code=422,
-                detail=f"QUESTION_NUMBER_OUT_OF_RANGE: Must be between 1 and {attempt.total_questions}.",
-            )
-
-        exam = await self.session.get(Exam, attempt.exam_id)
-        if not exam:
-            raise HTTPException(status_code=404, detail="EXAM_NOT_FOUND: Associated exam not found.")
-
-        # --- S3 Storage Logic Commented Out (Using Direct PostgreSQL DB for all queries) ---
-        # paper_set = exam.paper_set_code or "SET_A"
-        # clean_set = str(paper_set).strip().lower().replace("_", "-")
-        # q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
-        # q_filename = f"Q{question_number:03d}.json"
-        # s3_indiv_path = f"{q_folder.rstrip('/')}/{q_filename}"
-        # q_json_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
-        #
-        # q_payload = None
-        # presigned_url = None
-        #
-        # try:
-        #     if await self.storage.exists(s3_indiv_path):
-        #         q_payload = await self.storage.download_json(s3_indiv_path)
-        #         presigned_url = await self.storage.generate_presigned_url(s3_indiv_path)
-        # except Exception:
-        #     q_payload = None
-        #
-        # if not q_payload:
-        #     try:
-        #         if await self.storage.exists(q_json_path):
-        #             questions_doc = await self.storage.download_json(q_json_path)
-        #             questions_list = questions_doc.get("questions", [])
-        #             if question_number <= len(questions_list):
-        #                 q_payload = questions_list[question_number - 1]
-        #     except Exception:
-        #         q_payload = None
-
-        q_payload = None
-        presigned_url = None
-
-        # 2. Database Question Lookup & Synchronization
-        q_stmt = select(Question).where(
-            Question.exam_id == exam.id,
-            Question.question_number_in_paper == question_number,
-            Question.status != QuestionStatus.REJECTED,
-        )
-        q_res = await self.session.exec(q_stmt)
-        q_model = q_res.first()
-
-        if not q_model:
-            # Fallback for papers with non-contiguous numbering: lookup question via attempt responses
-            resp_order_stmt = (
-                select(ExamQuestionResponse)
-                .where(ExamQuestionResponse.attempt_id == attempt.id)
-                .order_by(col(ExamQuestionResponse.id).asc())
-            )
-            all_attempt_resps = (await self.session.exec(resp_order_stmt)).all()
-            if 1 <= question_number <= len(all_attempt_resps):
-                target_q_id = all_attempt_resps[question_number - 1].question_id
-                q_model = await self.session.get(Question, target_q_id)
-
-        db_opts = []
-        if q_model:
-            opts_stmt = (
-                select(QuestionOption)
-                .where(QuestionOption.question_id == q_model.id)
-                .order_by(col(QuestionOption.display_order))
-            )
-            opts_res = await self.session.exec(opts_stmt)
-            db_opts = opts_res.all()
-
-        if not q_payload:
-            if q_model:
-                from app.core.languages import normalize_language
-                target_iso, target_enum = normalize_language(language)
-
-                # Pre-load all existing translations for this question + its options into maps
-                # so _ensure_translations_on_demand can detect "fake" translations (English text
-                # stored in a Hindi/Marathi slot) and re-translate them correctly.
-                pre_qt_map: Dict[int, Dict[str, str]] = {}
-                pre_ot_map: Dict[int, Dict[str, Any]] = {}
-
-                pre_q_trans_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q_model.id)
-                pre_q_trans_res = await self.session.exec(pre_q_trans_stmt)
-                for t in pre_q_trans_res.all():
-                    l_val = t.language.value if hasattr(t.language, "value") else str(t.language)
-                    pre_qt_map.setdefault(q_model.id, {})[l_val] = t.question_text or ""
-                    iso_c, _ = normalize_language(l_val)
-                    if iso_c:
-                        pre_qt_map[q_model.id][iso_c] = t.question_text or ""
-
-                if db_opts:
-                    pre_opt_trans_stmt = select(OptionTranslation).where(
-                        col(OptionTranslation.option_id).in_([o.id for o in db_opts])
-                    )
-                    pre_opt_trans_res = await self.session.exec(pre_opt_trans_stmt)
-                    for ot in pre_opt_trans_res.all():
-                        l_val = ot.language.value if hasattr(ot.language, "value") else str(ot.language)
-                        pre_ot_map.setdefault(ot.option_id, {})[l_val] = (ot.option_text or "", None)
-                        iso_c, _ = normalize_language(l_val)
-                        if iso_c:
-                            pre_ot_map[ot.option_id][iso_c] = (ot.option_text or "", None)
-
-                # On-demand translation for non-English targets (also fixes previously wrong translations)
-                if target_enum != "ENGLISH":
-                    from app.services.question_service import QuestionService
-                    try:
-                        q_svc = QuestionService(self.session)
-                        await q_svc._ensure_translations_on_demand(
-                            questions=[q_model],
-                            options=db_opts,
-                            passages=[],
-                            target_iso=target_iso,
-                            target_enum=target_enum,
-                            qt_map=pre_qt_map,
-                            ot_map=pre_ot_map,
-                            pt_map={},
-                        )
-                    except Exception as trans_err:
-                        logger.warning(f"On-demand translation warning for Q{q_model.id}: {trans_err}")
-
-                # Use the in-memory maps directly: _ensure_translations_on_demand already
-                # mutated pre_qt_map/pre_ot_map with any newly-translated text before persisting
-                # it (on a separate session), so a fresh re-query here would just repeat the
-                # same two SELECTs against the DB for no new information.
-                trans_map: Dict[str, Any] = {
-                    lang: {"question_text": text}
-                    for lang, text in pre_qt_map.get(q_model.id, {}).items()
-                }
-
-                opts_list = []
-                for o in db_opts:
-                    opt_trans_map: Dict[str, str] = {
-                        lang: (val[0] if isinstance(val, (tuple, list)) else val)
-                        for lang, val in pre_ot_map.get(o.id, {}).items()
-                    }
-
-                    # Pick the best available text for the requested target language
-                    chosen_opt_text = (
-                        opt_trans_map.get(target_enum)
-                        or opt_trans_map.get(target_iso)
-                        or opt_trans_map.get("ENGLISH")
-                        or opt_trans_map.get("en")
-                        or next(iter(opt_trans_map.values()), None)
-                        or f"Option {o.option_label}"
-                    )
-                    hi_text = opt_trans_map.get("HINDI") or opt_trans_map.get("hi")
-                    mr_text = opt_trans_map.get("MARATHI") or opt_trans_map.get("mr")
-                    opts_list.append({
-                        "option_id": str(o.id),
-                        "option_label": o.option_label,
-                        "text": chosen_opt_text,
-                        "text_hindi": hi_text,
-                        "text_marathi": mr_text,
-                        "display_order": o.display_order,
-                        "translations": opt_trans_map,
-                    })
-
-                # Pick the best available question text for the requested target language
-                chosen_q_text = (
-                    (trans_map.get(target_enum) or {}).get("question_text")
-                    or (trans_map.get(target_iso) or {}).get("question_text")
-                    or (trans_map.get("ENGLISH") or {}).get("question_text")
-                    or (trans_map.get("en") or {}).get("question_text")
-                    or f"Question #{q_model.question_number_in_paper}"
-                )
-                q_hi_text = (trans_map.get("HINDI") or {}).get("question_text") or (trans_map.get("hi") or {}).get("question_text")
-                q_mr_text = (trans_map.get("MARATHI") or {}).get("question_text") or (trans_map.get("mr") or {}).get("question_text")
-                q_payload = {
-                    "question_id": str(q_model.id),
-                    "question_number": question_number,
-                    "paper_question_number": q_model.question_number_in_paper,
-                    "section_code": q_model.section_code or "GENERAL",
-                    "text": chosen_q_text,
-                    "text_hindi": q_hi_text,
-                    "text_marathi": q_mr_text,
-                    "translations": trans_map,
-                    "options": opts_list,
-                    "marks": q_model.marks,
-                    "negative_marks": q_model.negative_marks,
-                    "expected_time_seconds": q_model.expected_time_seconds or 60.0,
-                }
-
-        else:
-            # Synchronize S3 payload with DB question and option IDs
-            if q_model:
-                q_payload["question_id"] = str(q_model.id)
-                if db_opts and "options" in q_payload and isinstance(q_payload["options"], list):
-                    db_opt_map = {o.option_label.upper(): o.id for o in db_opts if o.option_label}
-                    for idx, o in enumerate(q_payload["options"], 1):
-                        if isinstance(o, dict):
-                            lbl = (o.get("option_label") or o.get("label") or chr(64 + idx)).strip().upper()
-                            matched_id = db_opt_map.get(lbl)
-                            if matched_id:
-                                o["option_id"] = str(matched_id)
-                                o["id"] = str(matched_id)
-                            elif idx <= len(db_opts):
-                                o["option_id"] = str(db_opts[idx - 1].id)
-                                o["id"] = str(db_opts[idx - 1].id)
-
-        # 3. If neither S3 nor Database has the question, throw 404
-        if not q_payload:
-            raise HTTPException(
-                status_code=404,
-                detail=f"QUESTION_NOT_FOUND: Question #{question_number} could not be retrieved from S3 or database.",
-            )
-
-        # Resolve DB question ID safely (never bind non-integer to BigInt column)
-        resolved_db_qid = None
-        if q_model:
-            resolved_db_qid = q_model.id
-        elif str(q_payload.get("question_id", "")).isdigit():
-            resolved_db_qid = int(q_payload["question_id"])
-
-        # Fetch DB response record
-        resp = None
-        if resolved_db_qid is not None:
-            r_stmt = select(ExamQuestionResponse).where(
-                ExamQuestionResponse.attempt_id == attempt.id,
-                ExamQuestionResponse.question_id == resolved_db_qid,
-            )
-            r_res = await self.session.exec(r_stmt)
-            resp = r_res.first()
-
-        if not resp:
-            all_res = await self.session.exec(
-                select(ExamQuestionResponse)
-                .where(ExamQuestionResponse.attempt_id == attempt.id)
-                .order_by(col(ExamQuestionResponse.created_at).asc(), col(ExamQuestionResponse.id).asc())
-            )
-            all_resps = all_res.all()
-            if 1 <= question_number <= len(all_resps):
-                resp = all_resps[question_number - 1]
-                if resp and not resolved_db_qid:
-                    q_payload["question_id"] = str(resp.question_id)
-
-        if resp:
-            resp.visited_count += 1
-            if resp.question_status == QuestionResponseStatus.UNVISITED:
-                resp.question_status = QuestionResponseStatus.VISITED
-            self.session.add(resp)
-
-        attempt.current_question_index = question_number
-        self.session.add(attempt)
-        await self.session.commit()
-
-        return self._build_question_nav_response(
-            q_item=q_payload,
-            nav_current=question_number,
-            nav_total=attempt.total_questions,
-            resp=resp,
-            language=language,
-            presigned_url=presigned_url,
         )
 
     def _build_question_nav_response(

@@ -11,6 +11,14 @@ class StartExamRequest(BaseModel):
     mode: AttemptMode = AttemptMode.EXAM
     force_new: bool = False
     language: Optional[str] = None
+    
+    # Dynamic Subject-wise simulation parameters
+    dynamic_subject: Optional[str] = None
+    dynamic_topic: Optional[str] = None
+    dynamic_subtopic: Optional[str] = None
+    dynamic_exams: Optional[str] = None  # Comma separated
+    dynamic_years: Optional[str] = None  # Comma separated
+    dynamic_limit: Optional[int] = None
 
 
 class SaveResponseRequest(BaseModel):

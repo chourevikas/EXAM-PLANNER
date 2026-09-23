@@ -353,7 +353,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           }
         } else if (examId) {
           // Start new attempt session
-          const startRes = await startExamAttempt({ exam_id: examId, mode: 'EXAM', language });
+          const forceNew = searchParams.get('forceNew') === 'true';
+          const startRes = await startExamAttempt({ exam_id: examId, mode: 'EXAM', language, force_new: forceNew });
           setAttemptId(startRes.attempt_id);
           setAttemptMode(startRes.mode);
           setTimeLeft(startRes.max_duration_seconds);
