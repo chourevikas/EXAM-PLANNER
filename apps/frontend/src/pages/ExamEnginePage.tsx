@@ -52,7 +52,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const user = localStorage.getItem('user');
   const isLoggedIn = Boolean(token && user);
 
-  const isGuestMode = isGuest || location.pathname === '/guest-exam';
+  const isGuestMode = isGuest || location.pathname === '/guest-exam' || examId === 'dynamic';
 
   // ─── Session State ───────────────────────────────────────────────────────────
   const [attemptId, setAttemptId] = useState<number | string | null>(paramAttemptId || null);
@@ -275,11 +275,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     async function initSession() {
       setIsLoadingSession(true);
       try {
-        if (isGuestMode) {
-          await loadGuestSessionQuestions();
-          return;
-        }
-
         const typeParam = searchParams.get('type');
         const examParam = searchParams.get('exam');
         let isPyqTest = typeParam === 'PYQ';
@@ -293,6 +288,16 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             isPyqTest = true;
           }
         }
+        
+        if (isPyqTest) {
+          setIsPYQ(true);
+        }
+
+        if (isGuestMode) {
+          await loadGuestSessionQuestions();
+          return;
+        }
+
 
         // Exam-type (PYQ vs Mock) confirmation runs in the background — a
         // synchronous heuristic above already set a reasonable default, and
@@ -388,32 +393,27 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   }, [examId, paramAttemptId, isGuestMode]);
 
   const loadGuestSessionQuestions = async () => {
-    const gExam = searchParams.get('exam') || 'UPSC Prelims (GS Paper 1)';
-    const gYear = searchParams.get('year') || '2023';
-    const gTopic = searchParams.get('topic') || 'Indian Polity & Governance';
-    const gSubtopic = searchParams.get('subtopic') || 'Fundamental Rights';
+    const gExam = searchParams.get('exam') || '';
+    const gYear = searchParams.get('year') || '';
+    const gSubject = searchParams.get('subject') || '';
+    const gTopic = searchParams.get('topic') || '';
+    const gSubtopic = searchParams.get('subtopic') || '';
     const gCount = parseInt(searchParams.get('count') || '10', 10);
+    const gTime = parseInt(searchParams.get('time') || String(gCount * 120), 10);
 
     setTotalQuestions(gCount);
-    setTimeLeft(gCount * 120);
-    setAttemptMode('PRACTICE');
+    setTimeLeft(gTime);
+    setAttemptMode('EXAM');
 
     const apiParams = new URLSearchParams({
       limit: gCount.toString(),
     });
 
-    if (gTopic && gTopic !== 'All Topics') {
-      apiParams.append('topic_name', gTopic);
-    }
-    if (gSubtopic && gSubtopic !== 'All Subtopics') {
-      apiParams.append('subtopic_name', gSubtopic);
-    }
-    if (gYear && gYear !== 'All Years (2018 - 2024)' && !isNaN(Number(gYear))) {
-      apiParams.append('exam_year', gYear);
-    }
-    if (gExam && gExam.toLowerCase().includes('upsc')) {
-      apiParams.append('exam_name', 'upsc');
-    }
+    if (gExam) apiParams.append('exam_name', gExam);
+    if (gYear) apiParams.append('exam_year', gYear);
+    if (gSubject && gSubject !== 'All Subjects') apiParams.append('subject_name', gSubject);
+    if (gTopic && gTopic !== 'All Topics') apiParams.append('topic_name', gTopic);
+    if (gSubtopic && gSubtopic !== 'All Subtopics') apiParams.append('subtopic_name', gSubtopic);
 
     try {
       const res = await fetch(`/api/v1/questions?${apiParams.toString()}`);
@@ -975,8 +975,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         if (nextBatch * BATCH_SIZE < totalQuestions) {
           loadQuestionBatch(nextBatch);
         }
-        await loadQuestion(attemptId, nextIdx + 1);
       }
+      await loadQuestion(attemptId || 'guest', nextIdx + 1);
       if (isTabletOrBelow) setMobileTab('question');
     }
   };
@@ -990,8 +990,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       if (attemptId) {
         const targetBatch = Math.floor(prevIdx / BATCH_SIZE);
         loadQuestionBatch(targetBatch);
-        await loadQuestion(attemptId, prevIdx + 1);
       }
+      await loadQuestion(attemptId || 'guest', prevIdx + 1);
       if (isTabletOrBelow) setMobileTab('question');
     }
   };
@@ -1007,8 +1007,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       if ((targetBatch + 1) * BATCH_SIZE < totalQuestions) {
         loadQuestionBatch(targetBatch + 1);
       }
-      await loadQuestion(attemptId, idx + 1);
     }
+    await loadQuestion(attemptId || 'guest', idx + 1);
     if (isTabletOrBelow) setMobileTab('question');
   };
 
@@ -1462,7 +1462,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             </div>
 
             <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? 'var(--bg-subtle)' : 'var(--deep-navy)', marginBottom: 4 }}>
-              Guest Test Results
+              {isLoggedIn ? 'Simulation Results' : 'Guest Test Results'}
             </h2>
 
             <p style={{ fontSize: 13, color: isDark ? 'var(--text-disabled)' : 'var(--text-muted)', marginBottom: 20 }}>
@@ -1514,23 +1514,25 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             </div>
 
             {/* CTA Box */}
-            <div
-              style={{
-                background: 'linear-gradient(135deg, rgba(var(--primary-red-rgb), 0.06) 0%, rgba(124,58,237,0.06) 100%)',
-                borderRadius: 'var(--radius)',
-                padding: 16,
-                marginBottom: 20,
-                border: '1px solid rgba(var(--primary-red-rgb), 0.2)',
-                textAlign: 'left',
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary-red)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Trophy size={15} /> Unlock Full 12-Matrix Psychometric Analysis
+            {!isLoggedIn && (
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, rgba(var(--primary-red-rgb), 0.06) 0%, rgba(124,58,237,0.06) 100%)',
+                  borderRadius: 'var(--radius)',
+                  padding: 16,
+                  marginBottom: 20,
+                  border: '1px solid rgba(var(--primary-red-rgb), 0.2)',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary-red)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Trophy size={15} /> Unlock Full 12-Matrix Psychometric Analysis
+                </div>
+                <div style={{ fontSize: 12, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)', lineHeight: 1.4 }}>
+                  Sign in or register for free to analyze your complete attempt with FSRS memory retention, cognitive depth breakdown, and AI study recommendations.
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: isDark ? 'var(--border-color)' : 'var(--text-secondary)', lineHeight: 1.4 }}>
-                Sign in or register for free to analyze your complete attempt with FSRS memory retention, cognitive depth breakdown, and AI study recommendations.
-              </div>
-            </div>
+            )}
 
             {/* Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

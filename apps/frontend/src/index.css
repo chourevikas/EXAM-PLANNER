@@ -175,7 +175,7 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family:
-    'Inter',
+    'Plus Jakarta Sans',
     system-ui,
     -apple-system,
     sans-serif;
@@ -662,7 +662,7 @@ body {
   -webkit-backdrop-filter: blur(6px);
   padding: 24px 16px;
   font-family:
-    'Manrope',
+    'Plus Jakarta Sans',
     -apple-system,
     system-ui,
     sans-serif;
