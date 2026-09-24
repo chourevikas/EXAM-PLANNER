@@ -114,6 +114,8 @@ async def invalidate_question_cache(
     q_id_str = str(question_id)
     await cache.delete_pattern(f"{prefix}:questions:detail:{q_id_str}*")
     await cache.delete_pattern(f"{prefix}:questions:list*")
+    # Any question can appear in other questions' similar lists (e.g. once it is published).
+    await cache.delete_pattern(f"{prefix}:questions:similar*")
     # The admin dashboard shows the published-question count, which any question change can move.
     await cache.delete_pattern(f"{prefix}:admin:overview_stats*")
 

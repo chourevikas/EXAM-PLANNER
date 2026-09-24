@@ -31,8 +31,10 @@ from app.pipeline.patterns import (
     TOPIC_TAG_PATTERN,
     SUBTOPIC_TAG_PATTERN,
     DIFFICULTY_TAG_PATTERN,
+    RELATED_REFS_HEADER_PATTERN,
     extract_header_tags,
 )
+from app.pipeline.knowledge_tags import extract_knowledge_tags
 from app.config.logger import setup_logger
 
 logger = setup_logger("RegexQuestionParser")
@@ -56,6 +58,14 @@ class QuestionRecord(BaseModel):
     solution_bullets: List[str] = Field(default_factory=list)
     common_mistake: Optional[str] = None
     reverse_logic: Dict[str, Dict[str, str]] = Field(default_factory=dict)
+
+    # Knowledge Layer: authored [Concepts]/[Entities]/[Relationships] tags and the solution's
+    # "Related Articles / Acts / Cases" list (kept in the solution text as well)
+    concepts_raw: List[str] = Field(default_factory=list)
+    entities_raw: List[str] = Field(default_factory=list)
+    relationships_raw: List[Dict[str, str]] = Field(default_factory=list)
+    related_refs: List[str] = Field(default_factory=list)
+    knowledge_issues: List[str] = Field(default_factory=list)
 
     page_numbers: List[int] = Field(default_factory=list)
     pictures: List[Dict[str, Any]] = Field(default_factory=list)
@@ -206,6 +216,10 @@ def parse_question_block(
     issues: List[str] = []
     confidence = 1.0
 
+    # 0. Pull out authored Knowledge Layer tags so they never leak into the stem or solution
+    # (tag problems stay with the knowledge data; they must not affect extraction confidence or review flags)
+    clean_text, knowledge = extract_knowledge_tags(clean_text)
+
     # 2. Split Block into Sections:
     # Stem + Options | Answer | Solution | Common Mistake | Reverse Logic Box
     lines = clean_text.split("\n")
@@ -251,7 +265,10 @@ def parse_question_block(
             p.search(l_str)
             for p in (SUBJECT_TAG_PATTERN, TOPIC_TAG_PATTERN, SUBTOPIC_TAG_PATTERN, DIFFICULTY_TAG_PATTERN)
         )
-        if has_tag:
+        # A header wrapped inside a tag ("[Difficulty:" / "Moderate]") continues on this line
+        header_so_far = " ".join(header_block)
+        continues_open_tag = not clean_stem_lines and header_so_far.count("[") > header_so_far.count("]")
+        if has_tag or continues_open_tag:
             header_block.append(l_str)
         else:
             clean_stem_lines.append(l_str)
@@ -330,6 +347,7 @@ def parse_question_block(
     # 6. Solution Extraction (text and bullets)
     solution_text = ""
     solution_bullets: List[str] = []
+    related_refs: List[str] = []
     if sol_idx is not None:
         sol_end = mistake_idx if mistake_idx is not None else (reverse_idx if reverse_idx is not None else len(lines))
         sol_raw_lines = lines[sol_idx:sol_end]
@@ -343,7 +361,14 @@ def parse_question_block(
             if l.strip():
                 body_lines.append(l.strip())
 
+        in_related_refs = False
         for bl in body_lines:
+            if RELATED_REFS_HEADER_PATTERN.match(bl):
+                in_related_refs = True
+            elif in_related_refs:
+                ref = re.sub(r"^[-–—•■*]+\s*", "", bl).strip()
+                if ref:
+                    related_refs.append(ref)
             bm = SOLUTION_BULLET_PATTERN.match(bl)
             if bm:
                 solution_bullets.append(bm.group(2).strip())
@@ -441,4 +466,9 @@ def parse_question_block(
         tables=matched_tables,
         extraction_confidence=confidence,
         extraction_issues=issues,
+        concepts_raw=knowledge["concepts"],
+        entities_raw=knowledge["entities"],
+        relationships_raw=knowledge["relationships"],
+        related_refs=related_refs,
+        knowledge_issues=knowledge["issues"],
     )

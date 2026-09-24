@@ -59,6 +59,11 @@ SOLUTION_HEADER_PATTERN = re.compile(
 
 # Solution bullet line
 # Bullet char may OCR as •, ◦, ●, ▪, ·, *, -, —, –, or ■
+# "■ Related Articles / Acts / Cases:" list inside a solution (items follow as "– ..." lines)
+RELATED_REFS_HEADER_PATTERN = re.compile(
+    r"(?i)^\s*(?:[■•*#-]\s*)*Related\s+(?:Articles?|Acts?|Cases?)(?:\s*/\s*(?:Articles?|Acts?|Cases?))*\s*:?\s*$"
+)
+
 SOLUTION_BULLET_PATTERN = re.compile(
     r"^\s*([•◦●▪·*■]|[-–—])\s+(.*)$",
     re.MULTILINE,

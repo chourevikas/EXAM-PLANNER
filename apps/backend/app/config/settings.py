@@ -92,6 +92,19 @@ class Settings(BaseSettings):
         description="Flat points awarded to a TEACHER-role user for each question review action (approve/reject).",
     )
 
+    # Knowledge Layer similar-question scoring (JSON-overridable via env; tune without code changes)
+    KNOWLEDGE_SIMILARITY_WEIGHTS: Dict[str, float] = Field(
+        default={
+            "exact_entity": 50,
+            "specific_provision": 35,
+            "concept": 20,
+            "relationship": 15,
+            "same_nano_theme": 10,
+            "same_microtheme": 5,
+        },
+        description="Points per matching signal for GET /questions/{id}/similar (spec order: entity > provision > concept > relationship > Nano Theme > Microtheme).",
+    )
+
     # Async Database Configuration (Supports SQLite and PostgreSQL: postgresql+asyncpg://...)
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///exam_platform.db")
     DB_MIGRATION: Union[bool, str] = Field(

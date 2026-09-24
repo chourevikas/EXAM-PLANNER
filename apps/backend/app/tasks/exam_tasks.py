@@ -215,6 +215,10 @@ async def async_process_exam_pdf(
         except Exception as trans_err:
             log.warning(f"Could not auto-trigger post-extraction translation for Exam #{exam_id}: {trans_err}")
 
+        # Knowledge Layer enrichment (concepts / entities / relationships) for similar-question retrieval
+        from app.tasks.enrichment_tasks import dispatch_exam_enrichment
+        dispatch_exam_enrichment(exam_id, log)
+
         log.info("=" * 70)
         log.info(
             f"✅ [EXTRACTION PIPELINE COMPLETE] Engine: {execution_engine} | Paper: '{exam_title}' | Task ID: '{t_id}'"

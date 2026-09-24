@@ -193,3 +193,23 @@ from app.db.models.site_settings import SiteSettings
 
 __all__.extend(["SiteSettings"])
 
+
+from app.db.models.knowledge import (
+    KnowledgeConcept,
+    KnowledgeEntity,
+    KnowledgeAlias,
+    QuestionConcept,
+    QuestionEntity,
+    KnowledgeRelationship,
+    QuestionRelationship,
+)
+
+__all__.extend([
+    "KnowledgeConcept",
+    "KnowledgeEntity",
+    "KnowledgeAlias",
+    "QuestionConcept",
+    "QuestionEntity",
+    "KnowledgeRelationship",
+    "QuestionRelationship",
+])

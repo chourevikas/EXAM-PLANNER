@@ -93,6 +93,11 @@ class Question(SQLModel, table=True):
         sa_column=Column(PortableJSON),
         description="JSON array of extraction issues or confidence warnings",
     )
+    knowledge_tags_raw: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(PortableJSON),
+        description="Knowledge Layer input as authored/parsed: concepts, entities, relationships, related_refs",
+    )
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

@@ -16,6 +16,7 @@ from app.schemas.question import (
     QuestionPaginatedResponse,
 )
 from app.services.question_service import QuestionService
+from app.schemas.knowledge import SimilarQuestionsResponse, QuestionKnowledgeResponse
 
 
 router = APIRouter(prefix="/questions", tags=["Questions & Formatted Outputs"])
@@ -313,6 +314,79 @@ async def list_recommended_questions(
     if cache_key and res:
         await cache.set(cache_key, res, ttl_seconds=300)
     return JSONResponse(content=res)
+
+
+@router.get(
+    "/{question_id}/similar",
+    response_model=SimilarQuestionsResponse,
+    summary="Similar Questions via the Knowledge Layer (exact entity > concept > relationship > taxonomy)",
+    dependencies=[Depends(require_question_visible)],
+)
+async def get_similar_questions(
+    question_id: int | str,
+    limit: int = Query(default=5, ge=1, le=50),
+    min_score: float = Query(default=0, ge=0),
+    include_related: bool = Query(default=True, description="Also match through relationships (e.g. Suba -> Sarkar)"),
+    include_question: bool = Query(default=False, description="Embed each result's question card (text + options)"),
+    language: str = Query(default="en", description="Language of embedded question cards"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Published questions most related to this one, ranked deterministically (no AI) with
+    `match_reasons` explaining each result. Questions without Knowledge Layer data fall
+    back to Nano Theme / Microtheme matches.
+    """
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    lang_code = parse_language(language)
+    cache_key = build_cache_key(
+        "questions:similar", str(qid_int), lim=limit, min=min_score, rel=include_related,
+        q=include_question, l=lang_code.value if include_question else None,
+    )
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return JSONResponse(content=cached)
+
+    from app.knowledge.similarity import SimilarityService
+    results = await SimilarityService(session).find_similar(
+        qid_int, limit=limit, min_score=min_score, include_related=include_related
+    )
+    if include_question and results:
+        from sqlmodel import select, col
+        from app.db.models import Question
+        service = QuestionService(session)
+        rows = (await session.exec(select(Question).where(col(Question.id).in_([r["question_id"] for r in results])))).all()
+        cards = await service._build_light_recommendation_cards(list(rows), target_lang=lang_code)
+        by_id = {int(c["question_id"]): c for c in cards}
+        for r in results:
+            r["question"] = by_id.get(r["question_id"])
+    data = jsonable_encoder(SimilarQuestionsResponse(question_id=qid_int, results=results))
+    await cache.set(cache_key, data, ttl_seconds=600)
+    return JSONResponse(content=data)
+
+
+@router.get(
+    "/{question_id}/knowledge",
+    response_model=QuestionKnowledgeResponse,
+    summary="Question's Knowledge Layer: concepts, entities and relationships",
+    dependencies=[Depends(require_question_visible)],
+)
+async def get_question_knowledge(
+    question_id: int | str,
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    from app.knowledge.queries import load_question_knowledge
+    return await load_question_knowledge(session, qid_int)
 
 
 @router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID", dependencies=[Depends(require_question_visible)])

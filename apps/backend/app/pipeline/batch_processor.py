@@ -30,6 +30,7 @@ from app.config.settings import get_settings
 from app.db.session import managed_async_session
 from app.pipeline.batch_schema import BatchProcessingSummary
 from app.pipeline.dsu_stitcher import async_crop_and_save_asset
+from app.pipeline.knowledge_tags import knowledge_tags_from_record
 from app.pipeline.regex_question_parser import QuestionRecord
 from app.pipeline.state import PageExtractionPayload
 from app.storage.base import BaseStorageProvider
@@ -792,6 +793,7 @@ class BatchQuestionRegistrar:
                                     difficulty_raw=rec.difficulty_raw,
                                     extraction_confidence=rec.extraction_confidence,
                                     extraction_issues_json=rec.extraction_issues,
+                                    knowledge_tags_raw=knowledge_tags_from_record(rec),
                                     status=QuestionStatus.PENDING_HUMAN_REVIEW,
                                     requires_human_review=(rec.extraction_confidence < 0.8 or bool(rec.extraction_issues)),
                                 )
@@ -811,6 +813,7 @@ class BatchQuestionRegistrar:
                                 q_obj.difficulty_raw = rec.difficulty_raw
                                 q_obj.extraction_confidence = rec.extraction_confidence
                                 q_obj.extraction_issues_json = rec.extraction_issues
+                                q_obj.knowledge_tags_raw = knowledge_tags_from_record(rec)
                                 q_obj.requires_human_review = (rec.extraction_confidence < 0.8 or bool(rec.extraction_issues))
                                 session.add(q_obj)
 

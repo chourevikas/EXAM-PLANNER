@@ -23,6 +23,11 @@ import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmark
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { formatEnum, extractCanonicalExamName, cleanExamTitle } from '../utils/formatEnum';
 import { guardedFetch } from '../utils/apiGuard';
+import {
+  mergeRecommendations,
+  recommendationCardToQuestion,
+  useSimilarQuestions,
+} from '../services/similarQuestionService';
 import { parseTaxonomyParam, formatTaxonomyParam, parseYearParam } from '../utils/taxonomyParam';
 
 export function StudentPracticeExamPage() {
@@ -551,6 +556,18 @@ export function StudentPracticeExamPage() {
     setRecommendedPool([]);
   }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recExamToggles, language]);
 
+  // Knowledge Layer matches for the question on screen (shared Article / Act / concept first),
+  // shown ahead of the session-filter recommendations below
+  const sessionQuestionIds = useMemo(
+    () => new Set(allQuestions.map((q) => String(q.question_id))),
+    [allQuestions],
+  );
+  const { similar: similarRecs, isLoading: isLoadingSimilar } = useSimilarQuestions(
+    activeQuestion?.question_id,
+    language,
+    sessionQuestionIds,
+  );
+
   const userResponsesRef = React.useRef(userResponses);
   userResponsesRef.current = userResponses;
   const revealedMapRef = React.useRef(revealedMap);
@@ -618,46 +635,9 @@ export function StudentPracticeExamPage() {
         }
 
         if (newFetched.length > 0) {
-          const formatted: QuestionOut[] = newFetched.map((item: any, idx: number) => {
-            const rawOptions = item.options || [];
-            const optionsList = rawOptions.map((o: any, oIdx: number) => ({
-              option_id:
-                o.option_id || `opt-rec-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
-              option_label: o.option_label || String.fromCharCode(65 + oIdx),
-              text:
-                o.option_text ||
-                o.text ||
-                `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
-              is_correct: Boolean(o.is_correct),
-              distractor_analysis:
-                o.distractor_analysis ||
-                o.explanation ||
-                o.description ||
-                (o.is_correct
-                  ? 'Correct option matching core syllabus concepts.'
-                  : 'Distractor option.'),
-              translations: o.translations || {},
-            }));
-            return {
-              question_id: item.question_id,
-              question_number: 0,
-              text: item.question_text || item.text || '',
-              passage_text: item.passage_text || null,
-              translations: item.translations || {},
-              passage_translations: item.passage_translations || {},
-              options: optionsList,
-              section_code: item.subject_name || rawSubject || 'Recommended',
-              subject: item.subject_name || rawSubject || 'General Studies',
-              topic_name: item.topic_name || item.subject_name || rawSubject || '',
-              subtopic_name: item.subtopic_name,
-              difficulty: item.difficulty || 'MEDIUM',
-              marks: item.marks || 2.0,
-              negative_marks: item.negative_marks || 0.66,
-              expected_time_seconds: item.expected_time_seconds || 60,
-              source_year: item.source_year || item.exam_year || gYear,
-              exam_name: item.exam_name || gExam,
-            } as any;
-          });
+          const formatted: QuestionOut[] = newFetched.map((item: any, idx: number) =>
+            recommendationCardToQuestion(item, idx, { subject: rawSubject, year: gYear, exam: gExam }),
+          );
 
           setRecommendedPool((prev) => {
             let newList = [...prev];
@@ -743,9 +723,9 @@ export function StudentPracticeExamPage() {
   // pointing at a question_id that's no longer in the list.
   useEffect(() => {
     if (!userToggledRecRef.current) {
-      setExpandedRecId(recommendedPool[0]?.question_id ?? null);
+      setExpandedRecId(similarRecs[0]?.question_id ?? recommendedPool[0]?.question_id ?? null);
     }
-  }, [recommendedPool]);
+  }, [recommendedPool, similarRecs]);
 
   // Handler to load a recommended question into the main exam flow (used by onNext when pool exhausted)
   const handleLoadRecommendedIntoExam = (recQ: QuestionOut) => {
@@ -839,7 +819,7 @@ export function StudentPracticeExamPage() {
 
   const activeRecExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]).map((e) => e.toLowerCase());
   const displayRecs = activeRecExams.length > 0 
-    ? recommendedPool.filter((q) => {
+    ? mergeRecommendations(similarRecs, recommendedPool).filter((q) => {
         if (!q.exam_name) return true;
         const canonical = extractCanonicalExamName(q.exam_name).toLowerCase();
         return activeRecExams.includes(canonical) || activeRecExams.includes(q.exam_name.toLowerCase());
@@ -3694,7 +3674,7 @@ export function StudentPracticeExamPage() {
             <RecommendedQuestionsPanel
               title={null}
               questions={displayRecs}
-              isLoading={isPrefetchingRecs}
+              isLoading={isPrefetchingRecs || isLoadingSimilar}
               expandedId={expandedRecId}
               selectedOptions={recUserResponses}
               solutions={recSolutions}
@@ -3789,9 +3769,13 @@ export function StudentPracticeExamPage() {
             }}
           >
             <RecommendedQuestionsPanel
-              subtitle={`Matched questions for ${gSubject || 'your focus area'}.`}
+              subtitle={
+                similarRecs.length > 0
+                  ? `Linked to this question first, then more from ${gSubject || 'your focus area'}.`
+                  : `Matched questions for ${gSubject || 'your focus area'}.`
+              }
               questions={displayRecs}
-              isLoading={isPrefetchingRecs}
+              isLoading={isPrefetchingRecs || isLoadingSimilar}
               expandedId={expandedRecId}
               selectedOptions={recUserResponses}
               solutions={recSolutions}

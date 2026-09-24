@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Lightbulb, X } from 'lucide-react';
+import { ChevronDown, Lightbulb, Link2, X } from 'lucide-react';
 import { QuestionOut } from '../../types/exam';
 import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { getQuestionText, getOptionText } from './ExamQuestionCard';
@@ -28,6 +28,8 @@ export function RecommendedQuestionCard({
   language,
 }: RecommendedQuestionCardProps) {
   const selectedOption = (rec.options as any[])?.find((o: any) => o.option_id === answeredOptId);
+  // Set for Knowledge Layer matches: why this question is similar ("Article 15", "Reservation", ...)
+  const matchLabels: string[] = (rec as any).match_labels || [];
   const [showSolutionModal, setShowSolutionModal] = useState(false);
 
   return (
@@ -124,6 +126,7 @@ export function RecommendedQuestionCard({
         <div
           onClick={onToggleExpand}
           style={{ cursor: 'pointer', padding: '10px 12px' }}
+          title={matchLabels.length ? `Similar because of: ${matchLabels.join(', ')}` : undefined}
           onMouseEnter={(e) => {
             if (!isExpanded) {
               e.currentTarget.style.backgroundColor = 'var(--bg-card)';
@@ -137,6 +140,34 @@ export function RecommendedQuestionCard({
             }
           }}
         >
+          {matchLabels.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+              <Link2 size={11} color="var(--primary-red)" aria-hidden="true" />
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Linked by
+              </span>
+              {matchLabels.map((label) => (
+                <span
+                  key={label}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    borderRadius: 3,
+                    color: 'var(--primary-red)',
+                    backgroundColor: 'rgba(var(--primary-red-rgb), 0.08)',
+                    border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
+                    maxWidth: 180,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
           <div
             style={{
               display: 'flex',
