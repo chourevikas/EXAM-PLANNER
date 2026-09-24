@@ -1,8 +1,9 @@
 import asyncio
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Tuple
 from fastapi import HTTPException, status, BackgroundTasks
-from sqlmodel import select, col, desc
+from sqlmodel import select, col, desc, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
@@ -62,6 +63,62 @@ logger = setup_logger("ExamSessionService")
 # In-memory fast batch tracker for async confirmation and client status verification
 BATCH_TRACKER: Dict[str, Dict[str, Any]] = {}
 
+_CANONICAL_EXAM_KEYWORDS = [
+    (("upsc", "civil services", "upse"), "UPSC CSE"),
+    (("mppsc",), "MPPSC"),
+    (("bpsc",), "BPSC"),
+    (("uppcs", "uppsc"), "UPPCS"),
+    (("mpsc",), "MPSC"),
+    (("ras", "rpsc"), "RPSC"),
+    (("kpsc",), "KPSC"),
+    (("wbcs", "wbpsc"), "WBPSC"),
+    (("tnpsc",), "TNPSC"),
+    (("ssc",), "SSC"),
+]
+
+
+def canonical_exam_name(raw: Optional[str]) -> str:
+    """Mirror of the frontend's extractCanonicalExamName, which builds the exam chips on the PYQ page."""
+    import re
+
+    if not raw:
+        return "UPSC CSE"
+    clean = str(raw).strip()
+    lower = clean.lower()
+    for keywords, name in _CANONICAL_EXAM_KEYWORDS:
+        if any(k in lower for k in keywords):
+            return name
+    if clean == "State PSC":
+        return clean
+    stripped = clean
+    for pattern in (
+        r"\s*\(\d{4}\).*$", r"-\d{4}.*$", r"-prelims.*$", r"\s+prelims.*$", r"-mains.*$", r"\s+mains.*$",
+        r"\s+set\s+[a-z0-9]+", r"-set_[a-z0-9]+", r"_set_[a-z0-9]+", r"-gs\d+.*$", r"\s+gs\s*paper.*$",
+    ):
+        stripped = re.sub(pattern, "", stripped, count=1, flags=re.IGNORECASE)
+    stripped = stripped.strip()
+    if not stripped or len(stripped) > 25 or "-" in stripped or "_" in stripped:
+        return "UPSC CSE"
+    return stripped.upper()
+
+
+def _csv_filter(value: Optional[str]) -> List[str]:
+    return [v.strip() for v in (value or "").split(",") if v.strip() and v.strip().lower() != "all"]
+
+
+def dynamic_exam_name(req: StartExamRequest) -> str:
+    """Names a subject-wise test by what the student picked, e.g. 'Polity – Fundamental Rights · UPSC CSE (2021, 2022)'."""
+    def _one(value: Optional[str]) -> Optional[str]:
+        return value.strip() if value and value.strip() and value.strip().lower() != "all" else None
+
+    subject = _one(req.dynamic_subject)
+    focus = _one(req.dynamic_subtopic) or _one(req.dynamic_topic)
+    subject_part = f"{subject} – {focus}" if subject and focus else (subject or "All Subjects")
+    exam_part = ", ".join(_csv_filter(req.dynamic_exams)) or "All Exams"
+    years = sorted(_csv_filter(req.dynamic_years))
+    name = f"{subject_part} · {exam_part}" + (f" ({', '.join(years)})" if years else "")
+    return name if len(name) <= 200 else name[:199] + "…"
+
 
 class ExamSessionService:
     """Service managing the active student exam-taking lifecycle."""
@@ -78,29 +135,39 @@ class ExamSessionService:
         raw_exam_id = req.exam_id if hasattr(req, "exam_id") else req
         req_exam_str = str(raw_exam_id)
         is_dynamic = req_exam_str.lower() == "dynamic" or req_exam_str.startswith("DYN_")
-        
+        is_new_dynamic = req_exam_str.lower() == "dynamic"
+
         exam = None
+        q_rows = []
 
         if is_dynamic:
             if req_exam_str.startswith("DYN_"):
                 # It's an existing dynamic exam (retake or resume)
                 exam_res = await self.session.exec(select(Exam).where(Exam.code == req_exam_str))
                 exam = exam_res.first()
+                if not exam:
+                    raise HTTPException(status_code=404, detail="EXAM_NOT_FOUND: Exam does not exist.")
             else:
-                # It's a new dynamic exam
-                title_parts = []
-                if getattr(req, 'dynamic_subject', None) and req.dynamic_subject != 'all': title_parts.append(req.dynamic_subject)
-                if getattr(req, 'dynamic_topic', None) and req.dynamic_topic != 'all': title_parts.append(req.dynamic_topic)
-                title = " - ".join(title_parts) if title_parts else "Subject-wise Simulation"
-                limit = getattr(req, 'dynamic_limit', 100) or 100
-                
+                # It's a new dynamic exam — pick its questions first so an empty filter never creates an exam
+                q_rows = await self._select_dynamic_questions(req)
+                if not q_rows:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="NO_QUESTIONS_MATCH: No published questions match the selected filters.",
+                    )
+
+                total_marks = (
+                    await self.session.exec(select(func.sum(Question.marks)).where(col(Question.id).in_([r[0] for r in q_rows])))
+                ).first()
+
                 exam = Exam(
-                    code=f"DYN_{user_id}_{int(datetime.now().timestamp())}",
-                    name=title,
+                    code=f"DYN_{user_id}_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:6]}",
+                    name=dynamic_exam_name(req),
                     is_active=True,
                     status=ExamStatus.ARCHIVED,
-                    total_duration_minutes=int(limit * 1.2),
-                    total_questions=limit,
+                    total_duration_minutes=max(1, round(len(q_rows) * 1.2)),
+                    total_questions=len(q_rows),
+                    total_marks=float(total_marks or len(q_rows) * 2.0),
                     exam_type=QuestionSourceType.PYQ,
                 )
                 self.session.add(exam)
@@ -128,6 +195,10 @@ class ExamSessionService:
             raise HTTPException(status_code=404, detail="EXAM_NOT_FOUND: Exam does not exist.")
         if not exam.is_active:
             raise HTTPException(status_code=403, detail="EXAM_INACTIVE: This exam is currently inactive.")
+
+        # A subject-wise exam reached by its numeric id (e.g. a Retake link) is still dynamic.
+        if str(exam.code or "").startswith("DYN_"):
+            is_dynamic = True
 
         # Ensure User record exists in DB
         u_obj = await self.session.get(User, user_id)
@@ -175,14 +246,24 @@ class ExamSessionService:
                     questions_folder_url=None,
                 )
 
-        q_rows = []
-        if is_dynamic and req_exam_str.startswith("DYN_") and getattr(req, 'force_new', False):
-            # Fetch questions from previous attempt of this dynamic exam
+        # Save dynamic filters to report_metadata_json
+        metadata = None
+        if is_new_dynamic:
+            metadata = {
+                "dynamic_subject": getattr(req, "dynamic_subject", None) or "all",
+                "dynamic_topic": getattr(req, "dynamic_topic", None) or "all",
+                "dynamic_subtopic": getattr(req, "dynamic_subtopic", None) or "all",
+                "dynamic_years": getattr(req, "dynamic_years", None) or "all",
+                "dynamic_exams": getattr(req, "dynamic_exams", None) or "all",
+            }
+        elif is_dynamic:
+            # Retake: replay the same question set and keep the original filters
             last_attempt_res = await self.session.exec(
                 select(ExamAttempt).where(ExamAttempt.exam_id == exam.id, ExamAttempt.user_id == user_id).order_by(desc(ExamAttempt.id))
             )
             last_attempt = last_attempt_res.first()
             if last_attempt:
+                metadata = last_attempt.report_metadata_json
                 old_resp_res = await self.session.exec(
                     select(ExamQuestionResponse.question_id, ExamQuestionResponse.expected_time_seconds)
                     .where(ExamQuestionResponse.attempt_id == last_attempt.id)
@@ -190,22 +271,13 @@ class ExamSessionService:
                 )
                 for i, r in enumerate(old_resp_res.all()):
                     q_rows.append((r.question_id, i + 1, r.expected_time_seconds))
-                    
+
         if not q_rows:
             if is_dynamic:
-                from sqlalchemy.sql.expression import func
-                limit = getattr(req, 'dynamic_limit', 100) or 100
-                q_stmt = select(Question.id, Question.question_number_in_paper, Question.expected_time_seconds).where(Question.status == QuestionStatus.PUBLISHED)
-                
-                # Dynamic filtering
-                if getattr(req, 'dynamic_subject', None) and req.dynamic_subject != 'all':
-                    q_stmt = q_stmt.join(QuestionHierarchyLink).join(Subject).where(Subject.name == req.dynamic_subject)
-                
-                # We limit the number of questions and randomize
-                q_stmt = q_stmt.order_by(func.random()).limit(limit)
-                q_res = await self.session.exec(q_stmt)
-                for i, r in enumerate(q_res.all()):
-                    q_rows.append((r.id, i + 1, r.expected_time_seconds))
+                raise HTTPException(
+                    status_code=404,
+                    detail="NO_QUESTIONS_MATCH: No published questions match the selected filters.",
+                )
             else:
                 q_stmt = (
                     select(Question.id, Question.question_number_in_paper, Question.expected_time_seconds)
@@ -221,17 +293,6 @@ class ExamSessionService:
 
         duration_sec = (exam.total_duration_minutes or 120) * 60
         now_dt = datetime.now(timezone.utc)
-        
-        # Save dynamic filters to report_metadata_json
-        metadata = {}
-        if is_dynamic:
-            metadata = {
-                "dynamic_subject": getattr(req, "dynamic_subject", "all"),
-                "dynamic_topic": getattr(req, "dynamic_topic", "all"),
-                "dynamic_subtopic": getattr(req, "dynamic_subtopic", "all"),
-                "dynamic_years": getattr(req, "dynamic_years", "all"),
-                "dynamic_exams": getattr(req, "dynamic_exams", "all")
-            }
 
         # Create ExamAttempt
         attempt = ExamAttempt(
@@ -445,6 +506,9 @@ class ExamSessionService:
         q_card, _ = await builder.build_single_question_cards(
             question, preloaded=preloaded, include_solution_data=False, target_language=language
         )
+        if str(exam.code or "").startswith("DYN_"):
+            # A subject-wise test numbers questions by position, not by their number in the source paper
+            q_card["question_number"] = question_number
 
         return self._build_question_nav_response(
             q_item=q_card,
@@ -478,11 +542,20 @@ class ExamSessionService:
         from app.services.exam_json_builder import ExamJsonBuilder
         builder = ExamJsonBuilder(self.session)
 
-        stmt = (
-            select(Question)
-            .where(Question.exam_id == exam.id, Question.status != QuestionStatus.REJECTED)
-            .order_by(col(Question.question_number_in_paper))
-        )
+        is_dynamic = str(exam.code or "").startswith("DYN_")
+        if is_dynamic:
+            # Subject-wise questions belong to other exams; the attempt's own response rows define the set and order.
+            stmt = (
+                select(ExamQuestionResponse.question_id)
+                .where(ExamQuestionResponse.attempt_id == attempt.id)
+                .order_by(col(ExamQuestionResponse.id))
+            )
+        else:
+            stmt = (
+                select(Question)
+                .where(Question.exam_id == exam.id, Question.status != QuestionStatus.REJECTED)
+                .order_by(col(Question.question_number_in_paper))
+            )
         if offset and offset > 0:
             stmt = stmt.offset(offset)
         if limit is not None and limit > 0:
@@ -490,17 +563,22 @@ class ExamSessionService:
 
         res = await self.session.exec(stmt)
         questions = res.all()
+        if is_dynamic and questions:
+            by_id = {q.id: q for q in (await self.session.exec(select(Question).where(col(Question.id).in_(questions)))).all()}
+            questions = [by_id[q_id] for q_id in questions if q_id in by_id]
 
         if questions:
             preloaded_data = await builder.preload_batch_question_data(
                 questions, include_solution_data=False, target_language=language
             )
             questions_payload = []
-            for q in questions:
+            for position, q in enumerate(questions, (offset or 0) + 1):
                 # q_card contains question text, metadata, and options WITHOUT is_correct or solutions
                 q_card, _ = await builder.build_single_question_cards(
                     q, preloaded=preloaded_data, include_solution_data=False, target_language=language
                 )
+                if is_dynamic:
+                    q_card["question_number"] = position
                 questions_payload.append(q_card)
 
             total_count = attempt.total_questions or exam.total_questions or len(questions_payload)
@@ -1266,6 +1344,61 @@ class ExamSessionService:
             auto_submitted=False,
         )
 
+    async def _select_dynamic_questions(self, req: StartExamRequest) -> List[Tuple[int, int, Any]]:
+        """Random published questions matching the subject-wise filters, as (question_id, number, expected_time)."""
+        from sqlalchemy import func, or_
+
+        def _one(value: Optional[str]) -> Optional[str]:
+            return value if value and value != "all" else None
+
+        subject, topic, subtopic = _one(req.dynamic_subject), _one(req.dynamic_topic), _one(req.dynamic_subtopic)
+        limit = req.dynamic_limit if req.dynamic_limit and req.dynamic_limit > 0 else 100
+
+        q_stmt = (
+            select(Question.id, Question.expected_time_seconds)
+            .join(Exam, Exam.id == Question.exam_id, isouter=True)
+            .where(Question.status == QuestionStatus.PUBLISHED)
+        )
+
+        if subject or topic or subtopic:
+            # A question is tagged through question_hierarchy_links and/or its own subtopic_id; accept either.
+            link_stmt = (
+                select(QuestionHierarchyLink.question_id)
+                .join(Subtopic, Subtopic.id == QuestionHierarchyLink.subtopic_id)
+                .join(Topic, Topic.id == Subtopic.topic_id)
+                .join(Subject, Subject.id == Topic.subject_id)
+            )
+            own_stmt = (
+                select(Question.id)
+                .join(Subtopic, Subtopic.id == Question.subtopic_id)
+                .join(Topic, Topic.id == Subtopic.topic_id)
+                .join(Subject, Subject.id == Topic.subject_id)
+            )
+            for col_, value in ((Subject.name, subject), (Topic.name, topic), (Subtopic.name, subtopic)):
+                if value:
+                    link_stmt = link_stmt.where(func.lower(col_) == value.lower())
+                    own_stmt = own_stmt.where(func.lower(col_) == value.lower())
+            q_stmt = q_stmt.where(or_(Question.id.in_(link_stmt), Question.id.in_(own_stmt)))
+
+        years = [int(y) for y in _csv_filter(req.dynamic_years) if y.isdigit()]
+        if years:
+            q_stmt = q_stmt.where(func.coalesce(Question.source_year, Exam.source_year).in_(years))
+
+        exam_names = {e.upper() for e in _csv_filter(req.dynamic_exams)}
+        if exam_names:
+            exam_rows = (await self.session.exec(select(Exam.id, Exam.name, Exam.code))).all()
+            exam_ids = [
+                r.id for r in exam_rows
+                if not str(r.code or "").startswith("DYN_") and canonical_exam_name(r.name or r.code) in exam_names
+            ]
+            if not exam_ids:
+                return []
+            q_stmt = q_stmt.where(Question.exam_id.in_(exam_ids))
+
+        q_stmt = q_stmt.order_by(func.random()).limit(limit)
+        rows = (await self.session.exec(q_stmt)).all()
+        return [(r.id, i, r.expected_time_seconds) for i, r in enumerate(rows, 1)]
+
     async def get_exam_status(
         self, attempt_id: int | str, user_id: int
     ) -> ExamStatusResponse:
@@ -1593,8 +1726,9 @@ class ExamSessionService:
         limit: int = 20,
         exam_id: Optional[int] = None,
         status_filter: Optional[str | AttemptStatus] = None,
+        subject_wise: bool = False,
     ) -> Dict[str, Any]:
-        """Parameter 13: List candidate's exam attempts history."""
+        """Parameter 13: List candidate's exam attempts history, newest first."""
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
         status_str = str(status_filter.value if hasattr(status_filter, "value") else status_filter) if status_filter else None
@@ -1605,6 +1739,7 @@ class ExamSessionService:
             limit=limit,
             exam_id=str(exam_id) if exam_id else None,
             status=status_str,
+            subject_wise=subject_wise or None,
         )
         cached_data = await cache.get(cache_key)
         if cached_data is not None:
@@ -1613,6 +1748,8 @@ class ExamSessionService:
         filters = [ExamAttempt.user_id == user_id]
         if exam_id:
             filters.append(ExamAttempt.exam_id == exam_id)
+        if subject_wise:
+            filters.append(col(ExamAttempt.exam_id).in_(select(Exam.id).where(col(Exam.code).startswith("DYN_"))))
         if status_filter:
             if isinstance(status_filter, str) and "," in status_filter:
                 raw_parts = [s.strip().upper() for s in status_filter.split(",") if s.strip()]
@@ -1649,6 +1786,7 @@ class ExamSessionService:
                 ExamAttempt.max_possible_score,
                 ExamAttempt.total_questions,
                 ExamAttempt.total_questions_attempted,
+                ExamAttempt.max_duration_seconds,
                 ExamAttempt.started_at,
                 ExamAttempt.submitted_at,
                 meta_col.op("->>")("is_guest_synced").label("is_guest_synced"),
@@ -1659,7 +1797,7 @@ class ExamSessionService:
                 meta_col.op("->")("metadata").op("->")("exam_attempt").op("->>")("exam_name").label("meta_exam_name"),
             )
             .where(*filters)
-            .order_by(col(ExamAttempt.created_at).desc())
+            .order_by(col(ExamAttempt.created_at).desc(), col(ExamAttempt.id).desc())
             .offset(skip)
             .limit(limit)
         )
@@ -1669,9 +1807,12 @@ class ExamSessionService:
 
         exam_ids = {att.exam_id for att in attempts if att.exam_id is not None}
         exam_names_by_id: Dict[int, str] = {}
+        exam_codes_by_id: Dict[int, str] = {}
         if exam_ids:
-            exams_res = await self.session.exec(select(Exam.id, Exam.name).where(col(Exam.id).in_(exam_ids)))
-            exam_names_by_id = {e_id: e_name for e_id, e_name in exams_res.all()}
+            exams_res = await self.session.exec(select(Exam.id, Exam.name, Exam.code).where(col(Exam.id).in_(exam_ids)))
+            for e_id, e_name, e_code in exams_res.all():
+                exam_names_by_id[e_id] = e_name
+                exam_codes_by_id[e_id] = e_code
 
         items = []
         for att in attempts:
@@ -1692,12 +1833,14 @@ class ExamSessionService:
             items.append({
                 "attempt_id": str(att.id),
                 "exam_id": str(att.exam_id),
+                "exam_code": exam_codes_by_id.get(att.exam_id),
                 "exam_name": resolved_title,
                 "mode": att.mode.value if hasattr(att.mode, "value") else str(att.mode),
                 "status": att.status.value if hasattr(att.status, "value") else str(att.status),
                 "total_score": att.total_score,
                 "max_possible_score": att.max_possible_score,
                 "total_questions": att.total_questions,
+                "max_duration_seconds": att.max_duration_seconds,
                 "started_at": att.started_at.isoformat() if att.started_at else None,
                 "submitted_at": att.submitted_at.isoformat() if att.submitted_at else None,
             })

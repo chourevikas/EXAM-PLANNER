@@ -2,7 +2,7 @@ import logging
 from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, func
+from sqlmodel import select, func, col
 from fastapi import HTTPException
 
 from app.db.models import (
@@ -706,7 +706,12 @@ class SyllabusService:
         """
         Returns all available exams grouped by year (e.g. 2024, 2023, 2019) with summary metrics.
         """
-        stmt = select(Exam).order_by(Exam.source_year.desc(), Exam.created_at.desc())
+        # Subject-wise simulations (DYN_*) are per-student question sets, not papers
+        stmt = (
+            select(Exam)
+            .where(~col(Exam.code).startswith("DYN_"))
+            .order_by(Exam.source_year.desc(), Exam.created_at.desc())
+        )
         exams = (await self.session.exec(stmt)).all()
 
         from app.services.task_registry import task_registry

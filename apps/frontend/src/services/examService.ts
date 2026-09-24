@@ -302,12 +302,14 @@ export interface AttemptHistoryItem {
   attempt_id: number | string;
   exam_id: number | string;
   exam?: ExamItem;
+  exam_code?: string;
   exam_name: string;
   mode: string;
   status: 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED' | 'EVALUATED' | string;
   total_score: number;
   max_possible_score: number;
   total_questions: number;
+  max_duration_seconds?: number;
   started_at: string;
   submitted_at?: string;
 }
@@ -356,6 +358,25 @@ export async function listCandidateAttempts(
     console.warn('Failed to fetch candidate attempt history:', err);
     return [];
   }
+}
+
+export interface AttemptHistoryPage {
+  items: AttemptHistoryItem[];
+  total: number;
+  totalPages: number;
+}
+
+/** One page of the user's Subject-wise simulation attempts, newest first. */
+export async function listSubjectWiseAttempts(page: number, pageSize: number): Promise<AttemptHistoryPage> {
+  const response = await guardedFetch(
+    `${API_BASE_URL}/attempts?subject_wise=true&page=${page}&page_size=${pageSize}`,
+    { method: 'GET', headers: getAuthHeaders() }
+  );
+  if (!response.ok) {
+    throw new Error('Failed to load subject-wise tests.');
+  }
+  const data = await response.json();
+  return { items: data.items || [], total: data.total || 0, totalPages: data.total_pages || 1 };
 }
 
 export interface ExamAttemptStatusEntry {

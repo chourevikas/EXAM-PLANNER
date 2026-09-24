@@ -1398,6 +1398,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         onSubmitAnswer={isPYQ ? undefined : handleRevealAnswer}
         onPrev={handlePrev}
         onNext={handleNext}
+        onSubmitTest={handleOpenSubmitModal}
       />
 
       {/* Submit Confirmation Modal */}

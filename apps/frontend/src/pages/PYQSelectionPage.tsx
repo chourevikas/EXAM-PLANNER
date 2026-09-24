@@ -8,7 +8,8 @@ import {
   fetchMasterSyllabus,
   fetchExamsByYear,
   startExamAttempt,
-  listCandidateAttempts,
+  listSubjectWiseAttempts,
+  type AttemptHistoryItem,
 } from '../services/examService';
 import { guardedFetch } from '../utils/apiGuard';
 import { StatusBadge } from '../components/common/StatusBadge';
@@ -17,7 +18,7 @@ import { formatTaxonomyParam } from '../utils/taxonomyParam';
 import {
   PlayCircle, BarChart2, RotateCcw, BookOpen, Target,
   ChevronDown, ArrowRight, ArrowLeft, Search, Check, X,
-  Calendar, Layers, TrendingUp, Clock, Zap,
+  Calendar, Layers, TrendingUp, Clock, Zap, AlertTriangle, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Ico } from '../components/common/Icons';
 import { useBreakpoint } from '../hooks/useBreakpoint';
@@ -412,6 +413,132 @@ function YearWiseScreen({ onBack }: { onBack: () => void }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+   Past Subject-wise Tests — paginated table, newest first
+   ══════════════════════════════════════════════════════════════════════ */
+const PAST_TESTS_PAGE_SIZE = 10;
+const COMPLETED_STATUSES = new Set(['COMPLETED', 'SUBMITTED', 'AUTO_SUBMITTED', 'EVALUATED']);
+
+function formatAttemptDate(iso?: string | null) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}, ${d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}`;
+}
+
+function PastSubjectWiseTests() {
+  const [page, setPage] = useState(1);
+  const [rows, setRows] = useState<AttemptHistoryItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listSubjectWiseAttempts(page, PAST_TESTS_PAGE_SIZE)
+      .then((res) => {
+        if (cancelled) return;
+        setRows(res.items);
+        setTotal(res.total);
+        setTotalPages(res.totalPages);
+      })
+      .catch(() => { if (!cancelled) setError('Could not load your past tests.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [page]);
+
+  // Nothing to show until the student has taken a subject-wise test
+  if (!loading && !error && total === 0) return null;
+
+  const th: React.CSSProperties = { textAlign: 'left', padding: '11px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap', backgroundColor: 'var(--bg-subtle)' };
+  const td: React.CSSProperties = { padding: '12px 14px', fontSize: 13.5, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-default)', verticalAlign: 'middle' };
+  const actionBtn = (primary: string, fg = '#fff'): React.CSSProperties => ({ height: 30, padding: '0 12px', borderRadius: 8, backgroundColor: primary, color: fg, fontWeight: 700, fontSize: 12.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', border: primary === 'var(--bg-subtle)' ? '1px solid var(--border-default)' : 'none' });
+  const pageBtn = (disabled: boolean): React.CSSProperties => ({ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border-default)', backgroundColor: disabled ? 'var(--bg-subtle)' : 'var(--bg-card)', color: disabled ? 'var(--text-muted)' : 'var(--text-primary)', fontWeight: 600, fontSize: 12.5, cursor: disabled ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, opacity: disabled ? 0.6 : 1 });
+  const first = total === 0 ? 0 : (page - 1) * PAST_TESTS_PAGE_SIZE + 1;
+  const last = Math.min(page * PAST_TESTS_PAGE_SIZE, total);
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        <RotateCcw size={20} color="var(--accent-primary)" />
+        <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Past Subject-wise Tests</h3>
+        {total > 0 && <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)' }}>{total} total</span>}
+      </div>
+
+      <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+            <thead>
+              <tr>
+                <th style={th}>Test</th>
+                <th style={th}>Status</th>
+                <th style={{ ...th, textAlign: 'right' }}>Questions</th>
+                <th style={{ ...th, textAlign: 'right' }}>Score</th>
+                <th style={th}>Started</th>
+                <th style={{ ...th, textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.15s ease' }}>
+              {error ? (
+                <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: 'var(--text-muted)' }}>{error}</td></tr>
+              ) : loading && rows.length === 0 ? (
+                <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
+              ) : rows.map((attempt) => {
+                // Named at creation from the chosen subject and exams, e.g. "Polity · UPSC CSE"
+                const title = attempt.exam_name || 'Subject-wise Test';
+                const examRef = attempt.exam_code || attempt.exam_id;
+                const isDone = COMPLETED_STATUSES.has(attempt.status);
+                const inProgress = attempt.status === 'IN_PROGRESS';
+                const minutes = Math.round((attempt.max_duration_seconds || 0) / 60);
+                return (
+                  <tr key={attempt.attempt_id}>
+                    <td style={{ ...td, fontWeight: 700, maxWidth: 320 }}>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={title}>{title}</div>
+                      {minutes > 0 && <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginTop: 2 }}>{minutes} min</div>}
+                    </td>
+                    <td style={td}>
+                      {inProgress
+                        ? <StatusBadge status="in-progress" label="In Progress" size="sm" />
+                        : isDone
+                          ? <StatusBadge status="completed" label="Completed" size="sm" />
+                          : <StatusBadge status="incomplete" label="Abandoned" size="sm" />}
+                    </td>
+                    <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{attempt.total_questions}</td>
+                    <td style={{ ...td, textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                      {isDone ? `${attempt.total_score} / ${attempt.max_possible_score}` : <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>—</span>}
+                    </td>
+                    <td style={{ ...td, whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatAttemptDate(attempt.started_at)}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                        {inProgress && <Link to={`/exam/${examRef}?type=PYQ`} style={actionBtn('#F2B623', '#000')}><PlayCircle size={13} /> Resume</Link>}
+                        {isDone && <Link to={`/analytics?attemptId=${attempt.attempt_id}`} style={actionBtn('var(--primary-red)')}><BarChart2 size={13} /> Report</Link>}
+                        <Link to={`/exam/${examRef}?forceNew=true&type=PYQ`} style={actionBtn('var(--bg-subtle)', 'var(--text-primary)')}><RotateCcw size={13} /> Retake</Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '12px 14px', fontSize: 12.5, color: 'var(--text-muted)' }}>
+            <span>Showing <strong>{first}–{last}</strong> of <strong>{total}</strong></span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))} style={pageBtn(page <= 1 || loading)}><ChevronLeft size={14} /> Previous</button>
+              <span style={{ fontWeight: 700, color: 'var(--text-primary)', padding: '0 4px' }}>Page {page} of {totalPages}</span>
+              <button type="button" disabled={page >= totalPages || loading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} style={pageBtn(page >= totalPages || loading)}>Next <ChevronRight size={14} /></button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    SCREEN 2 — Subject-wise form
 ══════════════════════════════════════════════════════════════════════ */
 function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
@@ -432,19 +559,20 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   const [qSize, setQSize] = useState('all');
   const [customCount, setCustomCount] = useState('');
   
-  // Past dynamic attempts
-  const [pastAttempts, setPastAttempts] = useState<any[]>([]);
   const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  // A warning about the previous filters no longer applies once they change
+  useEffect(() => { setStartError(null); }, [selExams, selYears, selSubject, selTopic, selSubtopic, qSize, customCount]);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
-        const [yearsData, publishedExams, syllabus, allAttempts] = await Promise.all([
+        const [yearsData, publishedExams, syllabus] = await Promise.all([
           fetchExamsByYear().catch(() => null),
           listExams('PUBLISHED').catch(() => []),
           fetchMasterSyllabus().catch(() => null),
-          listCandidateAttempts().catch(() => []),
         ]);
         if (syllabus) setMasterSyllabus(syllabus);
         if (yearsData?.years) setAvailableYears([...yearsData.years].sort((a: number, b: number) => b - a));
@@ -483,12 +611,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
         const distinct = Array.from(new Set(names)) as string[];
         distinct.sort((a, b) => (a === 'UPSC CSE' ? -1 : b === 'UPSC CSE' ? 1 : a.localeCompare(b)));
         setAvailableExams(distinct.length > 0 ? distinct : ['UPSC CSE']);
-        
-        // Filter dynamic attempts
-        if (Array.isArray(allAttempts)) {
-           const dynAttempts = allAttempts.filter(a => a.exam?.code?.startsWith('DYN_') || a.exam_name?.includes('Subject-wise Simulation') || a.exam_name?.includes('Simulation'));
-           setPastAttempts(dynAttempts);
-        }
+
       } catch (_) {}
       finally { setLoading(false); }
     })();
@@ -528,6 +651,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
     e.preventDefault();
     if (isStarting) return;
     setIsStarting(true);
+    setStartError(null);
     
     try {
       const exs = selExams.filter((x) => x !== 'all');
@@ -546,10 +670,14 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
       if (yrs.length) payload.dynamic_years = yrs.join(',');
       
       const res = await startExamAttempt(payload);
-      navigate(`/exam/${res.attempt_id}?type=PYQ`);
+      // The exam engine route takes an exam id/code and resumes its in-progress attempt
+      navigate(`/exam/${res.exam_id}?type=PYQ`);
     } catch (err) {
       console.error(err);
-      alert('Failed to start dynamic test. Please try again.');
+      const noMatch = err instanceof Error && err.message.startsWith('NO_QUESTIONS_MATCH');
+      setStartError(noMatch
+        ? 'No questions match these filters yet. Try a different topic, exam or year.'
+        : 'Could not start the test. Please try again.');
       setIsStarting(false);
     }
   };
@@ -690,6 +818,13 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
 
+              {startError && (
+                <div role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--warning-bg)', border: '1px solid var(--warning-primary)', color: 'var(--text-primary)', fontSize: 13.5, fontWeight: 600, lineHeight: 1.45 }}>
+                  <AlertTriangle size={17} color="var(--warning-primary)" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span>{startError}</span>
+                </div>
+              )}
+
               {/* Footer */}
               <div style={{ display: 'flex', gap: 10, paddingTop: 4, borderTop: '1px solid var(--border-default)' }}>
                 <button type="button" onClick={onBack} style={{ height: 50, padding: '0 20px', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
@@ -702,70 +837,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
         </form>
       </div>
 
-      {/* Past Dynamic Attempts */}
-      {pastAttempts.length > 0 && (
-        <div style={{ marginTop: 40 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-            <RotateCcw size={20} color="var(--accent-primary)" />
-            <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Past Subject-wise Tests</h3>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 18 }}>
-            {pastAttempts.map((attempt) => {
-              const meta = attempt.report_metadata_json || {};
-              const subj = meta.dynamic_subject && meta.dynamic_subject !== 'all' ? meta.dynamic_subject : 'Subject-wise Test';
-              const top = meta.dynamic_topic && meta.dynamic_topic !== 'all' ? meta.dynamic_topic : '';
-              const title = top ? `${subj} - ${top}` : subj;
-              const hasCompleted = attempt.status === 'COMPLETED' || attempt.status === 'SUBMITTED' || attempt.status === 'EVALUATED';
-              const hasInProgress = attempt.status === 'IN_PROGRESS';
-              
-              return (
-                <div
-                  key={attempt.id}
-                  style={{
-                    backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', position: 'relative', overflow: 'hidden',
-                    padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14,
-                    border: `1px solid ${hasCompleted ? '#A7F3D0' : 'var(--border-color)'}`,
-                    boxShadow: '0 1px 3px rgba(15,23,42,0.04)',
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      {hasInProgress
-                        ? <StatusBadge status="in-progress" label="In Progress" size="sm" />
-                        : hasCompleted
-                          ? <StatusBadge status="completed" label="Completed" size="sm" />
-                          : <StatusBadge status="pyq" label="Simulation" size="sm" />}
-                      <Layers size={18} color="var(--text-muted)" />
-                    </div>
-                    <h3 style={{ fontSize: 16.5, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 7px 0', lineHeight: 1.35 }}>{title}</h3>
-                    <div style={{ display: 'flex', gap: 12, fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>
-                      <span>{attempt.total_questions} Qs</span><span>•</span><span>{Math.round((attempt.max_duration_seconds || 7200)/60)} mins</span>
-                    </div>
-                    {hasCompleted && attempt.total_score !== undefined && (
-                      <div style={{ marginTop: 10, padding: '7px 11px', borderRadius: 10, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 12.5, color: '#3A8B53', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Report Ready</span><span>Score: {attempt.total_score} / {attempt.max_possible_score}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ paddingTop: 12, borderTop: '1px solid var(--border-default)', display: 'flex', gap: 8 }}>
-                    {hasInProgress ? (
-                      <>
-                        <Link to={`/exam/${attempt.id}?type=PYQ`} style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--radius)', backgroundColor: '#F2B623', color: '#000', fontWeight: 700, fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><PlayCircle size={13} /> Resume</Link>
-                        <Link to={`/exam/${attempt.exam_id || attempt.exam?.id}?forceNew=true&type=PYQ`} style={{ padding: '8px 12px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, border: '1px solid var(--border-default)' }}><RotateCcw size={13} /></Link>
-                      </>
-                    ) : (
-                      <>
-                        <Link to={`/analytics?attemptId=${attempt.id}`} style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--radius)', backgroundColor: 'var(--primary-red)', color: '#fff', fontWeight: 700, fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><BarChart2 size={13} /> View Report</Link>
-                        <Link to={`/exam/${attempt.exam_id || attempt.exam?.id}?forceNew=true&type=PYQ`} style={{ padding: '8px 12px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, border: '1px solid var(--border-default)' }}><RotateCcw size={13} /> Retake</Link>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <PastSubjectWiseTests />
     </>
   );
 }

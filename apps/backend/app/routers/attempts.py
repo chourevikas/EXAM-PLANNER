@@ -35,11 +35,13 @@ async def list_candidate_attempts(
     limit: int = 50,
     exam_id: Optional[int | str] = None,
     status_filter: Optional[str] = None,
+    subject_wise: bool = False,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Lists candidate's exam attempts history with optional pagination and filtering by exam_id or status.
+    Lists candidate's exam attempts history (newest first) with optional pagination and filtering by
+    exam_id, status, or `subject_wise=true` for Subject-wise simulations only.
     """
     parsed_exam_id = int(exam_id) if exam_id and str(exam_id).isdigit() else None
     effective_limit = min(page_size if page_size and page_size > 0 else limit, 100)
@@ -53,6 +55,7 @@ async def list_candidate_attempts(
         limit=effective_limit,
         exam_id=parsed_exam_id,
         status_filter=status_filter,
+        subject_wise=subject_wise,
     )
     if res is not None:
         if page and page_size:
@@ -94,7 +97,12 @@ async def start_exam_attempt(
     service = ExamSessionService(session)
     if not req.language:
         req.language = getattr(current_user, "preferred_language", "en") or "en"
-    return await service.start_exam(user_id=current_user.id, req=req)
+    response = await service.start_exam(user_id=current_user.id, req=req)
+
+    # A new (or abandoned-and-restarted) attempt changes the user's attempt history list
+    from app.cache import get_cache, build_cache_key
+    await get_cache().delete_pattern(f"{build_cache_key('attempts:user', str(current_user.id))}*")
+    return response
 
 
 @router.get("/{attempt_id}/questions/bulk", summary="Fetch All Exam Questions in Bulk")
