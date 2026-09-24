@@ -398,6 +398,76 @@ class ExamSessionService:
             presigned_url=presigned_url,
         )
 
+    async def get_question(
+        self,
+        attempt_id: int | str,
+        user_id: int,
+        question_number: int,
+        language: Optional[str] = "ENGLISH",
+    ) -> QuestionNavResponse:
+        """
+        Fetches a single question by its 1-indexed number within the exam paper.
+        Uses ExamJsonBuilder for consistent DB-backed question loading.
+        """
+        attempt = await self._get_attempt_safe(attempt_id, user_id)
+        exam = await self.session.get(Exam, attempt.exam_id)
+        if not exam:
+            raise HTTPException(status_code=404, detail="EXAM_NOT_FOUND: Associated exam not found.")
+
+        total_q = attempt.total_questions or exam.total_questions or 0
+
+        # Fetch the question at position question_number from the DB
+        stmt = (
+            select(Question)
+            .where(
+                Question.exam_id == exam.id,
+                Question.status != QuestionStatus.REJECTED,
+                Question.question_number_in_paper == question_number,
+            )
+        )
+        res = await self.session.exec(stmt)
+        question = res.first()
+
+        # Fallback: get by offset if question_number_in_paper doesn't match
+        if not question:
+            stmt2 = (
+                select(Question)
+                .where(Question.exam_id == exam.id, Question.status != QuestionStatus.REJECTED)
+                .order_by(col(Question.question_number_in_paper))
+                .offset(question_number - 1)
+                .limit(1)
+            )
+            res2 = await self.session.exec(stmt2)
+            question = res2.first()
+
+        if not question:
+            raise HTTPException(status_code=404, detail="QUESTION_NOT_FOUND: Question not found.")
+
+        from app.services.exam_json_builder import ExamJsonBuilder
+        builder = ExamJsonBuilder(self.session)
+        preloaded = await builder.preload_batch_question_data(
+            [question], include_solution_data=False, target_language=language
+        )
+        q_card, _ = await builder.build_single_question_cards(
+            question, preloaded=preloaded, include_solution_data=False, target_language=language
+        )
+
+        # Get the user's response for this question
+        resp_stmt = select(ExamQuestionResponse).where(
+            ExamQuestionResponse.attempt_id == attempt.id,
+            ExamQuestionResponse.question_id == question.id,
+        )
+        resp_res = await self.session.exec(resp_stmt)
+        resp = resp_res.first()
+
+        return self._build_question_nav_response(
+            q_item=q_card,
+            nav_current=question_number,
+            nav_total=total_q,
+            resp=resp,
+            language=language,
+        )
+
     async def get_all_questions_bulk(
         self,
         attempt_id: int | str,
