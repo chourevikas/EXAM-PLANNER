@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Tuple
 from fastapi import HTTPException, status, BackgroundTasks
-from sqlmodel import select, col
+from sqlmodel import select, col, desc
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
