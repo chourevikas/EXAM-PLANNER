@@ -98,6 +98,11 @@ class Question(SQLModel, table=True):
         sa_column=Column(PortableJSON),
         description="Knowledge Layer input as authored/parsed: concepts, entities, relationships, related_refs",
     )
+    knowledge_tags_ai: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(PortableJSON),
+        description="Knowledge Layer tags extracted by the LLM, with model, prompt_version and input_hash",
+    )
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

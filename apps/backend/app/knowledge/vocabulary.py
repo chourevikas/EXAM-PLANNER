@@ -16,11 +16,12 @@ NODE_STATUSES = frozenset({STATUS_ACTIVE, STATUS_PENDING_REVIEW})
 
 # Where a question -> node link came from
 SOURCE_AUTHORED = "AUTHORED"  # [Concepts: ...] / [Entities: ...] / [Relationships: ...] tags in the PDF
+SOURCE_AI = "AI"  # extracted by the LLM from the question, answer and solution
 SOURCE_RULE = "RULE"  # deterministic extraction from question / solution text
-LINK_SOURCES = frozenset({SOURCE_AUTHORED, SOURCE_RULE})
+LINK_SOURCES = frozenset({SOURCE_AUTHORED, SOURCE_AI, SOURCE_RULE})
 
-# Link weight applied to similarity scoring: rule-derived links count for less than authored ones
-LINK_WEIGHTS = {SOURCE_AUTHORED: 1.0, SOURCE_RULE: 0.6}
+# Link weight applied to similarity scoring: authored > AI-extracted > rule-derived
+LINK_WEIGHTS = {SOURCE_AUTHORED: 1.0, SOURCE_AI: 0.85, SOURCE_RULE: 0.6}
 
 ENTITY_TYPES = frozenset({
     "CONSTITUTION_ARTICLE",

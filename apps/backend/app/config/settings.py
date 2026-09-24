@@ -104,6 +104,14 @@ class Settings(BaseSettings):
         },
         description="Points per matching signal for GET /questions/{id}/similar (spec order: entity > provision > concept > relationship > Nano Theme > Microtheme).",
     )
+    # Knowledge Layer AI extraction (concepts / entities / relationships from question + solution).
+    # Runs in the background enrichment job, never in the upload request; on failure the rule-based
+    # extraction still applies, so a slow provider should fail fast rather than retry for minutes.
+    KNOWLEDGE_AI_ENABLED: bool = Field(default=True)
+    KNOWLEDGE_AI_BATCH_SIZE: int = Field(default=8, description="Questions per LLM call")
+    KNOWLEDGE_LLM_TIMEOUT_SECONDS: int = Field(default=90)
+    KNOWLEDGE_LLM_MAX_RETRIES: int = Field(default=3)
+    KNOWLEDGE_LLM_RATE_LIMIT_RPS: float = Field(default=1.0)
 
     # Async Database Configuration (Supports SQLite and PostgreSQL: postgresql+asyncpg://...)
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///exam_platform.db")

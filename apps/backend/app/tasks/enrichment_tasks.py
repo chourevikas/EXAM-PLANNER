@@ -31,23 +31,34 @@ async def _set_status(exam_id: int, status: str, step: str, progress: float, err
 
 async def async_enrich_exam(exam_id_str: str) -> dict:
     from app.cache import get_cache, build_cache_key
-    from app.knowledge.enrichment_service import KnowledgeEnrichmentService
+    from app.knowledge.ai_extractor import KnowledgeAIExtractor
+    from app.knowledge.enrichment_service import AI_FAILED, KnowledgeEnrichmentService
 
     exam_id = int(exam_id_str)
     try:
         await _set_status(exam_id, "RUNNING", "Extracting concepts, entities and relationships", 5.0)
-        results = await KnowledgeEnrichmentService(async_session_factory).enrich_exam(exam_id)
+
+        async def _progress(done: int, total: int) -> None:
+            await _set_status(exam_id, "RUNNING", f"AI tagging: {done}/{total} questions", 5.0 + 85.0 * done / max(total, 1))
+
+        service = KnowledgeEnrichmentService(async_session_factory, ai_extractor=KnowledgeAIExtractor.from_settings())
+        results = await service.enrich_exam(exam_id, on_progress=_progress)
         failed = [r for r in results if any(i.startswith("ENRICHMENT_FAILED") for i in r.issues)]
+        ai_failed = [r for r in results if r.ai == AI_FAILED]
         summary = {
             "questions": len(results),
             "with_knowledge": sum(1 for r in results if r.entities or r.concepts),
             "failed": len(failed),
+            "ai_failed": len(ai_failed),
+            "syllabus_filled": sum(1 for r in results if r.syllabus),
         }
         await get_cache().delete_pattern(f"{build_cache_key('questions:similar')}*")
         await _set_status(
             exam_id, "COMPLETED",
             f"Enriched {summary['with_knowledge']}/{summary['questions']} questions"
-            + (f", {summary['failed']} failed" if failed else ""),
+            + (f", {summary['failed']} failed" if failed else "")
+            + (f", AI filled missing syllabus tags for {summary['syllabus_filled']}" if summary["syllabus_filled"] else "")
+            + (f", AI tagging failed for {summary['ai_failed']} (fell back to rules)" if ai_failed else ""),
             100.0,
         )
         logger.info(f"🧠 [KNOWLEDGE] Exam #{exam_id} enrichment complete: {summary}")
