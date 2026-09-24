@@ -406,8 +406,10 @@ class ExamSessionService:
         language: Optional[str] = "ENGLISH",
     ) -> QuestionNavResponse:
         """
-        Fetches a single question by its 1-indexed number within the exam paper.
-        Uses ExamJsonBuilder for consistent DB-backed question loading.
+        Fetches a single question by its 1-indexed position within the attempt.
+        Uses ExamQuestionResponse rows to look up the correct question_id —
+        this works for both static PYQ exams and dynamic subject-wise exams
+        (where questions may belong to different source exams).
         """
         attempt = await self._get_attempt_safe(attempt_id, user_id)
         exam = await self.session.get(Exam, attempt.exam_id)
@@ -416,32 +418,24 @@ class ExamSessionService:
 
         total_q = attempt.total_questions or exam.total_questions or 0
 
-        # Fetch the question at position question_number from the DB
-        stmt = (
-            select(Question)
-            .where(
-                Question.exam_id == exam.id,
-                Question.status != QuestionStatus.REJECTED,
-                Question.question_number_in_paper == question_number,
-            )
+        # Get the nth response row (1-indexed) — this is the source of truth for question ordering
+        resp_stmt = (
+            select(ExamQuestionResponse)
+            .where(ExamQuestionResponse.attempt_id == attempt.id)
+            .order_by(col(ExamQuestionResponse.id))
+            .offset(question_number - 1)
+            .limit(1)
         )
-        res = await self.session.exec(stmt)
-        question = res.first()
+        resp_res = await self.session.exec(resp_stmt)
+        resp = resp_res.first()
 
-        # Fallback: get by offset if question_number_in_paper doesn't match
-        if not question:
-            stmt2 = (
-                select(Question)
-                .where(Question.exam_id == exam.id, Question.status != QuestionStatus.REJECTED)
-                .order_by(col(Question.question_number_in_paper))
-                .offset(question_number - 1)
-                .limit(1)
-            )
-            res2 = await self.session.exec(stmt2)
-            question = res2.first()
+        if not resp:
+            raise HTTPException(status_code=404, detail="QUESTION_NOT_FOUND: Question not found for this attempt.")
 
+        # Fetch the question by ID (works for both dynamic and static exams)
+        question = await self.session.get(Question, resp.question_id)
         if not question:
-            raise HTTPException(status_code=404, detail="QUESTION_NOT_FOUND: Question not found.")
+            raise HTTPException(status_code=404, detail="QUESTION_NOT_FOUND: Question record missing.")
 
         from app.services.exam_json_builder import ExamJsonBuilder
         builder = ExamJsonBuilder(self.session)
@@ -451,14 +445,6 @@ class ExamSessionService:
         q_card, _ = await builder.build_single_question_cards(
             question, preloaded=preloaded, include_solution_data=False, target_language=language
         )
-
-        # Get the user's response for this question
-        resp_stmt = select(ExamQuestionResponse).where(
-            ExamQuestionResponse.attempt_id == attempt.id,
-            ExamQuestionResponse.question_id == question.id,
-        )
-        resp_res = await self.session.exec(resp_stmt)
-        resp = resp_res.first()
 
         return self._build_question_nav_response(
             q_item=q_card,
