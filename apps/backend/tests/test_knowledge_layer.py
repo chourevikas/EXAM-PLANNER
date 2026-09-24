@@ -9,6 +9,7 @@ from app.db.models import (
     LanguageCode,
     Question,
     QuestionExplanation,
+    QuestionOption,
     QuestionStatus,
     QuestionTranslation,
     Subject,
@@ -365,6 +366,24 @@ class TestKnowledgeApi(KnowledgeDbTestCase):
         self.assertEqual((await self.client.get(f"/api/v1/questions/{hidden}/similar")).status_code, 404)
         self.assertEqual((await self.client.get(f"/api/v1/questions/{hidden}/knowledge")).status_code, 404)
         self.assertEqual((await self.client.get("/api/v1/questions/abc/similar")).status_code, 404)
+
+    async def test_similar_cards_do_not_leak_the_answer_key(self):
+        current = await self.add_question("Right to Equality", {"entities": ["Article 15"]})
+        match = await self.add_question("Right to Equality", {"entities": ["Article 15"]})
+        async with self.session_factory() as s:
+            for i, label in enumerate("ABCD"):
+                s.add(QuestionOption(question_id=match, option_label=label, display_order=i + 1, is_correct=label == "C"))
+            await s.commit()
+        await self.enrich(current, match)
+
+        body = (await self.client.get(f"/api/v1/questions/{current}/similar?include_question=true")).json()
+        options = body["results"][0]["question"]["options"]
+        self.assertEqual([o["option_label"] for o in options], ["A", "B", "C", "D"])
+        self.assertTrue(all("is_correct" not in o for o in options))
+
+        # The key is only served by the solution endpoint, which cards call after an answer
+        solution = (await self.client.get(f"/api/v1/questions/{match}/solution")).json()
+        self.assertEqual(solution["correct_option_label"], "C")
 
 
 if __name__ == "__main__":

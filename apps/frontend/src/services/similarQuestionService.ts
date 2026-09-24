@@ -6,7 +6,7 @@ import { guardedFetch } from '../utils/apiGuard';
  * Knowledge Layer "similar questions" for one question (GET /questions/{id}/similar).
  *
  * Ranked on the backend by shared entities (e.g. Article 15) > concepts > relationships >
- * same Nano Theme > same Microtheme. Scores stay internal; the UI only shows short labels.
+ * same Nano Theme > same Microtheme. Scores and match reasons stay internal to the API.
  */
 export type SimilarTier = 'exact' | 'related' | 'nano_theme' | 'microtheme';
 
@@ -23,26 +23,8 @@ export interface SimilarQuestionResult {
   question?: any | null;
 }
 
-/** A recommendation card that also says why it was suggested. */
-export type SimilarQuestionOut = QuestionOut & { match_labels?: string[]; similar_tier?: SimilarTier };
-
-const REASON_PREFIXES = ['Exact entity: ', 'Specific provision: ', 'Concept: '];
-
-/** "Exact entity: Article 15" -> "Article 15", "Relationship: Suba → Sarkar" -> "Suba → Sarkar". */
-export function similarReasonLabels(reasons: string[], max = 3): string[] {
-  const labels: string[] = [];
-  for (const reason of reasons) {
-    const prefix = REASON_PREFIXES.find((p) => reason.startsWith(p));
-    const label = prefix
-      ? reason.slice(prefix.length)
-      : reason.startsWith('Relationship: ')
-        ? reason.slice('Relationship: '.length)
-        : reason;
-    if (label && !labels.includes(label)) labels.push(label);
-    if (labels.length >= max) break;
-  }
-  return labels;
-}
+/** A recommendation card tagged with how closely it matched. */
+export type SimilarQuestionOut = QuestionOut & { similar_tier?: SimilarTier };
 
 /** Maps a /questions/recommended-style card (also embedded by /similar) to the QuestionOut used by the panels. */
 export function recommendationCardToQuestion(
@@ -54,12 +36,8 @@ export function recommendationCardToQuestion(
     option_id: o.option_id || `opt-rec-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
     option_label: o.option_label || String.fromCharCode(65 + oIdx),
     text: o.option_text || o.text || `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
-    is_correct: Boolean(o.is_correct),
-    distractor_analysis:
-      o.distractor_analysis ||
-      o.explanation ||
-      o.description ||
-      (o.is_correct ? 'Correct option matching core syllabus concepts.' : 'Distractor option.'),
+    // Cards don't carry the answer key; correctness comes from /questions/{id}/solution after answering.
+    distractor_analysis: o.distractor_analysis || o.explanation || o.description || '',
     translations: o.translations || {},
   }));
   return {
@@ -126,7 +104,6 @@ export function useSimilarQuestions(
           .filter((r) => r.question)
           .map((r, idx) => ({
             ...recommendationCardToQuestion(r.question, idx),
-            match_labels: similarReasonLabels(r.match_reasons),
             similar_tier: r.tier,
           }));
         setCache((prev) => ({ ...prev, [key]: cards }));

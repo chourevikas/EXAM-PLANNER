@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Lightbulb, Link2, X } from 'lucide-react';
+import { ChevronDown, Lightbulb, X } from 'lucide-react';
 import { QuestionOut } from '../../types/exam';
 import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { getQuestionText, getOptionText } from './ExamQuestionCard';
@@ -28,8 +28,15 @@ export function RecommendedQuestionCard({
   language,
 }: RecommendedQuestionCardProps) {
   const selectedOption = (rec.options as any[])?.find((o: any) => o.option_id === answeredOptId);
-  // Set for Knowledge Layer matches: why this question is similar ("Article 15", "Reservation", ...)
-  const matchLabels: string[] = (rec as any).match_labels || [];
+  // Cards don't ship the answer key: which option is correct is only known once the
+  // solution (fetched after the student answers) has loaded.
+  const cleanLabel = (label: unknown) => String(label ?? '').replace(/[().\s]/g, '').toUpperCase();
+  const isOptionCorrect = (opt: any): boolean =>
+    !!solution &&
+    (solution.correct_option_id != null
+      ? String(opt.option_id) === String(solution.correct_option_id)
+      : !!solution.correct_option_label && cleanLabel(opt.option_label) === cleanLabel(solution.correct_option_label));
+  const hasAnswerKey = !!solution && (solution.correct_option_id != null || !!solution.correct_option_label);
   const [showSolutionModal, setShowSolutionModal] = useState(false);
 
   return (
@@ -104,7 +111,7 @@ export function RecommendedQuestionCard({
               <QuestionSolutionMarkdownCard
                 solution={solution ?? {}}
                 isLoading={isSolutionLoading}
-                isUserCorrect={selectedOption ? !!selectedOption.is_correct : undefined}
+                isUserCorrect={selectedOption && hasAnswerKey ? isOptionCorrect(selectedOption) : undefined}
                 selectedOptionLabel={selectedOption?.option_label}
               />
             </div>
@@ -126,7 +133,6 @@ export function RecommendedQuestionCard({
         <div
           onClick={onToggleExpand}
           style={{ cursor: 'pointer', padding: '10px 12px' }}
-          title={matchLabels.length ? `Similar because of: ${matchLabels.join(', ')}` : undefined}
           onMouseEnter={(e) => {
             if (!isExpanded) {
               e.currentTarget.style.backgroundColor = 'var(--bg-card)';
@@ -140,34 +146,6 @@ export function RecommendedQuestionCard({
             }
           }}
         >
-          {matchLabels.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
-              <Link2 size={11} color="var(--primary-red)" aria-hidden="true" />
-              <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Linked by
-              </span>
-              {matchLabels.map((label) => (
-                <span
-                  key={label}
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    padding: '1px 6px',
-                    borderRadius: 3,
-                    color: 'var(--primary-red)',
-                    backgroundColor: 'rgba(var(--primary-red-rgb), 0.08)',
-                    border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
-                    maxWidth: 180,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
-          )}
           <div
             style={{
               display: 'flex',
@@ -297,9 +275,9 @@ export function RecommendedQuestionCard({
             >
               {(rec.options as any[])?.map((opt: any, optIdx: number) => {
                 const isSelected = answeredOptId === opt.option_id;
-                const isCorrect = opt.is_correct;
+                const isCorrect = isOptionCorrect(opt);
                 const isWrongSelected = isSelected && !isCorrect;
-                const showResult = !!answeredOptId;
+                const showResult = answeredOptId != null && hasAnswerKey;
 
                 let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
                 let bgStyle = 'var(--bg-card)';
@@ -380,7 +358,7 @@ export function RecommendedQuestionCard({
             </div>
 
             {answeredOptId != null && (
-              <div style={{ marginTop: 10 }}>
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -405,6 +383,9 @@ export function RecommendedQuestionCard({
                   <Lightbulb size={13} color="var(--text-muted)" />
                   <span>View Explanation</span>
                 </button>
+                {isSolutionLoading && !hasAnswerKey && (
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Checking answer…</span>
+                )}
               </div>
             )}
           </div>
