@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { stripRepeatedOptionLabel } from '../../utils/optionText';
 import {
   CheckCircle2,
   XCircle,
@@ -191,11 +192,9 @@ function cleanOptionLabel(rawLabel: string, index: number): string {
   return clean.length === 1 ? clean : String.fromCharCode(65 + index);
 }
 
-function cleanOptionText(rawText: string): string {
+function cleanOptionText(rawText: string, label?: string): string {
   if (!rawText) return '';
-  let text = String(rawText).trim();
-  text = text.replace(/^[\(\[]+([a-dA-D1-4])[\)\]]+\s*/, '');
-  text = text.replace(/^([a-dA-D1-4])[\)\.\:]\s*/, '');
+  let text = stripRepeatedOptionLabel(String(rawText).trim(), label);
   text = text.replace(/^['"]+|['"]+$/g, '');
   return text.trim();
 }
@@ -277,7 +276,10 @@ export function getOptionText(opt: any, lang: string, optIdx?: number, q?: any):
   if (!rawText) {
     rawText = `Option ${String.fromCharCode(65 + (optIdx || 0))}`;
   }
-  return cleanOptionText(rawText);
+  const label = String(opt.option_label || opt.label || (optIdx !== undefined ? String.fromCharCode(65 + optIdx) : ''))
+    .replace(/[^A-Da-d1-4]/g, '')
+    .toUpperCase();
+  return cleanOptionText(rawText, label);
 }
 
 export function ExamQuestionCard({

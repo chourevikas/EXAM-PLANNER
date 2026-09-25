@@ -783,7 +783,8 @@ class BatchQuestionRegistrar:
                                     marks=marks,
                                     negative_marks=neg_marks,
                                     expected_time_seconds=60,
-                                    source_year=source_year,
+                                    # Question banks mix years: "[MPSC Mains 2017]" wins over the upload's year
+                                    source_year=rec.source_year or source_year,
                                     is_complete=is_complete,
                                     has_image=bool(rec.pictures),
                                     page_numbers_json=rec.page_numbers,
@@ -804,6 +805,7 @@ class BatchQuestionRegistrar:
                                 q_obj = existing_qs[q_num]
                                 q_obj.subtopic_id = subtopic_obj.id
                                 q_obj.difficulty = rec.difficulty
+                                q_obj.source_year = rec.source_year or source_year
                                 q_obj.is_complete = is_complete
                                 q_obj.has_image = bool(rec.pictures)
                                 q_obj.page_numbers_json = rec.page_numbers

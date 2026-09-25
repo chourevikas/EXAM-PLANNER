@@ -40,6 +40,7 @@ async def list_questions(
     paper_set_code: Optional[str] = Query(default=None, description="Filter by Paper Set Code e.g. SET_A"),
     stage: Optional[str] = Query(default=None, description="Filter by Stage e.g. prelims"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Status e.g. PENDING_HUMAN_REVIEW or PUBLISHED"),
+    difficulty: Optional[str] = Query(default=None, description="Filter by Difficulty e.g. EASY, MEDIUM, HARD ('All Levels' = no filter)"),
     language: str = Query(default="en", description="Target Language for response text (ISO code 'en', 'hi' or Enum name 'ENGLISH')"),
     include_solutions: bool = Query(default=False, description="Whether to include full solution explanations and option distractor analyses"),
     exclude_ids: Optional[str] = Query(default=None, description="Comma-separated Question IDs to exclude from results"),
@@ -58,6 +59,16 @@ async def list_questions(
     """
     if not can_see_unpublished(viewer):
         status = QuestionStatus.PUBLISHED
+
+    if difficulty and difficulty.strip().lower() in ("all", "all levels", "all difficulties"):
+        difficulty = None
+    if difficulty and difficulty.strip():
+        difficulty = difficulty.strip().upper()
+        if difficulty not in DifficultyLevel.__members__:
+            raise HTTPException(
+                status_code=400,  # `status` is the query parameter here
+                detail=f"Invalid difficulty: '{difficulty}'. Allowed values: {[d.value for d in DifficultyLevel]}",
+            )
 
     lang_code = parse_language(language)
     from app.cache import get_cache, build_cache_key
@@ -83,6 +94,7 @@ async def list_questions(
             paper_set_code=paper_set_code,
             stage=stage,
             status=str(status.value if hasattr(status, "value") else status) if status else None,
+            difficulty=difficulty,
             language=lang_code.value,
             include_solutions=include_solutions,
             page=page,
@@ -110,6 +122,7 @@ async def list_questions(
         paper_set_code=paper_set_code,
         stage=stage,
         status=status,
+        difficulty=difficulty,
         language=lang_code,
         include_solutions=include_solutions,
         exclude_ids=exclude_ids,

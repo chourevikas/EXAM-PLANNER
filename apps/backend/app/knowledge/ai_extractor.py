@@ -10,8 +10,8 @@ The model is told which canonical names already exist so it reuses them ("Articl
 PENDING_REVIEW for curation.
 
 The same call fills in missing syllabus tags (Subject > Microtheme > Nano Theme) for questions the
-PDF left untagged, choosing from the syllabus names already used by other papers where possible.
-Authored levels are never changed.
+PDF left untagged, choosing from the syllabus names already used by other papers where possible,
+and rates difficulty for questions without a [Difficulty] tag. Authored tags are never changed.
 """
 import hashlib
 import json
@@ -28,10 +28,12 @@ logger = setup_logger("KnowledgeAIExtractor")
 
 # Bump when the prompt or schema changes: stored AI tags from an older version get re-extracted.
 # v1: concepts / entities / relationships. v2: + missing Subject / Microtheme / Nano Theme.
-PROMPT_VERSION = "kl-ai-v2"
+# v3: + question-bank hints (PDF chapter heading, source exam). v4: + missing difficulty.
+PROMPT_VERSION = "kl-ai-v4"
 
 # Syllabus levels as the PDFs name them (Microtheme = Topic, Nano Theme = Subtopic in the DB)
 SYLLABUS_LEVELS = ("subject", "microtheme", "nano_theme")
+DIFFICULTY_LEVELS = ("EASY", "MEDIUM", "HARD")  # DifficultyLevel values
 
 MAX_CONCEPTS = 5
 MAX_ENTITIES = 8
@@ -65,6 +67,9 @@ class AIQuestionKnowledge(BaseModel):
     question_id: int
     syllabus: Optional[AISyllabus] = Field(
         default=None, description="Only for questions with syllabus_missing; keep syllabus_known levels unchanged"
+    )
+    difficulty: Optional[Literal["EASY", "MEDIUM", "HARD"]] = Field(
+        default=None, description="Only for questions with difficulty_missing"
     )
     concepts: List[str] = Field(default_factory=list, description=f"At most {MAX_CONCEPTS} concepts")
     entities: List[AIEntity] = Field(default_factory=list, description=f"At most {MAX_ENTITIES} entities")
@@ -103,6 +108,18 @@ For EACH question, using its stem, options, correct answer and solution, return:
    standard name for a level when nothing listed fits. Microtheme is a broad area within the
    subject ("Fundamental Rights"); Nano Theme is the narrow theme within it ("Right to Equality").
    For questions without "syllabus_missing", leave syllabus empty.
+   "pdf_section", when given, is the chapter heading the question was listed under in the PDF
+   (e.g. "Unemployment and Employment"): a strong hint for the microtheme, but still prefer an
+   existing syllabus line that fits it. "source" is the exam the question came from
+   (e.g. "MPSC Mains 2017"): context only, never a syllabus level.
+5. difficulty: ONLY for questions with "difficulty_missing". Rate how hard the question is for a
+   well-prepared UPSC / state PSC aspirant:
+   - EASY: direct recall of a widely known fact or definition; the wrong options are clearly wrong.
+   - MEDIUM: needs specific knowledge (a date, a provision, a scheme detail), or judging two or three
+     statements, or ruling out one plausible option.
+   - HARD: obscure or very precise facts, several statements to judge with close distractors, or
+     options that differ in one detail.
+   Judge the question itself, not the length of the solution. Otherwise leave difficulty empty.
 
 Naming rules:
 - When a name in the provided existing vocabulary means the same thing, copy it exactly.
@@ -135,11 +152,16 @@ class QuestionTexts:
     # Set when the PDF left syllabus levels untagged: the authored levels, and the ones AI must fill
     syllabus_known: Dict[str, str] = field(default_factory=dict)
     syllabus_missing: List[str] = field(default_factory=list)
+    # Question-bank PDFs: chapter heading the question sat under, and its source ("MPSC Mains 2017")
+    pdf_section: Optional[str] = None
+    source: Optional[str] = None
+    difficulty_missing: bool = False  # the PDF had no [Difficulty] tag
 
     def input_hash(self) -> str:
         """Changes when the input the model saw changes, so stored AI tags can be reused otherwise."""
         payload = json.dumps(
-            [self.stem, self.options, self.answer, self.solution, self.syllabus_known, self.syllabus_missing],
+            [self.stem, self.options, self.answer, self.solution, self.syllabus_known, self.syllabus_missing,
+             self.pdf_section, self.source, self.difficulty_missing],
             ensure_ascii=False, sort_keys=True,
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -152,6 +174,12 @@ class QuestionTexts:
             item["correct_answer"] = self.answer.strip()
         if self.solution:
             item["solution"] = self.solution.strip()[:4000]
+        if self.source:
+            item["source"] = self.source
+        if self.pdf_section:
+            item["pdf_section"] = self.pdf_section
+        if self.difficulty_missing:
+            item["difficulty_missing"] = True
         if self.syllabus_missing:
             item["syllabus_known"] = self.syllabus_known
             item["syllabus_missing"] = self.syllabus_missing
@@ -248,6 +276,8 @@ def clean_ai_knowledge(item: AIQuestionKnowledge, texts: Optional[QuestionTexts]
     if texts is not None and texts.syllabus_missing:
         cleaned["syllabus"] = clean_ai_syllabus(item.syllabus, texts.syllabus_known, texts.syllabus_missing)
         cleaned["syllabus_filled"] = list(texts.syllabus_missing)
+    if texts is not None and texts.difficulty_missing and item.difficulty in DIFFICULTY_LEVELS:
+        cleaned["difficulty"] = item.difficulty
     return cleaned
 
 

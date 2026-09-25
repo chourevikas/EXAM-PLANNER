@@ -25,7 +25,7 @@ async def _set_status(exam_id: int, status: str, step: str, progress: float, err
     async with managed_async_session() as session:
         await PipelineManagementService(session).update_pipeline_status(
             exam_id=exam_id, pipeline_type=PIPELINE_TYPE, status=status,
-            current_step=step, progress_percent=progress, error_log=error,
+            current_step=step[:100], progress_percent=progress, error_log=error,  # VARCHAR(100)
         )
 
 
@@ -51,14 +51,22 @@ async def async_enrich_exam(exam_id_str: str) -> dict:
             "failed": len(failed),
             "ai_failed": len(ai_failed),
             "syllabus_filled": sum(1 for r in results if r.syllabus),
+            "difficulty_rated": sum(1 for r in results if r.difficulty),
         }
         await get_cache().delete_pattern(f"{build_cache_key('questions:similar')}*")
+        if summary["syllabus_filled"] or summary["difficulty_rated"]:
+            # Questions moved out of the upload placeholders or re-rated: syllabus trees, question
+            # lists and the admin catalog changed
+            from app.cache.helpers import invalidate_exam_cache
+
+            await invalidate_exam_cache(str(exam_id))
         await _set_status(
             exam_id, "COMPLETED",
-            f"Enriched {summary['with_knowledge']}/{summary['questions']} questions"
+            f"Enriched {summary['with_knowledge']}/{summary['questions']}"
             + (f", {summary['failed']} failed" if failed else "")
-            + (f", AI filled missing syllabus tags for {summary['syllabus_filled']}" if summary["syllabus_filled"] else "")
-            + (f", AI tagging failed for {summary['ai_failed']} (fell back to rules)" if ai_failed else ""),
+            + (f", syllabus by AI: {summary['syllabus_filled']}" if summary["syllabus_filled"] else "")
+            + (f", difficulty by AI: {summary['difficulty_rated']}" if summary["difficulty_rated"] else "")
+            + (f", AI failed: {summary['ai_failed']} (rules used)" if ai_failed else ""),
             100.0,
         )
         logger.info(f"🧠 [KNOWLEDGE] Exam #{exam_id} enrichment complete: {summary}")

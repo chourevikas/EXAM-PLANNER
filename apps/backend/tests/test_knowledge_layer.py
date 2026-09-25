@@ -6,6 +6,7 @@ from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
+    DifficultyLevel,
     Exam,
     LanguageCode,
     Question,
@@ -19,6 +20,7 @@ from app.db.models import (
     Topic,
 )
 from app.db.models.hierarchy import SyllabusVersion
+from app.db.models.passage import Passage
 from app.db.models.knowledge import (
     KnowledgeAlias,
     KnowledgeConcept,
@@ -340,7 +342,7 @@ class TestAIExtraction(AITestCase):
     def test_prompt_changes_require_a_version_bump(self):
         # Edited SYSTEM_PROMPT or the output schema? Bump PROMPT_VERSION (stored AI tags are then
         # re-extracted on the next run) and update this pair.
-        self.assertEqual((PROMPT_VERSION, PROMPT_FINGERPRINT), ("kl-ai-v2", "8bfb1d2821c0"))
+        self.assertEqual((PROMPT_VERSION, PROMPT_FINGERPRINT), ("kl-ai-v4", "2d6bb6d7bf0d"))
     def test_model_output_is_cleaned(self):
         tags = clean_ai_knowledge(AIQuestionKnowledge(question_id=1, **article_15_tags({"question": "Article 15"})))
         self.assertEqual(tags["concepts"], ["Reservation", "Right to Equality"])
@@ -503,6 +505,11 @@ class TestAISyllabus(AITestCase):
         self.assertEqual((sub_id, links), (self.nanos["Right to Equality"].id, [(self.nanos["Right to Equality"].id, True)]))
         self.assertEqual(results[-1].syllabus, "polity > Fundamental Rights > Right to Equality")
 
+        # The emptied placeholder chain is removed (Subject named after the exam included)
+        async with self.session_factory() as s:
+            self.assertIsNone(await s.get(Subtopic, untagged_sub))
+            self.assertEqual((await s.exec(select(Subject).where(Subject.name == self.exam.name))).all(), [])
+
         # Stable after assignment: the next run reuses stored tags instead of asking again
         again = await self.service(model).enrich_exam(self.exam.id)
         self.assertEqual(({r.ai for r in again}, len(model.calls)), ({"cached"}, 1))
@@ -551,6 +558,58 @@ class TestAISyllabus(AITestCase):
         names, _, sub_id = await self.placement(qid)
         self.assertEqual(names, ("Polity", "Fundamental Rights", "Right to Equality"))
         self.assertNotEqual(sub_id, self.nanos["Right to Equality"].id)  # its own exam's syllabus version
+
+    async def test_question_bank_hints_reach_the_model(self):
+        qid = await self.add_question(
+            "Right to Equality", {"section": "Unemployment and Employment", "source": "MPSC Mains 2017"},
+            stem="Article 15 question", subtopic_id=await self.placeholder(), syllabus_raw=(None, None, None),
+        )
+        model = FakeChatModel(self.syllabus_responder(
+            {"subject": "Economy", "microtheme": "Unemployment and Employment", "nano_theme": "Employment Schemes"}))
+        await self.service(model).enrich_exam(self.exam.id)
+        sent = model.calls[0]["questions"][0]
+        self.assertEqual((sent["pdf_section"], sent["source"]), ("Unemployment and Employment", "MPSC Mains 2017"))
+        self.assertEqual((await self.placement(qid))[0], ("Economy", "Unemployment and Employment", "Employment Schemes"))
+
+    async def test_placeholder_in_use_is_kept(self):
+        shared = await self.placeholder()
+        moved = await self.add_question("Right to Equality", None, stem="Article 15 question",
+                                        subtopic_id=shared, syllabus_raw=(None, None, None))
+        async with self.session_factory() as s:
+            s.add(Passage(subtopic_id=shared))
+            await s.commit()
+        model = FakeChatModel(self.syllabus_responder(
+            {"subject": "Polity", "microtheme": "Fundamental Rights", "nano_theme": "Right to Equality"}))
+        await self.service(model).enrich_exam(self.exam.id)
+        self.assertEqual((await self.placement(moved))[0], ("Polity", "Fundamental Rights", "Right to Equality"))
+        async with self.session_factory() as s:
+            self.assertIsNotNone(await s.get(Subtopic, shared))  # a passage still points at it
+
+    async def test_missing_difficulty_is_rated_and_tags_win(self):
+        untagged = await self.add_question("Right to Equality", None, stem="Article 15 obscure clause")
+        tagged = await self.add_question("Right to Equality", None, stem="Article 15 basic")
+        reviewed = await self.add_question("Right to Equality", None, stem="Article 15 reviewed")
+        async with self.session_factory() as s:
+            q = await s.get(Question, tagged)
+            q.difficulty_raw, q.difficulty = "Easy", DifficultyLevel.EASY  # PDF said [Difficulty: Easy]
+            r = await s.get(Question, reviewed)
+            r.difficulty = DifficultyLevel.EASY  # a reviewer's choice on an untagged question
+            await s.commit()
+
+        def respond(q):
+            return {**article_15_tags(q), **({"difficulty": "HARD"} if q.get("difficulty_missing") else {})}
+
+        model = FakeChatModel(respond)
+        results = {r.question_id: r for r in await self.service(model).enrich_exam(self.exam.id)}
+        sent = {q["question_id"]: q for q in model.calls[0]["questions"]}
+        self.assertTrue(sent[untagged]["difficulty_missing"])
+        self.assertNotIn("difficulty_missing", sent[tagged])
+        async with self.session_factory() as s:
+            levels = {qid: (await s.get(Question, qid)).difficulty for qid in (untagged, tagged, reviewed)}
+            stored = (await s.get(Question, tagged)).knowledge_tags_ai
+        self.assertEqual(levels, {untagged: DifficultyLevel.HARD, tagged: DifficultyLevel.EASY, reviewed: DifficultyLevel.EASY})
+        self.assertEqual((results[untagged].difficulty, results[reviewed].difficulty), ("HARD", None))
+        self.assertNotIn("difficulty", stored)  # an answer for a tagged question is not even stored
 
     async def test_reviewer_placement_is_not_overwritten(self):
         # Untagged in the PDF, but a reviewer already moved it to a real Nano Theme
@@ -678,6 +737,22 @@ class TestKnowledgeApi(KnowledgeDbTestCase):
         self.assertEqual((await self.client.get(f"/api/v1/questions/{hidden}/similar")).status_code, 404)
         self.assertEqual((await self.client.get(f"/api/v1/questions/{hidden}/knowledge")).status_code, 404)
         self.assertEqual((await self.client.get("/api/v1/questions/abc/similar")).status_code, 404)
+
+    async def test_question_list_filters_by_difficulty(self):
+        ids = [await self.add_question("Right to Equality", None, stem=f"Q{i}") for i in range(3)]
+        async with self.session_factory() as s:
+            for qid, level in zip(ids, (DifficultyLevel.EASY, DifficultyLevel.HARD, DifficultyLevel.HARD)):
+                (await s.get(Question, qid)).difficulty = level
+            await s.commit()
+
+        async def listed(difficulty):
+            res = await self.client.get("/api/v1/questions", params={"difficulty": difficulty, "limit": 100})
+            return res.status_code, sorted(int(i["question_id"]) for i in res.json().get("items", []))
+
+        self.assertEqual(await listed("HARD"), (200, ids[1:]))
+        self.assertEqual(await listed("easy"), (200, ids[:1]))
+        self.assertEqual(await listed("All Levels"), (200, ids))
+        self.assertEqual((await listed("impossible"))[0], 400)
 
     async def test_similar_cards_do_not_leak_the_answer_key(self):
         current = await self.add_question("Right to Equality", {"entities": ["Article 15"]})

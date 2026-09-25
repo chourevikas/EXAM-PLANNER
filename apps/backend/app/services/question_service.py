@@ -83,6 +83,7 @@ class QuestionService:
         exclude_ids: Optional[str] = None,
         page: int = 1,
         limit: int = 20,
+        difficulty: Optional[str] = None,
     ) -> QuestionPaginatedResponse:
         language = parse_language(language)
         from app.cache import get_cache, build_cache_key
@@ -105,6 +106,7 @@ class QuestionService:
             paper_set_code=paper_set_code,
             stage=stage,
             status=str(status.value if hasattr(status, "value") else status) if status else None,
+            difficulty=difficulty,
             language=str(language.value if hasattr(language, "value") else language),
             include_solutions=include_solutions,
             exclude=exclude_ids.strip() if exclude_ids else None,
@@ -136,6 +138,7 @@ class QuestionService:
             paper_set_code=paper_set_code,
             stage=stage,
             status=status,
+            difficulty=difficulty,
             exclude_ids=exclude_ids,
             skip=skip,
             limit=limit,

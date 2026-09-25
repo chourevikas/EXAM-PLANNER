@@ -3,7 +3,7 @@ Backfills the Knowledge Layer (concepts / entities / relationships) for question
 
 Runs AI extraction (LLM) over each question's stem, options, answer and solution, then links
 it together with any authored tags and rule-based matches. Questions whose PDF had no
-Subject / Microtheme / Nano Theme tags are also placed in the syllabus by the same AI call. Stored AI tags are reused while a
+Subject / Microtheme / Nano Theme or Difficulty tags get those from the same AI call. Stored AI tags are reused while a
 question's text is unchanged, so re-runs only call the model for new or edited questions.
 Safe to re-run: each question's links are replaced, never duplicated.
 
@@ -81,7 +81,10 @@ async def backfill(exam_id: int | None, dry_run: bool, use_ai: bool = True, refr
     for eid in exam_ids:
         results = await service.enrich_exam(eid, refresh_ai=refresh_ai)
         ai_statuses.update(r.ai for r in results)
-        totals.update(syllabus_filled=sum(1 for r in results if r.syllabus))
+        totals.update(
+            syllabus_filled=sum(1 for r in results if r.syllabus),
+            difficulty_rated=sum(1 for r in results if r.difficulty),
+        )
         with_knowledge = sum(1 for r in results if r.entities or r.concepts)
         totals.update(
             questions=len(results), with_knowledge=with_knowledge,
@@ -100,6 +103,7 @@ async def backfill(exam_id: int | None, dry_run: bool, use_ai: bool = True, refr
     print(f"Awaiting curation (PENDING_REVIEW): {pending_concepts} concepts, {pending_entities} entities")
     print("AI tagging: " + ", ".join(f"{k} x{v}" for k, v in ai_statuses.most_common()))
     print(f"Missing Subject > Microtheme > Nano Theme filled by AI: {totals['syllabus_filled']}")
+    print(f"Missing difficulty set by AI (EASY/HARD; MEDIUM is the default): {totals['difficulty_rated']}")
     if issues:
         print("Issues: " + ", ".join(f"{k} x{v}" for k, v in issues.most_common()))
 

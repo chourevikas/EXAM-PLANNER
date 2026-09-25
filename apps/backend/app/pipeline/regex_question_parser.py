@@ -1,5 +1,11 @@
 """Deterministic regex question parser for EXPLAINED_QA PDF formats.
 
+Two layouts are supported:
+- Tagged papers: "Q1. [Subject: ...] [Microtheme: ...]" headers, "(A)" options, "Answer: (B)".
+- Question banks: "1. <stem> [MPSC Mains 2017]", "A." options, "Answer B", "Solution.", arrow
+  statement lines ("➤ (a) ..."), and chapter headings ("— Economic Planning —") between questions.
+  They carry no syllabus tags; the Knowledge Layer AI fills those in after upload.
+
 Parses OCR-generated full markdown into structured QuestionRecord objects:
 - Q_HEADER: [Subject: ...] [Topic: ...] [Sub-topic: ...] [Difficulty: ...]
 - Stem (including numbered statements)
@@ -19,6 +25,11 @@ from app.db.models.enums import DifficultyLevel
 from app.pipeline.patterns import (
     PAGE_BREAK_PATTERN,
     Q_HEADER_PATTERN,
+    NUMBERED_Q_HEADER_PATTERN,
+    SECTION_HEADING_PATTERN,
+    SOURCE_TAG_PATTERN,
+    ARROW_LINE_PATTERN,
+    ANSWER_OPTIONS_LABEL_PATTERN,
     OPTION_LINE_PATTERN,
     ANSWER_LINE_PATTERN,
     SOLUTION_HEADER_PATTERN,
@@ -67,6 +78,12 @@ class QuestionRecord(BaseModel):
     related_refs: List[str] = Field(default_factory=list)
     knowledge_issues: List[str] = Field(default_factory=list)
 
+    # Question-bank layout: chapter heading the question was listed under, and its source
+    # ("MPSC Mains 2017" -> source_year 2017). Both are hints for the Knowledge Layer AI.
+    section_raw: Optional[str] = None
+    source_raw: Optional[str] = None
+    source_year: Optional[int] = None
+
     page_numbers: List[int] = Field(default_factory=list)
     pictures: List[Dict[str, Any]] = Field(default_factory=list)
     tables: List[Dict[str, Any]] = Field(default_factory=list)
@@ -97,9 +114,31 @@ def detect_format(full_markdown: str) -> str:
     return "RAW_EXAM"
 
 
+def _numbered_question_starts(markdown: str) -> List[Tuple[int, int, str]]:
+    """(position, number, rest of line) for "N. stem" lines forming the longest N, N+1, ... run.
+
+    Numbered lines also occur inside questions ("2011." wrapped from a solution, "1. statement"),
+    so only a consecutive run of numbers is trusted as question starts.
+    """
+    candidates = [(m.start(), int(m.group(1)), m.group(2)) for m in NUMBERED_Q_HEADER_PATTERN.finditer(markdown)]
+    best: List[Tuple[int, int, str]] = []
+    for i, first in enumerate(candidates):
+        run = [first]
+        for cand in candidates[i + 1:]:
+            if cand[1] == run[-1][1] + 1:
+                run.append(cand)
+        if len(run) > len(best):
+            best = run
+    return best if len(best) >= 2 else []
+
+
 def split_into_question_blocks(full_markdown: str) -> List[Dict[str, Any]]:
     """Splits full document markdown into question blocks on Q_HEADER matches.
-    
+
+    Falls back to the numbered question-bank layout ("1. stem ...") when there are no Q<N>
+    headers. Chapter headings ("— Economic Planning —") are removed from the blocks and each
+    block records the last heading before it as `section`.
+
     Extracts page provenance from <!-- PAGE_BREAK p={n} --> sentinels
     while cleaning them out of the block text.
     """
@@ -109,30 +148,35 @@ def split_into_question_blocks(full_markdown: str) -> List[Dict[str, Any]]:
     # 2. If 'Q' is split across a newline before digits, join them onto a newline
     norm_md = re.sub(r'(?i)\bQ\s*[\.:\-]?\s*\n\s*(\d+)', r'\nQ\1', norm_md)
 
-    matches = list(Q_HEADER_PATTERN.finditer(norm_md))
-    if not matches:
+    q_matches = list(Q_HEADER_PATTERN.finditer(norm_md))
+    numbered = not q_matches
+    if numbered:
+        full_markdown = full_markdown.replace("\r\n", "\n")
+        starts = _numbered_question_starts(full_markdown)
+    else:
+        full_markdown = norm_md
+        starts = [(m.start(), int(m.group(1)), m.group(2)) for m in q_matches]
+    if not starts:
         return []
 
-    full_markdown = norm_md
+    headings = [(m.start(), m.group(1).strip()) for m in SECTION_HEADING_PATTERN.finditer(full_markdown)]
 
     blocks = []
-    num_matches = len(matches)
+    num_matches = len(starts)
 
     # Initial page before any page breaks
     initial_page = 1
-    first_break = PAGE_BREAK_PATTERN.search(full_markdown[: matches[0].start()])
+    first_break = PAGE_BREAK_PATTERN.search(full_markdown[: starts[0][0]])
     if first_break:
         initial_page = int(first_break.group(1))
 
     current_page = initial_page
 
     for i in range(num_matches):
-        start_pos = matches[i].start()
-        end_pos = matches[i + 1].start() if i + 1 < num_matches else len(full_markdown)
+        start_pos, q_num, header_remainder = starts[i]
+        end_pos = starts[i + 1][0] if i + 1 < num_matches else len(full_markdown)
 
         raw_block = full_markdown[start_pos:end_pos]
-        q_num = int(matches[i].group(1))
-        header_remainder = matches[i].group(2)
 
         # Track page numbers that appear in or before this block
         block_pages = []
@@ -150,8 +194,13 @@ def split_into_question_blocks(full_markdown: str) -> List[Dict[str, Any]]:
                 block_pages.append(p_num)
             current_page = p_num
 
-        # Clean PAGE_BREAK markers from block text
-        clean_block = PAGE_BREAK_PATTERN.sub("", raw_block).strip()
+        # Clean PAGE_BREAK markers and chapter headings from block text
+        clean_block = PAGE_BREAK_PATTERN.sub("", raw_block)
+        clean_block = SECTION_HEADING_PATTERN.sub("", clean_block).strip()
+        if numbered:
+            # Give the block the same shape as a Q<N> block: a header line, then the stem
+            clean_block = re.sub(r"^\s*\d{1,4}\.[ \t]+", f"Q{q_num}.\n", clean_block, count=1)
+        section = next((name for pos, name in reversed(headings) if pos < start_pos), None)
 
         # Find first line of the block as the header line
         header_line = clean_block.split("\n")[0] if clean_block else ""
@@ -165,6 +214,7 @@ def split_into_question_blocks(full_markdown: str) -> List[Dict[str, Any]]:
                 "clean_text": clean_block,
                 "page_numbers": sorted(list(set(block_pages))),
                 "start_page": block_pages[0] if block_pages else current_page,
+                "section": section,
             }
         )
 
@@ -251,15 +301,33 @@ def parse_question_block(
         if reverse_idx is None and REVERSE_LOGIC_HEADER_PATTERN.match(line_str):
             reverse_idx = idx
 
+    # Options are the last "A" option line before the answer: a stem may itself list labelled
+    # statements such as "(A) PMEGP was started in 2008. (B) ..." ahead of the real options.
+    options_limit = ans_idx if ans_idx is not None else (sol_idx if sol_idx is not None else len(lines))
+    last_a = [
+        idx for idx in range(1, options_limit)
+        if (om := OPTION_LINE_PATTERN.match(lines[idx].strip())) and om.group(1).upper() == "A"
+    ]
+    if last_a:
+        first_opt_idx = last_a[-1]
+
     # 1. Extract Tags from Header Line and any subsequent tag lines before stem
     stem_end = first_opt_idx if first_opt_idx is not None else (ans_idx if ans_idx is not None else len(lines))
     header_block = [header_line]
     clean_stem_lines = []
+    arrow_line_idx = set()  # indexes into clean_stem_lines of "➤" statement lines
 
     for l in lines[1:stem_end]:
         l_str = l.strip()
         if not l_str:
             continue
+        # "➤ (a) Rural Works Programme" -> "(a) Rural Works Programme"; drop bare "➤ Answer Options:" labels
+        arrow = ARROW_LINE_PATTERN.match(l_str)
+        if arrow:
+            l_str = arrow.group(1).strip()
+            if not l_str or ANSWER_OPTIONS_LABEL_PATTERN.match(l_str):
+                continue
+            arrow_line_idx.add(len(clean_stem_lines))
         # Check if line contains metadata tags
         has_tag = any(
             p.search(l_str)
@@ -282,7 +350,27 @@ def parse_question_block(
     difficulty = map_difficulty(difficulty_raw)
 
     # 3. Stem Extraction
-    stem = "\n".join(clean_stem_lines).strip()
+    if arrow_line_idx:
+        # Question-bank stems: each "➤" statement is its own paragraph (single newlines collapse in
+        # markdown); other lines are the PDF's word wrap and are joined back into their paragraph.
+        paragraphs: List[str] = []
+        for idx, sl in enumerate(clean_stem_lines):
+            if idx in arrow_line_idx or not paragraphs:
+                paragraphs.append(sl)
+            else:
+                paragraphs[-1] = f"{paragraphs[-1]} {sl}"
+        stem = "\n\n".join(paragraphs).strip()
+    else:
+        stem = "\n".join(clean_stem_lines).strip()
+
+    # Question-bank source tag ("[MPSC Mains 2017]", possibly wrapped): keep it out of the stem
+    source_raw, source_year = None, None
+    source_matches = list(SOURCE_TAG_PATTERN.finditer(stem))
+    if source_matches:
+        src = source_matches[-1]
+        source_raw = re.sub(r"\s+", " ", src.group(1)).strip()
+        source_year = int(src.group(2))
+        stem = (stem[: src.start()].rstrip() + stem[src.end():]).strip()
 
     statement_lines = []
     for sl in clean_stem_lines:
@@ -354,15 +442,21 @@ def parse_question_block(
         first_line = sol_raw_lines[0].strip()
         sh_match = SOLUTION_HEADER_PATTERN.match(first_line)
 
-        body_lines = []
+        # (text, follows_blank_line); blank lines matter for telling wrapped bullets from new paragraphs
+        body_lines: List[Tuple[str, bool]] = []
         if sh_match and sh_match.group(1).strip():
-            body_lines.append(sh_match.group(1).strip())
+            body_lines.append((sh_match.group(1).strip(), True))
+        after_blank = True
         for l in sol_raw_lines[1:]:
             if l.strip():
-                body_lines.append(l.strip())
+                body_lines.append((l.strip(), after_blank))
+                after_blank = False
+            else:
+                after_blank = True
 
         in_related_refs = False
-        for bl in body_lines:
+        in_bullet = False
+        for bl, follows_blank in body_lines:
             if RELATED_REFS_HEADER_PATTERN.match(bl):
                 in_related_refs = True
             elif in_related_refs:
@@ -372,8 +466,13 @@ def parse_question_block(
             bm = SOLUTION_BULLET_PATTERN.match(bl)
             if bm:
                 solution_bullets.append(bm.group(2).strip())
+                in_bullet = True
+            elif in_bullet and not follows_blank and not in_related_refs:
+                # A bullet wrapped onto the next line ("• SGSY was formed by ... TRYSEM, DWCRA,\nand the ...")
+                solution_bullets[-1] = f"{solution_bullets[-1]} {bl}"
             else:
                 solution_bullets.append(bl)
+                in_bullet = False
 
         solution_text = "\n\n".join(solution_bullets).strip()
 
@@ -471,4 +570,7 @@ def parse_question_block(
         relationships_raw=knowledge["relationships"],
         related_refs=related_refs,
         knowledge_issues=knowledge["issues"],
+        section_raw=block.get("section"),
+        source_raw=source_raw,
+        source_year=source_year,
     )

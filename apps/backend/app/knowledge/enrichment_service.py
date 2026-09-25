@@ -2,8 +2,8 @@
 
 Runs after extraction (never inside it). Inputs, all optional:
 - `questions.knowledge_tags_ai` — concepts/entities/relationships extracted by the LLM (the main
-  source; the content team does not tag questions), plus Subject > Microtheme > Nano Theme for
-  questions the PDF left untagged. Stored per question and reused while the question text and
+  source; the content team does not tag questions), plus Subject > Microtheme > Nano Theme and
+  difficulty for questions the PDF left untagged. Stored per question and reused while the question text and
   prompt version are unchanged, so re-runs don't call the model again.
 - `questions.knowledge_tags_raw` — authored [Concepts]/[Entities]/[Relationships] tags + Related refs
 - English stem, options and correct answer
@@ -22,6 +22,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config.logger import setup_logger
 from app.db.models import (
+    DifficultyLevel,
     Exam,
     LanguageCode,
     OptionTranslation,
@@ -88,6 +89,7 @@ class EnrichmentResult:
     relationships: int = 0
     ai: str = AI_OFF
     syllabus: Optional[str] = None  # "Subject > Microtheme > Nano Theme" when AI filled missing tags
+    difficulty: Optional[str] = None  # set when AI rated a question the PDF gave no difficulty
     issues: List[str] = field(default_factory=list)
 
 
@@ -234,6 +236,18 @@ class KnowledgeEnrichmentService:
             state = await self._syllabus_state(session, question)
             if state.is_placeholder and state.version_id:
                 result.syllabus = await self._assign_syllabus(session, question, state.version_id, ai["syllabus"])
+        # AI difficulty replaces only the upload default (MEDIUM when the PDF had no tag), so a PDF
+        # tag or a reviewer's other choice is kept
+        ai_difficulty = ai.get("difficulty")
+        if (
+            ai_difficulty in DifficultyLevel.__members__
+            and not (question.difficulty_raw or "").strip()
+            and question.difficulty == DifficultyLevel.MEDIUM
+            and ai_difficulty != DifficultyLevel.MEDIUM.value
+        ):
+            question.difficulty = DifficultyLevel(ai_difficulty)
+            session.add(question)
+            result.difficulty = ai_difficulty
         stem, options, answer, solution = await self._load_texts(session, question_id)
         resolver = KnowledgeResolver(session)
         scanner = await self._get_scanner(session)
@@ -349,6 +363,9 @@ class KnowledgeEnrichmentService:
             subject=subject, topic=topic, subtopic=subtopic,
             # Based on the PDF's tags (not the current rows), so the hash stays stable after assignment
             syllabus_known=state.known, syllabus_missing=state.missing,
+            pdf_section=(question.knowledge_tags_raw or {}).get("section"),
+            source=(question.knowledge_tags_raw or {}).get("source"),
+            difficulty_missing=not (question.difficulty_raw or "").strip(),
         )
 
     async def _syllabus_state(self, session: AsyncSession, question: Question) -> SyllabusState:
@@ -430,7 +447,35 @@ class KnowledgeEnrichmentService:
                 existing.topic_id, existing.subject_id = topic.id, subject.id
                 session.add(existing)
             await session.flush()
+            await self._remove_unused_placeholder(session, old_subtopic_id)
         return " > ".join(names)
+
+    async def _remove_unused_placeholder(self, session: AsyncSession, subtopic_id: Optional[int]) -> None:
+        """Deletes an upload fallback row ("UPPCS > UPPCS > UPPCS") once nothing points at it, then its
+        Microtheme and Subject if they are left empty, so the syllabus and admin catalog don't fill up
+        with empty placeholders. Rows referenced by passages or student progress are always kept."""
+        from app.db.models.analytics import UserMemoryState
+        from app.db.models.passage import Passage
+        from app.db.models.telemetry import UserConceptRetention
+
+        subtopic = await session.get(Subtopic, subtopic_id) if subtopic_id else None
+        if not subtopic:
+            return
+        for model in (Question, QuestionHierarchyLink, Passage, UserConceptRetention, UserMemoryState):
+            if (await session.exec(select(model.id).where(model.subtopic_id == subtopic_id).limit(1))).first():
+                return
+        topic_id = subtopic.topic_id
+        await session.delete(subtopic)
+        await session.flush()
+        if (await session.exec(select(Subtopic.id).where(Subtopic.topic_id == topic_id).limit(1))).first():
+            return
+        topic = await session.get(Topic, topic_id)
+        subject_id = topic.subject_id
+        await session.delete(topic)
+        await session.flush()
+        if not (await session.exec(select(Topic.id).where(Topic.subject_id == subject_id).limit(1))).first():
+            await session.delete(await session.get(Subject, subject_id))
+            await session.flush()
 
     async def _load_vocabulary(self, session: AsyncSession) -> Vocabulary:
         """Existing canonical names (curated first) so the model reuses them instead of inventing variants."""

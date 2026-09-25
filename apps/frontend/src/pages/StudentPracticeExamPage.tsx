@@ -991,6 +991,11 @@ export function StudentPracticeExamPage() {
 
       const fetchQuestions = async (params: URLSearchParams): Promise<any[]> => {
         try {
+          // Every fallback tier keeps the chosen difficulty: when there are too few HARD questions the
+          // page fills up with HARD ones from wider topics, never with other difficulty levels.
+          if (!params.has('difficulty') && gDifficulty && !gDifficulty.startsWith('All')) {
+            params.append('difficulty', gDifficulty.trim());
+          }
           if (!params.has('include_solutions')) {
             params.append('include_solutions', 'true');
           }
