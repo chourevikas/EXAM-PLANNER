@@ -39,7 +39,7 @@ import {
   StuckPipelineItem,
 } from '../../services/adminService';
 import { createAdaptivePoller, AdaptivePollerController } from '../../utils/adaptivePolling';
-import { formatEnum, cleanExamTitle } from '../../utils/formatEnum';
+import { formatEnum, cleanExamTitle, examYearLabel } from '../../utils/formatEnum';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface UploadReviewViewProps {
@@ -244,7 +244,7 @@ function TableRowItem({
           {cleanExamTitle(exam.name)}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-          {exam.source_year ? `Year ${exam.source_year}` : ''}
+          {examYearLabel(exam)}
         </div>
       </td>
 
@@ -493,7 +493,7 @@ function MobilePipelineCard({
             {cleanExamTitle(exam.name)}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            {exam.source_year ? `Year ${exam.source_year}` : 'Year unspecified'}
+            {examYearLabel(exam, 'Year unspecified')}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
@@ -669,6 +669,8 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
   const {
     uploadMode,
     setUploadMode,
+    paperMode,
+    setPaperMode,
     availableExamTypes,
     examName,
     setExamName,
@@ -1418,10 +1420,75 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
 
 
           <form onSubmit={handleFormSubmit}>
+            {/* Paper mode: one exam & year, or a bank mixing exams and years */}
+            <div
+              role="radiogroup"
+              aria-label="Paper type"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 4,
+                padding: 4,
+                marginBottom: 16,
+                borderRadius: 'var(--radius)',
+                backgroundColor: 'var(--bg-subtle)',
+                border: '1px solid var(--border-color)',
+              }}
+            >
+              {([
+                { value: 'EXAM_WISE', label: 'Exam-wise paper', hint: 'One exam, one year' },
+                { value: 'MIXED', label: 'Mixed question bank', hint: 'Exams & years vary per question' },
+              ] as const).map((opt) => {
+                const active = paperMode === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setPaperMode(opt.value)}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 'var(--radius)',
+                      border: active ? '1px solid var(--primary-red)' : '1px solid transparent',
+                      backgroundColor: active ? 'var(--bg-card)' : 'transparent',
+                      boxShadow: active ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 700, color: active ? 'var(--primary-red)' : 'var(--deep-navy)' }}>
+                      {opt.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{opt.hint}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {paperMode === 'MIXED' && (
+              <div
+                style={{
+                  marginBottom: 20,
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius)',
+                  backgroundColor: 'var(--bg-subtle)',
+                  border: '1px solid var(--border-color)',
+                  fontSize: 12.5,
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.5,
+                }}
+              >
+                No exam or year needed. Each question&apos;s exam and year are read from its tag, e.g.{' '}
+                <strong>[MPSC Mains 2017]</strong>. Subject, Microtheme, Nano Theme and difficulty are tagged by AI
+                after upload. The bank is named after the file.
+              </div>
+            )}
+
             {/* Metadata Inputs Grid */}
             <div
               style={{
-                display: 'grid',
+                display: paperMode === 'MIXED' ? 'none' : 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                 gap: 16,
                 marginBottom: 20,
@@ -2204,7 +2271,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   {cleanExamTitle(selectedExam.name)}
                 </h2>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {selectedExam.source_year ? `Year ${selectedExam.source_year}` : ''}
+                  {examYearLabel(selectedExam)}
                 </div>
               </div>
               <button

@@ -21,6 +21,10 @@ class ExamYearItem(BaseModel):
     stage1_status: Optional[str] = None
     is_extracting: bool = False
     created_at: Optional[str] = None
+    # Mixed question banks are listed under "MIXED", not a year; question_years are the years their
+    # questions came from ("[MPSC Mains 2017]" -> 2017)
+    is_mixed_bank: bool = False
+    question_years: List[int] = Field(default_factory=list)
 
 
 class ExamsByYearResponse(BaseModel):

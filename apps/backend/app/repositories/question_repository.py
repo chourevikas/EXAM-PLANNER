@@ -100,10 +100,19 @@ class QuestionRepository:
             elif isinstance(exam_year, str):
                 import re
                 years = [int(y) for y in re.findall(r"\b(19\d\d|20\d\d)\b", exam_year)]
-            if len(years) == 1:
-                id_stmt = id_stmt.where(or_(Question.source_year == years[0], Exam.source_year == years[0]))
-            elif len(years) > 1:
-                id_stmt = id_stmt.where(or_(Question.source_year.in_(years), Exam.source_year.in_(years)))
+            if years:
+                # A question's own year wins ("[MPSC Mains 2017]" in a mixed bank); the paper's year only
+                # applies to questions without one, and a mixed bank's placeholder year never does
+                id_stmt = id_stmt.where(
+                    or_(
+                        Question.source_year.in_(years),
+                        and_(
+                            Question.source_year.is_(None),
+                            Exam.source_year.in_(years),
+                            Exam.is_mixed_bank.is_(False),
+                        ),
+                    )
+                )
         if exam_type:
             id_stmt = id_stmt.where(Exam.exam_type == exam_type)
         if stage:

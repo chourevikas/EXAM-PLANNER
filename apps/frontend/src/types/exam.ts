@@ -4,6 +4,10 @@ export type PaperType = 'previous_year_question' | 'mock_test';
 
 export type AdminTab = 'upload' | 'overview' | 'bank';
 
+/** EXAM_WISE: one paper of one exam and year. MIXED: a question bank whose questions carry their own
+ * "[MPSC Mains 2017]" source, so exam, year and set are not asked. */
+export type PaperMode = 'EXAM_WISE' | 'MIXED';
+
 export interface UploadExamPayload {
   examName: string;
   year: string;
@@ -12,6 +16,7 @@ export interface UploadExamPayload {
   exam_type?: string;
   exam_type_id?: number;
   conflict_resolution?: string;
+  paper_mode?: PaperMode;
 }
 
 export interface UploadExamResponse {

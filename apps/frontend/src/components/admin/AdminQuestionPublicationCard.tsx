@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { stripRepeatedOptionLabel } from '../../utils/optionText';
 
 export interface AdminQuestionOption {
   option_id?: string | number;
@@ -68,15 +69,7 @@ function formatOptionKey(label?: string): string {
  */
 function cleanOptionText(text?: string, label?: string): string {
   if (!text) return '';
-  let cleaned = text.trim();
-  if (label) {
-    const rawLabel = label.trim().replace(/^[\(\[\s]+/, '').replace(/[\)\]\.\:\s]+$/, '').trim();
-    if (rawLabel) {
-      const escaped = rawLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const prefixRegex = new RegExp(`^(?:\\(${escaped}\\)|\\b${escaped}[\\.\\):\\-]\\s*|\\(${escaped.toLowerCase()}\\)|\\b${escaped.toLowerCase()}[\\.\\):\\-]\\s*)`, 'i');
-      cleaned = cleaned.replace(prefixRegex, '').trim();
-    }
-  }
+  const cleaned = stripRepeatedOptionLabel(text.trim(), formatOptionKey(label)).trim();
   return cleaned || text;
 }
 

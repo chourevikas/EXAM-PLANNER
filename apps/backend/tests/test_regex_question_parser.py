@@ -283,3 +283,93 @@ def test_theme_tag_variations():
     assert t3["topic_raw"] == "Biology"
     assert t3["subtopic_raw"] == "Genetics"
     assert t3["difficulty_raw"] == "Moderate"
+
+
+# Question-bank layout (MPSC Test 4): numbered stems with a source tag, "A." options,
+# "Answer B", "Solution.", arrow statements and chapter headings, no syllabus tags.
+QUESTION_BANK_TEXT = """<!-- PAGE_BREAK p=1 -->
+
+— Unemployment and Employment —
+1. National Sample Survey organisation developed the concept of unemployment as follows: [MPSC Mains
+2017]
+➤ (a) The usual status unemployment
+➤ (b) The current weekly status unemployment
+➤ Which of the statements given above are correct?
+A. a only
+B. b only
+C. a and b
+D. None
+Answer C
+Solution.
+• NSSO's usual status and current weekly status are both genuine unemployment measurement
+concepts.
+• This distinction was later carried into the PLFS in
+2017.
+2. (A) PMEGP was started in August 2008. (B)
+PMEGP aimed at setting up micro enterprises. [PSI Pre 2014]
+➤ Answer Options:
+A. A only is correct
+B. B only is correct
+C. None is correct
+D. A and B are correct
+Answer D
+Solution.
+• PMEGP was launched in August 2008 for micro-enterprises.
+
+<!-- PAGE_BREAK p=2 -->
+
+— Economic Planning —
+3. 'Economic Planning' lies in the ___ of the Indian Constitution. [ASO Mains Oct 2023]
+A. Union list
+B. State list
+C. Concurrent list
+D. None of these
+Answer: C
+Solution:
+• Economic Planning falls under the Concurrent List.
+"""
+
+
+def test_question_bank_layout_is_parsed():
+    assert detect_format(QUESTION_BANK_TEXT) == "EXPLAINED_QA"
+    blocks = split_into_question_blocks(QUESTION_BANK_TEXT)
+    # "2017." wrapped inside Q1's solution is not a question start
+    assert [b["question_number"] for b in blocks] == [1, 2, 3]
+    q1, q2, q3 = (parse_question_block(b, [], [], None) for b in blocks)
+
+    # Each arrow statement is its own paragraph; the PDF's word wrap is joined back
+    assert q1.stem == (
+        "National Sample Survey organisation developed the concept of unemployment as follows:\n\n"
+        "(a) The usual status unemployment\n\n(b) The current weekly status unemployment\n\n"
+        "Which of the statements given above are correct?"
+    )
+    assert (q1.source_raw, q1.source_year) == ("MPSC Mains 2017", 2017)
+    assert q1.section_raw == "Unemployment and Employment"
+    assert (q1.subject_raw, q1.topic_raw, q1.subtopic_raw) == (None, None, None)
+    assert q1.options == {"A": "a only", "B": "b only", "C": "a and b", "D": "None"}
+    assert q1.answer_label == "C"
+    # wrapped bullets stay whole
+    assert q1.solution_bullets == [
+        "NSSO's usual status and current weekly status are both genuine unemployment measurement concepts.",
+        "This distinction was later carried into the PLFS in 2017.",
+    ]
+    assert q1.extraction_issues == []
+
+    # Labelled statements "(A) ... (B)" in the stem are not options; "Answer Options:" is dropped
+    assert q2.stem == "(A) PMEGP was started in August 2008. (B)\nPMEGP aimed at setting up micro enterprises."
+    assert "Answer Options" not in q2.stem and "[PSI" not in q2.stem
+    assert q2.options["A"] == "A only is correct" and q2.answer_label == "D"
+    assert q2.section_raw == "Unemployment and Employment"
+
+    assert q3.section_raw == "Economic Planning"
+    assert (q3.source_raw, q3.source_year, q3.answer_label) == ("ASO Mains Oct 2023", 2023, "C")
+    assert q3.page_numbers == [2]
+
+
+def test_numbered_lines_are_ignored_when_q_headers_exist():
+    text = "Q1. [Subject: Polity]\nWhich statements are correct?\n1. First statement\n2. Second statement\n(A) 1 only\n(B) 2 only\n(C) Both\n(D) Neither\nAnswer: (C)\nSolution: Both."
+    blocks = split_into_question_blocks(text)
+    assert [b["question_number"] for b in blocks] == [1]
+    rec = parse_question_block(blocks[0], [], [], None)
+    assert rec.statement_lines == ["First statement", "Second statement"]
+    assert rec.source_raw is None and rec.section_raw is None

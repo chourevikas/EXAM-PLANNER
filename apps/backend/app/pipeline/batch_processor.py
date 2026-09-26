@@ -30,6 +30,7 @@ from app.config.settings import get_settings
 from app.db.session import managed_async_session
 from app.pipeline.batch_schema import BatchProcessingSummary
 from app.pipeline.dsu_stitcher import async_crop_and_save_asset
+from app.pipeline.knowledge_tags import knowledge_tags_from_record
 from app.pipeline.regex_question_parser import QuestionRecord
 from app.pipeline.state import PageExtractionPayload
 from app.storage.base import BaseStorageProvider
@@ -559,7 +560,8 @@ class BatchQuestionRegistrar:
                 exam = await session.get(Exam, exam_id)
                 exam_code = exam.code if exam else "EXAM"
                 exam_name = exam.name if exam else "Exam"
-                source_year = exam.source_year if exam else None
+                # A mixed bank's year is a placeholder: untagged questions get no year rather than a wrong one
+                source_year = exam.source_year if exam and not getattr(exam, "is_mixed_bank", False) else None
                 paper_set_code = exam.paper_set_code if exam else "SET_A"
                 neg_rate = getattr(exam, "negative_marking_rate", None) if exam else None
 
@@ -782,7 +784,8 @@ class BatchQuestionRegistrar:
                                     marks=marks,
                                     negative_marks=neg_marks,
                                     expected_time_seconds=60,
-                                    source_year=source_year,
+                                    # Question banks mix years: "[MPSC Mains 2017]" wins over the upload's year
+                                    source_year=rec.source_year or source_year,
                                     is_complete=is_complete,
                                     has_image=bool(rec.pictures),
                                     page_numbers_json=rec.page_numbers,
@@ -792,6 +795,7 @@ class BatchQuestionRegistrar:
                                     difficulty_raw=rec.difficulty_raw,
                                     extraction_confidence=rec.extraction_confidence,
                                     extraction_issues_json=rec.extraction_issues,
+                                    knowledge_tags_raw=knowledge_tags_from_record(rec),
                                     status=QuestionStatus.PENDING_HUMAN_REVIEW,
                                     requires_human_review=(rec.extraction_confidence < 0.8 or bool(rec.extraction_issues)),
                                 )
@@ -802,6 +806,7 @@ class BatchQuestionRegistrar:
                                 q_obj = existing_qs[q_num]
                                 q_obj.subtopic_id = subtopic_obj.id
                                 q_obj.difficulty = rec.difficulty
+                                q_obj.source_year = rec.source_year or source_year
                                 q_obj.is_complete = is_complete
                                 q_obj.has_image = bool(rec.pictures)
                                 q_obj.page_numbers_json = rec.page_numbers
@@ -811,6 +816,7 @@ class BatchQuestionRegistrar:
                                 q_obj.difficulty_raw = rec.difficulty_raw
                                 q_obj.extraction_confidence = rec.extraction_confidence
                                 q_obj.extraction_issues_json = rec.extraction_issues
+                                q_obj.knowledge_tags_raw = knowledge_tags_from_record(rec)
                                 q_obj.requires_human_review = (rec.extraction_confidence < 0.8 or bool(rec.extraction_issues))
                                 session.add(q_obj)
 
@@ -1039,8 +1045,14 @@ class BatchQuestionRegistrar:
                         select(Question.question_number_in_paper).where(Question.exam_id == exam_id)
                     )
                     extracted_numbers = set(all_qs_res.all())
-                    tot_exp = exam_obj.total_questions or len(records)
-                    missing_nums = [num for num in range(1, tot_exp + 1) if num not in extracted_numbers]
+                    if getattr(exam_obj, "is_mixed_bank", False) and extracted_numbers:
+                        # A bank has no fixed size and may start anywhere ("Q101-200"): only gaps count
+                        low, high = min(extracted_numbers), max(extracted_numbers)
+                        missing_nums = [num for num in range(low, high + 1) if num not in extracted_numbers]
+                        exam_obj.total_questions = len(extracted_numbers) + len(missing_nums)
+                    else:
+                        tot_exp = exam_obj.total_questions or len(records)
+                        missing_nums = [num for num in range(1, tot_exp + 1) if num not in extracted_numbers]
                     exam_obj.extracted_questions_count = len(extracted_numbers)
                     exam_obj.missing_questions_count = len(missing_nums)
                     exam_obj.missing_question_numbers_json = missing_nums

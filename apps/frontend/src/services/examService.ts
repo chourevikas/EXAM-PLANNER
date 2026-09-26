@@ -38,6 +38,7 @@ export async function uploadExamPaper({
   exam_type,
   exam_type_id,
   conflict_resolution,
+  paper_mode = 'EXAM_WISE',
   file,
 }: UploadExamPayload & { set_code?: string }): Promise<UploadExamResponse> {
   const token = localStorage.getItem('access_token');
@@ -47,12 +48,16 @@ export async function uploadExamPaper({
   }
 
   const formData = new FormData();
-  formData.append('exam_name', examName);
-  formData.append('year', year);
-  formData.append('paper_type', paperType);
-  formData.append('set_code', set_code || 'SET_A');
-  if (exam_type) formData.append('exam_type', exam_type);
-  if (exam_type_id) formData.append('exam_type_id', String(exam_type_id));
+  formData.append('paper_mode', paper_mode);
+  if (paper_mode === 'EXAM_WISE') {
+    // A mixed bank sends none of these: each question carries its own exam and year
+    formData.append('exam_name', examName);
+    formData.append('year', year);
+    formData.append('paper_type', paperType);
+    formData.append('set_code', set_code || 'SET_A');
+    if (exam_type) formData.append('exam_type', exam_type);
+    if (exam_type_id) formData.append('exam_type_id', String(exam_type_id));
+  }
   if (conflict_resolution) formData.append('conflict_resolution', conflict_resolution);
   formData.append('file', file);
 

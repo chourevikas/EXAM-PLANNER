@@ -1,6 +1,6 @@
 import hashlib
 import json
-from typing import Any, Optional, Dict
+from typing import Iterable, Any, Optional, Dict
 from app.cache.factory import get_cache
 from app.config.settings import get_settings
 from app.config.logger import setup_logger
@@ -114,10 +114,40 @@ async def invalidate_question_cache(
     q_id_str = str(question_id)
     await cache.delete_pattern(f"{prefix}:questions:detail:{q_id_str}*")
     await cache.delete_pattern(f"{prefix}:questions:list*")
+    # Any question can appear in other questions' similar lists (e.g. once it is published).
+    await cache.delete_pattern(f"{prefix}:questions:similar*")
     # The admin dashboard shows the published-question count, which any question change can move.
     await cache.delete_pattern(f"{prefix}:admin:overview_stats*")
 
     await invalidate_review_cache(q_id_str, exam_id)
+
+
+async def invalidate_knowledge_cache(exam_ids: Iterable[int | str], content_changed: bool) -> None:
+    """Clears caches after Knowledge Layer enrichment of some exams.
+
+    Similar-question lists always change. When AI also placed questions in the syllabus or set their
+    difficulty (`content_changed`), question lists, details and recommendations, syllabus trees, the
+    admin catalog and the exams' own caches carry stale subject/topic/difficulty values too.
+    """
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+
+    await cache.delete_pattern(f"{prefix}:questions:similar*")
+    if not content_changed:
+        return
+    for pattern in (
+        "questions:list*",
+        "questions:detail*",
+        "questions:recommended*",
+        "syllabus:complete*",
+        "admin:question_catalog*",
+        "admin:overview_stats*",
+    ):
+        await cache.delete_pattern(f"{prefix}:{pattern}")
+    await cache.delete(f"{prefix}:questions:taxonomy")
+    for exam_id in exam_ids:
+        await invalidate_exam_cache(str(exam_id))
 
 
 async def invalidate_study_activity_cache(user_id: str | int) -> None:

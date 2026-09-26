@@ -83,6 +83,7 @@ class QuestionService:
         exclude_ids: Optional[str] = None,
         page: int = 1,
         limit: int = 20,
+        difficulty: Optional[str] = None,
     ) -> QuestionPaginatedResponse:
         language = parse_language(language)
         from app.cache import get_cache, build_cache_key
@@ -105,6 +106,7 @@ class QuestionService:
             paper_set_code=paper_set_code,
             stage=stage,
             status=str(status.value if hasattr(status, "value") else status) if status else None,
+            difficulty=difficulty,
             language=str(language.value if hasattr(language, "value") else language),
             include_solutions=include_solutions,
             exclude=exclude_ids.strip() if exclude_ids else None,
@@ -136,6 +138,7 @@ class QuestionService:
             paper_set_code=paper_set_code,
             stage=stage,
             status=status,
+            difficulty=difficulty,
             exclude_ids=exclude_ids,
             skip=skip,
             limit=limit,
@@ -351,13 +354,10 @@ class QuestionService:
                     "option_label": opt.option_label,
                     "text": opt_text,
                     "translations": opt_trans_str,
-                    # Recommendation cards highlight correct/incorrect the moment
-                    # the user picks an answer (no separate reveal step), so
-                    # unlike the general listing endpoint this boolean travels
-                    # with the initial fetch. It costs nothing extra — it's
-                    # already a column on the same QuestionOption row being
-                    # fetched, no additional query.
-                    "is_correct": bool(opt.is_correct),
+                    # No is_correct here: the answer would be readable in the
+                    # network tab before the student attempts the card. Cards
+                    # learn the key from GET /questions/{id}/solution, which
+                    # they fetch once an option is picked.
                 })
 
             subtopic = subtopics_map.get(q.subtopic_id) if q.subtopic_id else None

@@ -1,0 +1,978 @@
+[
+ {
+  "name": "Article 12",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 13",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 14",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 15",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 16",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 17",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 18",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 19",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 20",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 21",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 22",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 23",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 24",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 25",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 26",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 27",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 28",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 29",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 30",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 31",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 32",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 33",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 34",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 35",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 21A",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [
+   "Right to Education article"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Article 15(1)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 15"
+ },
+ {
+  "name": "Article 15(2)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 15"
+ },
+ {
+  "name": "Article 15(3)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 15"
+ },
+ {
+  "name": "Article 15(4)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 15"
+ },
+ {
+  "name": "Article 15(5)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 15"
+ },
+ {
+  "name": "Article 15(6)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 15"
+ },
+ {
+  "name": "Article 16(1)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 16"
+ },
+ {
+  "name": "Article 16(2)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 16"
+ },
+ {
+  "name": "Article 16(3)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 16"
+ },
+ {
+  "name": "Article 16(4)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 16"
+ },
+ {
+  "name": "Article 16(4A)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 16"
+ },
+ {
+  "name": "Article 16(4B)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 16"
+ },
+ {
+  "name": "Article 16(5)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 16"
+ },
+ {
+  "name": "Article 16(6)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 16"
+ },
+ {
+  "name": "Article 19(1)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 19"
+ },
+ {
+  "name": "Article 19(2)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 19"
+ },
+ {
+  "name": "Article 19(3)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 19"
+ },
+ {
+  "name": "Article 19(4)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 19"
+ },
+ {
+  "name": "Article 19(5)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 19"
+ },
+ {
+  "name": "Article 19(6)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 19"
+ },
+ {
+  "name": "Article 19(1)(a)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [
+   "freedom of speech and expression article"
+  ],
+  "parent": "Article 19(1)"
+ },
+ {
+  "name": "Article 32(1)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 32"
+ },
+ {
+  "name": "Article 32(2)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 32"
+ },
+ {
+  "name": "Article 32(3)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 32"
+ },
+ {
+  "name": "Article 32(4)",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": "Article 32"
+ },
+ {
+  "name": "Article 226",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 368",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 352",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 356",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 360",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 370",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 51",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 51A",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 39",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 39A",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 40",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 44",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 45",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 48",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Article 48A",
+  "type": "CONSTITUTION_ARTICLE",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Regulating Act 1773",
+  "type": "ACT",
+  "aliases": [
+   "Regulating Act, 1773"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Pitt's India Act 1784",
+  "type": "ACT",
+  "aliases": [
+   "Pitts India Act 1784"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Charter Act 1813",
+  "type": "ACT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Charter Act 1833",
+  "type": "ACT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Charter Act 1853",
+  "type": "ACT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Government of India Act 1858",
+  "type": "ACT",
+  "aliases": [
+   "GoI Act 1858"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Indian Councils Act 1861",
+  "type": "ACT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Indian Councils Act 1892",
+  "type": "ACT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Indian Councils Act 1909",
+  "type": "ACT",
+  "aliases": [
+   "Morley-Minto Reforms",
+   "Morley Minto Reforms"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Government of India Act 1919",
+  "type": "ACT",
+  "aliases": [
+   "GoI Act 1919",
+   "Montagu-Chelmsford Reforms",
+   "Montagu Chelmsford Reforms",
+   "Montford Reforms"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Government of India Act 1935",
+  "type": "ACT",
+  "aliases": [
+   "GoI Act 1935"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Indian Independence Act 1947",
+  "type": "ACT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Hindu Widows' Remarriage Act 1856",
+  "type": "ACT",
+  "aliases": [
+   "Hindu Widow Remarriage Act 1856",
+   "Widow Remarriage Act 1856"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Bengal Sati Regulation 1829",
+  "type": "ACT",
+  "aliases": [
+   "Sati Prevention Act 1829",
+   "Sati Regulation 1829"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Age of Consent Act 1891",
+  "type": "ACT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Hindu Marriage Act 1955",
+  "type": "ACT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Rowlatt Act 1919",
+  "type": "ACT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Vernacular Press Act 1878",
+  "type": "ACT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Quit India Movement",
+  "type": "MOVEMENT",
+  "aliases": [
+   "August Kranti",
+   "Bharat Chhodo Andolan"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Quit India Resolution",
+  "type": "EVENT",
+  "aliases": [
+   "Quit India Resolution 1942"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Cripps Mission",
+  "type": "EVENT",
+  "aliases": [
+   "Cripps Mission 1942",
+   "Cripps Proposal"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Non-Cooperation Movement",
+  "type": "MOVEMENT",
+  "aliases": [
+   "Non Cooperation Movement"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Civil Disobedience Movement",
+  "type": "MOVEMENT",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Swadeshi Movement",
+  "type": "MOVEMENT",
+  "aliases": [
+   "Swadeshi and Boycott Movement"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Home Rule Movement",
+  "type": "MOVEMENT",
+  "aliases": [
+   "Home Rule League"
+  ],
+  "parent": null
+ },
+ {
+  "name": "INA Trials",
+  "type": "EVENT",
+  "aliases": [
+   "Red Fort Trials",
+   "INA Red Fort Trials"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Royal Indian Navy Mutiny",
+  "type": "EVENT",
+  "aliases": [
+   "RIN Mutiny",
+   "RIN Revolt"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Interim Government 1946",
+  "type": "ORGANIZATION",
+  "aliases": [
+   "Interim Government"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Drafting Committee",
+  "type": "COMMITTEE",
+  "aliases": [
+   "Drafting Committee of the Constituent Assembly"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Constituent Assembly",
+  "type": "ORGANIZATION",
+  "aliases": [
+   "Constituent Assembly of India"
+  ],
+  "parent": null
+ },
+ {
+  "name": "All India Congress Committee",
+  "type": "ORGANIZATION",
+  "aliases": [
+   "AICC"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Indian National Congress",
+  "type": "ORGANIZATION",
+  "aliases": [
+   "INC",
+   "Congress"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Indian National Army",
+  "type": "ORGANIZATION",
+  "aliases": [
+   "INA",
+   "Azad Hind Fauj"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Azad Hind Government",
+  "type": "ORGANIZATION",
+  "aliases": [
+   "Provisional Government of Free India"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Rani of Jhansi Regiment",
+  "type": "ORGANIZATION",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Brahmo Samaj",
+  "type": "ORGANIZATION",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Theosophical Society",
+  "type": "ORGANIZATION",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Bethune School",
+  "type": "INSTITUTION",
+  "aliases": [
+   "Hindu Female School",
+   "Bethune Female School"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Mahatma Gandhi",
+  "type": "PERSON",
+  "aliases": [
+   "Gandhi",
+   "Mohandas Karamchand Gandhi",
+   "M. K. Gandhi",
+   "Gandhiji"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Jawaharlal Nehru",
+  "type": "PERSON",
+  "aliases": [
+   "Nehru",
+   "Pandit Nehru"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Bal Gangadhar Tilak",
+  "type": "PERSON",
+  "aliases": [
+   "Tilak",
+   "Lokmanya Tilak"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Sarojini Naidu",
+  "type": "PERSON",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Annie Besant",
+  "type": "PERSON",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Subhas Chandra Bose",
+  "type": "PERSON",
+  "aliases": [
+   "Netaji",
+   "Subhash Chandra Bose"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Ishwar Chandra Vidyasagar",
+  "type": "PERSON",
+  "aliases": [
+   "Vidyasagar",
+   "Ishwarchandra Vidyasagar"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Debendranath Tagore",
+  "type": "PERSON",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Raja Rammohan Roy",
+  "type": "PERSON",
+  "aliases": [
+   "Rammohan Roy",
+   "Ram Mohan Roy",
+   "Raja Ram Mohan Roy"
+  ],
+  "parent": null
+ },
+ {
+  "name": "B. R. Ambedkar",
+  "type": "PERSON",
+  "aliases": [
+   "Ambedkar",
+   "Dr. Ambedkar",
+   "Bhimrao Ambedkar"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Stafford Cripps",
+  "type": "PERSON",
+  "aliases": [
+   "Sir Stafford Cripps"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Mohan Singh",
+  "type": "PERSON",
+  "aliases": [
+   "Captain Mohan Singh"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Shah Nawaz Khan",
+  "type": "PERSON",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Prem Kumar Sehgal",
+  "type": "PERSON",
+  "aliases": [
+   "P. K. Sehgal",
+   "Prem Sehgal"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Gurbaksh Singh Dhillon",
+  "type": "PERSON",
+  "aliases": [
+   "G. S. Dhillon"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Bhavabhuti",
+  "type": "PERSON",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Hastimalla",
+  "type": "PERSON",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Kshemeshvara",
+  "type": "PERSON",
+  "aliases": [
+   "Kshemisvara"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Kalidasa",
+  "type": "PERSON",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Songs from Prison",
+  "type": "BOOK",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "The Discovery of India",
+  "type": "BOOK",
+  "aliases": [
+   "Discovery of India"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Glimpses of World History",
+  "type": "BOOK",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Gita Rahasya",
+  "type": "BOOK",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Mahaviracharita",
+  "type": "BOOK",
+  "aliases": [
+   "Mahavira Charita"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Uttararamacharita",
+  "type": "BOOK",
+  "aliases": [
+   "Uttara Ramacharita"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Purvapurana",
+  "type": "BOOK",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Dasavatar Charita",
+  "type": "BOOK",
+  "aliases": [
+   "Dashavatara Charita"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Suba",
+  "type": "ADMINISTRATIVE_UNIT",
+  "aliases": [
+   "Subah",
+   "Subas"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Sarkar",
+  "type": "ADMINISTRATIVE_UNIT",
+  "aliases": [
+   "Sarkars"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Pargana",
+  "type": "ADMINISTRATIVE_UNIT",
+  "aliases": [
+   "Paragana",
+   "Parganas"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Subedar",
+  "type": "OTHER",
+  "aliases": [
+   "Subahdar"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Faujdar",
+  "type": "OTHER",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Diwan",
+  "type": "OTHER",
+  "aliases": [
+   "Dewan"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Mir Bakshi",
+  "type": "OTHER",
+  "aliases": [],
+  "parent": null
+ },
+ {
+  "name": "Nizamat of Arcot",
+  "type": "PLACE",
+  "aliases": [
+   "Carnatic Nawabs",
+   "Nawabs of Arcot"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Vijayanagara Empire",
+  "type": "PLACE",
+  "aliases": [
+   "Vijayanagar Empire"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Mysore Kingdom",
+  "type": "PLACE",
+  "aliases": [
+   "Kingdom of Mysore"
+  ],
+  "parent": null
+ },
+ {
+  "name": "Hyderabad State",
+  "type": "PLACE",
+  "aliases": [
+   "Hyderabad"
+  ],
+  "parent": null
+ }
+]

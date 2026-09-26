@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { StatusMessage } from '../types/exam';
+import { PaperMode, StatusMessage } from '../types/exam';
 import { uploadExamPaper } from '../services/examService';
 import { ExamType } from '../types/examType';
 import { fetchActiveExamTypes } from '../services/examTypeService';
@@ -15,6 +15,7 @@ export interface ConflictModalState {
 
 export function useExamUpload() {
   const [uploadMode, setUploadMode] = useState<'QUESTION_PAPER'>('QUESTION_PAPER');
+  const [paperMode, setPaperMode] = useState<PaperMode>('EXAM_WISE');
   const [availableExamTypes, setAvailableExamTypes] = useState<ExamType[]>([]);
   const [examName, setExamName] = useState('upsc');
   const [selectedExamTypeId, setSelectedExamTypeId] = useState<number | undefined>(1);
@@ -92,7 +93,7 @@ export function useExamUpload() {
       return;
     }
 
-    if (!setCode || !setCode.trim()) {
+    if (paperMode === 'EXAM_WISE' && (!setCode || !setCode.trim())) {
       setStatusMessage({ text: 'Target Paper Set Code (e.g. SET_A, SET_B, SET_C, SET_D) is required.', isError: true });
       return;
     }
@@ -110,11 +111,15 @@ export function useExamUpload() {
         exam_type_id: selectedExamTypeId,
         file: selectedFile,
         conflict_resolution: conflictResolution,
+        paper_mode: paperMode,
       });
       clearExamIntegrityCache();
       invalidateExamReviewCache();
       setStatusMessage({
-        text: `Question paper uploaded successfully. AI extraction pipeline is now processing in the background.`,
+        text:
+          paperMode === 'MIXED'
+            ? 'Question bank uploaded. Each question keeps its own exam and year; AI tags the syllabus and difficulty in the background.'
+            : `Question paper uploaded successfully. AI extraction pipeline is now processing in the background.`,
         isError: false,
       });
       setSelectedFile(null);
@@ -157,6 +162,8 @@ export function useExamUpload() {
   return {
     uploadMode,
     setUploadMode,
+    paperMode,
+    setPaperMode,
     availableExamTypes,
     examName,
     setExamName: handleExamTypeChange,

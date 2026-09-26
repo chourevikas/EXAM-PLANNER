@@ -17,6 +17,31 @@ from app.core.cleanup import cleanup_file
 logger = setup_logger("ExamService")
 
 
+def mixed_bank_tokens(filename: Optional[str]) -> Dict[str, Any]:
+    """Exam fields for a mixed question-bank upload, taken from its file name only.
+
+    "MPSC_Test4_Q1-100-2.pdf" -> name "MPSC Test4 Q1-100-2", code "bank-mpsc-test4-q1-100-2". The code is
+    stable per file name, so re-uploading the same file gets the usual overwrite / skip prompt.
+    source_year is only a placeholder: questions carry their own year (Exam.is_mixed_bank).
+    """
+    import re as _re
+    from datetime import datetime as _dt
+
+    stem = Path(filename or "question-bank").stem
+    name = _re.sub(r"[_\s]+", " ", stem).strip() or "Question Bank"
+    slug = _re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "question-bank"
+    return {
+        "canonical_code": f"bank-{slug}"[:100],
+        "exam_name": name[:200],
+        "set_code": "SET_A",
+        "raw_set_token": "A",
+        "stage": "mixed",
+        "subject_code": "mixed",
+        "year": _dt.now().year,
+        "name_tokens": [t for t in _re.split(r"[^a-z0-9]+", name.lower()) if t],
+    }
+
+
 class ExamService:
     """Service handling business logic for Exam question papers and uploads."""
 
@@ -37,23 +62,33 @@ class ExamService:
         run_mode: Optional[str] = "auto",
         conflict_resolution: Optional[str] = "CHECK",
         background_tasks: Optional[BackgroundTasks] = None,
+        paper_mode: Optional[str] = "EXAM_WISE",
     ) -> Dict[str, Any]:
         from app.tasks.exam_tasks import process_exam_pdf_task, async_process_exam_pdf
 
         settings = get_settings()
+        is_mixed = (paper_mode or "EXAM_WISE").strip().upper() == "MIXED"
 
         # 1. Automatically extract canonical code from uploaded filename stem and form inputs
-        parsed_tokens = parse_question_paper_filename(
-            filename_or_code=file.filename,
-            year=year,
-            user_set_code=set_code,
-            exam_name=exam_name,
-            stage=stage,
-            subject_code=subject_code,
-        )
+        if is_mixed:
+            # Question bank mixing exams and years: nothing is asked; each question's "[MPSC Mains 2017]"
+            # tag gives its source and year, and the bank is named after the file
+            parsed_tokens = mixed_bank_tokens(file.filename)
+        else:
+            parsed_tokens = parse_question_paper_filename(
+                filename_or_code=file.filename,
+                year=year,
+                user_set_code=set_code,
+                exam_name=exam_name,
+                stage=stage,
+                subject_code=subject_code,
+            )
         canonical_code = parsed_tokens["canonical_code"]
         clean_set = parsed_tokens["set_code"]
-        exam_name_title = f"{parsed_tokens['exam_name']} ({parsed_tokens['year']}) - Set {parsed_tokens['raw_set_token']}"
+        exam_name_title = (
+            parsed_tokens["exam_name"] if is_mixed
+            else f"{parsed_tokens['exam_name']} ({parsed_tokens['year']}) - Set {parsed_tokens['raw_set_token']}"
+        )
 
         # Resolve ExamType as single source of truth for exam configuration
         from app.repositories.exam_type_repository import ExamTypeRepository
@@ -65,23 +100,34 @@ class ExamService:
             resolved_et = await et_repo.get_by_type(exam_type)
         if not resolved_et and exam_name:
             resolved_et = await et_repo.get_by_type(exam_name)
-        if not resolved_et:
+        if is_mixed and not resolved_et:
+            # Only an exam named in the file ("MPSC_Test4.pdf") sets marks and timing; no UPSC default
+            for token in parsed_tokens["name_tokens"]:
+                resolved_et = await et_repo.get_by_type(token)
+                if resolved_et:
+                    break
+        elif not resolved_et:
             resolved_et = (await et_repo.get_by_type("upsc")) or (await et_repo.get_by_type("upse"))
 
         et_id = resolved_et.id if resolved_et else None
-        tot_q = resolved_et.number_of_questions if resolved_et else 100
+        # A bank's size is whatever the PDF holds; a paper's comes from its exam type
+        tot_q = None if is_mixed else (resolved_et.number_of_questions if resolved_et else 100)
         dur_mins = resolved_et.total_duration if resolved_et else 120
         tot_marks = resolved_et.total_marks if resolved_et else 200.0
 
         # 2. Check if matching canonical exam already exists
-        existing_matches = await self.repo.get_all_matching_canonical_exams(
-            code=canonical_code,
-            year=parsed_tokens["year"],
-            stage=parsed_tokens["stage"],
-            subject_code=parsed_tokens["subject_code"],
-            paper_set_code=clean_set,
-            exam_name=parsed_tokens.get("exam_name"),
-        )
+        if is_mixed:
+            same_file = await self.repo.get_by_code(canonical_code)
+            existing_matches = [same_file] if same_file else []
+        else:
+            existing_matches = await self.repo.get_all_matching_canonical_exams(
+                code=canonical_code,
+                year=parsed_tokens["year"],
+                stage=parsed_tokens["stage"],
+                subject_code=parsed_tokens["subject_code"],
+                paper_set_code=clean_set,
+                exam_name=parsed_tokens.get("exam_name"),
+            )
         exam = existing_matches[0] if existing_matches else None
 
         resolution = (conflict_resolution or "CHECK").strip().upper()
@@ -146,6 +192,7 @@ class ExamService:
             total_questions=tot_q,
             total_duration_minutes=dur_mins,
             total_marks=tot_marks,
+            is_mixed_bank=is_mixed,
         )
         exam = await self.repo.save(exam)
 

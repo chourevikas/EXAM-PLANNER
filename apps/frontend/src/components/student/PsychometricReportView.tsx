@@ -61,6 +61,7 @@ import {
   Legend,
 } from 'recharts';
 import { formatEnum } from '../../utils/formatEnum';
+import { SimilarQuestionsSection } from '../exam/SimilarQuestionsSection';
 
 interface PsychometricReportViewProps {
   report: PsychometricReport;
@@ -4246,6 +4247,9 @@ export function PsychometricReportView({
                                 )}
                               </div>
                             )}
+
+                            {/* Knowledge Layer: similar PYQs for this question (loads only while the card is open) */}
+                            <SimilarQuestionsSection questionId={q.question_id} />
                           </div>
                         )}
                       </div>

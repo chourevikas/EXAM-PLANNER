@@ -58,6 +58,11 @@ async def upload_exam_pdf(
     exam_type_id: Optional[int] = Form(default=None, description="Exam type ID foreign key"),
     run_mode: Optional[str] = Form(default="auto", description="'celery', 'background', or 'auto'"),
     conflict_resolution: Optional[str] = Form(default="CHECK", description="'CHECK', 'OVERWRITE', or 'SKIP'"),
+    paper_mode: Optional[str] = Form(
+        default="EXAM_WISE",
+        description="'EXAM_WISE' (one exam and year; the fields above apply) or 'MIXED' (question bank whose "
+        "questions carry their own '[MPSC Mains 2017]' source; exam, year and set are not used)",
+    ),
     session: AsyncSession = Depends(get_async_session),
     _admin: User = Depends(require_admin_section("admin.upload")),
 ):
@@ -78,6 +83,7 @@ async def upload_exam_pdf(
         run_mode=run_mode,
         conflict_resolution=conflict_resolution,
         background_tasks=background_tasks,
+        paper_mode=paper_mode,
     )
 
 

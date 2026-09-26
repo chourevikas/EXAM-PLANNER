@@ -18,6 +18,31 @@ Q_HEADER_PATTERN = re.compile(
     re.MULTILINE,
 )
 
+# Numbered question bank format ("1. On the 1st April, 1999, ... [MPSC Mains 2017]"): the question
+# number starts the stem line. Only used when a document has no Q<N> headers, and only numbers that
+# continue a run (N, N+1, ...) count, so "2011." wrapped from a solution never splits a question.
+NUMBERED_Q_HEADER_PATTERN = re.compile(
+    r"^[ \t]*(\d{1,4})\.[ \t]+(\S.*)$",
+    re.MULTILINE,
+)
+
+# Chapter heading between questions: "— Unemployment and Employment —" (em/en dashes only)
+SECTION_HEADING_PATTERN = re.compile(
+    r"^[ \t]*[—–]+[ \t]*([^—–\n]{2,80}?)[ \t]*[—–]+[ \t]*$",
+    re.MULTILINE,
+)
+
+# Source of a question-bank item, at the end of its stem: "[MPSC Mains 2017]", "[ASO Mains Oct 2023]",
+# "[Tax Asst. 2016]" (may wrap across lines). Group 1 = label, group 2 = year.
+SOURCE_TAG_PATTERN = re.compile(
+    r"\[\s*([A-Za-z][^\[\]]{0,60}?\b((?:19|20)\d{2}))\s*\]",
+)
+
+# Statement / sub-prompt lines in a stem marked with an arrow: "➤ (a) Rural Works Programme"
+ARROW_LINE_PATTERN = re.compile(r"^\s*[➤►▶➢]\s*(.*)$")
+# Arrow lines that are only a label for the options below ("➤ Answer Options:")
+ANSWER_OPTIONS_LABEL_PATTERN = re.compile(r"(?i)^\s*answer\s+options?\s*:?\s*$")
+
 # Header Tag Extractors (tolerant of [, (, {, <, missing brackets, line breaks, extra spaces)
 # Example: [Subject: History & Culture] [Topic: Ancient Indian Literature] [Sub-topic: Sanskrit Dramatists] [Difficulty: Tough]
 # Also supports: [Microtheme: ...] as Topic, [Nano Theme: ...] as Subtopic
@@ -45,20 +70,26 @@ OPTION_LINE_PATTERN = re.compile(
     re.MULTILINE,
 )
 
-# Answer line: Answer: (B) playwrights or Ans: (B) or Answer: B
+# Answer line: Answer: (B) playwrights or Ans: (B) or Answer: B or Answer B (no colon)
+# The letter must stand alone, so "Answer Options:" is never read as an answer.
 ANSWER_LINE_PATTERN = re.compile(
-    r"(?i)^\s*Ans(?:wer)?\s*:\s*[\(\[]?([A-D])[\)\]\.]?\s*(.*)$",
+    r"(?i)^[ \t]*Ans(?:wer)?[ \t]*[:\-–]?[ \t]*[\(\[]?([A-D])(?:[\)\]\.]|(?=[ \t])|$)[ \t]*(.*)$",
     re.MULTILINE,
 )
 
-# Solution header: Solution: or Solution:Bhavabhuti was...
+# Solution header: Solution: / Solution. / Solution (alone) / Solution:Bhavabhuti was...
 SOLUTION_HEADER_PATTERN = re.compile(
-    r"(?i)^\s*Solution\s*:\s*(.*)$",
+    r"(?i)^[ \t]*Solution[ \t]*(?:[:\.]|$)[ \t]*(.*)$",
     re.MULTILINE,
 )
 
 # Solution bullet line
 # Bullet char may OCR as •, ◦, ●, ▪, ·, *, -, —, –, or ■
+# "■ Related Articles / Acts / Cases:" list inside a solution (items follow as "– ..." lines)
+RELATED_REFS_HEADER_PATTERN = re.compile(
+    r"(?i)^\s*(?:[■•*#-]\s*)*Related\s+(?:Articles?|Acts?|Cases?)(?:\s*/\s*(?:Articles?|Acts?|Cases?))*\s*:?\s*$"
+)
+
 SOLUTION_BULLET_PATTERN = re.compile(
     r"^\s*([•◦●▪·*■]|[-–—])\s+(.*)$",
     re.MULTILINE,

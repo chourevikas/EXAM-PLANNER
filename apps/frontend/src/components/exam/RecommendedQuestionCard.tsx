@@ -28,6 +28,15 @@ export function RecommendedQuestionCard({
   language,
 }: RecommendedQuestionCardProps) {
   const selectedOption = (rec.options as any[])?.find((o: any) => o.option_id === answeredOptId);
+  // Cards don't ship the answer key: which option is correct is only known once the
+  // solution (fetched after the student answers) has loaded.
+  const cleanLabel = (label: unknown) => String(label ?? '').replace(/[().\s]/g, '').toUpperCase();
+  const isOptionCorrect = (opt: any): boolean =>
+    !!solution &&
+    (solution.correct_option_id != null
+      ? String(opt.option_id) === String(solution.correct_option_id)
+      : !!solution.correct_option_label && cleanLabel(opt.option_label) === cleanLabel(solution.correct_option_label));
+  const hasAnswerKey = !!solution && (solution.correct_option_id != null || !!solution.correct_option_label);
   const [showSolutionModal, setShowSolutionModal] = useState(false);
 
   return (
@@ -102,7 +111,7 @@ export function RecommendedQuestionCard({
               <QuestionSolutionMarkdownCard
                 solution={solution ?? {}}
                 isLoading={isSolutionLoading}
-                isUserCorrect={selectedOption ? !!selectedOption.is_correct : undefined}
+                isUserCorrect={selectedOption && hasAnswerKey ? isOptionCorrect(selectedOption) : undefined}
                 selectedOptionLabel={selectedOption?.option_label}
               />
             </div>
@@ -266,9 +275,9 @@ export function RecommendedQuestionCard({
             >
               {(rec.options as any[])?.map((opt: any, optIdx: number) => {
                 const isSelected = answeredOptId === opt.option_id;
-                const isCorrect = opt.is_correct;
+                const isCorrect = isOptionCorrect(opt);
                 const isWrongSelected = isSelected && !isCorrect;
-                const showResult = !!answeredOptId;
+                const showResult = answeredOptId != null && hasAnswerKey;
 
                 let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
                 let bgStyle = 'var(--bg-card)';
@@ -349,7 +358,7 @@ export function RecommendedQuestionCard({
             </div>
 
             {answeredOptId != null && (
-              <div style={{ marginTop: 10 }}>
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -374,6 +383,9 @@ export function RecommendedQuestionCard({
                   <Lightbulb size={13} color="var(--text-muted)" />
                   <span>View Explanation</span>
                 </button>
+                {isSolutionLoading && !hasAnswerKey && (
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Checking answer…</span>
+                )}
               </div>
             )}
           </div>

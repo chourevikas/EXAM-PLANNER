@@ -197,7 +197,7 @@ export function MockSelectionPage() {
           (e) => e.is_active === true && (e.exam_type === 'STATIC_MOCK' || e.exam_type === 'QuestionSourceType.STATIC_MOCK')
         );
 
-        const targetList = mocks.length > 0 ? mocks : liveExams.filter((e) => e.is_active === true);
+        const targetList = mocks.length > 0 ? mocks : liveExams.filter((e) => e.is_active === true && !(e as any).is_mixed_bank);
 
         if (targetList.length > 0) {
           const mapped: DisplayMock[] = targetList.map((e) => {
