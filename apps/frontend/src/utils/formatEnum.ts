@@ -212,3 +212,19 @@ export function cleanExamTitle(raw?: string | null): string {
     .replace(/\s*[-–—]\s*$/g, '')
     .trim();
 }
+
+/** "Year 2021" for a paper; "Mixed years (2011–2023)" for a mixed question bank, whose own year is a placeholder. */
+export function examYearLabel(
+  exam: { source_year?: number | null; is_mixed_bank?: boolean; question_years?: number[] } | null | undefined,
+  fallback = '',
+): string {
+  if (!exam) return fallback;
+  if (exam.is_mixed_bank) {
+    const years = exam.question_years || [];
+    if (years.length === 0) return 'Mixed years';
+    const min = Math.min(...years);
+    const max = Math.max(...years);
+    return min === max ? `Mixed exams (${min})` : `Mixed years (${min}–${max})`;
+  }
+  return exam.source_year ? `Year ${exam.source_year}` : fallback;
+}

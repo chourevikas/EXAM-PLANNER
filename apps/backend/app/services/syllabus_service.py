@@ -728,11 +728,26 @@ class SyllabusService:
         exams_by_year_map: Dict[str, List[ExamYearItem]] = {}
         years_set = set()
 
+        bank_ids = [e.id for e in exams if getattr(e, "is_mixed_bank", False)]
+        bank_years: Dict[int, List[int]] = {}
+        if bank_ids:
+            year_rows = (
+                await self.session.exec(
+                    select(Question.exam_id, Question.source_year)
+                    .where(col(Question.exam_id).in_(bank_ids), col(Question.source_year).is_not(None))
+                    .distinct()
+                )
+            ).all()
+            for exam_id, q_year in year_rows:
+                bank_years.setdefault(exam_id, []).append(q_year)
+
         for exam in exams:
-            yr = exam.source_year or 0
+            is_bank = bool(getattr(exam, "is_mixed_bank", False))
+            yr = 0 if is_bank else (exam.source_year or 0)
             if yr > 0:
                 years_set.add(yr)
-            yr_str = str(yr) if yr > 0 else "UNKNOWN"
+            # Banks are not papers of one year: grouped apart so year-wise paper lists skip them
+            yr_str = "MIXED" if is_bank else (str(yr) if yr > 0 else "UNKNOWN")
 
             stage_val = exam.stage if isinstance(exam.stage, str) else (exam.stage.value if hasattr(exam.stage, "value") else str(exam.stage))
             status_val = (
@@ -757,8 +772,8 @@ class SyllabusService:
             ):
                 is_extracting = True
 
-            total_q = exam.total_questions or 100
             ext_q = exam.extracted_questions_count or 0
+            total_q = exam.total_questions or (ext_q if is_bank else 100)
             computed_missing = max(0, total_q - ext_q)
             missing_cnt = 0 if is_extracting else (
                 exam.missing_questions_count
@@ -801,6 +816,8 @@ class SyllabusService:
                 stage1_status=s1_status,
                 is_extracting=is_extracting,
                 created_at=exam.created_at.isoformat() if exam.created_at else None,
+                is_mixed_bank=is_bank,
+                question_years=sorted(bank_years.get(exam.id, []), reverse=True),
             )
 
             exams_by_year_map.setdefault(yr_str, []).append(item)

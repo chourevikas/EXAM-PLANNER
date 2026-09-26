@@ -560,7 +560,8 @@ class BatchQuestionRegistrar:
                 exam = await session.get(Exam, exam_id)
                 exam_code = exam.code if exam else "EXAM"
                 exam_name = exam.name if exam else "Exam"
-                source_year = exam.source_year if exam else None
+                # A mixed bank's year is a placeholder: untagged questions get no year rather than a wrong one
+                source_year = exam.source_year if exam and not getattr(exam, "is_mixed_bank", False) else None
                 paper_set_code = exam.paper_set_code if exam else "SET_A"
                 neg_rate = getattr(exam, "negative_marking_rate", None) if exam else None
 
@@ -1044,8 +1045,14 @@ class BatchQuestionRegistrar:
                         select(Question.question_number_in_paper).where(Question.exam_id == exam_id)
                     )
                     extracted_numbers = set(all_qs_res.all())
-                    tot_exp = exam_obj.total_questions or len(records)
-                    missing_nums = [num for num in range(1, tot_exp + 1) if num not in extracted_numbers]
+                    if getattr(exam_obj, "is_mixed_bank", False) and extracted_numbers:
+                        # A bank has no fixed size and may start anywhere ("Q101-200"): only gaps count
+                        low, high = min(extracted_numbers), max(extracted_numbers)
+                        missing_nums = [num for num in range(low, high + 1) if num not in extracted_numbers]
+                        exam_obj.total_questions = len(extracted_numbers) + len(missing_nums)
+                    else:
+                        tot_exp = exam_obj.total_questions or len(records)
+                        missing_nums = [num for num in range(1, tot_exp + 1) if num not in extracted_numbers]
                     exam_obj.extracted_questions_count = len(extracted_numbers)
                     exam_obj.missing_questions_count = len(missing_nums)
                     exam_obj.missing_question_numbers_json = missing_nums

@@ -65,6 +65,11 @@ class Exam(SQLModel, table=True):
         default="gs1", index=True, max_length=50, description="Subject e.g. gs1, csat"
     )
     source_year: int = Field(default=2023, index=True, description="Year e.g. 2023")
+    is_mixed_bank: bool = Field(
+        default=False,
+        description="Question bank mixing exams and years (e.g. an MPSC topic-wise bank): each question carries "
+        "its own source and year, so source_year here is not the questions' year",
+    )
     paper_set_code: str = Field(
         default="SET_A",
         index=True,

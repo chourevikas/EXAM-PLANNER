@@ -54,6 +54,8 @@ function usePublishedExams() {
         ]);
         const published = liveExams.filter((e) => {
           if (!e.is_active || (e.status !== 'PUBLISHED' && e.status !== 'ExamStatus.PUBLISHED')) return false;
+          // A mixed question bank is not a paper of one year; its questions come through practice instead
+          if ((e as any).is_mixed_bank) return false;
           
           const nameToExtract = e.name || e.title || e.exam_name || e.code || '';
           const lowerName = nameToExtract.toLowerCase();
@@ -593,7 +595,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
             const c = extractCanonicalExamName(nameToExtract);
             if (c) {
               names.push(c);
-              const year = e.source_year || e.year;
+              const year = e.is_mixed_bank ? null : e.source_year || e.year; // a bank's year is a placeholder
               if (year) {
                 if (!mapping[c]) mapping[c] = new Set();
                 mapping[c].add(Number(year));
@@ -888,7 +890,7 @@ function AnalysisScreen({ onBack }: { onBack: () => void }) {
        if (c) {
           const val = c.toLowerCase().includes('upsc') ? 'upsc' : c.toLowerCase().split(' ')[0];
           if (freqExamFilter === 'all' || freqExamFilter === val) {
-             const y = Number(e.source_year || e.year);
+             const y = e.is_mixed_bank ? NaN : Number(e.source_year || e.year);
              if (y && !isNaN(y)) years.add(y);
           }
        }

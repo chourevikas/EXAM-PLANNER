@@ -29,6 +29,7 @@ import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode, listExams } from '../services/examService';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
+import { availableQuestionYears } from '../utils/examYears';
 import { guardedFetch } from '../utils/apiGuard';
 import {
   mergeRecommendations,
@@ -76,15 +77,11 @@ export function GuestExamPage() {
     return parseTaxonomyParam(gExam, availableExams.length > 0 ? availableExams : []);
   }, [gExam, availableExams]);
 
-  const availableYearsList = useMemo(() => {
-    if (!allYearsData || !allYearsData.years) return [];
-    if (selectedExamsList.length === 0) return allYearsData.years;
-    const canonicalExams = selectedExamsList.map(extractCanonicalExamName);
-    return allYearsData.years.filter((y: number) => {
-      const examsInYear = allYearsData.exams_by_year[String(y)] || [];
-      return examsInYear.some((e: any) => canonicalExams.includes(extractCanonicalExamName(e.name || e.code)));
-    });
-  }, [allYearsData, selectedExamsList]);
+  // Paper years plus question years inside mixed banks ("[MPSC Mains 2017]")
+  const availableYearsList = useMemo(
+    () => availableQuestionYears(allYearsData, selectedExamsList.map(extractCanonicalExamName)),
+    [allYearsData, selectedExamsList],
+  );
 
   const yearOptions = useMemo(() => {
     if (availableYearsList.length > 0) {

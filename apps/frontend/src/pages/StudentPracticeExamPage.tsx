@@ -22,6 +22,7 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { formatEnum, extractCanonicalExamName, cleanExamTitle } from '../utils/formatEnum';
+import { availableQuestionYears } from '../utils/examYears';
 import { guardedFetch } from '../utils/apiGuard';
 import {
   mergeRecommendations,
@@ -888,15 +889,12 @@ export function StudentPracticeExamPage() {
           names.sort((a, b) => (a === 'UPSC CSE' ? -1 : b === 'UPSC CSE' ? 1 : a.localeCompare(b)));
           if (names.length > 0) setAvailableExams(names);
         }
-        if (yData && Array.isArray(yData.years) && yData.years.length > 0) {
-          const examName = extractCanonicalExamName(gExam);
-          let filteredYears = yData.years;
-          if (gExam !== 'All Exams') {
-             filteredYears = yData.years.filter((y: number) => {
-                 const examsInYear = yData.exams_by_year[String(y)] || [];
-                 return examsInYear.some((e: any) => extractCanonicalExamName(e.name || e.code) === examName);
-             });
-          }
+        if (yData && yData.exams_by_year) {
+          // Paper years plus question years inside mixed banks ("[MPSC Mains 2017]")
+          const filteredYears = availableQuestionYears(
+            yData,
+            gExam && gExam !== 'All Exams' ? [extractCanonicalExamName(gExam)] : null,
+          );
           if (filteredYears.length > 0) {
               const sorted = [...filteredYears].sort((a, b) => b - a);
               const fetchedYears = sorted.map((y: number) => `${y} PYQs`);
