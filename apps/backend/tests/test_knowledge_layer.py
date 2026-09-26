@@ -775,3 +775,36 @@ class TestKnowledgeApi(KnowledgeDbTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestKnowledgeCacheInvalidation(unittest.IsolatedAsyncioTestCase):
+    async def test_clears_what_enrichment_changed(self):
+        from app.cache import get_cache
+        from app.cache.helpers import invalidate_knowledge_cache
+
+        cache = get_cache()
+        await cache.clear()
+        keys = {
+            "similar": "ep:questions:similar:5:abc",
+            "list": "ep:questions:list:abc",
+            "detail": "ep:questions:detail:5:abc",
+            "recommended": "ep:questions:recommended:abc",
+            "syllabus": "ep:syllabus:complete:master",
+            "catalog": "ep:admin:question_catalog:subjects",
+            "unrelated": "ep:users:profile:1",
+        }
+
+        async def fill():
+            for k in keys.values():
+                await cache.set(k, {"v": 1}, ttl_seconds=600)
+
+        async def present():
+            return {name for name, k in keys.items() if await cache.get(k) is not None}
+
+        await fill()
+        await invalidate_knowledge_cache([7], content_changed=False)
+        self.assertEqual(await present(), set(keys) - {"similar"})
+
+        await fill()
+        await invalidate_knowledge_cache([7], content_changed=True)
+        self.assertEqual(await present(), {"unrelated"})

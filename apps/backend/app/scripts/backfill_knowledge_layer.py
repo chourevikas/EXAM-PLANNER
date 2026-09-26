@@ -5,7 +5,8 @@ Runs AI extraction (LLM) over each question's stem, options, answer and solution
 it together with any authored tags and rule-based matches. Questions whose PDF had no
 Subject / Microtheme / Nano Theme or Difficulty tags get those from the same AI call. Stored AI tags are reused while a
 question's text is unchanged, so re-runs only call the model for new or edited questions.
-Safe to re-run: each question's links are replaced, never duplicated.
+Safe to re-run: each question's links are replaced, never duplicated. Caches (Redis in production)
+are cleared after each exam, so students see the new links, syllabus and difficulty right away.
 
 Run with:
   python -m app.scripts.backfill_knowledge_layer --all
@@ -27,6 +28,7 @@ from app.db.session import async_session_factory
 from app.db.models import Exam, Question
 from app.db.models.knowledge import KnowledgeConcept, KnowledgeEntity
 from app.knowledge.ai_extractor import KnowledgeAIExtractor
+from app.cache.helpers import invalidate_knowledge_cache
 from app.knowledge.enrichment_service import KnowledgeEnrichmentService
 from app.knowledge.vocabulary import STATUS_PENDING_REVIEW
 
@@ -81,10 +83,15 @@ async def backfill(exam_id: int | None, dry_run: bool, use_ai: bool = True, refr
     for eid in exam_ids:
         results = await service.enrich_exam(eid, refresh_ai=refresh_ai)
         ai_statuses.update(r.ai for r in results)
-        totals.update(
-            syllabus_filled=sum(1 for r in results if r.syllabus),
-            difficulty_rated=sum(1 for r in results if r.difficulty),
-        )
+        syllabus_filled = sum(1 for r in results if r.syllabus)
+        difficulty_rated = sum(1 for r in results if r.difficulty)
+        totals.update(syllabus_filled=syllabus_filled, difficulty_rated=difficulty_rated)
+        # Per exam, so an interrupted run still leaves the finished exams fresh for students
+        try:
+            await invalidate_knowledge_cache([eid], bool(syllabus_filled or difficulty_rated))
+        except Exception as err:  # a cache outage must not stop the backfill
+            totals.update(cache_errors=1)
+            print(f"  (cache not cleared for exam #{eid}: {err})")
         with_knowledge = sum(1 for r in results if r.entities or r.concepts)
         totals.update(
             questions=len(results), with_knowledge=with_knowledge,
@@ -104,6 +111,10 @@ async def backfill(exam_id: int | None, dry_run: bool, use_ai: bool = True, refr
     print("AI tagging: " + ", ".join(f"{k} x{v}" for k, v in ai_statuses.most_common()))
     print(f"Missing Subject > Microtheme > Nano Theme filled by AI: {totals['syllabus_filled']}")
     print(f"Missing difficulty set by AI (EASY/HARD; MEDIUM is the default): {totals['difficulty_rated']}")
+    if totals["cache_errors"]:
+        print(f"Cache could not be cleared for {totals['cache_errors']} exam(s): cached pages refresh when their TTL expires")
+    else:
+        print("Caches cleared: similar questions, and question lists / syllabus / catalog where AI changed them")
     if issues:
         print("Issues: " + ", ".join(f"{k} x{v}" for k, v in issues.most_common()))
 

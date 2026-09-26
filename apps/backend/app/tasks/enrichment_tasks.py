@@ -30,7 +30,6 @@ async def _set_status(exam_id: int, status: str, step: str, progress: float, err
 
 
 async def async_enrich_exam(exam_id_str: str) -> dict:
-    from app.cache import get_cache, build_cache_key
     from app.knowledge.ai_extractor import KnowledgeAIExtractor
     from app.knowledge.enrichment_service import AI_FAILED, KnowledgeEnrichmentService
 
@@ -53,13 +52,9 @@ async def async_enrich_exam(exam_id_str: str) -> dict:
             "syllabus_filled": sum(1 for r in results if r.syllabus),
             "difficulty_rated": sum(1 for r in results if r.difficulty),
         }
-        await get_cache().delete_pattern(f"{build_cache_key('questions:similar')}*")
-        if summary["syllabus_filled"] or summary["difficulty_rated"]:
-            # Questions moved out of the upload placeholders or re-rated: syllabus trees, question
-            # lists and the admin catalog changed
-            from app.cache.helpers import invalidate_exam_cache
+        from app.cache.helpers import invalidate_knowledge_cache
 
-            await invalidate_exam_cache(str(exam_id))
+        await invalidate_knowledge_cache([exam_id], bool(summary["syllabus_filled"] or summary["difficulty_rated"]))
         await _set_status(
             exam_id, "COMPLETED",
             f"Enriched {summary['with_knowledge']}/{summary['questions']}"
