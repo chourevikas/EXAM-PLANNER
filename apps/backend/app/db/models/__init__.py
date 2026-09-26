@@ -60,10 +60,21 @@ from app.db.models.review import HumanReviewTask
 from app.db.models.subscription import (
     BillingInterval,
     SubscriptionStatus,
+    SubscriptionSource,
     PlatformFeature,
     SubscriptionPlan,
     PlanFeatureLink,
     UserSubscription,
+)
+from app.db.models.discount import (
+    DiscountType,
+    DiscountOffer,
+    DiscountRedemption,
+    DiscountPlanLink,
+)
+from app.db.models.subscription_audit import (
+    SubscriptionAuditAction,
+    SubscriptionAuditLog,
 )
 from app.db.models.explanation import QuestionExplanation
 from app.db.models.pipeline_run import PipelineRun
@@ -135,10 +146,17 @@ __all__ = [
     "HumanReviewTask",
     "BillingInterval",
     "SubscriptionStatus",
+    "SubscriptionSource",
     "PlatformFeature",
     "SubscriptionPlan",
     "PlanFeatureLink",
     "UserSubscription",
+    "DiscountType",
+    "DiscountOffer",
+    "DiscountRedemption",
+    "DiscountPlanLink",
+    "SubscriptionAuditAction",
+    "SubscriptionAuditLog",
     "SetMatchStatus",
     "MappingStatus",
     "AnswerKeyBatch",

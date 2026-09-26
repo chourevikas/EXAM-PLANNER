@@ -18,7 +18,7 @@ import {
 import { SuperAdminSidebar } from '../components/superadmin/SuperAdminSidebar';
 import { SuperAdminTopNav } from '../components/superadmin/SuperAdminTopNav';
 import { SuperAdminStats } from '../components/superadmin/SuperAdminStats';
-import { SuperAdminTab, SuperAdminTabNav } from '../components/superadmin/SuperAdminTabNav';
+import { SuperAdminTab } from '../components/superadmin/SuperAdminTabNav';
 import { ActivityLogTab } from '../components/superadmin/ActivityLogTab';
 import { ActiveAdminsTab } from '../components/superadmin/ActiveAdminsTab';
 import { AuditLogsTab } from '../components/superadmin/AuditLogsTab';
@@ -28,6 +28,7 @@ import { Role } from '../types/auth';
 import { fetchRoles, updateUserRoleAssignment } from '../services/rolesService';
 import { TestimonialApprovalsTab } from '../components/superadmin/TestimonialApprovalsTab';
 import { CreateStaffModal } from '../components/superadmin/CreateStaffModal';
+import PremiumAdmin from '../components/superadmin/premium/PremiumAdmin';
 import {
   TestimonialItem,
   fetchAllTestimonialsForAdmin,
@@ -37,7 +38,7 @@ import {
 } from '../services/testimonialService';
 
 export function SuperAdminPage({ onSignedOut }: { onSignedOut: () => void }) {
-  const [activeTab, setActiveTab] = useState<SuperAdminTab>('users');
+  const [activeTab, setActiveTab] = useState<SuperAdminTab>('dashboard');
   const [createStaffOpen, setCreateStaffOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -303,16 +304,30 @@ export function SuperAdminPage({ onSignedOut }: { onSignedOut: () => void }) {
 
   const renderActiveTabContent = () => {
     switch (activeTab) {
-      case 'active':
+      case 'dashboard':
         return (
-          <ActiveAdminsTab
-            admins={activeAdmins}
-            loading={activeLoading}
-            processingId={processingId}
-            onSuspend={handleSuspend}
-            onReactivate={handleReactivate}
-            onRefresh={loadActive}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+            <div>
+              <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+                Executive Overview
+              </h2>
+              <SuperAdminStats stats={stats} loading={statsLoading} onSelectTab={setActiveTab} />
+            </div>
+            
+            <div>
+              <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+                Active Admins
+              </h2>
+              <ActiveAdminsTab
+                admins={activeAdmins}
+                loading={activeLoading}
+                processingId={processingId}
+                onSuspend={handleSuspend}
+                onReactivate={handleReactivate}
+                onRefresh={loadActive}
+              />
+            </div>
+          </div>
         );
       case 'activity':
         return <ActivityLogTab logs={actionLogs} loading={actionLogsLoading} onRefresh={loadActionLogs} />;
@@ -351,6 +366,8 @@ export function SuperAdminPage({ onSignedOut }: { onSignedOut: () => void }) {
             onRefresh={loadTestimonials}
           />
         );
+      case 'premium':
+        return <PremiumAdmin />;
       default:
         return null;
     }
@@ -467,15 +484,9 @@ export function SuperAdminPage({ onSignedOut }: { onSignedOut: () => void }) {
                 </div>
               )}
 
-              {/* KPI Executive Metric Cards */}
-              <SuperAdminStats stats={stats} loading={statsLoading} onSelectTab={setActiveTab} />
 
-              {/* Horizontal Navigation Tabs */}
-              <SuperAdminTabNav
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                pendingTestimonialsCount={testimonials.filter((t) => t.status === 'PENDING').length}
-              />
+
+
 
               {/* Active Tab View */}
               {renderActiveTabContent()}

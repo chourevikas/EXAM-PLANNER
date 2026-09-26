@@ -1,11 +1,20 @@
+from decimal import Decimal
 from enum import Enum
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
+from sqlalchemy import String
 from app.db.models.types import PortableJSON, DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.user import User
+    from app.db.models.discount import DiscountOffer
+
+
+class SubscriptionSource(str, Enum):
+    PAYMENT = "PAYMENT"        # user paid via Razorpay
+    ADMIN_GRANT = "ADMIN_GRANT"  # manually granted by a Super Admin
+    PROMO = "PROMO"            # promotional / campaign grant
 
 
 class BillingInterval(str, Enum):
@@ -116,6 +125,33 @@ class UserSubscription(SQLModel, table=True):
     cancel_at_period_end: bool = Field(default=False)
     payment_gateway: Optional[str] = Field(default="RAZORPAY", max_length=50)
     gateway_subscription_id: Optional[str] = Field(default=None, index=True)
+
+    # --- Source tracking (spec: Section A.3) ---
+    source: str = Field(
+        default=SubscriptionSource.PAYMENT.value,
+        sa_column=Column(String(50), nullable=False, index=True)
+    )
+    # Set when source == ADMIN_GRANT
+    granted_by_admin_id: Optional[int] = Field(
+        default=None, foreign_key="users.id", index=True
+    )
+    grant_reason: Optional[str] = Field(default=None)  # mandatory for admin grants
+
+    # Discount applied at checkout / grant time
+    discount_offer_id: Optional[int] = Field(
+        default=None, foreign_key="discount_offers.id", nullable=True
+    )
+
+    # Price snapshots — locked in at creation, never updated (spec: rule 1)
+    original_price: Optional[Decimal] = Field(
+        default=None, max_digits=10, decimal_places=2,
+        description="Snapshot of plan price at time of purchase/grant"
+    )
+    discounted_price: Optional[Decimal] = Field(
+        default=None, max_digits=10, decimal_places=2,
+        description="Final price paid after discount; None if no discount"
+    )
+
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
@@ -126,5 +162,14 @@ class UserSubscription(SQLModel, table=True):
     )
 
     # Relationships
-    user: Optional["User"] = Relationship(back_populates="subscriptions")
+    user: Optional["User"] = Relationship(
+        back_populates="subscriptions",
+        sa_relationship_kwargs={"foreign_keys": "[UserSubscription.user_id]"},
+    )
     plan: Optional[SubscriptionPlan] = Relationship(back_populates="user_subscriptions")
+    granted_by: Optional["User"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[UserSubscription.granted_by_admin_id]"}
+    )
+    discount_offer: Optional["DiscountOffer"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[UserSubscription.discount_offer_id]"}
+    )

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
 import {
@@ -25,20 +25,35 @@ export function PricingPage() {
   const [discountApplied, setDiscountApplied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [finalPriceCents, setFinalPriceCents] = useState<number>(0);
+  const [discountLabel, setDiscountLabel] = useState<string>('');
 
-  const priceMonthly = 999;
-  const priceAnnualMonthly = 499;
-  const priceAnnualTotal = 5988; // 499 * 12
+  useEffect(() => {
+    import('../services/premiumService').then(m => {
+      m.fetchPublicPlans()
+        .then(data => setPlans(data))
+        .catch(err => console.error(err))
+        .finally(() => setLoadingPlans(false));
+    });
+  }, []);
 
-  const finalAmount = billingCycle === 'annual'
-    ? (discountApplied ? Math.round(priceAnnualTotal * 0.85) : priceAnnualTotal)
-    : (discountApplied ? Math.round(priceMonthly * 0.85) : priceMonthly);
-
-  const handleApplyPromo = () => {
-    if (promoCode.trim().toUpperCase() === 'EXAMPLANNER2026' || promoCode.trim().toUpperCase() === 'PRO50') {
-      setDiscountApplied(true);
-    } else {
-      alert('Invalid Promo Code. Try "EXAMPLANNER2026" for 15% OFF!');
+  const handleApplyPromo = async () => {
+    if (!promoCode || !selectedPlan) return;
+    
+    try {
+      const { validateDiscount } = await import('../services/premiumService');
+      const result = await validateDiscount(promoCode.trim(), selectedPlan.id);
+      
+      if (result.valid) {
+        setFinalPriceCents(result.discounted_price_cents);
+        setDiscountLabel(`✓ ${result.discount_type === 'PERCENTAGE' ? result.value + '%' : '₹' + result.value} Discount Applied`);
+        setDiscountApplied(true);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Invalid Promo Code');
     }
   };
 
@@ -173,58 +188,81 @@ export function PricingPage() {
           </button>
         </div>
 
-        {/* Pro Plan Card (Featured) */}
-        <div style={{
-          backgroundColor: 'var(--bg-card)', padding: 32, borderRadius: 'var(--radius)',
-          border: '2px solid var(--accent-primary)', boxShadow: '0 16px 36px var(--shadow-color-accent)',
-          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-          position: 'relative', overflow: 'hidden'
-        }}>
-          {/* Best Value Ribbon */}
-          <div style={{
-            position: 'absolute', top: 18, right: 18, padding: '4px 12px',
-            backgroundColor: 'var(--accent-bg)', border: '1px solid var(--accent-border)',
-            borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', gap: 6
-          }}>
-            <Star size={13} fill="var(--accent-primary)" color="var(--accent-primary)" />
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)' }}>MOST POPULAR</span>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-              ExamPlanner Pro Membership
-            </div>
-            <div style={{ fontSize: 40, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-              {billingCycle === 'annual' ? '₹499' : '₹999'}
-              <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-muted)' }}>/ month</span>
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--success-primary)', fontWeight: 600, marginBottom: 20 }}>
-              {billingCycle === 'annual' ? 'Billed annually (₹5,988/yr) • Save ₹6,000' : 'Billed monthly'}
-            </div>
-
-            <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {features.map((feat, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: 'var(--text-primary)' }}>
-                  <CheckCircle2 size={18} color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <span>{feat}</span>
+        {/* Dynamic Paid Plans */}
+        {loadingPlans ? (
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Loading plans...</div>
+        ) : (
+          plans.filter(plan => {
+            if (billingCycle === 'monthly' && plan.billing_interval.toUpperCase() !== 'MONTHLY') return false;
+            if (billingCycle === 'annual' && !['ANNUAL', 'YEARLY'].includes(plan.billing_interval.toUpperCase())) return false;
+            return true;
+          }).map((plan, index) => (
+            <div key={plan.id} style={{
+              backgroundColor: 'var(--bg-card)', padding: 32, borderRadius: 'var(--radius)',
+              border: index === 0 ? '2px solid var(--accent-primary)' : '1px solid var(--border-default)', 
+              boxShadow: index === 0 ? '0 16px 36px var(--shadow-color-accent)' : 'var(--shadow-color-base)',
+              display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              position: 'relative', overflow: 'hidden'
+            }}>
+              {/* Best Value Ribbon for first dynamic plan */}
+              {index === 0 && (
+                <div style={{
+                  position: 'absolute', top: 18, right: 18, padding: '4px 12px',
+                  backgroundColor: 'var(--accent-bg)', border: '1px solid var(--accent-border)',
+                  borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', gap: 6
+                }}>
+                  <Star size={13} fill="var(--accent-primary)" color="var(--accent-primary)" />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)' }}>MOST POPULAR</span>
                 </div>
-              ))}
-            </div>
-          </div>
+              )}
 
-          <button
-            onClick={() => setShowCheckout(true)}
-            style={{
-              marginTop: 32, padding: '16px', borderRadius: 'var(--radius)', border: 'none',
-              backgroundColor: 'var(--accent-primary)', color: 'var(--bg-card)', fontSize: 15, fontWeight: 700,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              boxShadow: '0 6px 20px var(--shadow-color-accent)', transition: 'transform 0.2s'
-            }}
-          >
-            <span>Upgrade to Pro Now</span>
-            <ArrowRight size={18} />
-          </button>
-        </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: index === 0 ? 'var(--accent-primary)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+                  {plan.name}
+                </div>
+                <div style={{ fontSize: 40, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+                  {plan.currency === 'INR' ? '₹' : plan.currency}{plan.price_cents / 100}
+                  <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-muted)' }}>/ {plan.billing_interval.toLowerCase()}</span>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--success-primary)', fontWeight: 600, marginBottom: 20 }}>
+                  Billed {plan.billing_interval.toLowerCase()}
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {features.map((feat, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: 'var(--text-primary)' }}>
+                      <CheckCircle2 size={18} color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+                      <span>{feat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setSelectedPlan(plan);
+                  setFinalPriceCents(plan.price_cents);
+                  setPromoCode('');
+                  setDiscountApplied(false);
+                  setDiscountLabel('');
+                  setShowCheckout(true);
+                }}
+                style={{
+                  marginTop: 32, padding: '16px', borderRadius: 'var(--radius)',
+                  backgroundColor: index === 0 ? 'var(--accent-primary)' : 'var(--bg-card)', 
+                  color: index === 0 ? 'var(--bg-card)' : 'var(--text-primary)', 
+                  border: index !== 0 ? '1px solid var(--border-default)' : 'none',
+                  fontSize: 15, fontWeight: 700,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  boxShadow: index === 0 ? '0 6px 20px var(--shadow-color-accent)' : 'none', transition: 'transform 0.2s'
+                }}
+              >
+                <span>Upgrade to {plan.name}</span>
+                <ArrowRight size={18} />
+              </button>
+            </div>
+          ))
+        )}
 
       </div>
 
@@ -273,21 +311,23 @@ export function PricingPage() {
                 </div>
 
                 {/* Selected Plan Details */}
-                <div style={{ padding: 16, borderRadius: 'var(--radius)', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ fontSize: 15, fontWeight: 700 }}>
-                      Pro Plan ({billingCycle === 'annual' ? 'Annual Billed' : 'Monthly'})
-                    </span>
-                    <span style={{ fontSize: 18, fontWeight: 800, color: '#60a5fa' }}>
-                      ₹{finalAmount}
-                    </span>
-                  </div>
-                  {discountApplied && (
-                    <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>
-                      ✓ 15% Promo Discount Applied
+                {selectedPlan && (
+                  <div style={{ padding: 16, borderRadius: 'var(--radius)', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700 }}>
+                        {selectedPlan.name}
+                      </span>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: '#60a5fa' }}>
+                        {selectedPlan.currency === 'INR' ? '₹' : selectedPlan.currency}{finalPriceCents / 100}
+                      </span>
                     </div>
-                  )}
-                </div>
+                    {discountApplied && (
+                      <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>
+                        {discountLabel}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Promo Code Input */}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
@@ -384,7 +424,7 @@ export function PricingPage() {
                   ) : (
                     <>
                       <Zap size={18} />
-                      <span>Pay ₹{finalAmount} & Activate Pro Plan</span>
+                      <span>Pay {selectedPlan?.currency === 'INR' ? '₹' : selectedPlan?.currency}{finalPriceCents / 100} & Activate {selectedPlan?.name}</span>
                     </>
                   )}
                 </button>

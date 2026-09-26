@@ -67,11 +67,12 @@ async def get_subscription_tier(session: AsyncSession, user_id: int) -> str:
 async def get_subscription_info(session: AsyncSession, user_id: int) -> dict:
     """Remaining time on the user's active paid subscription (display only)."""
     from datetime import datetime, timezone
-    from app.db.models.subscription import UserSubscription, SubscriptionStatus
+    from app.db.models.subscription import UserSubscription, SubscriptionStatus, SubscriptionPlan
 
-    sub = (
+    result = (
         await session.exec(
-            select(UserSubscription)
+            select(UserSubscription, SubscriptionPlan)
+            .join(SubscriptionPlan, UserSubscription.plan_id == SubscriptionPlan.id)
             .where(
                 UserSubscription.user_id == user_id,
                 UserSubscription.status == SubscriptionStatus.ACTIVE,
@@ -79,14 +80,21 @@ async def get_subscription_info(session: AsyncSession, user_id: int) -> dict:
             .order_by(UserSubscription.current_period_end.desc())
         )
     ).first()
-    if not sub:
-        return {"subscription_ends_at": None, "subscription_days_remaining": None}
+    
+    if not result:
+        return {"subscription_ends_at": None, "subscription_days_remaining": None, "subscription_plan_name": None}
+    
+    sub, plan = result
     end = sub.current_period_end
     if end.tzinfo is None:
         end = end.replace(tzinfo=timezone.utc)
     seconds = (end - datetime.now(timezone.utc)).total_seconds()
     days = max(0, -(-int(seconds) // 86400)) if seconds > 0 else 0
-    return {"subscription_ends_at": end.isoformat(), "subscription_days_remaining": days}
+    return {
+        "subscription_ends_at": end.isoformat(), 
+        "subscription_days_remaining": days,
+        "subscription_plan_name": plan.name
+    }
 
 
 class UserService:

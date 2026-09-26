@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  superadmin:
+    build:
+      context: ./apps/superadmin
+      dockerfile: Dockerfile
+    container_name: examplanner_superadmin
+    restart: unless-stopped
+    ports:
+      - "3005:80"

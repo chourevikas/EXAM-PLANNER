@@ -85,7 +85,10 @@ class User(SQLModel, table=True):
     refresh_tokens: List["RefreshToken"] = Relationship(
         back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    subscriptions: List["UserSubscription"] = Relationship(back_populates="user")
+    subscriptions: List["UserSubscription"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"foreign_keys": "[UserSubscription.user_id]"},
+    )
     exam_attempts: List["ExamAttempt"] = Relationship(
         back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )

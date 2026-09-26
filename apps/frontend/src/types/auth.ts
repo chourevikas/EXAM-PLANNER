@@ -41,6 +41,7 @@ export interface User {
   phone?: string | null;
   subscription_ends_at?: string | null;
   subscription_days_remaining?: number | null;
+  subscription_plan_name?: string | null;
   admin_permissions?: string[] | null;
   // Exam-preparation details the student saved on their profile.
   target_exam?: string | null;

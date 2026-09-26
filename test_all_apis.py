@@ -11,7 +11,7 @@ BASE_URL = "http://localhost:8000"
 # 1. Login as SuperAdmin
 print("--> Logging in as SuperAdmin...")
 login_payload = json.dumps({"email": "admin@examplanner.com", "password": "SuperAdmin#2026!"}).encode('utf-8')
-req = urllib.request.Request(f"{BASE_URL}/api/v1/auth/login", data=login_payload, headers={"Content-Type": "application/json"})
+req = urllib.request.Request(f"{BASE_URL}/api/v1/auth/login", data=login_payload, headers={"Content-Type": "application/json", "x-client-app": "superadmin"})
 with urllib.request.urlopen(req) as resp:
     login_data = json.loads(resp.read().decode('utf-8'))
 token = login_data["access_token"]
@@ -88,6 +88,7 @@ for idx, item in enumerate(test_routes):
         "curl", "-s", "-w", "\n%{http_code}\n%{time_total}",
         "-H", f"Authorization: Bearer {token}",
         "-H", "Accept: application/json",
+        "-H", "x-client-app: superadmin",
         url
     ]
     try:

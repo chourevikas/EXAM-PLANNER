@@ -823,11 +823,13 @@ export function ProfilePage() {
                   Current Subscription Plan
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>{isPro ? 'ExamPlanner Pro Annual Plan' : 'Free Starter Plan'}</span>
+                  <span>{isPro ? (user.subscription_plan_name || 'Pro Plan') : 'Free Starter Plan'}</span>
                   {isPro && <Star size={16} fill="#60a5fa" color="#60a5fa" />}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-                  {isPro ? 'Renews automatically on Aug 9, 2027' : 'Basic free access with 10 PYQs / day limit'}
+                  {isPro && user.subscription_ends_at 
+                    ? `Renews automatically on ${new Date(user.subscription_ends_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}` 
+                    : 'Basic free access with 10 PYQs / day limit'}
                 </div>
               </div>
 
@@ -850,7 +852,6 @@ export function ProfilePage() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => alert('Your Pro Subscription is active and fully unlocked!')}
                   style={{
                     padding: '8px 16px',
                     borderRadius: 'var(--radius)',
@@ -882,51 +883,9 @@ export function ProfilePage() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[
-                  { id: 'INV-2026-001', date: 'Aug 09, 2026', amount: '₹5,988', status: 'Paid', plan: 'Pro Annual Membership' }
-                ].map((inv) => (
-                  <div
-                    key={inv.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: 12,
-                      borderRadius: 'var(--radius)',
-                      backgroundColor: 'var(--bg-subtle)',
-                      border: '1px solid var(--border-default)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <Calendar size={18} color="var(--accent-primary)" />
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{inv.plan}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{inv.id} • {inv.date}</div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{inv.amount}</span>
-                      <button
-                        type="button"
-                        onClick={() => alert(`Downloading Invoice ${inv.id}...`)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--primary-red)',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontSize: 12,
-                          fontWeight: 600
-                        }}
-                      >
-                        <Download size={14} /> Receipt
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No billing history available for this account.
+                </div>
               </div>
             </div>
 
