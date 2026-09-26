@@ -30,7 +30,7 @@ export function SuperAdminStats({ stats, loading, onSelectTab }: SuperAdminStats
       bg: 'rgba(16, 185, 129, 0.12)',
       border: 'rgba(16, 185, 129, 0.25)',
       icon: Users,
-      targetTab: 'active',
+      targetTab: 'dashboard',
     },
     {
       title: 'Active Students',

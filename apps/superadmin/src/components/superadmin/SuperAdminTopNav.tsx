@@ -242,7 +242,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar, onSig
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {[
               { id: 'users' as SuperAdminTab, label: 'All Users & Roles' },
-              { id: 'active' as SuperAdminTab, label: 'Active Admins' },
+              { id: 'dashboard' as SuperAdminTab, label: 'Active Admins' },
               { id: 'activity' as SuperAdminTab, label: 'Activity Log' },
               { id: 'audit' as SuperAdminTab, label: 'Approval Audit Logs' },
               { id: 'roles-permissions' as SuperAdminTab, label: 'Roles & Permissions' },
