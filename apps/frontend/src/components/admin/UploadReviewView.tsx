@@ -211,7 +211,8 @@ function TableRowItem({
       exam.overall_status === 'READY_FOR_REVIEW' ||
       exam.overall_status === 'PUBLISHED' ||
       (exam.status || '').toUpperCase() === 'COMPLETED' ||
-      (exam.status || '').toUpperCase() === 'PUBLISHED');
+      (exam.status || '').toUpperCase() === 'PUBLISHED' ||
+      (exam.status || '').toUpperCase() === 'PENDING_HUMAN_REVIEW');
 
   return (
     <tr
@@ -465,7 +466,8 @@ function MobilePipelineCard({
       exam.overall_status === 'READY_FOR_REVIEW' ||
       exam.overall_status === 'PUBLISHED' ||
       (exam.status || '').toUpperCase() === 'COMPLETED' ||
-      (exam.status || '').toUpperCase() === 'PUBLISHED');
+      (exam.status || '').toUpperCase() === 'PUBLISHED' ||
+      (exam.status || '').toUpperCase() === 'PENDING_HUMAN_REVIEW');
 
   const percent = Math.min(100, Math.round((ext / (total || 1)) * 100));
 
