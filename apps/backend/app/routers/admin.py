@@ -369,7 +369,7 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
 
     # 1. Fetch all exams ordered by source year desc
     res = await session.exec(
-        select(Exam).order_by(Exam.source_year.desc(), Exam.created_at.desc())
+        select(Exam).where(Exam.is_mixed_bank == False).order_by(Exam.source_year.desc(), Exam.created_at.desc())
     )
     exams = res.all()
 
