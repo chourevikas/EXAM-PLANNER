@@ -244,7 +244,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar, onSig
               { id: 'users' as SuperAdminTab, label: 'All Users & Roles' },
               { id: 'dashboard' as SuperAdminTab, label: 'Active Admins' },
               { id: 'activity' as SuperAdminTab, label: 'Activity Log' },
-              { id: 'audit' as SuperAdminTab, label: 'Approval Audit Logs' },
+              // { id: 'audit' as SuperAdminTab, label: 'Approval Audit Logs' },
               { id: 'roles-permissions' as SuperAdminTab, label: 'Roles & Permissions' },
               { id: 'testimonials' as SuperAdminTab, label: 'Testimonial Approvals' },
             ]

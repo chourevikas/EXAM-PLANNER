@@ -2262,3 +2262,81 @@ class QuestionService:
         except Exception as e:
             await self.session.rollback()
             raise Exception(f"Error approving questions for exam {exam_id}: {str(e)}")
+
+    async def get_similar_questions(self, question_id: int, limit: int = 5) -> List[Dict[str, Any]]:
+        """Calculate and return similar questions based on AI knowledge tags (Jaccard Similarity)."""
+        from app.db.models.question import Question, QuestionTranslation
+        from sqlmodel import select
+
+        target_q = await self.session.get(Question, question_id)
+        if not target_q or not target_q.knowledge_tags_ai:
+            return []
+
+        # Find candidates within the same subtopic (or subject) that have AI tags
+        statement = select(Question).where(
+            Question.id != question_id,
+            Question.knowledge_tags_ai.is_not(None)
+        )
+        if target_q.subtopic_id:
+            statement = statement.where(Question.subtopic_id == target_q.subtopic_id)
+        elif target_q.subject_raw:
+            statement = statement.where(Question.subject_raw == target_q.subject_raw)
+            
+        candidates = (await self.session.exec(statement)).all()
+        
+        target_tags = target_q.knowledge_tags_ai
+        target_all = set(target_tags.get("concepts", [])) | set(target_tags.get("entities", []))
+        if not target_all:
+            return []
+
+        scored_candidates = []
+        for c in candidates:
+            c_tags = c.knowledge_tags_ai
+            c_all = set(c_tags.get("concepts", [])) | set(c_tags.get("entities", []))
+            if not c_all:
+                continue
+                
+            intersection = len(target_all.intersection(c_all))
+            union = len(target_all.union(c_all))
+            if union > 0:
+                score = round((intersection / union) * 100, 2)
+                if score > 0:
+                    scored_candidates.append({
+                        "question": c,
+                        "similarity_score": score
+                    })
+
+        scored_candidates.sort(key=lambda x: x["similarity_score"], reverse=True)
+        top_matches = scored_candidates[:limit]
+        
+        results = []
+        for match in top_matches:
+            q = match["question"]
+            # We need to return the question data in a way the frontend recommendationCardToQuestion can parse
+            q_data = q.dict()
+            q_data["question_id"] = q.id
+            q_data["subject_name"] = q.subject_raw
+            q_data["topic_name"] = q.topic_raw
+            q_data["subtopic_name"] = q.subtopic_raw
+            
+            q_trans = (await self.session.exec(
+                select(QuestionTranslation).where(QuestionTranslation.question_id == q.id)
+            )).first()
+            if q_trans:
+                q_data["question_text"] = q_trans.question_text
+            
+            # Basic options for the UI
+            from app.db.models.question import QuestionOption
+            options = (await self.session.exec(
+                select(QuestionOption).where(QuestionOption.question_id == q.id)
+            )).all()
+            q_data["options"] = [{"option_id": o.id, "option_label": o.option_label} for o in options]
+            
+            results.append({
+                "question_id": q.id,
+                "tier": "related", 
+                "similarity_score": match["similarity_score"],
+                "question": q_data
+            })
+
+        return results

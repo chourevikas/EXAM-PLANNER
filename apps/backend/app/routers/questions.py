@@ -332,7 +332,7 @@ async def list_recommended_questions(
 @router.get(
     "/{question_id}/similar",
     response_model=SimilarQuestionsResponse,
-    summary="Similar Questions via the Knowledge Layer (exact entity > concept > relationship > taxonomy)",
+    summary="Similar Questions via AI Knowledge Tags (Jaccard) or Knowledge Layer fallback",
     dependencies=[Depends(require_question_visible)],
 )
 async def get_similar_questions(
@@ -345,15 +345,28 @@ async def get_similar_questions(
     session: AsyncSession = Depends(get_async_session),
 ):
     """
-    Published questions most related to this one, ranked deterministically (no AI) with
-    `match_reasons` explaining each result. Questions without Knowledge Layer data fall
-    back to Nano Theme / Microtheme matches.
+    Published questions most related to this one.
+    First tries to use AI Knowledge Tags (Jaccard Similarity).
+    If no AI tags exist yet, falls back to deterministic Knowledge Layer (exact entity > concept > taxonomy).
     """
     try:
         qid_int = int(question_id)
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="Question not found")
 
+    from app.db.models.question import Question
+    target_q = await session.get(Question, qid_int)
+    if not target_q:
+        raise HTTPException(status_code=404, detail="Question not found")
+        
+    service = QuestionService(session)
+    
+    if target_q.knowledge_tags_ai:
+        # Use AI Jaccard Similarity
+        results = await service.get_similar_questions(qid_int, limit=limit)
+        return JSONResponse(content={"results": jsonable_encoder(results)})
+
+    # Fallback to Original Deterministic Similarity
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     lang_code = parse_language(language)
@@ -371,16 +384,23 @@ async def get_similar_questions(
     )
     if include_question and results:
         from sqlmodel import select, col
-        from app.db.models import Question
-        service = QuestionService(session)
         rows = (await session.exec(select(Question).where(col(Question.id).in_([r["question_id"] for r in results])))).all()
         cards = await service._build_light_recommendation_cards(list(rows), target_lang=lang_code)
         by_id = {int(c["question_id"]): c for c in cards}
         for r in results:
             r["question"] = by_id.get(r["question_id"])
+    
+    # Map score to pseudo similarity_score for UI rendering of badges if missing
+    max_score = max((r.get("score", 0) for r in results), default=1) or 1
+    for r in results:
+        if "similarity_score" not in r:
+            # Map deterministic score to a 75-99% range for visual badges
+            r["similarity_score"] = int(min((r.get("score", 0) / max_score) * 24 + 75, 99))
+            
     data = jsonable_encoder(SimilarQuestionsResponse(question_id=qid_int, results=results))
     await cache.set(cache_key, data, ttl_seconds=600)
     return JSONResponse(content=data)
+
 
 
 @router.get(
@@ -400,7 +420,6 @@ async def get_question_knowledge(
 
     from app.knowledge.queries import load_question_knowledge
     return await load_question_knowledge(session, qid_int)
-
 
 @router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID", dependencies=[Depends(require_question_visible)])
 async def get_question(
@@ -683,3 +702,5 @@ async def get_question_solution(
 
     await cache.set(cache_key, sol_card, ttl_seconds=3600)
     return JSONResponse(content=jsonable_encoder(sol_card))
+
+

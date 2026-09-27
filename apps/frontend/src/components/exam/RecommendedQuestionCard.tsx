@@ -231,10 +231,26 @@ export function RecommendedQuestionCard({
                 {(rec as any).source_year ? `• ${(rec as any).source_year}` : ''}
               </span>
             )}
+            {(rec as any).similarity_score && (
+              <span
+                style={{
+                  fontSize: 9.5,
+                  fontWeight: 700,
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  backgroundColor: '#DCFCE7',
+                  color: '#166534',
+                  border: '1px solid #BBF7D0',
+                  marginLeft: 'auto'
+                }}
+              >
+                🔥 {(rec as any).similarity_score}% Match
+              </span>
+            )}
             <ChevronDown
               size={14}
               style={{
-                marginLeft: 'auto',
+                marginLeft: (rec as any).similarity_score ? '4px' : 'auto',
                 transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                 transition: '0.2s',
                 color: 'var(--text-disabled)',

@@ -13,6 +13,7 @@ export type SimilarTier = 'exact' | 'related' | 'nano_theme' | 'microtheme';
 export interface SimilarQuestionResult {
   question_id: number;
   tier: SimilarTier;
+  similarity_score?: number;
   match_reasons: string[];
   question_number?: number | null;
   exam_name?: string | null;
@@ -24,7 +25,7 @@ export interface SimilarQuestionResult {
 }
 
 /** A recommendation card tagged with how closely it matched. */
-export type SimilarQuestionOut = QuestionOut & { similar_tier?: SimilarTier };
+export type SimilarQuestionOut = QuestionOut & { similar_tier?: SimilarTier; similarity_score?: number };
 
 /** Maps a /questions/recommended-style card (also embedded by /similar) to the QuestionOut used by the panels. */
 export function recommendationCardToQuestion(
@@ -105,6 +106,7 @@ export function useSimilarQuestions(
           .map((r, idx) => ({
             ...recommendationCardToQuestion(r.question, idx),
             similar_tier: r.tier,
+            similarity_score: r.similarity_score,
           }));
         setCache((prev) => ({ ...prev, [key]: cards }));
       })

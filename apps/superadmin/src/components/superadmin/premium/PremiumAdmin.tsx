@@ -2,16 +2,77 @@ import React, { useState, useEffect } from 'react';
 import { fetchPlans, fetchDiscounts, fetchPremiumAuditLogs, SubscriptionPlan, DiscountOffer, AuditLog } from '../../../services/premiumService';
 import { Crown, Tag, Gift, FileKey, CheckCircle2, XCircle } from 'lucide-react';
 
+function UserSelectDropdown({ users, name, placeholder }: { users: any[], name: string, placeholder?: string }) {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const filteredUsers = query === '' ? users : users.filter(u => 
+    u.full_name?.toLowerCase().includes(query.toLowerCase()) || 
+    u.email?.toLowerCase().includes(query.toLowerCase()) || 
+    u.id?.toString() === query
+  );
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        name={name}
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+        required
+        placeholder={placeholder}
+        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+        autoComplete="off"
+      />
+      {isOpen && (
+        <ul style={{ 
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, 
+          background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, 
+          marginTop: 4, maxHeight: 250, overflowY: 'auto', padding: 0, listStyle: 'none', 
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' 
+        }}>
+          {filteredUsers.length > 0 ? (
+            filteredUsers.slice(0, 50).map((u) => (
+              <li 
+                key={u.id}
+                onClick={() => {
+                  setQuery(u.email);
+                  setIsOpen(false);
+                }}
+                style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: 13, display: 'flex', flexDirection: 'column' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <div style={{ fontWeight: 500, color: '#0f172a' }}>{u.full_name} <span style={{ color: '#64748b', fontSize: 12, fontWeight: 400 }}>(ID: {u.id})</span></div>
+                <div style={{ color: '#475569', fontSize: 12 }}>{u.email}</div>
+              </li>
+            ))
+          ) : (
+            <li style={{ padding: '8px 12px', color: '#64748b', fontSize: 13, textAlign: 'center' }}>No users found.</li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function PremiumAdmin() {
   const [activeSubTab, setActiveSubTab] = useState<'plans' | 'discounts' | 'grants' | 'audit'>('plans');
   
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [discounts, setDiscounts] = useState<DiscountOffer[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ plan: SubscriptionPlan; action: 'deactivate' | 'reactivate' } | null>(null);
 
   // New UI states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,6 +101,10 @@ export default function PremiumAdmin() {
       } else if (activeSubTab === 'audit') {
         const data = await fetchPremiumAuditLogs();
         setLogs(data.logs);
+      } else if (activeSubTab === 'grants') {
+        const adminService = await import('../../../services/adminService');
+        const userList = await adminService.fetchPlatformUsers();
+        setUsers(userList);
       }
     } catch (e) {
       console.error(e);
@@ -120,7 +185,7 @@ export default function PremiumAdmin() {
             {activeSubTab === 'plans' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-                  <h3 style={{ margin: 0, fontSize: 18 }}>Active Plans</h3>
+                  <h3 style={{ margin: 0, fontSize: 18 }}>All Subscription Plans</h3>
                   <button onClick={() => setShowPlanModal(true)} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>+ Create Plan</button>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -146,22 +211,9 @@ export default function PremiumAdmin() {
                         </td>
                         <td style={{ padding: 12 }}>
                           <button
-                            onClick={async () => {
-                              setIsSubmitting(true);
-                              try {
-                                if (p.is_active) {
-                                  await import('../../../services/premiumService').then(m => m.deactivatePlan(p.id));
-                                  showToast('Plan deactivated successfully');
-                                } else {
-                                  await import('../../../services/premiumService').then(m => m.reactivatePlan(p.id));
-                                  showToast('Plan reactivated successfully');
-                                }
-                                loadData();
-                              } catch (err: any) {
-                                showToast(`Failed to ${p.is_active ? 'deactivate' : 'reactivate'} plan: ` + err.message, 'error');
-                              } finally {
-                                setIsSubmitting(false);
-                              }
+                            onClick={() => {
+                              const action = p.is_active ? 'deactivate' : 'reactivate';
+                              setConfirmAction({ plan: p, action });
                             }}
                             style={{
                               padding: '6px 12px',
@@ -256,17 +308,27 @@ export default function PremiumAdmin() {
                     }} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div>
                         <label style={{ display: 'block', fontSize: 13, marginBottom: 4, fontWeight: 500 }}>Target User ID or Email</label>
-                        <input name="userId" type="text" required placeholder="e.g. 42 or user@example.com" style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1' }} />
+                        <UserSelectDropdown users={users} name="userId" placeholder="Search user by name, email or ID..." />
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: 13, marginBottom: 4, fontWeight: 500 }}>Subscription Plan</label>
-                        <select name="planId" required style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1' }}>
+                        <select name="planId" required style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+                          onChange={(e) => {
+                            const selectedPlan = plans.find(p => p.id.toString() === e.target.value);
+                            const durationInput = e.currentTarget.form?.elements.namedItem('durationDays') as HTMLInputElement;
+                            if (selectedPlan && durationInput) {
+                              if (selectedPlan.billing_interval === 'MONTHLY') durationInput.value = '30';
+                              else if (selectedPlan.billing_interval === 'YEARLY') durationInput.value = '365';
+                              else if (selectedPlan.billing_interval === 'LIFETIME') durationInput.value = '36500';
+                            }
+                          }}
+                        >
                           <option value="">-- Select a Plan --</option>
                           {plans.map(p => <option key={p.id} value={p.id}>{p.name} ({p.plan_code})</option>)}
                         </select>
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: 13, marginBottom: 4, fontWeight: 500 }}>Duration (Days)</label>
+                        <label style={{ display: 'block', fontSize: 13, marginBottom: 4, fontWeight: 500 }}>Duration (Days) <span style={{ color: '#64748b', fontWeight: 'normal', fontSize: 11 }}>(Auto-filled based on plan)</span></label>
                         <input name="durationDays" type="number" required defaultValue={30} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1' }} />
                       </div>
                       <div>
@@ -307,7 +369,7 @@ export default function PremiumAdmin() {
                     }} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div>
                         <label style={{ display: 'block', fontSize: 13, marginBottom: 4, fontWeight: 500, color: '#be123c' }}>Target User ID or Email</label>
-                        <input name="revokeUserId" type="text" required placeholder="e.g. 42 or user@example.com" style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #fecdd3' }} />
+                        <UserSelectDropdown users={users} name="revokeUserId" placeholder="Search user by name, email or ID..." />
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: 13, marginBottom: 4, fontWeight: 500, color: '#be123c' }}>Reason for Revocation (Audit)</label>
@@ -358,6 +420,58 @@ export default function PremiumAdmin() {
         )}
       </div>
 
+      {/* CONFIRMATION MODAL */}
+      {confirmAction && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', padding: 24, borderRadius: 12, width: '100%', maxWidth: 400, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 18, color: '#0f172a' }}>Confirm Action</h3>
+              <button onClick={() => setConfirmAction(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#64748b' }}>&times;</button>
+            </div>
+            <p style={{ color: '#475569', marginBottom: 24, fontSize: 15, lineHeight: 1.5 }}>
+              Are you sure you want to {confirmAction.action} the plan <strong>"{confirmAction.plan.name}"</strong>?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button 
+                onClick={() => setConfirmAction(null)} 
+                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 500, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={async () => {
+                  const p = confirmAction.plan;
+                  const action = confirmAction.action;
+                  setConfirmAction(null);
+                  setIsSubmitting(true);
+                  try {
+                    if (p.is_active) {
+                      await import('../../../services/premiumService').then(m => m.deactivatePlan(p.id));
+                      showToast('Plan deactivated successfully');
+                    } else {
+                      await import('../../../services/premiumService').then(m => m.reactivatePlan(p.id));
+                      showToast('Plan reactivated successfully');
+                    }
+                    loadData();
+                  } catch (err: any) {
+                    showToast(`Failed to ${action} plan: ` + err.message, 'error');
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                style={{ 
+                  padding: '8px 16px', borderRadius: 6, border: 'none', 
+                  background: confirmAction.action === 'deactivate' ? '#ef4444' : '#10b981', 
+                  color: '#fff', fontWeight: 500, cursor: 'pointer' 
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* CREATE PLAN MODAL */}
       {showPlanModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
@@ -374,7 +488,7 @@ export default function PremiumAdmin() {
                 const res = await import('../../../services/premiumService').then(m => m.createPlan({
                   plan_code: formData.get('planCode') as string,
                   name: formData.get('name') as string,
-                  price_cents: Number(formData.get('price')),
+                  price_cents: Math.round(Number(formData.get('price')) * 100),
                   currency: formData.get('currency') as string,
                   billing_interval: formData.get('interval') as string,
                   display_order: Number(formData.get('order')),
@@ -399,12 +513,12 @@ export default function PremiumAdmin() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, marginBottom: 4 }}>Price (Cents)</label>
-                  <input name="price" type="number" required defaultValue={999} style={{ width: '100%', padding: '8px', borderRadius: 4, border: '1px solid #ccc' }} />
+                  <label style={{ display: 'block', fontSize: 13, marginBottom: 4 }}>Price (INR)</label>
+                  <input name="price" type="number" step="0.01" required defaultValue={99} style={{ width: '100%', padding: '8px', borderRadius: 4, border: '1px solid #ccc' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, marginBottom: 4 }}>Currency</label>
-                  <input name="currency" type="text" required defaultValue="INR" style={{ width: '100%', padding: '8px', borderRadius: 4, border: '1px solid #ccc' }} />
+                  <input name="currency" type="text" required defaultValue="INR" readOnly style={{ width: '100%', padding: '8px', borderRadius: 4, border: '1px solid #ccc', background: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' }} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

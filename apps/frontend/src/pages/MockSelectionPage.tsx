@@ -109,6 +109,7 @@ export function MockSelectionPage() {
         const dynamicExams: string[] = [];
         if (Array.isArray(publishedExams) && publishedExams.length > 0) {
           publishedExams.forEach((e: any) => {
+            if (e.is_mixed_bank) return; // skip question banks
             const canonical = extractCanonicalExamName(e.name || e.title || e.exam_name || e.code);
             if (canonical) dynamicExams.push(canonical);
           });
@@ -1339,84 +1340,6 @@ export function MockSelectionPage() {
         </form>
       </section>
 
-      {/* Resume in-progress attempt banner */}
-      {!isResumeLoading && resumeAttempt && (() => {
-        const total = resumeAttempt.response_summary?.total || resumeAttempt.total_questions || 0;
-        const answered = resumeAttempt.response_summary?.answered_count || 0;
-        const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
-        const minsLeft = Math.max(1, Math.round((resumeAttempt.remaining_seconds || 0) / 60));
-        return (
-          <section
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-              flexWrap: 'wrap',
-              marginBottom: 28,
-              padding: '16px 20px',
-              borderRadius: 'var(--radius)',
-              background: 'linear-gradient(100deg, #EEF0FF 0%, #F7F4FF 60%, #FFF0F2 100%)',
-              border: '1px solid #D3D6FF',
-            }}
-          >
-            <div
-              style={{
-                width: 46,
-                height: 46,
-                borderRadius: '50%',
-                flex: 'none',
-                display: 'grid',
-                placeItems: 'center',
-                background: `conic-gradient(var(--primary-red) ${pct * 3.6}deg, #E9EBF5 0deg)`,
-              }}
-            >
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  background: '#F6F5FF',
-                  display: 'grid',
-                  placeItems: 'center',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  color: 'var(--deep-navy)',
-                }}
-              >
-                {pct}%
-              </div>
-            </div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--deep-navy)' }}>
-                Continue your {resumeAttempt.exam_name || 'practice'} test
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                {answered} of {total} answered &middot; {minsLeft} minute{minsLeft === 1 ? '' : 's'} left
-              </div>
-            </div>
-            <Link
-              to={`/exam/${resumeAttempt.exam_id}?type=PYQ`}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                height: 40,
-                padding: '0 18px',
-                borderRadius: 'var(--radius)',
-                background: 'var(--primary-red)',
-                color: 'var(--bg-card)',
-                fontWeight: 700,
-                fontSize: 13.5,
-                textDecoration: 'none',
-                flex: 'none',
-              }}
-            >
-              <PlayCircle size={16} fill="var(--bg-card)" color="var(--primary-red)" />
-              Resume test
-            </Link>
-          </section>
-        );
-      })()}
 
       {/* Weak areas + Recent attempts */}
       <section

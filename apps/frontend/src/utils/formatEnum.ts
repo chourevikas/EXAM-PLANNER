@@ -177,6 +177,12 @@ export function extractCanonicalExamName(raw?: string | null): string {
 
   if (clean === 'State PSC') return 'State PSC';
 
+  // Explicitly block subject/topic names that were erroneously created as exams in the database
+  const invalidNames = ['polity', 'geography', 'history', 'economy', 'science', 'environment', 'math', 'reasoning', 'english'];
+  if (invalidNames.some(name => lower.includes(name)) || lower.includes('subject-wise')) {
+    return 'UPSC CSE';
+  }
+
   // Strip years, set codes, prelims, mains, gs paper tokens
   const stripped = clean
     .replace(/\s*\(\d{4}\).*$/i, '')

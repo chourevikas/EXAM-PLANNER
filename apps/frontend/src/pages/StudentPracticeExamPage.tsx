@@ -1855,7 +1855,7 @@ export function StudentPracticeExamPage() {
                         zIndex: 100,
                       }}
                     >
-                      {(availableExams).map(
+                      {['All Exams', ...availableExams].map(
                         (opt) => (
                           <div
                             key={opt}
@@ -2811,7 +2811,7 @@ export function StudentPracticeExamPage() {
                       zIndex: 100,
                     }}
                   >
-                    {(availableExams).map(
+                    {['All Exams', ...availableExams].map(
                       (opt) => (
                         <div
                           key={opt}

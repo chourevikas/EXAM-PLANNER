@@ -30,7 +30,7 @@ export interface SubscriptionPlan {
 }
 
 export const fetchPlans = async (): Promise<{ plans: SubscriptionPlan[] }> => {
-  return fetchJson('/admin/plans');
+  return fetchJson('/admin/plans?include_inactive=true');
 };
 
 export const createPlan = async (data: Partial<SubscriptionPlan>): Promise<SubscriptionPlan> => {

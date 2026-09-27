@@ -1,0 +1,693 @@
+INFO:     Will watch for changes in these directories: ['/home/neerajpandey/Documents/examplanner_code/apps/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [4077617] using WatchFiles
+2026-09-26 23:51:38 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:55): Initializing Database Engine (pool_size=10, max_overflow=10, pool_recycle=1800, pool_pre_ping=False)...
+/home/neerajpandey/.local/lib/python3.14/site-packages/langchain_core/utils/pydantic.py:42: UserWarning: Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.
+  from pydantic.v1 import BaseModel as BaseModelV1
+INFO:     Started server process [4077637]
+INFO:     Waiting for application startup.
+SECRET_KEY is the built-in default; fine for local development only.
+2026-09-26 23:51:42 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:183): Verifying/initializing database tables on engine: postgresql+asyncpg (testdb)...
+2026-09-26 23:51:49 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:227): Successfully verified/created site_settings table in PostgreSQL.
+2026-09-26 23:51:51 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:249): Successfully verified/created user_notification_reads table in PostgreSQL.
+2026-09-26 23:51:53 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:260): Successfully verified/created challenge enum types in PostgreSQL.
+2026-09-26 23:51:56 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:342): SQLModel table check complete.
+2026-09-26 23:51:59 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:409): Warmed 10 database connections in the pool.
+2026-09-26 23:52:01 [INFO] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:81): Application startup complete. Uvicorn server is ready to accept connections.
+INFO:     Application startup complete.
+2026-09-26 23:52:15 [INFO] [CacheFactory] [TaskID: N/A] (factory.py:52): ⚡ [CACHE_INIT] Redis Cache with In-Memory LRU Fallback enabled (Redis: redis://127.0.0.1:6379/1, Memory Max: 1000).
+2026-09-26 23:52:15 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exam_types:list:active'
+INFO:     127.0.0.1:51072 - "GET /api/v1/exam-types HTTP/1.1" 200 OK
+2026-09-26 23:52:22 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:41596 - "GET /api/v1/exams/recommended?limit=6 HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:38516 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40072 - "GET /api/v1/exams/approved HTTP/1.1" 422 Unprocessable Content
+2026-09-26 23:52:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:syllabus:complete:master'
+INFO:     127.0.0.1:45542 - "GET /api/v1/syllabus HTTP/1.1" 200 OK
+2026-09-26 23:52:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:45556 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-26 23:53:22 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:38416 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56374 - "GET /api/v1/exams HTTP/1.1" 200 OK
+2026-09-26 23:53:41 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:46164 - "GET /api/v1/exams HTTP/1.1" 200 OK
+2026-09-26 23:53:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:49286 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49274 - "GET /api/v1/questions/recommended HTTP/1.1" 200 OK
+2026-09-26 23:54:20 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:45660 - "GET /api/v1/exams HTTP/1.1" 200 OK
+2026-09-26 23:54:20 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:syllabus:complete:master'
+INFO:     127.0.0.1:45654 - "GET /api/v1/syllabus HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45650 - "GET /api/v1/exams?status=PUBLISHED HTTP/1.1" 200 OK
+2026-09-26 23:54:22 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:45638 - "GET /api/v1/exams/by-year HTTP/1.1" 200 OK
+2026-09-26 23:54:23 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:45666 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45680 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45676 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+2026-09-26 23:54:24 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:45624 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-26 23:54:26 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:45690 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45630 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45698 - "GET /api/v1/attempts/127/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41500 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41508 - "GET /api/v1/syllabus?exam_name=UPSC+CSE HTTP/1.1" 200 OK
+2026-09-26 23:54:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:55664 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-26 23:54:46 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:33018 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-26 23:54:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:33034 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-26 23:55:00 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'daily_digest_dispatched:2026-09-26'
+2026-09-26 23:55:00 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'midnight_translation:HINDI:2026-09-26'
+2026-09-26 23:55:00 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'midnight_translation:MARATHI:2026-09-26'
+2026-09-26 23:55:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:44654 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-26 23:55:22 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:43036 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-26 23:55:31 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exam_types:list:active'
+INFO:     127.0.0.1:60350 - "GET /api/v1/exam-types HTTP/1.1" 200 OK
+2026-09-26 23:55:31 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:60354 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-26 23:55:40 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:51820 - "GET /api/v1/exams HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51814 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Economy&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/v1/questions?limit=100&subject_name=Economy&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-26 23:55:49 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:cfa7868b39f5'
+INFO:     127.0.0.1:60810 - "GET /api/v1/questions?limit=100&subject_name=Economy&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60818 - "GET /api/v1/questions/105/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60822 - "GET /api/v1/questions/104/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60836 - "GET /api/v1/questions/104/similar?limit=6&include_question=true&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42438 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Economy&topic_name=Banking+and+Finance&exclude_ids=104%2C105%2C106%2C107%2C808%2C709%2C809%2C110%2C711%2C712%2C112%2C212%2C113%2C713%2C213%2C114%2C116%2C817%2C117%2C718%2C118%2C719%2C1581%2C120%2C1582%2C1583%2C1584%2C123%2C125%2C127%2C1590%2C129%2C1591%2C729%2C730%2C830%2C230%2C130%2C1594%2C832%2C133%2C1595%2C834%2C835%2C836%2C239%2C1606%2C1607%2C1608%2C847%2C1609%2C1610%2C749%2C750%2C751%2C1613%2C752%2C1615%2C753%2C155%2C855%2C156%2C857%2C257%2C759%2C860%2C861%2C167%2C868%2C1632%2C770%2C871%2C1635%2C274%2C275%2C276%2C277%2C279%2C280%2C781%2C1644%2C282%2C283%2C1646%2C284%2C285%2C286%2C287%2C1651%2C289%2C889%2C290%2C191%2C291%2C292%2C293%2C898%2C799%2C800%2C1663&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42424 - "GET /api/v1/questions?limit=100&subject_name=Economy&topic_name=Banking+and+Finance&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47682 - "GET /api/v1/questions/1590/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47684 - "GET /api/v1/questions/1707/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47680 - "GET /api/v1/questions/recommended?limit=14&exam_name=upsc+cse&subject_name=Economy&topic_name=Banking+and+Finance&exclude_ids=104%2C105%2C106%2C107%2C808%2C709%2C809%2C110%2C711%2C712%2C112%2C212%2C113%2C713%2C213%2C114%2C116%2C817%2C117%2C718%2C118%2C719%2C1581%2C120%2C1582%2C1583%2C1584%2C123%2C125%2C127%2C1590%2C129%2C1591%2C729%2C730%2C830%2C230%2C130%2C1594%2C832%2C133%2C1595%2C834%2C835%2C836%2C239%2C1606%2C1607%2C1608%2C847%2C1609%2C1610%2C749%2C750%2C751%2C1613%2C752%2C1615%2C753%2C155%2C855%2C156%2C857%2C257%2C759%2C860%2C861%2C167%2C868%2C1632%2C770%2C871%2C1635%2C274%2C275%2C276%2C277%2C279%2C280%2C781%2C1644%2C282%2C283%2C1646%2C284%2C285%2C286%2C287%2C1651%2C289%2C889%2C290%2C191%2C291%2C292%2C293%2C898%2C799%2C800%2C1663%2C1707&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47690 - "GET /api/v1/questions/1590/similar?limit=6&include_question=true&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53516 - "GET /api/v1/questions/recommended?limit=7&exam_name=upsc+cse&subject_name=Economy&topic_name=Banking+and+Finance&exclude_ids=1590%2C1707%2C1699%2C1700%2C1701%2C1702%2C1703%2C1708%2C1712&language=en HTTP/1.1" 200 OK
+2026-09-26 23:56:29 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:48982 - "GET /api/v1/exams HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48986 - "GET /api/v1/questions?limit=100&subject_name=Economy&topic_name=Banking+and+Finance&subtopic_name=Banking+Structures%2C+Syndicated+Loans+%26+CBDC&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-26 23:56:41 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:1590:ENGLISH'
+INFO:     127.0.0.1:48528 - "GET /api/v1/questions/1590/solution HTTP/1.1" 200 OK
+2026-09-26 23:56:41 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:1707:ENGLISH'
+INFO:     127.0.0.1:48536 - "GET /api/v1/questions/1707/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48998 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Economy&topic_name=Banking+and+Finance&subtopic_name=Banking+Structures%2C+Syndicated+Loans+%26+CBDC&exclude_ids=1590%2C1707&language=en HTTP/1.1" 200 OK
+2026-09-26 23:56:42 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:48544 - "GET /api/v1/exams HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'fix_mixed_banks.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-26 23:57:24 [INFO] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:91): 🧹 Server shutdown initiated. Cleaning up temporary upload directories and PDF cache...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [4077637]
+2026-09-26 23:57:30 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:55): Initializing Database Engine (pool_size=10, max_overflow=10, pool_recycle=1800, pool_pre_ping=False)...
+/home/neerajpandey/.local/lib/python3.14/site-packages/langchain_core/utils/pydantic.py:42: UserWarning: Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.
+  from pydantic.v1 import BaseModel as BaseModelV1
+INFO:     Started server process [4083244]
+INFO:     Waiting for application startup.
+SECRET_KEY is the built-in default; fine for local development only.
+2026-09-26 23:57:36 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:183): Verifying/initializing database tables on engine: postgresql+asyncpg (testdb)...
+2026-09-26 23:57:42 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:227): Successfully verified/created site_settings table in PostgreSQL.
+2026-09-26 23:57:45 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:249): Successfully verified/created user_notification_reads table in PostgreSQL.
+2026-09-26 23:57:48 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:260): Successfully verified/created challenge enum types in PostgreSQL.
+2026-09-26 23:57:51 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:342): SQLModel table check complete.
+2026-09-26 23:57:54 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:409): Warmed 10 database connections in the pool.
+2026-09-26 23:57:56 [INFO] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:81): Application startup complete. Uvicorn server is ready to accept connections.
+INFO:     Application startup complete.
+2026-09-26 23:58:02 [INFO] [CacheFactory] [TaskID: N/A] (factory.py:52): ⚡ [CACHE_INIT] Redis Cache with In-Memory LRU Fallback enabled (Redis: redis://127.0.0.1:6379/1, Memory Max: 1000).
+2026-09-26 23:58:02 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:6ff3d02392a3'
+INFO:     127.0.0.1:48670 - "GET /api/v1/questions?limit=100&subject_name=Economy&topic_name=Banking+and+Finance&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-26 23:58:03 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:cfa7868b39f5'
+INFO:     127.0.0.1:48698 - "GET /api/v1/questions?limit=100&subject_name=Economy&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-26 23:58:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:1590:ENGLISH'
+INFO:     127.0.0.1:48688 - "GET /api/v1/questions/1590/solution HTTP/1.1" 200 OK
+2026-09-26 23:58:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:1707:ENGLISH'
+INFO:     127.0.0.1:48692 - "GET /api/v1/questions/1707/solution HTTP/1.1" 200 OK
+2026-09-26 23:58:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:104:ENGLISH'
+INFO:     127.0.0.1:48714 - "GET /api/v1/questions/104/solution HTTP/1.1" 200 OK
+2026-09-26 23:58:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:student_dashboard_stats:28'
+INFO:     127.0.0.1:48748 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+2026-09-26 23:58:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:subj_perf:28'
+INFO:     127.0.0.1:48750 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+2026-09-26 23:58:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:105:ENGLISH'
+INFO:     127.0.0.1:48716 - "GET /api/v1/questions/105/solution HTTP/1.1" 200 OK
+2026-09-26 23:58:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:auth:me:stats:28'
+2026-09-26 23:58:06 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:06 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:06 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:06 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:06 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:auth:me:stats:28'
+INFO:     127.0.0.1:48732 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:site_settings:theme'
+INFO:     127.0.0.1:34654 - "GET /api/v1/site-settings/theme HTTP/1.1" 200 OK
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:auth:me:stats:28'
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:by_year'
+INFO:     127.0.0.1:34684 - "GET /api/v1/exams/by-year HTTP/1.1" 200 OK
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:5fa08cc25ce5'
+INFO:     127.0.0.1:34696 - "GET /api/v1/exams?status=PUBLISHED HTTP/1.1" 200 OK
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:syllabus:complete:master'
+INFO:     127.0.0.1:34710 - "GET /api/v1/syllabus HTTP/1.1" 200 OK
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:34722 - "GET /api/v1/exams HTTP/1.1" 200 OK
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:34620 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:attempts:status-summary:28'
+INFO:     127.0.0.1:34732 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:student_dashboard_stats:28'
+INFO:     127.0.0.1:34744 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+2026-09-26 23:58:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:subj_perf:28'
+INFO:     127.0.0.1:34746 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48738 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34648 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48762 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34652 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48724 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34672 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34634 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48684 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Economy&topic_name=Banking+and+Finance&exclude_ids=1590%2C1707&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34658 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34740 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+2026-09-26 23:58:13 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:34752 - "GET /api/v1/attempts/127/status HTTP/1.1" 200 OK
+2026-09-26 23:58:21 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:syllabus:complete:name:UPSC_CSE'
+INFO:     127.0.0.1:46326 - "GET /api/v1/syllabus?exam_name=UPSC+CSE HTTP/1.1" 200 OK
+2026-09-26 23:58:26 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:site_settings:theme'
+INFO:     127.0.0.1:48942 - "GET /api/v1/site-settings/theme HTTP/1.1" 200 OK
+2026-09-26 23:58:26 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:26 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:26 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:auth:me:stats:28'
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:by_year'
+INFO:     127.0.0.1:48972 - "GET /api/v1/exams/by-year HTTP/1.1" 200 OK
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:5fa08cc25ce5'
+INFO:     127.0.0.1:48978 - "GET /api/v1/exams?status=PUBLISHED HTTP/1.1" 200 OK
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:syllabus:complete:master'
+INFO:     127.0.0.1:48988 - "GET /api/v1/syllabus HTTP/1.1" 200 OK
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:49004 - "GET /api/v1/exams HTTP/1.1" 200 OK
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:attempts:status-summary:28'
+INFO:     127.0.0.1:49006 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:attempts:user:28:7c41e1c11706'
+INFO:     127.0.0.1:49008 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:student_dashboard_stats:28'
+INFO:     127.0.0.1:49022 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:subj_perf:28'
+INFO:     127.0.0.1:49036 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+2026-09-26 23:58:27 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:48958 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48956 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49052 - "GET /api/v1/attempts/127/status HTTP/1.1" 200 OK
+2026-09-26 23:58:40 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-26 23:58:44 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:syllabus:complete:name:UPSC_CSE'
+INFO:     127.0.0.1:41502 - "GET /api/v1/syllabus?exam_name=UPSC+CSE HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41494 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-26 23:58:56 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:59268 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_year=2020&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-26 23:58:59 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:378a4524cb14'
+INFO:     127.0.0.1:59296 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_year=2020&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59266 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59280 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Geography&topic_name=Atmosphere&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59312 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-26 23:59:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:3578e1112c1c'
+INFO:     127.0.0.1:59334 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59318 - "GET /api/v1/questions?limit=100&subject_name=Geography&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-26 23:59:08 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:cee116b7eec7'
+INFO:     127.0.0.1:49684 - "GET /api/v1/questions?limit=100&subject_name=Geography&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59320 - "GET /api/v1/questions?limit=100&exam_name=upsc&exam_year=2020&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-26 23:59:09 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:ff04a4f3233e'
+INFO:     127.0.0.1:49698 - "GET /api/v1/questions?limit=100&exam_name=upsc&exam_year=2020&include_solutions=true&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49700 - "GET /api/v1/questions/1639/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59330 - "GET /api/v1/questions/recommended?limit=14&exam_name=upsc+cse&subject_name=Geography&topic_name=Atmosphere&exclude_ids=1639&language=en HTTP/1.1" 200 OK
+2026-09-26 23:59:13 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:49722 - "GET /api/v1/exams HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49716 - "GET /api/v1/questions/1639/similar?limit=6&include_question=true&language=en HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'check_db.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-26 23:59:47 [INFO] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:91): 🧹 Server shutdown initiated. Cleaning up temporary upload directories and PDF cache...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [4083244]
+2026-09-26 23:59:54 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:55): Initializing Database Engine (pool_size=10, max_overflow=10, pool_recycle=1800, pool_pre_ping=False)...
+/home/neerajpandey/.local/lib/python3.14/site-packages/langchain_core/utils/pydantic.py:42: UserWarning: Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.
+  from pydantic.v1 import BaseModel as BaseModelV1
+INFO:     Started server process [4085586]
+INFO:     Waiting for application startup.
+SECRET_KEY is the built-in default; fine for local development only.
+2026-09-27 00:00:00 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:183): Verifying/initializing database tables on engine: postgresql+asyncpg (testdb)...
+2026-09-27 00:00:07 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:227): Successfully verified/created site_settings table in PostgreSQL.
+2026-09-27 00:00:08 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:249): Successfully verified/created user_notification_reads table in PostgreSQL.
+2026-09-27 00:00:11 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:260): Successfully verified/created challenge enum types in PostgreSQL.
+2026-09-27 00:00:14 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:342): SQLModel table check complete.
+2026-09-27 00:00:17 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:409): Warmed 10 database connections in the pool.
+2026-09-27 00:00:19 [INFO] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:81): Application startup complete. Uvicorn server is ready to accept connections.
+INFO:     Application startup complete.
+2026-09-27 00:00:19 [INFO] [CacheFactory] [TaskID: N/A] (factory.py:52): ⚡ [CACHE_INIT] Redis Cache with In-Memory LRU Fallback enabled (Redis: redis://127.0.0.1:6379/1, Memory Max: 1000).
+2026-09-27 00:00:19 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:53556 - "GET /api/v1/exams HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59264 - "GET /api/v1/exams HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44286 - "GET /api/v1/exams?status=PUBLISHED HTTP/1.1" 200 OK
+2026-09-27 00:02:02 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:5fa08cc25ce5'
+INFO:     127.0.0.1:48808 - "GET /api/v1/exams?status=PUBLISHED HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37828 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_year=2020&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:02:29 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:3578e1112c1c'
+INFO:     127.0.0.1:37848 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:02:29 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:cee116b7eec7'
+INFO:     127.0.0.1:37854 - "GET /api/v1/questions?limit=100&subject_name=Geography&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:02:29 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:ff04a4f3233e'
+INFO:     127.0.0.1:37856 - "GET /api/v1/questions?limit=100&exam_name=upsc&exam_year=2020&include_solutions=true&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37840 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exclude_ids=1639&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37846 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:02:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:1639:ENGLISH'
+INFO:     127.0.0.1:41380 - "GET /api/v1/questions/1639/solution HTTP/1.1" 200 OK
+2026-09-27 00:04:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:site_settings:theme'
+INFO:     127.0.0.1:34860 - "GET /api/v1/site-settings/theme HTTP/1.1" 200 OK
+2026-09-27 00:04:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exam_types:list:active'
+INFO:     127.0.0.1:34866 - "GET /api/v1/exam-types HTTP/1.1" 200 OK
+2026-09-27 00:04:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:syllabus:complete:master'
+INFO:     127.0.0.1:34890 - "GET /api/v1/syllabus HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34900 - "GET /api/v1/testimonials/approved HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34874 - "GET /api/v1/questions/recommended?limit=6 HTTP/1.1" 200 OK
+2026-09-27 00:04:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:recommended:e242d6a69207'
+INFO:     127.0.0.1:38968 - "GET /api/v1/questions/recommended?limit=6 HTTP/1.1" 200 OK
+2026-09-27 00:04:20 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:student_dashboard_stats:28'
+INFO:     127.0.0.1:48574 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+2026-09-27 00:04:20 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:subj_perf:28'
+INFO:     127.0.0.1:48582 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+2026-09-27 00:04:20 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:04:21 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:48624 - "GET /api/v1/exams HTTP/1.1" 200 OK
+2026-09-27 00:04:21 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:48598 - "GET /api/v1/analytics/predicted-rank HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48592 - "GET /api/v1/analytics/activity/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48610 - "GET /api/v1/study-plan/badges HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48628 - "GET /api/v1/study-plan/weekly-schedule HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48564 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48566 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+2026-09-27 00:04:49 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:60008 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:05:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:05:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:auth:me:stats:28'
+2026-09-27 00:05:07 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:41780 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+2026-09-27 00:05:10 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:5fa08cc25ce5'
+INFO:     127.0.0.1:41812 - "GET /api/v1/exams?status=PUBLISHED HTTP/1.1" 200 OK
+2026-09-27 00:05:10 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:41818 - "GET /api/v1/exams HTTP/1.1" 200 OK
+2026-09-27 00:05:10 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:05:10 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:05:10 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:05:10 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:student_dashboard_stats:28'
+INFO:     127.0.0.1:41840 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+2026-09-27 00:05:10 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:05:10 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:subj_perf:28'
+INFO:     127.0.0.1:41854 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41794 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41828 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41830 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+2026-09-27 00:05:12 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:41804 - "GET /api/v1/exams/by-year HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41870 - "GET /api/v1/attempts/127/status HTTP/1.1" 200 OK
+2026-09-27 00:05:18 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:55918 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:05:20 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:syllabus:complete:name:UPSC_CSE'
+INFO:     127.0.0.1:55924 - "GET /api/v1/syllabus?exam_name=UPSC+CSE HTTP/1.1" 200 OK
+2026-09-27 00:05:48 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:05:50 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:3578e1112c1c'
+INFO:     127.0.0.1:41084 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:05:50 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:3578e1112c1c'
+INFO:     127.0.0.1:41100 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:05:51 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:similar:1639:57375fd963ae'
+INFO:     127.0.0.1:41122 - "GET /api/v1/questions/1639/similar?limit=6&include_question=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:05:51 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:1639:ENGLISH'
+INFO:     127.0.0.1:41106 - "GET /api/v1/questions/1639/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41072 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41090 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Geography&topic_name=Atmosphere&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:03 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:site_settings:theme'
+INFO:     127.0.0.1:47460 - "GET /api/v1/site-settings/theme HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:5fa08cc25ce5'
+INFO:     127.0.0.1:47486 - "GET /api/v1/exams?status=PUBLISHED HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:syllabus:complete:name:UPSC_CSE'
+INFO:     127.0.0.1:47474 - "GET /api/v1/syllabus?exam_name=UPSC+CSE HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:by_year'
+INFO:     127.0.0.1:47492 - "GET /api/v1/exams/by-year HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:83a92968f77c'
+INFO:     127.0.0.1:47506 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_year=2020&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:83a92968f77c'
+INFO:     127.0.0.1:47532 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_year=2020&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:c08c1cc9568a'
+INFO:     127.0.0.1:47534 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:3578e1112c1c'
+INFO:     127.0.0.1:47548 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:cee116b7eec7'
+INFO:     127.0.0.1:47552 - "GET /api/v1/questions?limit=100&subject_name=Geography&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:c08c1cc9568a'
+INFO:     127.0.0.1:47572 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:3578e1112c1c'
+INFO:     127.0.0.1:47578 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:ff04a4f3233e'
+INFO:     127.0.0.1:47558 - "GET /api/v1/questions?limit=100&exam_name=upsc&exam_year=2020&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:cee116b7eec7'
+INFO:     127.0.0.1:47580 - "GET /api/v1/questions?limit=100&subject_name=Geography&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:04 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:ff04a4f3233e'
+INFO:     127.0.0.1:47588 - "GET /api/v1/questions?limit=100&exam_name=upsc&exam_year=2020&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:similar:1639:57375fd963ae'
+INFO:     127.0.0.1:47614 - "GET /api/v1/questions/1639/similar?limit=6&include_question=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:1639:ENGLISH'
+INFO:     127.0.0.1:47602 - "GET /api/v1/questions/1639/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47454 - "GET /api/v1/questions/recommended?limit=14&exam_name=upsc+cse&subject_name=Geography&topic_name=Atmosphere&exclude_ids=1639&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47516 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:28 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:c08c1cc9568a'
+INFO:     127.0.0.1:53318 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:29 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:1639:ENGLISH'
+INFO:     127.0.0.1:53324 - "GET /api/v1/questions/1639/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53320 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exclude_ids=1639&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44784 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse%2Cgeography&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exclude_ids=1639&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:53 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:3578e1112c1c'
+INFO:     127.0.0.1:44794 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:attempts:user:28:7c41e1c11706'
+INFO:     127.0.0.1:44840 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:student_dashboard_stats:28'
+INFO:     127.0.0.1:44856 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:subj_perf:28'
+INFO:     127.0.0.1:44866 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:auth:me:stats:28'
+2026-09-27 00:06:54 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:1639:ENGLISH'
+INFO:     127.0.0.1:44810 - "GET /api/v1/questions/1639/solution HTTP/1.1" 200 OK
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:student_dashboard_stats:28'
+INFO:     127.0.0.1:44896 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:subj_perf:28'
+INFO:     127.0.0.1:44902 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:activity_today:28'
+INFO:     127.0.0.1:44904 - "GET /api/v1/analytics/activity/today HTTP/1.1" 200 OK
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:rank:28'
+INFO:     127.0.0.1:44906 - "GET /api/v1/analytics/predicted-rank HTTP/1.1" 200 OK
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:users:badges:28'
+INFO:     127.0.0.1:44916 - "GET /api/v1/study-plan/badges HTTP/1.1" 200 OK
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:55 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:studyplan:weekly_schedule:28:2026-09-21'
+INFO:     127.0.0.1:44924 - "GET /api/v1/study-plan/weekly-schedule HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44826 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44880 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+2026-09-27 00:06:57 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:57 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:attempts:status-summary:28'
+INFO:     127.0.0.1:50118 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+2026-09-27 00:06:57 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:57 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:attempts:user:28:7c41e1c11706'
+INFO:     127.0.0.1:50124 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+2026-09-27 00:06:57 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:57 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:student_dashboard_stats:28'
+INFO:     127.0.0.1:50128 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+2026-09-27 00:06:57 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:06:57 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:subj_perf:28'
+INFO:     127.0.0.1:50134 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44882 - "GET /api/v1/attempts/127/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44824 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44806 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Geography&topic_name=Atmosphere&exclude_ids=1639&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:83a92968f77c'
+INFO:     127.0.0.1:37614 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_year=2020&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:recommended:03c1b400174c'
+INFO:     127.0.0.1:37620 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:83a92968f77c'
+INFO:     127.0.0.1:37624 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_year=2020&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:c08c1cc9568a'
+INFO:     127.0.0.1:37632 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:3578e1112c1c'
+INFO:     127.0.0.1:37646 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:cee116b7eec7'
+INFO:     127.0.0.1:37662 - "GET /api/v1/questions?limit=100&subject_name=Geography&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:ff04a4f3233e'
+INFO:     127.0.0.1:37676 - "GET /api/v1/questions?limit=100&exam_name=upsc&exam_year=2020&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:c08c1cc9568a'
+INFO:     127.0.0.1:37688 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:3578e1112c1c'
+INFO:     127.0.0.1:37690 - "GET /api/v1/questions?limit=100&subject_name=Geography&topic_name=Atmosphere&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:14 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:cee116b7eec7'
+INFO:     127.0.0.1:37694 - "GET /api/v1/questions?limit=100&subject_name=Geography&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:15 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:ff04a4f3233e'
+INFO:     127.0.0.1:37708 - "GET /api/v1/questions?limit=100&exam_name=upsc&exam_year=2020&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:15 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:1639:ENGLISH'
+INFO:     127.0.0.1:37724 - "GET /api/v1/questions/1639/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37682 - "GET /api/v1/questions/recommended?limit=14&exam_name=upsc+cse&subject_name=Geography&topic_name=Atmosphere&subtopic_name=Atmospheric+Layers+%26+Composition&exclude_ids=1639&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37736 - "GET /api/v1/questions/1639/similar?limit=6&include_question=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:07:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:07:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:07:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:07:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:attempts:status-summary:28'
+INFO:     127.0.0.1:55296 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+2026-09-27 00:07:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:07:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:student_dashboard_stats:28'
+INFO:     127.0.0.1:55310 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+2026-09-27 00:07:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:07:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:07:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:subj_perf:28'
+INFO:     127.0.0.1:55322 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+2026-09-27 00:07:39 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:auth:me:stats:28'
+INFO:     127.0.0.1:55298 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+2026-09-27 00:07:42 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:55338 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55294 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55344 - "GET /api/v1/attempts/127/status HTTP/1.1" 200 OK
+2026-09-27 00:08:09 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:45678 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42550 - "GET /api/v1/questions/recommended?limit=15&exam_name=upsc+cse&language=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42536 - "GET /api/v1/questions?limit=100&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:08:44 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:list:b19fca5860b6'
+INFO:     127.0.0.1:54440 - "GET /api/v1/questions?limit=100&exam_name=upsc&include_solutions=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:08:45 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:questions:solution:104:ENGLISH'
+INFO:     127.0.0.1:54446 - "GET /api/v1/questions/104/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54450 - "GET /api/v1/questions/1566/solution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54458 - "GET /api/v1/questions/1566/similar?limit=6&include_question=true&language=en HTTP/1.1" 200 OK
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:attempts:user:28:7c41e1c11706'
+INFO:     127.0.0.1:54240 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:student_dashboard_stats:28'
+INFO:     127.0.0.1:54252 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:analytics:subj_perf:28'
+INFO:     127.0.0.1:54254 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:auth:me:stats:28'
+2026-09-27 00:08:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:54238 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54266 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54282 - "GET /api/v1/attempts/127/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54234 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33534 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:09:53 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:54836 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:10:23 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:59744 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:10:53 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:60284 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:10:59 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:10:59 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:59142 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59130 - "PATCH /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40810 - "PATCH /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49302 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:11:53 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:53554 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:12:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:50384 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:13:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:56478 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:14:35 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:14:35 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:auth:me:stats:28'
+2026-09-27 00:14:35 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:46760 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46776 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:14:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:14:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:14:52 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:auth:me:stats:28'
+INFO:     127.0.0.1:43266 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43262 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:15:01 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:5fa08cc25ce5'
+INFO:     127.0.0.1:40736 - "GET /api/v1/exams?status=PUBLISHED HTTP/1.1" 200 OK
+2026-09-27 00:15:01 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:15:01 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:exams:list:all'
+INFO:     127.0.0.1:40750 - "GET /api/v1/exams HTTP/1.1" 200 OK
+2026-09-27 00:15:01 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:15:01 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:syllabus:complete:master'
+INFO:     127.0.0.1:40744 - "GET /api/v1/syllabus HTTP/1.1" 200 OK
+2026-09-27 00:15:01 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+2026-09-27 00:15:01 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:40720 - "GET /api/v1/exams/by-year HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40760 - "GET /api/v1/attempts?page=1&page_size=1&status_filter=IN_PROGRESS HTTP/1.1" 200 OK
+2026-09-27 00:15:03 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:40758 - "GET /api/v1/attempts/status-by-exam HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40766 - "GET /api/v1/attempts/student-dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40774 - "GET /api/v1/analytics/subject-performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40778 - "GET /api/v1/attempts/127/status HTTP/1.1" 200 OK
+2026-09-27 00:15:22 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:48540 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:15:53 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:59686 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44482 - "GET /api/v1/exams/attempts?status=IN_PROGRESS HTTP/1.1" 422 Unprocessable Content
+2026-09-27 00:16:23 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:44484 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'delete_dummy_attempts.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-27 00:16:42 [INFO] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:91): 🧹 Server shutdown initiated. Cleaning up temporary upload directories and PDF cache...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [4085586]
+2026-09-27 00:16:52 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:55): Initializing Database Engine (pool_size=10, max_overflow=10, pool_recycle=1800, pool_pre_ping=False)...
+/home/neerajpandey/.local/lib/python3.14/site-packages/langchain_core/utils/pydantic.py:42: UserWarning: Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.
+  from pydantic.v1 import BaseModel as BaseModelV1
+INFO:     Started server process [4101664]
+INFO:     Waiting for application startup.
+SECRET_KEY is the built-in default; fine for local development only.
+2026-09-27 00:16:58 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:183): Verifying/initializing database tables on engine: postgresql+asyncpg (testdb)...
+2026-09-27 00:17:06 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:227): Successfully verified/created site_settings table in PostgreSQL.
+2026-09-27 00:17:08 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:249): Successfully verified/created user_notification_reads table in PostgreSQL.
+2026-09-27 00:17:12 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:260): Successfully verified/created challenge enum types in PostgreSQL.
+2026-09-27 00:17:15 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:342): SQLModel table check complete.
+2026-09-27 00:17:19 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:409): Warmed 10 database connections in the pool.
+2026-09-27 00:17:20 [INFO] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:81): Application startup complete. Uvicorn server is ready to accept connections.
+INFO:     Application startup complete.
+2026-09-27 00:17:43 [INFO] [CacheFactory] [TaskID: N/A] (factory.py:52): ⚡ [CACHE_INIT] Redis Cache with In-Memory LRU Fallback enabled (Redis: redis://127.0.0.1:6379/1, Memory Max: 1000).
+INFO:     127.0.0.1:58416 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'abandon_dummy_attempts.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-27 00:18:41 [INFO] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:91): 🧹 Server shutdown initiated. Cleaning up temporary upload directories and PDF cache...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [4101664]
+2026-09-27 00:18:50 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:55): Initializing Database Engine (pool_size=10, max_overflow=10, pool_recycle=1800, pool_pre_ping=False)...
+/home/neerajpandey/.local/lib/python3.14/site-packages/langchain_core/utils/pydantic.py:42: UserWarning: Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.
+  from pydantic.v1 import BaseModel as BaseModelV1
+INFO:     Started server process [4103526]
+INFO:     Waiting for application startup.
+SECRET_KEY is the built-in default; fine for local development only.
+2026-09-27 00:18:58 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:183): Verifying/initializing database tables on engine: postgresql+asyncpg (testdb)...
+2026-09-27 00:19:06 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:227): Successfully verified/created site_settings table in PostgreSQL.
+2026-09-27 00:19:08 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:249): Successfully verified/created user_notification_reads table in PostgreSQL.
+2026-09-27 00:19:11 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:260): Successfully verified/created challenge enum types in PostgreSQL.
+2026-09-27 00:19:14 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:342): SQLModel table check complete.
+2026-09-27 00:19:18 [INFO] [DatabaseSession] [TaskID: N/A] (session.py:409): Warmed 10 database connections in the pool.
+2026-09-27 00:19:20 [INFO] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:81): Application startup complete. Uvicorn server is ready to accept connections.
+INFO:     Application startup complete.
+2026-09-27 00:19:20 [INFO] [CacheFactory] [TaskID: N/A] (factory.py:52): ⚡ [CACHE_INIT] Redis Cache with In-Memory LRU Fallback enabled (Redis: redis://127.0.0.1:6379/1, Memory Max: 1000).
+2026-09-27 00:19:20 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:39340 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:19:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:43596 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:20:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:33902 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:21:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:46502 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:22:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:56308 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54686 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:23:53 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:51822 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:24:23 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:47758 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:25:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:45680 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:26:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:59156 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:27:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:58250 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:28:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:37648 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49128 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:30:03 [WARNING] [AuthService] [TaskID: N/A] (auth_service.py:448): Refresh token not found or already revoked for user 28
+INFO:     127.0.0.1:44688 - "POST /api/v1/auth/refresh HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53148 - "POST /api/v1/auth/refresh HTTP/1.1" 200 OK
+2026-09-27 00:30:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:54866 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:31:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:54342 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:32:09 [WARNING] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:167): Domain exception on /api/v1/auth/login: Incorrect email or password.
+INFO:     127.0.0.1:52020 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+2026-09-27 00:32:16 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:login-fail:admin@exammentorship.com'
+2026-09-27 00:32:18 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:login-fail:admin@exammentorship.com'
+2026-09-27 00:32:19 [WARNING] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:167): Domain exception on /api/v1/auth/login: Incorrect email or password.
+INFO:     127.0.0.1:40594 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+2026-09-27 00:32:33 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:login-fail:admin@exammentorship.com'
+2026-09-27 00:32:35 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:login-fail:admin@exammentorship.com'
+2026-09-27 00:32:36 [WARNING] [FastAPIServer] [TaskID: N/A] (fastapi_server.py:167): Domain exception on /api/v1/auth/login: Incorrect email or password.
+INFO:     127.0.0.1:58448 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+2026-09-27 00:32:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:47346 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52656 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:35086 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44326 - "GET /api/v1/admin/action-logs?limit=200 HTTP/1.1" 200 OK
+2026-09-27 00:33:29 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:44356 - "GET /api/v1/admin/audit-logs HTTP/1.1" 200 OK
+2026-09-27 00:33:30 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:44314 - "GET /api/v1/admin/action-logs?limit=200 HTTP/1.1" 200 OK
+2026-09-27 00:33:30 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:44382 - "GET /api/v1/admin/audit-logs HTTP/1.1" 200 OK
+2026-09-27 00:33:30 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:44340 - "GET /api/v1/admin/active-admins HTTP/1.1" 200 OK
+2026-09-27 00:33:31 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:44366 - "GET /api/v1/admin/all-users HTTP/1.1" 200 OK
+2026-09-27 00:33:31 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:44316 - "GET /api/v1/admin/active-admins HTTP/1.1" 200 OK
+2026-09-27 00:33:31 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:44406 - "GET /api/v1/admin/system-stats HTTP/1.1" 200 OK
+2026-09-27 00:33:32 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:44420 - "GET /api/v1/admin/system-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44436 - "GET /api/v1/testimonials/admin/all HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44450 - "GET /api/v1/testimonials/admin/all HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44398 - "GET /api/v1/admin/all-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44462 - "GET /api/v1/admin/roles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44474 - "GET /api/v1/admin/roles HTTP/1.1" 200 OK
+2026-09-27 00:33:35 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:44488 - "GET /api/v1/admin/plans HTTP/1.1" 200 OK
+2026-09-27 00:33:36 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:55624 - "GET /api/v1/admin/plans HTTP/1.1" 200 OK
+2026-09-27 00:33:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:55636 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:34:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:40146 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46254 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:36:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:45846 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:36:57 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:60670 - "GET /api/v1/admin/plans?include_inactive=true HTTP/1.1" 200 OK
+2026-09-27 00:37:05 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:1'
+INFO:     127.0.0.1:60676 - "GET /api/v1/admin/plans?include_inactive=true HTTP/1.1" 200 OK
+2026-09-27 00:37:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:34076 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:38:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:39782 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49530 - "GET /api/v1/admin/plans?include_inactive=true HTTP/1.1" 200 OK
+2026-09-27 00:39:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:44146 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+2026-09-27 00:40:43 [INFO] [RedisCache] [TaskID: N/A] (redis_cache.py:72): ⚡ [CACHE:HIT] (Redis) Fetched data for key: 'ep:user:id:28'
+INFO:     127.0.0.1:50478 - "GET /api/v1/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34716 - "GET /api/v1/notifications HTTP/1.1" 200 OK

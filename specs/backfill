@@ -1,0 +1,52 @@
+You backfill with the script I added, `app/scripts/backfill_knowledge_layer.py`, run once on a production backend container. Before running it for real, production needs this branch deployed, the migrations applied, and working Gemini access; the prod service account has the same 403 as local.
+
+## Before you start
+1. **Deploy this branch and run migrations** (`alembic upgrade head`). Migrations 053–055 add the knowledge tables, the stored-AI-results column (`knowledge_tags_ai`) and the mixed-upload flag (`is_mixed_bank`). All three only add things, so existing data is untouched.
+2. **Load the starting list of names** (141 entities, 36 concepts). It's safe to run twice:
+   ```bash
+   python -m app.scripts.seed_knowledge_masters
+   ```
+3. **Fix Vertex AI access.** The service account needs `roles/aiplatform.user` on the project. Otherwise every AI call fails and only rule-based links are created. It won't crash, but coverage will be poor: 16 of 100 questions on the MPSC paper.
+4. **Take a database backup.** The script only adds links, tags and syllabus assignments, but it does move untagged questions off placeholder Subject/Topic rows and delete those rows once empty.
+
+## Run it
+Run these from `apps/backend` inside a production backend container, so the script picks up prod's `DATABASE_URL` and GCP settings. No Celery worker is needed; the script runs directly.
+
+```bash
+# 1. See what's there. Makes no AI calls and writes nothing.
+python -m app.scripts.backfill_knowledge_layer --all --dry-run
+
+# 2. Try one paper and look at the result
+python -m app.scripts.backfill_knowledge_layer --exam-id <ID>
+
+# 3. Everything
+python -m app.scripts.backfill_knowledge_layer --all
+```
+
+Step 2 is where you check quality: open a few questions and compare `GET /api/v1/questions/{id}/knowledge` and `/similar` with what you'd expect. It's the first time real Gemini output will be seen.
+
+What the full run does:
+- Goes paper by paper (skipping the per-student subject-wise tests) and sends the AI 8 questions per call, at most about 1 call per second.
+- Records each question's results with a hash of its text and the prompt version (`kl-ai-v4`). Re-running is cheap: only new or edited questions go to the AI again. If it stops halfway, just run the same command again.
+- A batch that fails is logged, those questions keep their rule-based links, and a re-run retries them.
+- Fills Subject > Microtheme > Nano Theme only for questions still on upload placeholders, and difficulty only where the PDF had no difficulty tag and it's still the default Medium. Hand-tagged values are never overwritten.
+- Prints a summary at the end: coverage, links created, how many AI calls failed, and how many syllabus and difficulty values were filled.
+
+Useful flags:
+- `--no-ai`: rules and stored results only, no AI calls. Use it if AI access isn't ready yet; you can run the AI later.
+- `--refresh-ai`: ask the AI again even for unchanged questions (costs money).
+
+## Cost and time
+Expect about $0.10–0.25 per 100 questions, which is an estimate; roughly $10–25 per 10,000 questions. At about 13 calls per 100 questions, 100 questions should take a few minutes. For large question banks, run it under `nohup` or `tmux` so it survives a dropped connection.
+
+## After the run
+1. **Clear caches.** The script doesn't clear cached data, and prod uses Redis. Either wait for it to expire (similar questions 10 minutes, question lists 30 minutes, the grouped exam list 5 minutes) or delete the keys:
+   ```bash
+   redis-cli --scan --pattern 'ep:questions:*' | xargs -r redis-cli del
+   redis-cli --scan --pattern 'ep:syllabus:*'  | xargs -r redis-cli del
+   redis-cli --scan --pattern 'ep:admin:question_catalog*' | xargs -r redis-cli del
+   ```
+2. **Mixed uploads already in prod.** If any question-bank PDFs were uploaded before this change, set `is_mixed_bank = true` on those exams by hand. Otherwise their placeholder year still applies to their questions.
+3. **Names the AI invents** are saved as `PENDING_REVIEW`, waiting for the admin curation screen (a later phase). The run summary shows how many there are.
+
+I can add automatic cache clearing to the script, like the upload job already does. That would let you skip the Redis step after the run.

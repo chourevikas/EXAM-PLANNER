@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 class SimilarQuestionItem(BaseModel):
     question_id: int
     score: float = Field(description="Weighted match score; for ranking and debugging, not for display")
+    similarity_score: Optional[float] = None
     tier: str = Field(description="exact | related | nano_theme | microtheme")
     match_reasons: List[str] = Field(default_factory=list, description='e.g. "Exact entity: Article 15"')
     question_number: Optional[int] = None

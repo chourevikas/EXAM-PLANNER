@@ -10,7 +10,7 @@ interface SuperAdminTabNavProps {
 
 export function SuperAdminTabNav({ activeTab, onTabChange, pendingTestimonialsCount }: SuperAdminTabNavProps) {
   const tabs: { id: SuperAdminTab; label: string; icon: any; count?: number }[] = [
-    { id: 'audit', label: 'Approval Audit Logs', icon: History },
+    // { id: 'audit', label: 'Approval Audit Logs', icon: History },
     { id: 'users', label: 'All Users & Roles', icon: UserCheck },
     { id: 'roles-permissions', label: 'Roles & Permissions', icon: KeyRound },
     { id: 'testimonials', label: 'Testimonial Approvals', icon: MessageSquareQuote, count: pendingTestimonialsCount },
