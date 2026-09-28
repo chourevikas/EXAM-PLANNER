@@ -369,7 +369,7 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
 
     # 1. Fetch all exams ordered by source year desc
     res = await session.exec(
-        select(Exam).where(Exam.is_mixed_bank == False).order_by(Exam.source_year.desc(), Exam.created_at.desc())
+        select(Exam).order_by(Exam.source_year.desc(), Exam.created_at.desc())
     )
     exams = res.all()
 
@@ -638,16 +638,10 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
             overall_status = "MISSING_INPUTS"
         elif (
             stage1_status == "IN_PROGRESS"
-            or stage2_status == "IN_PROGRESS"
-            or stage3_status == "IN_PROGRESS"
             or status_str in ("PROCESSING", "PARSING_PDF")
         ):
             overall_status = "PROCESSING"
-        elif (
-            stage1_status == "COMPLETED"
-            and stage2_status == "COMPLETED"
-            and stage3_status == "COMPLETED"
-        ):
+        elif stage1_status == "COMPLETED":
             overall_status = "READY_FOR_REVIEW"
         else:
             overall_status = "PENDING_REVIEW"

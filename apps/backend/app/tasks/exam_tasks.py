@@ -203,13 +203,15 @@ async def async_process_exam_pdf(
         try:
             from app.tasks.celery_app import has_active_celery_workers
             from app.tasks.translation_tasks import translate_exam_questions_task, async_translate_exam
+            
+            target_langs = ["hi", "en", "mr"]
 
             if has_active_celery_workers():
-                translate_exam_questions_task.delay(str(exam_id))
+                translate_exam_questions_task.delay(str(exam_id), target_languages=target_langs)
                 log.info(f"🌐 Dispatched background translation task to Celery worker for Exam #{exam_id}.")
             else:
                 asyncio.create_task(
-                    async_translate_exam(str(exam_id), execution_engine="BackgroundTasks")
+                    async_translate_exam(str(exam_id), target_languages=target_langs, execution_engine="BackgroundTasks")
                 )
                 log.info(f"🌐 Dispatched background translation task via asyncio for Exam #{exam_id}.")
         except Exception as trans_err:
