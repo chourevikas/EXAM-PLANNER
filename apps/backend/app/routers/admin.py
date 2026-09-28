@@ -367,9 +367,9 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
     from app.db.models.pipeline_run import PipelineRun
     from sqlalchemy import cast, String
 
-    # 1. Fetch all exams ordered by source year desc
+    # 1. Fetch all exams ordered by source year desc, excluding user-generated dynamic exams
     res = await session.exec(
-        select(Exam).order_by(Exam.source_year.desc(), Exam.created_at.desc())
+        select(Exam).where(Exam.code.not_like("DYN_%")).order_by(Exam.source_year.desc(), Exam.created_at.desc())
     )
     exams = res.all()
 
