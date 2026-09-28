@@ -307,7 +307,7 @@ class GoogleTranslationService:
         target_native = target_info.native_name
 
         from app.llm.factory import get_vision_llm
-        llm = get_vision_llm(timeout=30, max_retries=1, rate_limit_rps=3.0)
+        llm = get_vision_llm(timeout=90, max_retries=3, rate_limit_rps=1.0)
 
         # Chunk large lists into manageable batches of 10 items
         batch_size = 10
@@ -316,7 +316,7 @@ class GoogleTranslationService:
             for idx, i in enumerate(range(0, len(masked_texts), batch_size))
         ]
 
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(2)
 
         async def _translate_single_chunk(chunk_idx: int, chunk: List[str]) -> Tuple[int, List[str]]:
             if getattr(self, "_gemini_failed", False):
