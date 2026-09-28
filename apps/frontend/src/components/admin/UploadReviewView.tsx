@@ -980,7 +980,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
       );
     }
 
-    if (overall === 'PROCESSING' || exam.stage1_status === 'IN_PROGRESS' || exam.stage2_status === 'IN_PROGRESS' || exam.stage3_status === 'IN_PROGRESS' || statusUpper.includes('PROCESSING') || statusUpper.includes('PARSING')) {
+    if (overall === 'PROCESSING' || exam.stage1_status === 'IN_PROGRESS' || statusUpper.includes('PROCESSING') || statusUpper.includes('PARSING')) {
       return (
         <span
           style={{
