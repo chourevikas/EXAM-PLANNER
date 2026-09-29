@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from app.services.question_assets import serialize_question_asset
 from app.db.models import (
     Exam,
     Question,
@@ -313,15 +314,7 @@ class HumanReviewService:
             "explanation": expl_detail,
             "metadata": metadata_detail,
             "hierarchy": hierarchy_detail,
-            "assets": [
-                {
-                    "asset_id": str(a.id),
-                    "asset_path": a.asset_path,
-                    "asset_type": a.asset_type.value,
-                    "caption": a.caption,
-                }
-                for a in assets
-            ],
+            "assets": [serialize_question_asset(a) for a in assets],
         }
 
     async def update_and_approve_question(

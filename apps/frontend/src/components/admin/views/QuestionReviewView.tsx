@@ -44,6 +44,7 @@ import { MissingQuestionsView } from './MissingQuestionsView';
 import { AddMissingQuestionModal } from '../modals/AddMissingQuestionModal';
 import { QuestionReviewCard, QuestionReviewSavePayload } from '../QuestionReviewCard';
 import { cleanExamTitle } from '../../../utils/formatEnum';
+import type { QuestionAsset } from '../../common/QuestionAssetImages';
 
 
 interface QuestionOptionItem {
@@ -105,6 +106,7 @@ interface QuestionDetailItem {
   topic_name?: string;
   subtopic_name?: string;
   options: QuestionOptionItem[];
+  assets?: QuestionAsset[];
   explanation?: QuestionExplanationItem | null;
   hierarchy?: HierarchyLinkItem[];
   metadata?: {
@@ -423,6 +425,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           question_text: q.question_text || '',
           passage_id: q.passage_id,
           passage_text: q.passage_text || null,
+          assets: q.assets || [],
           subject_name: (primaryH && primaryH.subject_name) || q.subject_name || '',
           topic_name: (primaryH && primaryH.topic_name) || q.topic_name || '',
           subtopic_name: (primaryH && primaryH.subtopic_name) || q.subtopic_name || '',

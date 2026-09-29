@@ -37,6 +37,12 @@ from app.pipeline.patterns import (
     COMMON_MISTAKE_HEADER_PATTERN,
     REVERSE_LOGIC_HEADER_PATTERN,
     REVERSE_LOGIC_OPTION_PATTERN,
+    REVERSE_LOGIC_SHORT_OPTION_PATTERN,
+    REVERSE_LOGIC_TRAP_PATTERN,
+    PICTURE_MARKER_PATTERN,
+    TABLE_MARKER_PATTERN,
+    TABLE_ROW_PATTERN,
+    VISUAL_REFERENCE_PATTERN,
     STATEMENT_LINE_PATTERN,
     SUBJECT_TAG_PATTERN,
     TOPIC_TAG_PATTERN,
@@ -194,8 +200,13 @@ def split_into_question_blocks(full_markdown: str) -> List[Dict[str, Any]]:
                 block_pages.append(p_num)
             current_page = p_num
 
-        # Clean PAGE_BREAK markers and chapter headings from block text
+        # Clean PAGE_BREAK markers, asset markers and chapter headings from block text; the asset
+        # markers say exactly which pictures/tables sit inside this question
+        picture_ids = [int(m.group(1)) for m in PICTURE_MARKER_PATTERN.finditer(raw_block)]
+        table_ids = [int(m.group(1)) for m in TABLE_MARKER_PATTERN.finditer(raw_block)]
         clean_block = PAGE_BREAK_PATTERN.sub("", raw_block)
+        clean_block = PICTURE_MARKER_PATTERN.sub("", clean_block)
+        clean_block = TABLE_MARKER_PATTERN.sub("", clean_block)
         clean_block = SECTION_HEADING_PATTERN.sub("", clean_block).strip()
         if numbered:
             # Give the block the same shape as a Q<N> block: a header line, then the stem
@@ -215,6 +226,8 @@ def split_into_question_blocks(full_markdown: str) -> List[Dict[str, Any]]:
                 "page_numbers": sorted(list(set(block_pages))),
                 "start_page": block_pages[0] if block_pages else current_page,
                 "section": section,
+                "picture_ids": picture_ids,
+                "table_ids": table_ids,
             }
         )
 
@@ -248,6 +261,35 @@ def disambiguate_asset_question(
         return False
 
     return False
+
+
+def _join_stem_lines(stem_lines: List[str]) -> str:
+    """Stem lines joined by newlines, with blank lines around markdown tables so they render as tables."""
+    parts: List[str] = []
+    prev_is_row = False
+    for sl in stem_lines:
+        is_row = bool(TABLE_ROW_PATTERN.match(sl))
+        if parts and is_row != prev_is_row:
+            parts.append("")
+        parts.append(sl)
+        prev_is_row = is_row
+    return "\n".join(parts).strip()
+
+
+def _parse_short_reverse_logic(box_lines: List[str]) -> Dict[str, Dict[str, str]]:
+    """Reverse Logic entries written as "(A) 3 2 4 1 — <why it is wrong>. Trap: <why it tempts>"."""
+    box_text = "\n".join(l.strip() for l in box_lines if l.strip())
+    result: Dict[str, Dict[str, str]] = {}
+    for m in REVERSE_LOGIC_SHORT_OPTION_PATTERN.finditer(box_text):
+        reasoning = re.sub(r"\s+", " ", m.group(3)).strip()
+        if not reasoning:
+            continue
+        parts = REVERSE_LOGIC_TRAP_PATTERN.split(reasoning, maxsplit=1)
+        result[m.group(1).upper()] = {
+            "why_tempting": parts[1].strip() if len(parts) > 1 else "",
+            "whats_actually_true": parts[0].strip(),
+        }
+    return result
 
 
 def parse_question_block(
@@ -328,8 +370,8 @@ def parse_question_block(
             if not l_str or ANSWER_OPTIONS_LABEL_PATTERN.match(l_str):
                 continue
             arrow_line_idx.add(len(clean_stem_lines))
-        # Check if line contains metadata tags
-        has_tag = any(
+        # Check if line contains metadata tags (a table cell is always stem content)
+        has_tag = not TABLE_ROW_PATTERN.match(l_str) and any(
             p.search(l_str)
             for p in (SUBJECT_TAG_PATTERN, TOPIC_TAG_PATTERN, SUBTOPIC_TAG_PATTERN, DIFFICULTY_TAG_PATTERN)
         )
@@ -355,13 +397,17 @@ def parse_question_block(
         # markdown); other lines are the PDF's word wrap and are joined back into their paragraph.
         paragraphs: List[str] = []
         for idx, sl in enumerate(clean_stem_lines):
-            if idx in arrow_line_idx or not paragraphs:
+            is_row = bool(TABLE_ROW_PATTERN.match(sl))
+            prev_is_row = idx > 0 and bool(TABLE_ROW_PATTERN.match(clean_stem_lines[idx - 1]))
+            if is_row and prev_is_row:
+                paragraphs[-1] = f"{paragraphs[-1]}\n{sl}"
+            elif idx in arrow_line_idx or not paragraphs or is_row or prev_is_row:
                 paragraphs.append(sl)
             else:
                 paragraphs[-1] = f"{paragraphs[-1]} {sl}"
         stem = "\n\n".join(paragraphs).strip()
     else:
-        stem = "\n".join(clean_stem_lines).strip()
+        stem = _join_stem_lines(clean_stem_lines)
 
     # Question-bank source tag ("[MPSC Mains 2017]", possibly wrapped): keep it out of the stem
     source_raw, source_year = None, None
@@ -510,10 +556,16 @@ def parse_question_block(
                 "why_tempting": why_tempting,
                 "whats_actually_true": whats_true,
             }
+        if not reverse_logic:
+            reverse_logic = _parse_short_reverse_logic(lines[reverse_idx + 1:])
 
-    # 9. Matched Pictures and Tables with Vertical Disambiguation
+    # 9. Matched Pictures and Tables. Assets carrying an "id" were placed in the text as markers,
+    # so the block says exactly which are its own; older extractions fall back to page matching.
     matched_pictures = []
-    if pictures:
+    if pictures and any("id" in pic for pic in pictures):
+        own = set(block.get("picture_ids") or [])
+        matched_pictures = [pic for pic in pictures if pic.get("id") in own]
+    elif pictures:
         for pic in pictures:
             pic_page = pic.get("page_no", 1)
             pic_bbox = pic.get("bbox")
@@ -528,7 +580,10 @@ def parse_question_block(
                     matched_pictures.append(pic)
 
     matched_tables = []
-    if tables:
+    if tables and any("id" in tbl for tbl in tables):
+        own = set(block.get("table_ids") or [])
+        matched_tables = [tbl for tbl in tables if tbl.get("id") in own]
+    elif tables:
         for tbl in tables:
             tbl_page = tbl.get("page_no", 1)
             tbl_bbox = tbl.get("bbox")
@@ -541,6 +596,12 @@ def parse_question_block(
                     next_q_header_y,
                 ):
                     matched_tables.append(tbl)
+
+    # A stem that points at a figure/table which was not extracted cannot be answered as shown
+    has_inline_table = any(TABLE_ROW_PATTERN.match(l) for l in stem.split("\n"))
+    if VISUAL_REFERENCE_PATTERN.search(stem) and not matched_pictures and not matched_tables and not has_inline_table:
+        issues.append("MISSING_VISUAL_ASSET")
+        confidence -= 0.25
 
     confidence = round(max(0.0, min(1.0, confidence)), 3)
 

@@ -121,6 +121,28 @@ REVERSE_LOGIC_OPTION_PATTERN = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 
+# Reverse Logic option in the short form: "(A) 3 2 4 1 — Makes Kabir a disciple of ... Trap: ..."
+# Group 1 = option letter, group 2 = option text (repeated from the options), group 3 = the reasoning,
+# which runs (across wrapped lines) until the next "(X)" line or the end of the box.
+REVERSE_LOGIC_SHORT_OPTION_PATTERN = re.compile(
+    r"^[ \t]*[\(\[]([A-D])[\)\]][ \t]*(.*?)[ \t]+[—–-][ \t]+(.+?)(?=^[ \t]*[\(\[][A-D][\)\]]|\Z)",
+    re.DOTALL | re.MULTILINE,
+)
+# "Trap: ..." sentence at the end of a short-form Reverse Logic entry: why the option is tempting
+REVERSE_LOGIC_TRAP_PATTERN = re.compile(r"(?i)\bTrap\s*:\s*")
+
+# Asset placeholders left in the markdown by the extractor where a picture or table sits
+PICTURE_MARKER_PATTERN = re.compile(r"<!--\s*PICTURE\s+id=(\d+)\s*-->")
+TABLE_MARKER_PATTERN = re.compile(r"<!--\s*TABLE\s+id=(\d+)\s*-->")
+# A markdown table row ("| A. Kabir | 1. Guru Nanak Dev |") or its "|---|---|" separator
+TABLE_ROW_PATTERN = re.compile(r"^\s*\|.*\|\s*$")
+
+# Stem wording that points at a figure/table the question cannot be answered without
+VISUAL_REFERENCE_PATTERN = re.compile(
+    r"(?i)\b(?:(?:following|given|above|below|adjoining)\s+(?:figure|diagram|map|graph|chart|table|image|picture)"
+    r"|(?:figure|diagram|map|graph|chart|table|image|picture)\s+(?:given\s+)?(?:below|above))\b"
+)
+
 # Statement lines inside question stem: e.g. 1. The Montagu-Chelmsford... or (1) ... or (i) ...
 STATEMENT_LINE_PATTERN = re.compile(
     r"^\s*(?:\(?\d+\)?\.?|\(?[ivxLCDM]+\)?\.?)\s+(.*)$",

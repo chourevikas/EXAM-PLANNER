@@ -3,6 +3,7 @@ import json
 import uuid
 from typing import Dict, List, Optional, Tuple, Any
 from sqlmodel import select, col
+from sqlalchemy import delete as sa_delete
 from PIL import Image
 
 from app.config.logger import setup_logger
@@ -968,7 +969,10 @@ class BatchQuestionRegistrar:
                                     q_expl.core_concept = core_concept_val
                                 session.add(q_expl)
 
-                            # Assets
+                            # Assets (a re-extraction replaces the question's earlier assets)
+                            await session.exec(
+                                sa_delete(QuestionAsset).where(QuestionAsset.question_id == question_id)
+                            )
                             for pic in rec.pictures:
                                 pic_page = pic.get("page_no", 1)
                                 bbox = pic.get("bbox")
@@ -1028,6 +1032,17 @@ class BatchQuestionRegistrar:
                         logger.info(
                             f"Successfully committed deterministic DB batch {summary.successful_batches} of {len(batch)} question(s)."
                         )
+
+                        # A re-extraction rewrote these questions and replaced their assets: drop cached
+                        # detail/review payloads so they don't keep pointing at deleted asset rows
+                        try:
+                            from app.cache import invalidate_question_cache
+                            for rec in batch:
+                                await invalidate_question_cache(
+                                    str(existing_qs[rec.question_number].id), str(exam_id)
+                                )
+                        except Exception as cache_err:
+                            logger.warning(f"Could not invalidate question caches after batch commit: {cache_err}")
                     except Exception as batch_err:
                         await session.rollback()
                         summary.failed_batches += 1

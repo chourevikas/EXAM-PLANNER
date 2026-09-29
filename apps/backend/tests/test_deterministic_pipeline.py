@@ -463,3 +463,49 @@ Solution:
             assert st12.name == "Indian National Congress Sessions"
             t12 = await session.get(Topic, st12.topic_id)
             assert t12.name == "Indian National Congress Sessions"
+
+    async def test_reextraction_replaces_assets_and_clears_question_cache(self):
+        """Re-committing a question keeps exactly one asset per picture and drops its cached payloads."""
+        from contextlib import asynccontextmanager
+        from unittest.mock import AsyncMock, patch
+        from app.db.models import QuestionAsset
+
+        async with self.session_factory() as session:
+            exam = Exam(code="REEXTRACT_TEST", name="Re-extract Test", status=ExamStatus.PENDING_HUMAN_REVIEW, total_questions=1)
+            session.add(exam)
+            await session.commit()
+            await session.refresh(exam)
+            exam_id = exam.id
+
+        rec = QuestionRecord(
+            question_number=13,
+            stem="Study the following diagram and answer the question.",
+            statement_lines=[],
+            options={"A": "Circle", "B": "Square", "C": "Triangle", "D": "Star"},
+            answer_label="A",
+            answer_text="Circle",
+            page_numbers=[2],
+            pictures=[{"id": 1, "page_no": 2, "bbox": [10, 10, 60, 40]}],
+            tables=[],
+            extraction_confidence=1.0,
+            extraction_issues=[],
+        )
+
+        @asynccontextmanager
+        async def get_test_session():
+            async with self.session_factory() as s:
+                yield s
+
+        registrar = BatchQuestionRegistrar(session_factory=get_test_session)
+        invalidate = AsyncMock()
+        with patch("app.cache.invalidate_question_cache", invalidate):
+            for _ in range(2):
+                summary = await registrar.commit_question_records_in_batches(exam_id=exam_id, records=[rec])
+                assert summary.failed_batches == 0
+
+        async with self.session_factory() as session:
+            q = (await session.exec(select(Question).where(Question.exam_id == exam_id))).one()
+            assets = (await session.exec(select(QuestionAsset).where(QuestionAsset.question_id == q.id))).all()
+            assert len(assets) == 1
+        invalidate.assert_any_await(str(q.id), str(exam_id))
+        assert invalidate.await_count == 2

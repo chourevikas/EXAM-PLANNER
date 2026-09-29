@@ -421,6 +421,26 @@ async def get_question_knowledge(
     from app.knowledge.queries import load_question_knowledge
     return await load_question_knowledge(session, qid_int)
 
+@router.get("/assets/{asset_id}/image", summary="Get a Question's Diagram/Picture Image")
+async def get_question_asset_image(
+    asset_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Streams a cropped question diagram. Public so it can be used directly as an <img src>."""
+    from fastapi.responses import FileResponse
+    from app.db.models import QuestionAsset
+    from app.services.question_assets import local_asset_file
+
+    asset = await session.get(QuestionAsset, asset_id)
+    if asset is None or not asset.asset_path:
+        raise HTTPException(status_code=404, detail="Asset not found.")
+    try:
+        file_path = await local_asset_file(asset)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Asset file not found.")
+    return FileResponse(path=str(file_path), headers={"Cache-Control": "public, max-age=86400"})
+
+
 @router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID", dependencies=[Depends(require_question_visible)])
 async def get_question(
     question_id: int | str,

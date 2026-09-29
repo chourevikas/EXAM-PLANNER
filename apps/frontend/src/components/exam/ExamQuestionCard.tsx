@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
+import { QuestionAssetImages } from '../common/QuestionAssetImages';
 import remarkGfm from 'remark-gfm';
 import { stripRepeatedOptionLabel } from '../../utils/optionText';
 import {
@@ -804,6 +805,7 @@ export function ExamQuestionCard({
                 {questionContent}
               </ReactMarkdown>
             </div>
+            <QuestionAssetImages assets={(question as any).assets} />
 
             {/* Answer Choice Radio Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: '10px' }}>

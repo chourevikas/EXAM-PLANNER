@@ -2,6 +2,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { stripRepeatedOptionLabel } from '../../utils/optionText';
+import { QuestionAssetImages, type QuestionAsset } from '../common/QuestionAssetImages';
 
 export interface AdminQuestionOption {
   option_id?: string | number;
@@ -39,6 +40,7 @@ export interface AdminQuestionPublicationData {
   concept_name?: string;
   hierarchy?: AdminQuestionHierarchyItem[];
   options: AdminQuestionOption[];
+  assets?: QuestionAsset[];
   explanation?: {
     detailed_solution?: string | null;
     reverse_logic?: string | null;
@@ -149,6 +151,26 @@ function parseDistractorText(opt: AdminQuestionOption): { whyTempting: string; w
 
   return { whyTempting: '', whatsTrue: '', rawText: raw };
 }
+
+// Match-the-list / data tables extracted into the question text
+const stemTableCellStyle: React.CSSProperties = {
+  border: '1px solid var(--border-color, #CBD5E1)',
+  padding: '5px 10px',
+  textAlign: 'left',
+  fontSize: 14,
+  verticalAlign: 'top',
+};
+const stemMarkdownComponents: any = {
+  table: ({ node, ...props }: any) => (
+    <div style={{ overflowX: 'auto', margin: '10px 0' }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%' }} {...props} />
+    </div>
+  ),
+  th: ({ node, ...props }: any) => (
+    <th style={{ ...stemTableCellStyle, fontWeight: 700, background: 'var(--bg-subtle, #F1F5F9)' }} {...props} />
+  ),
+  td: ({ node, ...props }: any) => <td style={{ ...stemTableCellStyle, fontWeight: 500 }} {...props} />,
+};
 
 export function AdminQuestionPublicationCard({
   question,
@@ -266,10 +288,11 @@ export function AdminQuestionPublicationCard({
           marginBottom: '14px',
         }}
       >
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={stemMarkdownComponents}>
           {question.question_text}
         </ReactMarkdown>
       </div>
+      <QuestionAssetImages assets={question.assets} />
 
       {/* 4. OPTIONS LIST (Indented with bold labels) */}
       <div

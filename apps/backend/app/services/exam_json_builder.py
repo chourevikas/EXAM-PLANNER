@@ -17,8 +17,10 @@ from app.db.models import (
     Subtopic,
     Topic,
     Subject,
+    QuestionAsset,
 )
 from app.storage.factory import get_storage_provider
+from app.services.question_assets import serialize_question_asset
 from app.config.logger import setup_logger
 
 logger = setup_logger("ExamJsonBuilder")
@@ -236,6 +238,18 @@ class ExamJsonBuilder:
             if q.subtopic_id:
                 subtopic_ids.add(q.subtopic_id)
 
+        # Diagram/picture assets (only questions flagged has_image have any)
+        assets_map: Dict[int, list[QuestionAsset]] = {}
+        image_q_ids = [q.id for q in questions if q.has_image]
+        if image_q_ids:
+            asset_res = await self.session.exec(
+                select(QuestionAsset)
+                .where(col(QuestionAsset.question_id).in_(image_q_ids))
+                .order_by(QuestionAsset.display_order, QuestionAsset.id)
+            )
+            for a in asset_res.all():
+                assets_map.setdefault(a.question_id, []).append(a)
+
         # 6. Passages & Passage Translations
         passage_ids = [getattr(q, "passage_id", None) for q in questions if getattr(q, "passage_id", None)]
         question_passage_map: Dict[int, int] = {}
@@ -298,6 +312,7 @@ class ExamJsonBuilder:
             "subtopics_map": subtopics_map,
             "topics_map": topics_map,
             "subjects_map": subjects_map,
+            "assets_map": assets_map,
         }
 
     async def build_single_question_cards(
@@ -574,6 +589,17 @@ class ExamJsonBuilder:
         hindi_item = question_translations.get("HINDI") or question_translations.get("hi")
         q_hi_text = hindi_item.get("question_text") if isinstance(hindi_item, dict) else (hindi_item if isinstance(hindi_item, str) else None)
 
+        if preloaded is not None:
+            q_assets = preloaded.get("assets_map", {}).get(q.id, [])
+        elif q.has_image:
+            q_assets = (await self.session.exec(
+                select(QuestionAsset)
+                .where(QuestionAsset.question_id == q.id)
+                .order_by(QuestionAsset.display_order, QuestionAsset.id)
+            )).all()
+        else:
+            q_assets = []
+
         q_card = {
             "question_id": str(q.id),
             "question_number": q.question_number_in_paper,
@@ -587,7 +613,7 @@ class ExamJsonBuilder:
             "expected_time_seconds": q.expected_time_seconds,
             "question_type": q.question_type,
             "has_image": q.has_image,
-            "assets": [],
+            "assets": [serialize_question_asset(a) for a in q_assets if a.asset_path],
             "passage_text": passage_text,
             "passage_translations": passage_translations,
             "subject": subj_name,

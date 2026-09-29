@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, update
 from sqlmodel import select, or_, col
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.services.question_assets import serialize_question_asset
 from app.config.logger import setup_logger
 
 logger = setup_logger("QuestionService")
@@ -1563,15 +1564,7 @@ class QuestionService:
         # Fetch Assets
         asset_stmt = select(QuestionAsset).where(QuestionAsset.question_id == q.id)
         assets = (await self.session.exec(asset_stmt)).all()
-        assets_list = [
-            {
-                "asset_id": str(a.id),
-                "asset_path": a.asset_path,
-                "asset_type": a.asset_type.value if hasattr(a.asset_type, "value") else str(a.asset_type),
-                "caption": a.caption,
-            }
-            for a in assets
-        ]
+        assets_list = [serialize_question_asset(a) for a in assets]
 
         return QuestionDetailResponse(
             question_id=str(q.id),
@@ -1914,6 +1907,18 @@ class QuestionService:
             if ot is not None:
                 ot_map.setdefault(opt.id, {})[ot.language] = (ot.option_text, ot.distractor_analysis)
 
+        # Diagram/picture assets, only for questions that have any
+        assets_by_qid: Dict[int, List[Dict[str, Any]]] = {}
+        image_q_ids = [q.id for q in questions if q.has_image]
+        if image_q_ids:
+            asset_rows = (await self.session.exec(
+                select(QuestionAsset)
+                .where(col(QuestionAsset.question_id).in_(image_q_ids))
+                .order_by(QuestionAsset.display_order, QuestionAsset.id)
+            )).all()
+            for a in asset_rows:
+                assets_by_qid.setdefault(a.question_id, []).append(serialize_question_asset(a))
+
         qr_by_optid = {}
         if include_solutions and options:
             all_opt_ids = [opt.id for opt in options]
@@ -2226,7 +2231,7 @@ class QuestionService:
                     explanation=explanation_detail,
                     metadata=metadata_detail,
                     hierarchy=hierarchy_detail,
-                    assets=[],
+                    assets=assets_by_qid.get(q.id, []),
                     created_at=q.created_at.isoformat() if q.created_at else None,
                     updated_at=q.updated_at.isoformat() if q.updated_at else None,
                 )
