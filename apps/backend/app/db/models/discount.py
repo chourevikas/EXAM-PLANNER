@@ -60,7 +60,7 @@ class DiscountOffer(SQLModel, table=True):
     description: Optional[str] = Field(default=None)
 
     # Nullable = private/targeted offer (no public code entry required)
-    code: Optional[str] = Field(default=None, index=True, max_length=100)
+    code: Optional[str] = Field(default=None, max_length=100)
 
     # --- discount rules ---
     discount_type: str = Field(

@@ -56,10 +56,35 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     };
   }, [token, isSignedIn, signOut]);
 
-  if (!isLoaded || isCheckingRecovery) return null;
-
   const isCustomAuth = !!(token && userJson);
   const isClerkAuth = !!isSignedIn;
+  const awaitingExchange = isLoaded && !isCheckingRecovery && isClerkAuth && !isCustomAuth;
+  const [exchangeStalled, setExchangeStalled] = useState(false);
+
+  // While ClerkExchangeBridge finishes, re-read localStorage instead of relying solely on its
+  // events: a missed event (or an exchange that only succeeds on retry) otherwise left this
+  // spinner up until a hard refresh. After a while, offer a way out instead of spinning forever.
+  useEffect(() => {
+    if (!awaitingExchange) {
+      setExchangeStalled(false);
+      return;
+    }
+    const poll = window.setInterval(() => {
+      const storedToken = localStorage.getItem('access_token');
+      const storedUser = localStorage.getItem('user');
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        setUserJson(storedUser);
+      }
+    }, 500);
+    const stall = window.setTimeout(() => setExchangeStalled(true), 20000);
+    return () => {
+      window.clearInterval(poll);
+      window.clearTimeout(stall);
+    };
+  }, [awaitingExchange]);
+
+  if (!isLoaded || isCheckingRecovery) return null;
 
   // If no token or user in localStorage AND not signed in via Clerk, redirect to signin
   if (!isCustomAuth && !isClerkAuth) {
@@ -68,6 +93,27 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   // If Clerk is signed in but we don't have our custom token yet, wait for ClerkExchangeBridge to finish
   if (isClerkAuth && !isCustomAuth) {
+    if (exchangeStalled) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 16, textAlign: 'center' }}>
+          <p style={{ fontSize: 15, color: 'var(--text-secondary)' }}>We couldn't finish signing you in.</p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => window.location.reload()}
+              style={{ padding: '9px 18px', border: 'none', borderRadius: 'var(--radius)', backgroundColor: 'var(--primary-red)', color: '#FFFFFF', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => signOut?.().catch(() => undefined)}
+              style={{ padding: '9px 18px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Spinner size={48} label="Loading account..." />

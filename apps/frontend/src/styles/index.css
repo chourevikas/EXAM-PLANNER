@@ -59,6 +59,14 @@
 
   --info-primary: var(--info-teal);
 
+  /* Status tokens (referenced across admin views; values match the original hex colors) */
+  --status-success: #16a34a;
+  --status-success-bg: #dcfce7;
+  --status-warning: #b45309;
+  --status-warning-bg: #fef3c7;
+  --primary-red-bg: #fee2e2;
+  --primary-red-border: #fca5a5;
+
   --navy: var(--deep-navy);
   --royal: var(--primary-red);
   --royal-hover: #c1121f;
@@ -108,6 +116,13 @@
   --border-default: rgba(255, 255, 255, 0.12);
   --border-light: rgba(255, 255, 255, 0.05);
   --border-disabled: rgba(255, 255, 255, 0.05);
+
+  --status-success: #22c55e;
+  --status-success-bg: rgba(34, 197, 94, 0.15);
+  --status-warning: #f59e0b;
+  --status-warning-bg: rgba(245, 158, 11, 0.15);
+  --primary-red-bg: rgba(var(--primary-red-rgb), 0.15);
+  --primary-red-border: rgba(var(--primary-red-rgb), 0.4);
 
   --shadow-color-base: 0 4px 12px rgba(0, 0, 0, 0.3);
   --shadow-color-accent: 0 4px 12px rgba(var(--primary-red-rgb), 0.2);

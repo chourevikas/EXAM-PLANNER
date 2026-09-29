@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { exchangeClerkToken } from '../../services/authService';
 
@@ -15,10 +15,17 @@ import { exchangeClerkToken } from '../../services/authService';
  * It also automatically heals existing sessions if they contain synthetic
  * "@clerk.local" emails or placeholder "Clerk Sync User" names.
  */
+const MAX_EXCHANGE_RETRIES = 5;
+
 export function ClerkExchangeBridge() {
   const { isLoaded: isAuthLoaded, isSignedIn, getToken } = useAuth();
   const { isLoaded: isUserLoaded, user: clerkUser } = useUser();
   const exchangedRef = useRef(false);
+  // Bumped after a failed exchange so the effect re-runs. Without it a transient failure (Clerk
+  // returning no token right after the OAuth redirect, a 5xx while a new account is created)
+  // left ProtectedRoute on "Loading account..." until a hard refresh.
+  const [retryTick, setRetryTick] = useState(0);
+  const attemptsRef = useRef(0);
 
   useEffect(() => {
     if (!isAuthLoaded || !isUserLoaded || !isSignedIn || !clerkUser) return;
@@ -54,10 +61,7 @@ export function ClerkExchangeBridge() {
     (async () => {
       try {
         const clerkToken = await getToken();
-        if (!clerkToken) {
-          exchangedRef.current = false;
-          return;
-        }
+        if (!clerkToken) throw new Error('Clerk returned no session token');
 
         const email =
           clerkUser.primaryEmailAddress?.emailAddress ||
@@ -74,6 +78,7 @@ export function ClerkExchangeBridge() {
           profileImage,
         });
 
+        attemptsRef.current = 0;
         sessionStorage.removeItem('pending_guest_sync');
         sessionStorage.removeItem('latest_synced_attempt_id');
 
@@ -82,9 +87,14 @@ export function ClerkExchangeBridge() {
       } catch (err) {
         console.warn('Clerk token exchange failed:', err);
         exchangedRef.current = false;
+        if (attemptsRef.current < MAX_EXCHANGE_RETRIES) {
+          const delay = Math.min(1000 * 2 ** attemptsRef.current, 8000);
+          attemptsRef.current += 1;
+          setTimeout(() => setRetryTick((t) => t + 1), delay);
+        }
       }
     })();
-  }, [isAuthLoaded, isUserLoaded, isSignedIn, clerkUser, getToken]);
+  }, [isAuthLoaded, isUserLoaded, isSignedIn, clerkUser, getToken, retryTick]);
 
   return null;
 }

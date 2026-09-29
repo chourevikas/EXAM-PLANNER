@@ -246,6 +246,8 @@ export async function exchangeClerkToken(
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
     scheduleProactiveRefresh(data.access_token);
+    // Let route guards pick up the session now rather than after the guest-attempt sync.
+    window.dispatchEvent(new Event('user_profile_updated'));
     await syncGuestSessionsOnAuth(data.access_token);
   }
   return data;

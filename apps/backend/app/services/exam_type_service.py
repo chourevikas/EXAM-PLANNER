@@ -1,7 +1,9 @@
+import re
 from typing import List, Optional, Dict, Any
 from fastapi import HTTPException, status
+from sqlmodel import select, col, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
-from app.db.models import ExamType
+from app.db.models import ExamType, Exam
 from app.schemas.exam_type import ExamTypeCreate, ExamTypeUpdate, ExamTypeResponse
 from app.repositories.exam_type_repository import ExamTypeRepository
 from app.cache import get_cache
@@ -73,6 +75,7 @@ class ExamTypeService:
                 detail=f"Exam type with ID '{exam_type_id}' not found.",
             )
 
+        old_code = exam_type.type
         update_data = payload.model_dump(exclude_unset=True)
         if "type" in update_data and update_data["type"]:
             clean_code = update_data["type"].strip().lower()
@@ -86,6 +89,7 @@ class ExamTypeService:
                 update_data["type"] = clean_code
 
         updated = await self.repo.update(exam_type, update_data)
+        await self._sync_exam_names(updated, old_code)
         count = await self.repo.count_associated_exams(updated.id)
         await self._invalidate_cache()
         resp = ExamTypeResponse.model_validate(updated)
@@ -113,6 +117,50 @@ class ExamTypeService:
             "success": True,
             "message": f"Exam type '{exam_type.name}' ({exam_type.type}) deleted successfully.",
         }
+
+    async def _sync_exam_names(self, exam_type: ExamType, old_code: str) -> None:
+        """Keep uploaded papers' display names in step with the exam type code.
+
+        Upload stores Exam.name as "<CODE> (<year>) - Set X", a copy of the type code at upload
+        time, so renaming the code left existing papers showing the old one. Only the leading
+        code token is rewritten, and only when it is the old code or the code the paper was
+        uploaded under (the prefix of its canonical Exam.code) — hand-written names are left alone.
+        Running on every save also repairs papers whose type was renamed before this existed.
+        """
+        new_upper = exam_type.type.upper()
+        old_prefix = f"{old_code.lower()}-"
+        stmt = select(Exam).where(
+            or_(
+                col(Exam.exam_type_id) == exam_type.id,
+                # Papers under this code that were never linked by FK (older uploads).
+                (col(Exam.exam_type_id).is_(None)) & (col(Exam.code).startswith(old_prefix)),
+            )
+        )
+        exams = (await self.session.exec(stmt)).all()
+
+        renamed: List[Exam] = []
+        for exam in exams:
+            match = re.match(r"^([A-Za-z0-9_-]+)(.*)$", exam.name or "", re.DOTALL)
+            if not match:
+                continue
+            leading, rest = match.groups()
+            is_code_token = leading.lower() == old_code.lower() or (exam.code or "").lower().startswith(
+                f"{leading.lower()}-"
+            )
+            if is_code_token and leading != new_upper:
+                exam.name = f"{new_upper}{rest}"
+                self.session.add(exam)
+                renamed.append(exam)
+
+        if not renamed:
+            return
+        await self.session.commit()
+        try:
+            from app.cache.helpers import invalidate_exam_cache
+            for exam in renamed:
+                await invalidate_exam_cache(str(exam.id))
+        except Exception:
+            pass
 
     async def _invalidate_cache(self):
         try:
