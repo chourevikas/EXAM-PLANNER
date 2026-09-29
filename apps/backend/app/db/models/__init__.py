@@ -231,3 +231,7 @@ __all__.extend([
     "KnowledgeRelationship",
     "QuestionRelationship",
 ])
+
+from app.db.models.llm_usage import LlmUsageEvent
+
+__all__.extend(["LlmUsageEvent"])

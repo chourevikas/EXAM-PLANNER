@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.rate_limiters import InMemoryRateLimiter
 
@@ -23,7 +23,11 @@ class GeminiProvider(BaseLLMProvider):
         self.rate_limiter = rate_limiter
 
     def get_chat_model(
-        self, timeout: Optional[int] = None, max_retries: Optional[int] = None
+        self,
+        timeout: Optional[int] = None,
+        max_retries: Optional[int] = None,
+        callbacks: Optional[List[Any]] = None,
+        labels: Optional[Dict[str, str]] = None,
     ) -> BaseChatModel:
         global _cached_credentials, _cached_cred_path
         from langchain_google_genai import ChatGoogleGenerativeAI
@@ -37,6 +41,11 @@ class GeminiProvider(BaseLLMProvider):
         }
         if self.rate_limiter:
             kwargs["rate_limiter"] = self.rate_limiter
+        if callbacks:
+            kwargs["callbacks"] = callbacks
+        if labels:
+            # Vertex AI copies request labels into the GCP billing export (cost per label)
+            kwargs["labels"] = labels
 
         if self.settings.GCP_PROJECT_ID:
             kwargs["project"] = self.settings.GCP_PROJECT_ID

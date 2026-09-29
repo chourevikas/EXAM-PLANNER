@@ -70,10 +70,17 @@ YOUR MANDATE:
             settings = get_settings()
             # Fail fast: this call has a deterministic fallback below, so a degraded/slow provider
             # should not block report generation for minutes via long retries/timeouts.
+            is_cumulative = exam_info.get("attempt_id") == "CUMULATIVE_ALL"
             chat_model = get_vision_llm(
                 timeout=settings.REPORT_LLM_TIMEOUT_SECONDS,
                 max_retries=settings.REPORT_LLM_MAX_RETRIES,
                 rate_limit_rps=settings.REPORT_LLM_RATE_LIMIT_RPS,
+                feature="cumulative_report" if is_cumulative else "attempt_report",
+                usage_context={
+                    "exam_id": exam_info.get("exam_id"),
+                    "attempt_id": exam_info.get("attempt_id"),
+                    "user_id": candidate_info.get("user_id"),
+                },
             )
 
             # Use with_structured_output if supported

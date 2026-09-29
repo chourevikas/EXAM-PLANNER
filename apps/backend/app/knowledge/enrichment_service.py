@@ -54,6 +54,7 @@ from app.knowledge.ai_extractor import (
     Vocabulary,
 )
 from app.knowledge.extractor import AliasScanner, extract_names, related_refs_from_solution
+from app.llm.usage import llm_usage_scope
 from app.knowledge.normalize import normalize_key
 from app.knowledge.resolver import KnowledgeResolver, NodeRef, infer_entity_type
 from app.knowledge.vocabulary import (
@@ -131,7 +132,8 @@ class KnowledgeEnrichmentService:
             question_ids = (
                 await session.exec(select(Question.id).where(Question.exam_id == exam_id).order_by(Question.id))
             ).all()
-        return await self.enrich_questions(list(question_ids), refresh_ai=refresh_ai, on_progress=on_progress)
+        with llm_usage_scope(exam_id=exam_id):
+            return await self.enrich_questions(list(question_ids), refresh_ai=refresh_ai, on_progress=on_progress)
 
     async def enrich_questions(
         self,

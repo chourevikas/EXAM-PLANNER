@@ -307,7 +307,13 @@ class GoogleTranslationService:
         target_native = target_info.native_name
 
         from app.llm.factory import get_vision_llm
-        llm = get_vision_llm(timeout=90, max_retries=3, rate_limit_rps=1.0)
+        llm = get_vision_llm(
+            timeout=90,
+            max_retries=3,
+            rate_limit_rps=1.0,
+            feature="translation",
+            usage_context={"detail": target_language},
+        )
 
         # Chunk large lists into manageable batches of 10 items
         batch_size = 10

@@ -150,6 +150,13 @@ class Settings(BaseSettings):
     GCP_PROJECT_ID: Optional[str] = Field(default=None)
     GCP_LOCATION: str = Field(default="us-central1")
     GEMINI_MODEL_NAME: str = Field(default="gemini-2.5-flash")
+    LLM_USAGE_TRACKING_ENABLED: bool = Field(
+        default=True, description="Record every LLM request (tokens, cost, feature) in llm_usage_events"
+    )
+    LLM_USD_TO_INR: float = Field(
+        default=95.5,
+        description="INR billed per USD of list price; 95.5 matches the Sept 2026 GCP invoice (taxes included)",
+    )
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(
         default="gcp-service-account.json"
     )

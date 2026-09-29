@@ -306,6 +306,7 @@ class KnowledgeAIExtractor:
                 timeout=settings.KNOWLEDGE_LLM_TIMEOUT_SECONDS,
                 max_retries=settings.KNOWLEDGE_LLM_MAX_RETRIES,
                 rate_limit_rps=settings.KNOWLEDGE_LLM_RATE_LIMIT_RPS,
+                feature="knowledge_tagging",
             )
 
         return cls(_factory, batch_size=settings.KNOWLEDGE_AI_BATCH_SIZE, model_name=settings.GEMINI_MODEL_NAME)

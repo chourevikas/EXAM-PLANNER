@@ -13,6 +13,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.config.logger import setup_logger, TaskLoggerAdapter
 from app.config.settings import get_settings
 from app.db.session import managed_async_session, with_db_retry
+from app.llm.usage import llm_usage_scope
 from app.db.models import (
     Exam,
     Question,
@@ -321,11 +322,12 @@ class QuestionTranslationService:
             }
 
         try:
-            if self.session is not None:
-                return await _execute(self.session)
-            else:
-                async with managed_async_session() as sess:
-                    return await _execute(sess)
+            with llm_usage_scope(exam_id=exam_id):
+                if self.session is not None:
+                    return await _execute(self.session)
+                else:
+                    async with managed_async_session() as sess:
+                        return await _execute(sess)
         except Exception as e:
             log.error(f"❌ [TRANSLATION PIPELINE FAILED] Exam #{exam_id}: {e}", exc_info=True)
             try:

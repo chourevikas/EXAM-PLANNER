@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from app.config.logger import setup_logger
 from app.config.settings import get_settings
 from app.llm.providers import GeminiProvider
@@ -35,12 +35,18 @@ def get_vision_llm(
     timeout: Optional[int] = None,
     max_retries: Optional[int] = None,
     rate_limit_rps: Optional[float] = None,
+    feature: str = "unspecified",
+    usage_context: Optional[Dict[str, Any]] = None,
 ):
     """Returns rate-limited vision LLM instance configured with retries and timeout via provider delegator.
 
     Overrides let a caller with its own failure fallback (so it should fail fast rather than retry for
     minutes) request a shorter timeout/fewer retries and a separate rate-limit bucket, without changing
     behavior for existing callers (bulk PDF ingestion, answer-key extraction, etc.) that omit them.
+
+    `feature` names the product feature the requests belong to (e.g. "translation"); every request is
+    recorded in llm_usage_events under it and labelled with it for the GCP billing export.
+    `usage_context` (exam_id / attempt_id / user_id / detail) adds to any `llm_usage_scope` context.
     """
     settings = get_settings()
     provider_name = (settings.LLM_PROVIDER or "vertexai").lower()
@@ -51,4 +57,17 @@ def get_vision_llm(
     else:
         raise ValueError(f"Unsupported LLM provider: {provider_name}")
 
-    return provider.get_chat_model(timeout=timeout, max_retries=max_retries)
+    callbacks = None
+    if settings.LLM_USAGE_TRACKING_ENABLED:
+        from app.llm.usage import LlmUsageCallback
+
+        callbacks = [LlmUsageCallback(feature, settings.GEMINI_MODEL_NAME, usage_context)]
+
+    from app.llm.usage import vertex_labels
+
+    return provider.get_chat_model(
+        timeout=timeout,
+        max_retries=max_retries,
+        callbacks=callbacks,
+        labels=vertex_labels(feature, settings.ENVIRONMENT),
+    )
