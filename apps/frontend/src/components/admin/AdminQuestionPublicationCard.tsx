@@ -163,7 +163,9 @@ const stemTableCellStyle: React.CSSProperties = {
 const stemMarkdownComponents: any = {
   table: ({ node, ...props }: any) => (
     <div style={{ overflowX: 'auto', margin: '10px 0' }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%' }} {...props} />
+      {/* minWidth 0 overrides the small-screen `main table { min-width: 560px }` meant for data grids,
+          so a two-column list wraps its cells instead of pushing List-II off screen */}
+      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 0 }} {...props} />
     </div>
   ),
   th: ({ node, ...props }: any) => (

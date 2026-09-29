@@ -34,6 +34,9 @@ from app.pipeline.patterns import (
     ANSWER_LINE_PATTERN,
     SOLUTION_HEADER_PATTERN,
     SOLUTION_BULLET_PATTERN,
+    SOLUTION_NOTE_PATTERN,
+    STEM_CLOSING_PROMPT_PATTERN,
+    STEM_LIST_ITEM_PATTERN,
     COMMON_MISTAKE_HEADER_PATTERN,
     REVERSE_LOGIC_HEADER_PATTERN,
     REVERSE_LOGIC_OPTION_PATTERN,
@@ -204,7 +207,8 @@ def split_into_question_blocks(full_markdown: str) -> List[Dict[str, Any]]:
         # markers say exactly which pictures/tables sit inside this question
         picture_ids = [int(m.group(1)) for m in PICTURE_MARKER_PATTERN.finditer(raw_block)]
         table_ids = [int(m.group(1)) for m in TABLE_MARKER_PATTERN.finditer(raw_block)]
-        clean_block = PAGE_BREAK_PATTERN.sub("", raw_block)
+        # A page break is not a paragraph break: text wrapped across it must still join up
+        clean_block = re.sub(rf"\s*{PAGE_BREAK_PATTERN.pattern}\s*", "\n", raw_block, flags=re.IGNORECASE)
         clean_block = PICTURE_MARKER_PATTERN.sub("", clean_block)
         clean_block = TABLE_MARKER_PATTERN.sub("", clean_block)
         clean_block = SECTION_HEADING_PATTERN.sub("", clean_block).strip()
@@ -264,15 +268,19 @@ def disambiguate_asset_question(
 
 
 def _join_stem_lines(stem_lines: List[str]) -> str:
-    """Stem lines joined by newlines, with blank lines around markdown tables so they render as tables."""
+    """Stem lines joined by newlines, with blank lines around markdown tables so they render as tables,
+    and before the prompt closing a numbered list (else markdown folds it into the last list item)."""
     parts: List[str] = []
     prev_is_row = False
+    in_list = False  # since a numbered item, wrapped item lines included
     for sl in stem_lines:
         is_row = bool(TABLE_ROW_PATTERN.match(sl))
-        if parts and is_row != prev_is_row:
+        closes_list = in_list and bool(STEM_CLOSING_PROMPT_PATTERN.match(sl))
+        if parts and (is_row != prev_is_row or closes_list):
             parts.append("")
         parts.append(sl)
         prev_is_row = is_row
+        in_list = bool(STEM_LIST_ITEM_PATTERN.match(sl)) or (in_list and not closes_list and not is_row)
     return "\n".join(parts).strip()
 
 
@@ -513,12 +521,13 @@ def parse_question_block(
             if bm:
                 solution_bullets.append(bm.group(2).strip())
                 in_bullet = True
-            elif in_bullet and not follows_blank and not in_related_refs:
+            elif in_bullet and not follows_blank and not in_related_refs and not SOLUTION_NOTE_PATTERN.match(bl):
                 # A bullet wrapped onto the next line ("• SGSY was formed by ... TRYSEM, DWCRA,\nand the ...")
                 solution_bullets[-1] = f"{solution_bullets[-1]} {bl}"
             else:
                 solution_bullets.append(bl)
-                in_bullet = False
+                # A note's wrapped lines join it like a bullet's
+                in_bullet = bool(SOLUTION_NOTE_PATTERN.match(bl))
 
         solution_text = "\n\n".join(solution_bullets).strip()
 

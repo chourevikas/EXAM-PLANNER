@@ -1,9 +1,13 @@
 """Tables and diagrams in exam PDFs: kept in place during extraction and attached to the right question."""
+import sys
+import types
 from pathlib import Path
 
 from app.pipeline.docling_ocr_extractor import (
     DoclingOcrExtractor,
     detect_page_furniture,
+    extract_digital_layout,
+    fix_undecoded_bullets,
     rows_to_markdown,
     strip_furniture_from_text,
 )
@@ -149,3 +153,85 @@ def test_digital_pdf_extraction_keeps_table_picture_and_drops_running_header():
     assert set(q12.reverse_logic) == {"A", "B", "D"}
     assert len(q13.pictures) == 1 and q12.pictures == []
     assert records[11].pictures == [] and records[11].tables == []
+
+
+def test_table_continued_on_next_page_has_no_second_header():
+    assert rows_to_markdown([["C. Surdas", "3. Nizamuddin Auliya"], ["D. Mardana", "4. Vallabhacharya"]], header=False) == (
+        "| C. Surdas | 3. Nizamuddin Auliya |\n| D. Mardana | 4. Vallabhacharya |"
+    )
+
+
+def test_table_split_across_pages_is_one_table_and_one_asset(monkeypatch):
+    def line(text, top):
+        return {"text": text, "top": top, "bottom": top + 10, "x0": 50, "x1": 500, "chars": []}
+
+    class Table:
+        def __init__(self, bbox, rows):
+            self.bbox, self.rows = bbox, rows
+
+        def extract(self):
+            return self.rows
+
+    class Page:
+        def __init__(self, lines, tables):
+            self.lines, self.tables, self.images = lines, tables, []
+
+        def extract_text_lines(self, return_chars=True):
+            return self.lines
+
+        def find_tables(self):
+            return self.tables
+
+    pages = [
+        Page([line("Q33. Match List-I with List-II:", 100)],
+             [Table((50, 200, 500, 300), [["List-I", "List-II"], ["A. Hutar", "1. Madhya Pradesh"], ["B. Ib River", "2. Chhattisgarh"]])]),
+        Page([line("Codes:", 200), line("A B C D", 220)],
+             [Table((50, 50, 500, 150), [["C. Tatapani-Ramkola", "3. Odisha"], ["D. Umaria", "4. Jharkhand"]])]),
+    ]
+
+    class Pdf:
+        def __init__(self, pages):
+            self.pages = pages
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setitem(sys.modules, "pdfplumber", types.SimpleNamespace(open=lambda _path: Pdf(pages)))
+    md, _, tables = extract_digital_layout("split.pdf", ["", ""])
+
+    table = (
+        "| List-I | List-II |\n|---|---|\n| A. Hutar | 1. Madhya Pradesh |\n| B. Ib River | 2. Chhattisgarh |\n"
+        "| C. Tatapani-Ramkola | 3. Odisha |\n| D. Umaria | 4. Jharkhand |"
+    )
+    assert [t["markdown"] for t in tables] == [table]
+    q33 = parse_question_block(split_into_question_blocks(md)[0], [], tables)
+    assert table in q33.stem and q33.stem.count("|---|") == 1
+    assert [t["markdown"] for t in q33.tables] == [table]
+
+
+def test_undecoded_winansi_bullets_become_solution_bullets():
+    # ReportLab's Helvetica bullet: pypdf gives DEL, pdfplumber (table pages) gives "(cid:127)"; a bullet
+    # wrapped across a page break and a wrapped answer-key note stay one paragraph each
+    md = fix_undecoded_bullets(
+        "Q16. [Subject: Modern History] [Difficulty: Difficult]\nArrange the events.\n(A) 4, 3, 2, 1\n(B) 4, 1, 2, 3\n"
+        "(C) 4, 2, 1, 3\n(D) 2, 4, 1, 3\nAnswer: (B)\nSolution:\n"
+        "\x7f Announcement of the Cabinet Mission — 19 February 1946 by PM Attlee in the House of\n\n\n"
+        "<!-- PAGE_BREAK p=11 -->\n\n\nCommons.\n"
+        "(cid:127) Order: 4 → 1 → 2 → 3.\n"
+        "Answer-key note: UPPSC's initial key gave (A) and its final key\ngave (B).\n"
+        "Reverse Logic Box — why the other options are wrong\n"
+        "(A) 4, 3, 2, 1 — Places the Interim Government second. Trap: none.\n"
+        "(C) 4, 2, 1, 3 — Places the announcement first. Trap: same.\n"
+        "(D) 2, 4, 1, 3 — Starts with the announcement. Trap: same.\n"
+    )
+    assert "\x7f" not in md and "(cid:" not in md
+    q16 = parse_question_block(split_into_question_blocks(md)[0], [], [])
+    assert q16.solution_text.split("\n\n") == [
+        "Announcement of the Cabinet Mission — 19 February 1946 by PM Attlee in the House of Commons.",
+        "Order: 4 → 1 → 2 → 3.",
+        "Answer-key note: UPPSC's initial key gave (A) and its final key gave (B).",
+    ]
+    assert set(q16.reverse_logic) == {"A", "C", "D"}

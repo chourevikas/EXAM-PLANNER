@@ -26,6 +26,15 @@ FURNITURE_MIN_PAGE_SHARE = 0.5
 BARE_PAGE_NUMBER_PATTERN = re.compile(r"(?i)^\s*(?:page\s*)?\d{1,4}(?:\s*(?:/|of)\s*\d{1,4})?\s*$")
 
 
+# WinAnsiEncoding maps its unused codes to the bullet (PDF 1.7, Annex D) and ReportLab draws "•" as
+# code 127, which pypdf returns as DEL and pdfplumber as "(cid:127)"
+UNDECODED_BULLET_PATTERN = re.compile(r"\x7f|\(cid:127\)")
+
+
+def fix_undecoded_bullets(text: str) -> str:
+    return UNDECODED_BULLET_PATTERN.sub("•", text)
+
+
 def picture_marker(pic_id: int) -> str:
     """Placeholder left in the markdown where a picture sits, so it attaches to the right question."""
     return f"<!-- PICTURE id={pic_id} -->"
@@ -36,8 +45,11 @@ def table_marker(tbl_id: int) -> str:
     return f"<!-- TABLE id={tbl_id} -->"
 
 
-def rows_to_markdown(rows: List[List[Optional[str]]]) -> str:
-    """GFM table from extracted cell rows (first row is the header); empty rows/columns dropped."""
+def rows_to_markdown(rows: List[List[Optional[str]]], header: bool = True) -> str:
+    """GFM table from extracted cell rows (first row is the header); empty rows/columns dropped.
+
+    With header=False only body rows are produced, for a table continued from the previous page.
+    """
     def cell(v: Optional[str]) -> str:
         return re.sub(r"\s+", " ", (v or "")).strip().replace("|", "\\|")
 
@@ -50,9 +62,15 @@ def rows_to_markdown(rows: List[List[Optional[str]]]) -> str:
     grid = [[r[c] for c in keep] for r in grid]
     if not keep:
         return ""
-    lines = ["| " + " | ".join(grid[0]) + " |", "|" + "---|" * len(keep)]
-    lines += ["| " + " | ".join(r) + " |" for r in grid[1:]]
-    return "\n".join(lines)
+    body = ["| " + " | ".join(r) + " |" for r in grid]
+    if not header:
+        return "\n".join(body)
+    return "\n".join([body[0], "|" + "---|" * len(keep)] + body[1:])
+
+
+def _markdown_table_columns(md: str) -> int:
+    first = md.split("\n", 1)[0].strip()
+    return len(re.findall(r"(?<!\\)\|", first)) - 1
 
 
 def _furniture_key(text: str, ignore_page_number: bool = True) -> str:
@@ -166,6 +184,10 @@ def extract_digital_layout(pdf_path: str, pypdf_texts: List[str]) -> Tuple[str, 
     tables: List[Dict[str, Any]] = []
     chunks: List[str] = []
 
+    # Table that ended the previous page: a page that opens with a table of the same width
+    # continues it, so its rows join that table (same entry, no new header or marker)
+    prev_page_table_id: Optional[int] = None
+
     with pdfplumber.open(pdf_path) as pdf:
         pages_lines = [page.extract_text_lines(return_chars=True) for page in pdf.pages]
         furniture = detect_page_furniture(pages_lines)
@@ -182,7 +204,7 @@ def extract_digital_layout(pdf_path: str, pypdf_texts: List[str]) -> Tuple[str, 
                 if len(rows) >= 2 and max((len(r) for r in rows), default=0) >= 2:
                     md = rows_to_markdown(rows)
                     if md:
-                        found_tables.append((tbl.bbox, md))
+                        found_tables.append((tbl.bbox, md, rows))
 
             found_pictures = []
             for img in page.images:
@@ -195,11 +217,12 @@ def extract_digital_layout(pdf_path: str, pypdf_texts: List[str]) -> Tuple[str, 
                 page_numbers = [lines[i]["text"].strip() for i in furniture_idx if BARE_PAGE_NUMBER_PATTERN.match(lines[i]["text"])]
                 page_text = pypdf_texts[idx] if idx < len(pypdf_texts) else ""
                 chunks.append(f"\n\n<!-- PAGE_BREAK p={page_no} -->\n\n" + strip_furniture_from_text(page_text, segments, page_numbers))
+                prev_page_table_id = None
                 continue
 
             # (top, text) items sorted top-to-bottom; tables/pictures replace the text they cover
-            items: List[Tuple[float, str]] = []
-            table_boxes = [bbox for bbox, _ in found_tables]
+            items: List[Tuple] = []
+            table_boxes = [bbox for bbox, _, _ in found_tables]
             for i, line in enumerate(lines):
                 if i in furniture_idx:
                     continue
@@ -208,17 +231,30 @@ def extract_digital_layout(pdf_path: str, pypdf_texts: List[str]) -> Tuple[str, 
                 items.append((line["top"], line["text"]))
 
             scaled = lambda b: [round(v * DIGITAL_RENDER_SCALE, 1) for v in b]
-            for bbox, md in found_tables:
+            first_text_top = min((top for top, _ in items), default=float("inf"))
+            for bbox, md, rows in found_tables:
+                continues = (
+                    prev_page_table_id is not None
+                    and bbox[1] < first_text_top
+                    and _markdown_table_columns(md) == _markdown_table_columns(tables[prev_page_table_id]["markdown"])
+                )
+                if continues:
+                    md = rows_to_markdown(rows, header=False)
+                    tables[prev_page_table_id]["markdown"] += "\n" + md
+                    items.append((bbox[1], f"\n{md}\n", prev_page_table_id))
+                    continue
                 tbl_id = len(tables)
                 tables.append({"id": tbl_id, "page_no": page_no, "bbox": scaled(bbox), "markdown": md, "self_ref": ""})
-                items.append((bbox[1], f"\n{table_marker(tbl_id)}\n{md}\n"))
+                items.append((bbox[1], f"\n{table_marker(tbl_id)}\n{md}\n", tbl_id))
             for bbox in found_pictures:
                 pic_id = len(pictures)
                 pictures.append({"id": pic_id, "page_no": page_no, "bbox": scaled(bbox), "self_ref": ""})
-                items.append((bbox[1], picture_marker(pic_id)))
+                items.append((bbox[1], picture_marker(pic_id), None))
 
+            items = [it if len(it) == 3 else (it[0], it[1], None) for it in items]
             items.sort(key=lambda it: it[0])
-            chunks.append(f"\n\n<!-- PAGE_BREAK p={page_no} -->\n\n" + "\n".join(text for _, text in items))
+            prev_page_table_id = items[-1][2] if items else None
+            chunks.append(f"\n\n<!-- PAGE_BREAK p={page_no} -->\n\n" + "\n".join(text for _, text, _ in items))
 
     return "\n\n".join(chunks).strip(), pictures, tables
 
@@ -352,6 +388,9 @@ class DoclingOcrExtractor:
                 logger.warning(f"Layout-aware digital extraction failed ({e}); using plain text layer without tables/pictures.")
                 full_markdown = "\n\n".join(digital_chunks).strip()
                 pictures, tables = [], []
+            full_markdown = fix_undecoded_bullets(full_markdown)
+            for tbl in tables:
+                tbl["markdown"] = fix_undecoded_bullets(tbl["markdown"])
             logger.info(
                 f"📄 [DIGITAL TEXT LAYER DETECTED] Extracted {len(full_markdown)} chars, {len(tables)} tables, "
                 f"{len(pictures)} pictures across {digital_pages}/{total_p} pages."

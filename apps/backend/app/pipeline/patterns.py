@@ -95,6 +95,9 @@ SOLUTION_BULLET_PATTERN = re.compile(
     re.MULTILINE,
 )
 
+# A labelled note closing a solution ("Answer-key note: ...") starts its own paragraph
+SOLUTION_NOTE_PATTERN = re.compile(r"(?i)^(?:answer[- ]key\s+)?note\s*:")
+
 # Common Mistake header and content
 # ■ Common Mistake: ... or Common Mistake: ...
 COMMON_MISTAKE_HEADER_PATTERN = re.compile(
@@ -136,6 +139,11 @@ PICTURE_MARKER_PATTERN = re.compile(r"<!--\s*PICTURE\s+id=(\d+)\s*-->")
 TABLE_MARKER_PATTERN = re.compile(r"<!--\s*TABLE\s+id=(\d+)\s*-->")
 # A markdown table row ("| A. Kabir | 1. Guru Nanak Dev |") or its "|---|---|" separator
 TABLE_ROW_PATTERN = re.compile(r"^\s*\|.*\|\s*$")
+
+# A numbered stem item ("1. ...", "(2) ...") and the prompt that closes the list ("Select the correct
+# answer ...", "Which of the above ...", "Codes:"); capitalised, so a wrapped item ("which flows ...") is not one
+STEM_LIST_ITEM_PATTERN = re.compile(r"^\s*\(?\d{1,2}[.)]\s")
+STEM_CLOSING_PROMPT_PATTERN = re.compile(r"^\s*(?:Select|Choose|Which|How many|Codes?\s*:)")
 
 # Stem wording that points at a figure/table the question cannot be answered without
 VISUAL_REFERENCE_PATTERN = re.compile(

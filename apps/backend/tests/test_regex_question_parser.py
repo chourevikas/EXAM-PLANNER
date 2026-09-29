@@ -373,3 +373,21 @@ def test_numbered_lines_are_ignored_when_q_headers_exist():
     rec = parse_question_block(blocks[0], [], [], None)
     assert rec.statement_lines == ["First statement", "Second statement"]
     assert rec.source_raw is None and rec.section_raw is None
+
+
+def test_prompt_after_numbered_statements_is_not_folded_into_last_item():
+    text = (
+        "Q1. [Subject: Modern History] [Difficulty: Medium]\n"
+        "Consider the following Peshwas and arrange them in ascending chronological order:\n"
+        "1. Raghunath Rao (Raghoba)\n"
+        "2. Balaji Vishwanath, the first of the Bhat family Peshwas\n"
+        "under Shahu\n"
+        "Select the correct answer from the codes given below:\n"
+        "(A) 2, 1\n(B) 1, 2\n(C) 1\n(D) 2\n"
+        "Answer: (A)\n"
+        "Solution:\nBalaji Vishwanath came first.\n"
+    )
+    rec = parse_question_block(split_into_question_blocks(text)[0])
+    # Markdown would otherwise read the prompt as a lazy continuation of item 2
+    assert rec.stem.endswith("under Shahu\n\nSelect the correct answer from the codes given below:")
+    assert "1. Raghunath Rao (Raghoba)\n2. Balaji" in rec.stem

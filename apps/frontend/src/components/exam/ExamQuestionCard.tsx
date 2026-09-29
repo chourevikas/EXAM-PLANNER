@@ -405,6 +405,8 @@ export function ExamQuestionCard({
         <table
           style={{
             width: '100%',
+            // Overrides the small-screen `main table { min-width: 560px }` meant for data grids
+            minWidth: 0,
             borderCollapse: 'collapse',
             fontSize: 12.5,
             border: '1px solid #E2E8F0',
