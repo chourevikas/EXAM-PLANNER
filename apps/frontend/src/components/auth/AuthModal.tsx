@@ -5,6 +5,7 @@ import { UserRole } from '../../types/auth';
 import { loginUser, registerUser } from '../../services/authService';
 import { useClerk, useSignIn } from '@clerk/clerk-react';
 import { SUPPORTED_LANGUAGES } from '../../constants/languages';
+import { CLERK_AUTH_ERROR_KEY } from '../common/ClerkExchangeBridge';
 
 export type AuthMode = 'login' | 'signup';
 
@@ -32,9 +33,25 @@ export function AuthModal({
   const [preferredLanguage, setPreferredLanguage] = useState('en');
 
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  // A Google sign-in the backend refused lands here via ClerkExchangeBridge; show its reason once.
+  const [errorMsg, setErrorMsg] = useState(() => {
+    try {
+      return localStorage.getItem(CLERK_AUTH_ERROR_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
   const [successMsg, setSuccessMsg] = useState('');
   const [showApprovalPending, setShowApprovalPending] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !errorMsg) return;
+    try {
+      localStorage.removeItem(CLERK_AUTH_ERROR_KEY);
+    } catch {
+      /* storage unavailable */
+    }
+  }, [isOpen, errorMsg]);
 
   const navigate = useNavigate();
   const clerk = useClerk();

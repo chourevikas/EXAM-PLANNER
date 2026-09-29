@@ -4,7 +4,7 @@ import uuid
 import jwt
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
-from sqlmodel import select
+from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config.settings import settings
@@ -82,6 +82,10 @@ async def get_or_create_user_from_clerk(
     Lookup order: by clerk_id, then by email (backfilling clerk_id onto that
     row), then creates a new User. Used only by POST /auth/clerk-exchange.
     """
+    # Rows made by the password flow store lowercase emails; Clerk may send mixed case. Compare lowercased
+    # so a returning student links to their existing account instead of getting a duplicate one.
+    clerk_email = clerk_email.strip().lower() if clerk_email else None
+
     query = select(User).where(User.clerk_id == clerk_id)
     result = await session.exec(query)
     user = result.one_or_none()
@@ -99,7 +103,7 @@ async def get_or_create_user_from_clerk(
             user.full_name = name
             updated = True
         if clerk_email and (not user.email or user.email.endswith("@clerk.local")):
-            collision = (await session.exec(select(User).where(User.email == clerk_email, User.id != user.id))).first()
+            collision = (await session.exec(select(User).where(func.lower(User.email) == clerk_email, User.id != user.id))).first()
             if not collision:
                 user.email = clerk_email
                 updated = True
@@ -118,9 +122,9 @@ async def get_or_create_user_from_clerk(
             await cache.delete_pattern("ep:admin:*")
 
     if not user and clerk_email:
-        query_email = select(User).where(User.email == clerk_email)
+        query_email = select(User).where(func.lower(User.email) == clerk_email)
         res_email = await session.exec(query_email)
-        user = res_email.one_or_none()
+        user = res_email.first()
         if user:
             _refuse_staff_email_linking(user)
             user.clerk_id = clerk_id
@@ -141,8 +145,8 @@ async def get_or_create_user_from_clerk(
     if not user:
         target_email = clerk_email or f"{clerk_id}@clerk.local"
         existing_email_user = (
-            await session.exec(select(User).where(User.email == target_email))
-        ).one_or_none()
+            await session.exec(select(User).where(func.lower(User.email) == target_email.lower()))
+        ).first()
         if existing_email_user:
             _refuse_staff_email_linking(existing_email_user)
             existing_email_user.clerk_id = clerk_id
@@ -175,7 +179,10 @@ async def get_or_create_user_from_clerk(
         await cache.delete_pattern("ep:admin:*")
 
     if user.status != UserStatus.ACTIVE:
-        raise HTTPException(status_code=400, detail="Inactive user account")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is no longer active. Please contact support to restore access.",
+        )
     return user
 
 

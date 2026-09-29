@@ -268,6 +268,40 @@ async def test_clerk_cannot_be_linked_to_an_existing_staff_account_by_email(env)
         assert linked.clerk_id == "clerk_new_2" and linked.role == UserRole.STUDENT
 
 
+@pytest.mark.anyio
+async def test_google_sign_in_links_student_email_case_insensitively(env):
+    student_id, student_email, _ = await _seed(env, UserRole.STUDENT)
+    async with env() as session:
+        linked = await get_or_create_user_from_clerk(
+            session, "clerk_case_1", student_email.upper(), "Student", None
+        )
+        assert linked.id == student_id and linked.clerk_id == "clerk_case_1"
+        count = len((await session.exec(select(User).where(User.role == UserRole.STUDENT))).all())
+        assert count == 1
+
+
+@pytest.mark.anyio
+async def test_google_sign_in_of_inactive_account_is_a_final_readable_refusal(env, monkeypatch):
+    user_id, email, _ = await _seed(env, UserRole.STUDENT, clerk_id="user_clerk_gone")
+    async with env() as session:
+        user = await session.get(User, user_id)
+        user.status = UserStatus.DELETED
+        session.add(user)
+        await session.commit()
+
+    async def fake_verify(_token):
+        return {"sub": "user_clerk_gone", "email": email}
+
+    import app.routers.auth as auth_router
+
+    monkeypatch.setattr(auth_router, "verify_clerk_token", fake_verify)
+    async with _client() as client:
+        res = await client.post("/api/v1/auth/clerk-exchange", json={"clerk_token": "x"})
+    # The frontend treats 403 as final (no retry loop) and shows this detail on the sign-in page.
+    assert res.status_code == 403
+    assert "no longer active" in res.json()["detail"]
+
+
 # ───────────────────────── audit log ─────────────────────────
 
 @pytest.mark.anyio

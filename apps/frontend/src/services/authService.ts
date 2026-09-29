@@ -219,6 +219,19 @@ export interface ClerkUserInfo {
  * afterward the app behaves exactly like an email/password login (same
  * storage, same proactive refresh, same guest-session sync).
  */
+/** A failed POST /auth/clerk-exchange; `status` lets the caller tell a retryable failure from a rejection. */
+export class ClerkExchangeError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = 'ClerkExchangeError';
+  }
+
+  /** 401 (token not ready yet), 408/429 and 5xx can succeed on retry; other 4xx are final (inactive/staff account). */
+  get isRetryable(): boolean {
+    return this.status === 401 || this.status === 408 || this.status === 429 || this.status >= 500;
+  }
+}
+
 export async function exchangeClerkToken(
   clerkToken: string,
   userInfo?: ClerkUserInfo
@@ -237,11 +250,13 @@ export async function exchangeClerkToken(
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: 'Clerk exchange failed' }));
-    throw new Error(errorData.detail || 'Could not complete sign-in.');
+    throw new ClerkExchangeError(errorData.detail || 'Could not complete sign-in.', res.status);
   }
 
   const data: AuthResponse = await res.json();
-  await rejectSuperAdminSession(data);
+  await rejectSuperAdminSession(data).catch((err: Error) => {
+    throw new ClerkExchangeError(err.message, 403);
+  });
   if (data.access_token && data.user) {
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));

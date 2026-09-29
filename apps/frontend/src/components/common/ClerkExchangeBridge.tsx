@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
-import { exchangeClerkToken } from '../../services/authService';
+import { ClerkExchangeError, exchangeClerkToken } from '../../services/authService';
+
+/** Read (and cleared) by AuthModal so a rejected Google sign-in explains itself instead of spinning.
+ * localStorage, not sessionStorage: logoutUser() clears sessionStorage on the post-sign-out page load. */
+export const CLERK_AUTH_ERROR_KEY = 'clerk_auth_error';
 
 /**
  * Clerk is used only for the OAuth handshake ("Continue with Google").
@@ -18,7 +22,7 @@ import { exchangeClerkToken } from '../../services/authService';
 const MAX_EXCHANGE_RETRIES = 5;
 
 export function ClerkExchangeBridge() {
-  const { isLoaded: isAuthLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded: isAuthLoaded, isSignedIn, getToken, signOut } = useAuth();
   const { isLoaded: isUserLoaded, user: clerkUser } = useUser();
   const exchangedRef = useRef(false);
   // Bumped after a failed exchange so the effect re-runs. Without it a transient failure (Clerk
@@ -28,7 +32,11 @@ export function ClerkExchangeBridge() {
   const attemptsRef = useRef(0);
 
   useEffect(() => {
-    if (!isAuthLoaded || !isUserLoaded || !isSignedIn || !clerkUser) return;
+    if (!isAuthLoaded || !isUserLoaded) return;
+    if (!isSignedIn || !clerkUser) {
+      exchangedRef.current = false;
+      return;
+    }
 
     const existingToken = localStorage.getItem('access_token');
     const existingUserRaw = localStorage.getItem('user');
@@ -52,15 +60,17 @@ export function ClerkExchangeBridge() {
       }
     }
 
-    // If we already have a clean session and do not need to heal placeholder data, exit
-    if (existingToken && !hasPlaceholderInfo) return;
+    // If we already have a clean session and do not need to heal placeholder data, exit.
+    // A token without a stored user is not a session ProtectedRoute accepts, so exchange for that too.
+    if (existingToken && existingUserRaw && !hasPlaceholderInfo) return;
 
     if (exchangedRef.current) return;
     exchangedRef.current = true;
 
     (async () => {
       try {
-        const clerkToken = await getToken();
+        // On a retry, skip Clerk's cached token: a stale one is a common cause of the first 401.
+        const clerkToken = await getToken(attemptsRef.current > 0 ? { skipCache: true } : undefined);
         if (!clerkToken) throw new Error('Clerk returned no session token');
 
         const email =
@@ -86,6 +96,18 @@ export function ClerkExchangeBridge() {
         window.dispatchEvent(new Event('storage'));
       } catch (err) {
         console.warn('Clerk token exchange failed:', err);
+        // The backend refused this account (inactive, staff email, Super Admin): retrying cannot help and
+        // would leave the user on "Loading account..." with no reason. Drop the Clerk session and show why.
+        if (err instanceof ClerkExchangeError && !err.isRetryable) {
+          attemptsRef.current = 0;
+          try {
+            localStorage.setItem(CLERK_AUTH_ERROR_KEY, err.message);
+          } catch {
+            /* storage unavailable — the sign-in page just won't show the reason */
+          }
+          signOut({ redirectUrl: '/signin' }).catch((e: unknown) => console.warn('Clerk sign-out failed:', e));
+          return;
+        }
         exchangedRef.current = false;
         if (attemptsRef.current < MAX_EXCHANGE_RETRIES) {
           const delay = Math.min(1000 * 2 ** attemptsRef.current, 8000);
@@ -94,7 +116,7 @@ export function ClerkExchangeBridge() {
         }
       }
     })();
-  }, [isAuthLoaded, isUserLoaded, isSignedIn, clerkUser, getToken, retryTick]);
+  }, [isAuthLoaded, isUserLoaded, isSignedIn, clerkUser, getToken, signOut, retryTick]);
 
   return null;
 }
