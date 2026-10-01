@@ -1,6 +1,8 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw, Flag, Grid } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { ConfidenceSelector } from './ConfidenceSelector';
+import type { ConfidenceLevel } from '../../types/exam';
 
 interface ExamFooterBarProps {
   isAnswered: boolean;
@@ -18,6 +20,9 @@ interface ExamFooterBarProps {
   showMarkReview?: boolean;
   backgroundColor?: string;
   onOpenPalette?: () => void;
+  /** Shown only when onConfidenceChange is provided */
+  confidence?: ConfidenceLevel | null;
+  onConfidenceChange?: (value: ConfidenceLevel | null) => void;
 }
 
 export function ExamFooterBar({
@@ -36,12 +41,24 @@ export function ExamFooterBar({
   showMarkReview = true,
   backgroundColor = 'var(--bg-card)',
   onOpenPalette,
+  confidence = null,
+  onConfidenceChange,
 }: ExamFooterBarProps) {
   const { isMobile, isSmallScreen } = useBreakpoint();
+  // On narrow screens the confidence choice gets its own row so Prev/Next stay on screen
+  const confidenceOwnRow = Boolean(onConfidenceChange) && isSmallScreen;
+  const confidenceSelector = onConfidenceChange ? (
+    <ConfidenceSelector
+      value={confidence}
+      onChange={onConfidenceChange}
+      disabled={!isAnswered || isRevealed}
+      compact={isMobile}
+    />
+  ) : null;
 
   return (
     <footer
-      className="exam-footer-bar"
+      className={`exam-footer-bar${confidenceOwnRow ? ' has-confidence-row' : ''}`}
       style={{
         backgroundColor: backgroundColor,
       }}
@@ -134,6 +151,9 @@ export function ExamFooterBar({
           </button>
         )}
       </div>
+
+      {/* Self-reported confidence for the current answer: own top row on narrow screens, centered otherwise */}
+      {confidenceOwnRow ? <div className="exam-footer-confidence-row">{confidenceSelector}</div> : confidenceSelector}
 
       {/* Right Actions: Previous, Submit Answer, & Save Next */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8 }}>

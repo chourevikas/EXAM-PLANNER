@@ -16,6 +16,7 @@ from app.engine.matrices.option_switch_regret import OptionSwitchRegretStrategy
 from app.engine.matrices.speed_accuracy_tradeoff import SATOIEngine
 from app.engine.matrices.topic_fsrs_decay import TopicFSRSDecayEngine
 from app.engine.matrices.integrated_cognitive_readiness import IntegratedCognitiveReadinessEngine
+from app.engine.matrices.confidence_calibration import ConfidenceCalibrationStrategy
 from app.config.logger import setup_logger
 
 logger = setup_logger("MatrixOrchestrator")
@@ -37,6 +38,30 @@ def is_placeholder_taxonomy(name: Optional[str]) -> bool:
         "all_subtopics",
     ]
     return any(p in low for p in placeholders)
+
+
+def classify_strength(acc_pct: float) -> tuple[str, str]:
+    """5-tier accuracy strength bands shared by the exam-wise and cumulative reports."""
+    if acc_pct >= 85.0:
+        return "EXCEPTIONAL_MASTERY", "Mastered"
+    if acc_pct >= 70.0:
+        return "STRONG", "Strong"
+    if acc_pct >= 50.0:
+        return "MODERATE", "Competent"
+    if acc_pct >= 30.0:
+        return "WEAK_REVISION_REQUIRED", "Developing - Needs Practice"
+    return "CRITICAL_DEFICIT", "Critical Gap"
+
+
+def accuracy_retention_estimate(acc_pct: float) -> float:
+    """Accuracy-based retention estimate used when no FSRS review history exists."""
+    if acc_pct >= 80.0:
+        return round(min(98.0, 85.0 + (acc_pct - 80.0) * 0.65), 1)
+    if acc_pct >= 50.0:
+        return round(60.0 + (acc_pct - 50.0) * 0.66, 1)
+    if acc_pct > 0.0:
+        return round(40.0 + (acc_pct / 50.0) * 18.0, 1)
+    return 30.0
 
 
 class MatrixOrchestrator:
@@ -92,7 +117,7 @@ class MatrixOrchestrator:
         gti_scores_list = []
         closeness_counts = {
             "Correct Response": 0,
-            "High-Closeness Distractor (Partial Knowledge)": 0,
+            "High-Closeness Distractor (Near-Correct)": 0,
             "Moderate Distractor (Plausible Alternative)": 0,
             "Neutral Distractor (Weak Alignment)": 0,
             "Misleading Distractor (Cognitive Trap)": 0,
@@ -185,6 +210,8 @@ class MatrixOrchestrator:
 
             response_payloads.append(
                 {
+                    "selected_option_id": r.get("selected_option_id"),
+                    "user_selected_option": r.get("user_selected_label", "Unattempted"),
                     "is_correct": is_corr,
                     "time_taken_seconds": time_taken,
                     "expected_time_seconds": exp_time,
@@ -300,6 +327,7 @@ class MatrixOrchestrator:
                     "marks_awarded": round(2.0 if is_corr else (-0.6667 if r.get("selected_option_id") is not None else 0.0), 2),
                     "gti_item_score": round(gti_item, 4),
                     "item_guessing_label": item_guessing_label,
+                    "confidence_level": r.get("confidence_level"),
                     "is_option_switched": is_sw,
                     "osri_status": osri_status,
                     "osri_impact": round(osri_impact, 2),
@@ -351,6 +379,7 @@ class MatrixOrchestrator:
                     entry["incorrect"] += 1
 
         part_1_questions.sort(key=lambda x: x["question_number"])
+        confidence_eval = ConfidenceCalibrationStrategy.evaluate(part_1_questions)
 
         # 2. Part 3 — Taxonomy Hierarchy & Topic Retention Analysis
         part_3_taxonomy = {
@@ -381,26 +410,11 @@ class MatrixOrchestrator:
                 tot_t = stats["total_time"]
                 exp_t = stats["expected_time"]
 
-                acc_pct = round((corr / max(1, tot)) * 100.0, 1)
+                acc_pct = round((corr / max(1, corr + inc)) * 100.0, 1)
                 avg_time = round(tot_t / max(1, tot), 1)
                 eff_avg = round(tot_t / max(1.0, exp_t), 2)
 
-                # 5-Tier Strength Classification
-                if acc_pct >= 85.0:
-                    status = "EXCEPTIONAL_MASTERY"
-                    status_label = "Mastered"
-                elif acc_pct >= 70.0:
-                    status = "STRONG"
-                    status_label = "Strong"
-                elif acc_pct >= 50.0:
-                    status = "MODERATE"
-                    status_label = "Competent"
-                elif acc_pct >= 30.0:
-                    status = "WEAK_REVISION_REQUIRED"
-                    status_label = "Developing - Needs Practice"
-                else:
-                    status = "CRITICAL_DEFICIT"
-                    status_label = "Critical Gap"
+                status, status_label = classify_strength(acc_pct)
 
                 # Topic Retention calculation (FSRS retrievability per subtopic/topic)
                 m_rec = mem_map.get(name, {})
@@ -422,6 +436,13 @@ class MatrixOrchestrator:
                     # Unattempted topic
                     stab = float(m_rec.get("stability", 2.0))
                     r_pct = 50.0
+
+                # Blend in real FSRS retrievability when the user has review history for this area
+                if m_rec.get("stability") is not None and m_rec.get("last_reviewed_days_ago") is not None:
+                    fsrs_r_pct = FSRSEngine.calculate_retrievability(
+                        float(m_rec["last_reviewed_days_ago"]), float(m_rec["stability"])
+                    ) * 100.0
+                    r_pct = round(fsrs_r_pct if attempted_in_tax == 0 else (r_pct + fsrs_r_pct) / 2.0, 1)
 
                 # 5-Tier Memory Retention Health
                 if r_pct >= 85.0:
@@ -505,6 +526,10 @@ class MatrixOrchestrator:
         tot_unatt = sum(1 for r in responses if r.get("selected_option_id") is None and r.get("user_selected_option") in ("Unattempted", None))
         max_score = sum(float(r.get("marks", 2.0)) for r in responses)
 
+        # Practice / short tests are benchmarked against 46% of their own max score, full mocks against 92
+        is_practice_test = (max_score < 100.0) or (total_q < 50) or (mode == AttemptMode.PRACTICE)
+        icrs_cutoff = round(max_score * 0.46, 2) if is_practice_test else 92.0
+
         # Selective computation based on AttemptMode
         if mode == AttemptMode.REVISION:
             irt_eval = {"latent_ability_theta": 0.0, "percentile_rank": 50.0, "ability_level": "REVISION_MODE", "ability_label": "Revision Mode"}
@@ -529,7 +554,7 @@ class MatrixOrchestrator:
                 max_score=max_score,
                 attempted_count=tot_attempted,
                 total_questions=total_q,
-                qualifying_cutoff=92.0,
+                qualifying_cutoff=icrs_cutoff,
             )
         else:  # AttemptMode.EXAM
             irt_eval = IRT3PLStrategy.estimate_latent_ability(irt_items)
@@ -548,7 +573,7 @@ class MatrixOrchestrator:
                 max_score=max_score,
                 attempted_count=tot_attempted,
                 total_questions=total_q,
-                qualifying_cutoff=92.0,
+                qualifying_cutoff=icrs_cutoff,
             )
 
         # Unattempted Behavioral Aggregation
@@ -605,17 +630,26 @@ class MatrixOrchestrator:
             strengths_list.append("High instinct discipline with minimal rushed guessing errors.")
         if float(oeei_eval.get("oeei_score") or 0.0) >= 0.70:
             strengths_list.append("Effective option elimination tactics, avoiding cognitive distractor traps.")
+        if confidence_eval["calibration_status"] == "WELL_CALIBRATED":
+            strengths_list.append("Your 'sure' answers were reliably correct.")
         if not strengths_list:
             strengths_list.append(f"Successfully completed all {total_q} questions within the exam duration.")
 
         if weak_subjs:
             weaknesses_list.append(f"Accuracy dipped below target benchmarks in {', '.join(weak_subjs)}.")
         if weak_topics:
-            weaknesses_list.append(f"Identified high distractor trap vulnerability in topics: {', '.join(weak_topics)}.")
+            weaknesses_list.append(f"Lowest accuracy topics: {', '.join(weak_topics)}.")
         if gti_interp.get("category") in ("IMPULSIVE_BLIND_GUESSING", "ELEVATED_IMPULSIVE_RISK"):
             weaknesses_list.append("Tendency to answer prematurely under time pressure without verifying all options.")
         if pacing_eval.get("pacing_status") in ("EARLY_BOTTLENECK_OVERTHINK", "LATE_EXAM_PANIC_RUSH"):
             weaknesses_list.append("Pacing imbalance detected between the first and second halves of the exam.")
+        if confidence_eval["sure_but_wrong_count"] >= 2:
+            weaknesses_list.append(
+                f"{confidence_eval['sure_but_wrong_count']} answers you were sure about were wrong "
+                f"(-{confidence_eval['sure_but_wrong_marks_lost']:.2f} marks)."
+            )
+        if confidence_eval["by_level"]["GUESS"]["answered"] >= 3 and confidence_eval["guess_net_marks"] < 0:
+            weaknesses_list.append(f"Guessing cost you {abs(confidence_eval['guess_net_marks']):.2f} marks overall.")
         if not weaknesses_list:
             weaknesses_list.append("Minor accuracy drop on higher-order analytical statement questions.")
 
@@ -670,8 +704,18 @@ class MatrixOrchestrator:
 
         actionable_tasks = actionable_tasks[:4]
 
+        pacing_plain = {
+            "OPTIMAL_SUSTAINED_PACING": "steady throughout",
+            "EXCESS_UNUSED_TIME_RUSHED": "fast, with a lot of time left unused",
+            "TIME_EXHAUSTION_OVERTHOUGHT": "slow, and you ran out of time",
+            "EARLY_BOTTLENECK_OVERTHINK": "uneven, with much more time spent in the second half",
+            "MILD_EARLY_DELIBERATION": "slightly slower in the second half",
+            "LATE_EXAM_PANIC_RUSH": "uneven, rushed towards the end",
+            "MILD_END_ACCELERATION": "slightly rushed towards the end",
+        }.get(pacing_eval.get("pacing_status", ""), "steady throughout")
+
         instant_mentorship_insight = {
-            "executive_summary": f"Completed test with {tot_score:.2f} net marks ({round((tot_corr_count / max(1, tot_attempted)) * 100.0, 1)}% accuracy). Pacing was {pacing_eval.get('pacing_status', 'BALANCED').replace('_', ' ').title()}.",
+            "executive_summary": f"Completed test with {round(tot_score, 2) + 0.0:.2f} net marks ({round((tot_corr_count / max(1, tot_attempted)) * 100.0, 1)}% accuracy). Pacing was {pacing_plain}.",
             "benchmark_verdict": f"Score: {tot_score:.2f} / {max_score:.2f} Marks",
             "tactical_strengths": strengths_list,
             "critical_vulnerabilities": weaknesses_list,
@@ -697,6 +741,8 @@ class MatrixOrchestrator:
             weak_spots_categorized["techniques"].append("Panic Answer Switching")
         if pacing_eval.get("pacing_status") in ("EARLY_BOTTLENECK_OVERTHINK", "LATE_EXAM_PANIC_RUSH"):
             weak_spots_categorized["techniques"].append("Uneven Exam Pacing")
+        if confidence_eval["calibration_status"] == "OVERCONFIDENT":
+            weak_spots_categorized["techniques"].append("Overconfident Answers")
 
         strong_spots_categorized = {
             "techniques": [],
@@ -711,14 +757,14 @@ class MatrixOrchestrator:
             strong_spots_categorized["techniques"].append("Disciplined Instinct & Minimal Guessing")
         if float(oeei_eval.get("oeei_score") or 0.0) >= 0.70:
             strong_spots_categorized["techniques"].append("Tactical Option Elimination")
+        if confidence_eval["calibration_status"] == "WELL_CALIBRATED":
+            strong_spots_categorized["techniques"].append("Well-Calibrated Confidence")
 
         # Mode-Aware Benchmark Analysis (Full Mock vs Practice / Guest Exam)
         corr_marks = round(tot_corr_count * 2.0, 2)
         inc_count = sum(1 for r in response_payloads if not r["is_correct"] and r.get("selected_option_id") is not None)
-        neg_marks = round(inc_count * 0.66, 2)
+        neg_marks = round(inc_count * 0.6667, 2)
         net_marks = round(tot_score, 2)
-        is_practice_test = (max_score < 100.0) or (total_q < 50) or (mode == AttemptMode.PRACTICE)
-
         if is_practice_test:
             # Scaled 46% qualifying target based on test max score
             cutoff_target = round(max_score * 0.46, 2)
@@ -796,6 +842,7 @@ class MatrixOrchestrator:
             "closeness_distribution": closeness_counts,
             "unattempted_summary": unattempted_summary,
             "unattempted_analysis": unattempted_summary,
+            "confidence_calibration": confidence_eval,
             "mentorship_insight": instant_mentorship_insight,
             "llm_insight": instant_mentorship_insight,
             "weak_spots_categorized": weak_spots_categorized,

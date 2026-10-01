@@ -58,4 +58,5 @@ class ExamMacroTimeStrategy:
             "skew_ratio": round(skew_ratio, 2),
             "fatigue_drop_pct": round(fatigue_drop * 100, 1),
             "ideal_time_per_q_sec": round(ideal_time_per_q, 1),
+            "avg_time_per_question_sec": round(total_time_spent_sec / max(1, total_questions), 1),
         }

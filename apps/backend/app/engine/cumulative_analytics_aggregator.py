@@ -1,3 +1,4 @@
+import math
 import uuid
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
@@ -20,12 +21,33 @@ from app.db.models import (
     Topic,
     Subtopic,
     BloomsLevel,
+    UserMemoryState,
 )
 from app.db.models.enums import AttemptStatus
 from app.formatters.report_markdown_formatter import format_report_to_markdown
+from app.engine.matrix_orchestrator import classify_strength, accuracy_retention_estimate
+from app.engine.matrices.integrated_cognitive_readiness import IntegratedCognitiveReadinessEngine
+from app.engine.matrices.guessing_tendency import GuessingTendencyStrategy
+from app.engine.matrices.fsrs_retention import FSRSEngine
+from app.engine.matrices.confidence_calibration import ConfidenceCalibrationStrategy
 from app.config.logger import setup_logger
 
 logger = setup_logger("CumulativeAnalyticsAggregator")
+
+# Bump when the cumulative report's computation changes so stale caches are rebuilt
+CUMULATIVE_REPORT_VERSION = 3
+
+
+def _first_present(*values: Any, default: float) -> float:
+    """First value that is not None (0.0 is a real score, not a missing one)."""
+    for v in values:
+        if v is not None:
+            return float(v)
+    return default
+
+
+def _theta_percentile(theta: float) -> float:
+    return round(0.5 * (1.0 + math.erf(theta / math.sqrt(2.0))) * 100.0, 1)
 
 
 class CumulativeAnalyticsAggregator:
@@ -58,9 +80,7 @@ class CumulativeAnalyticsAggregator:
         profile = prof_res.first()
         if not force_recompute and profile and profile.aggregate_report_json:
             cached_rep = profile.aggregate_report_json
-            cached_subjs = cached_rep.get("part_2_taxonomy_analysis", {}).get("by_subject", [])
-            # If cache has valid subjects, return it
-            if cached_subjs and len(cached_subjs) > 0:
+            if (cached_rep.get("metadata") or {}).get("report_version") == CUMULATIVE_REPORT_VERSION:
                 return cached_rep
 
         # Fetch all evaluated exam attempts chronologically
@@ -107,6 +127,14 @@ class CumulativeAnalyticsAggregator:
         total_unattempted_sum = 0
         total_time_spent_sum = 0.0
 
+        # Real per-attempt behavioural totals (summed from each attempt's exam-wise report)
+        switch_totals = {"total": 0, "positive": 0, "negative": 0, "net_impact": 0.0}
+        unattempted_totals = {"time_starved": 0, "hesitated_abandoned": 0, "strategic_skip": 0, "wasted_sec": 0.0}
+        closeness_totals: Dict[str, int] = {}
+        confidence_counts: Dict[str, Dict[str, float]] = {}
+        total_q_time_sec = 0.0
+        total_q_expected_sec = 0.0
+
         all_blooms_totals: Dict[str, Dict[str, int]] = {
             "REMEMBER": {"total": 0, "correct": 0},
             "UNDERSTAND": {"total": 0, "correct": 0},
@@ -142,11 +170,37 @@ class CumulativeAnalyticsAggregator:
             total_unattempted_sum += unatt
             total_time_spent_sum += t_spent
 
-            icrs = float(att.icrs_score or macro.get("icrs", {}).get("icrs_score", 65.0))
-            irt = float(att.irt_theta or macro.get("irt_3pl", {}).get("latent_ability_theta", 0.0))
-            gti = float(att.gti_score or macro.get("gti", {}).get("aggregate", 0.20))
-            oeei = float(att.oeei_score or macro.get("oeei", {}).get("oeei_score", 0.70))
-            satoi = float(att.satoi_score or macro.get("satoi", {}).get("satoi_score", 85.0))
+            icrs = _first_present(att.icrs_score, macro.get("icrs", {}).get("icrs_score"), default=0.0)
+            irt = _first_present(att.irt_theta, macro.get("irt_3pl", {}).get("latent_ability_theta"), default=0.0)
+            gti = _first_present(att.gti_score, macro.get("gti", {}).get("aggregate"), default=0.0)
+            oeei = _first_present(att.oeei_score, macro.get("oeei", {}).get("oeei_score"), default=0.0)
+            satoi = _first_present(att.satoi_score, macro.get("satoi", {}).get("satoi_score"), default=0.0)
+
+            sw = macro.get("switch_regret") or macro.get("second_guessing_discipline") or {}
+            switch_totals["total"] += int(sw.get("total_switches", 0) or 0)
+            switch_totals["positive"] += int(sw.get("positive_switches", 0) or 0)
+            switch_totals["negative"] += int(sw.get("negative_regret_switches", 0) or 0)
+            switch_totals["net_impact"] += float(sw.get("net_score_impact", 0.0) or 0.0)
+
+            un = macro.get("unattempted_summary") or macro.get("unattempted_analysis") or {}
+            unattempted_totals["time_starved"] += int(un.get("time_starved_count", 0) or 0)
+            unattempted_totals["hesitated_abandoned"] += int(un.get("hesitated_abandoned_count", 0) or 0)
+            unattempted_totals["strategic_skip"] += int(un.get("strategic_skip_count", 0) or 0)
+            unattempted_totals["wasted_sec"] += float(un.get("wasted_time_on_abandoned_seconds", 0.0) or 0.0)
+
+            conf = macro.get("confidence_calibration") or {}
+            for lvl, lvl_stats in (conf.get("by_level") or {}).items():
+                c_acc = confidence_counts.setdefault(lvl, {"answered": 0, "correct": 0, "net_marks": 0.0, "wrong_marks": 0.0})
+                c_acc["answered"] += int(lvl_stats.get("answered", 0) or 0)
+                c_acc["correct"] += int(lvl_stats.get("correct", 0) or 0)
+                c_acc["net_marks"] += float(lvl_stats.get("net_marks", 0.0) or 0.0)
+            if conf:
+                sure_acc = confidence_counts.setdefault("SURE", {"answered": 0, "correct": 0, "net_marks": 0.0, "wrong_marks": 0.0})
+                sure_acc["wrong_marks"] -= float(conf.get("sure_but_wrong_marks_lost", 0.0) or 0.0)
+
+            for c_label, c_cnt in (macro.get("closeness_distribution") or macro.get("distractor_trap_distribution") or {}).items():
+                c_label = c_label.replace("(Partial Knowledge)", "(Near-Correct)")
+                closeness_totals[c_label] = closeness_totals.get(c_label, 0) + int(c_cnt or 0)
 
             att_mode_str = att.mode.value if hasattr(att.mode, "value") else str(att.mode)
             is_guest = bool(meta.get("is_guest_synced") or meta.get("guest_session_id"))
@@ -219,6 +273,10 @@ class CumulativeAnalyticsAggregator:
                         "topic": q_top,
                         "subtopic": q_sub,
                         "is_correct": eqr.is_correct,
+                        # Unattempted questions score exactly 0; attempted ones score +2 or -0.6667
+                        "is_attempted": bool(eqr.is_correct or (eqr.final_score or 0.0) != 0.0),
+                        "time_taken_seconds": eqr.time_taken_seconds,
+                        "expected_time_seconds": eqr.expected_time_seconds,
                         "blooms_level": q_blm,
                     })
 
@@ -227,6 +285,12 @@ class CumulativeAnalyticsAggregator:
                 t_name = q.get("topic") or q.get("topic_name") or "Core Concepts"
                 sub_name = q.get("subtopic") or q.get("subtopic_name") or "Foundations"
                 is_c = bool(q.get("is_correct") or (q.get("score_awarded", 0) > 0))
+                if "is_attempted" in q:
+                    is_att = bool(q["is_attempted"]) or is_c
+                elif "selected_option_id" in q:
+                    is_att = q.get("selected_option_id") is not None or is_c
+                else:
+                    is_att = True
                 b_level = (q.get("blooms_level") or q.get("bloom_level") or "ANALYZE").upper()
 
                 if s_name not in all_tax_subjects:
@@ -239,15 +303,9 @@ class CumulativeAnalyticsAggregator:
                         "incorrect": 0,
                         "topics": {},
                     }
-                all_tax_subjects[s_name]["total_questions"] += 1
-                all_tax_subjects[s_name]["attempted"] += 1
-                if is_c:
-                    all_tax_subjects[s_name]["correct"] += 1
-                else:
-                    all_tax_subjects[s_name]["incorrect"] += 1
-
-                if t_name not in all_tax_subjects[s_name]["topics"]:
-                    all_tax_subjects[s_name]["topics"][t_name] = {
+                t_map_ref = all_tax_subjects[s_name]["topics"]
+                if t_name not in t_map_ref:
+                    t_map_ref[t_name] = {
                         "name": t_name,
                         "taxonomy_name": t_name,
                         "subject": s_name,
@@ -257,14 +315,7 @@ class CumulativeAnalyticsAggregator:
                         "incorrect": 0,
                         "subtopics": {},
                     }
-                t_obj = all_tax_subjects[s_name]["topics"][t_name]
-                t_obj["total_questions"] += 1
-                t_obj["attempted"] += 1
-                if is_c:
-                    t_obj["correct"] += 1
-                else:
-                    t_obj["incorrect"] += 1
-
+                t_obj = t_map_ref[t_name]
                 if sub_name not in t_obj["subtopics"]:
                     t_obj["subtopics"][sub_name] = {
                         "name": sub_name,
@@ -275,15 +326,6 @@ class CumulativeAnalyticsAggregator:
                         "correct": 0,
                         "incorrect": 0,
                     }
-                sub_obj = t_obj["subtopics"][sub_name]
-                sub_obj["total_questions"] += 1
-                sub_obj["attempted"] += 1
-                if is_c:
-                    sub_obj["correct"] += 1
-                else:
-                    sub_obj["incorrect"] += 1
-
-                # Track global topic list
                 if t_name not in all_tax_topics:
                     all_tax_topics[t_name] = {
                         "name": t_name,
@@ -294,14 +336,6 @@ class CumulativeAnalyticsAggregator:
                         "correct": 0,
                         "incorrect": 0,
                     }
-                all_tax_topics[t_name]["total_questions"] += 1
-                all_tax_topics[t_name]["attempted"] += 1
-                if is_c:
-                    all_tax_topics[t_name]["correct"] += 1
-                else:
-                    all_tax_topics[t_name]["incorrect"] += 1
-
-                # Track global subtopic list
                 if sub_name not in all_tax_subtopics:
                     all_tax_subtopics[sub_name] = {
                         "name": sub_name,
@@ -312,18 +346,29 @@ class CumulativeAnalyticsAggregator:
                         "correct": 0,
                         "incorrect": 0,
                     }
-                all_tax_subtopics[sub_name]["total_questions"] += 1
-                all_tax_subtopics[sub_name]["attempted"] += 1
-                if is_c:
-                    all_tax_subtopics[sub_name]["correct"] += 1
-                else:
-                    all_tax_subtopics[sub_name]["incorrect"] += 1
 
-                # Bloom count
-                match_b = next((k for k in all_blooms_totals if k in b_level), "ANALYZE")
-                all_blooms_totals[match_b]["total"] += 1
-                if is_c:
-                    all_blooms_totals[match_b]["correct"] += 1
+                for bucket in (
+                    all_tax_subjects[s_name],
+                    t_obj,
+                    t_obj["subtopics"][sub_name],
+                    all_tax_topics[t_name],
+                    all_tax_subtopics[sub_name],
+                ):
+                    bucket["total_questions"] += 1
+                    if is_att:
+                        bucket["attempted"] += 1
+                        if is_c:
+                            bucket["correct"] += 1
+                        else:
+                            bucket["incorrect"] += 1
+
+                if is_att:
+                    total_q_time_sec += float(q.get("time_taken_seconds") or 0.0)
+                    total_q_expected_sec += float(q.get("expected_time_seconds") or 0.0)
+                    match_b = next((k for k in all_blooms_totals if k in b_level), "ANALYZE")
+                    all_blooms_totals[match_b]["total"] += 1
+                    if is_c:
+                        all_blooms_totals[match_b]["correct"] += 1
 
             # Also incorporate summary taxonomy from part 2 if present
             tax_part = meta.get("part_2_taxonomy_analysis", {})
@@ -438,55 +483,6 @@ class CumulativeAnalyticsAggregator:
                 tax_m.updated_at = datetime.now(timezone.utc)
             session.add(tax_m)
 
-        # If all_tax_subjects is still empty, seed default syllabus subjects so reports are NEVER blank
-        if not all_tax_subjects:
-            default_subjects = [
-                ("Indian Polity & Governance", ["Constitution & Preamble", "Fundamental Rights & DPSP", "Union & State Executive"]),
-                ("History & Art of India", ["Ancient India", "Medieval India", "Modern National Movement"]),
-                ("Geography & Environment", ["Physical Geography", "Indian Geography", "Ecology & Climate Change"]),
-                ("Indian Economy & Social Development", ["Macroeconomics & GDP", "Fiscal & Monetary Policy", "Inclusive Growth"]),
-                ("General Science & Technology", ["Space & Defense", "Biotechnology", "Information Technology"]),
-                ("Current Affairs & International Relations", ["Bilateral Summits", "Global Treaties", "National Initiatives"]),
-            ]
-            for s_name, def_topics in default_subjects:
-                s_topics_map = {}
-                for t_name in def_topics:
-                    s_topics_map[t_name] = {
-                        "name": t_name,
-                        "taxonomy_name": t_name,
-                        "subject": s_name,
-                        "total_questions": 0,
-                        "attempted": 0,
-                        "correct": 0,
-                        "incorrect": 0,
-                        "accuracy_percentage": 0.0,
-                        "positive_marks": 0.0,
-                        "negative_marks": 0.0,
-                        "net_marks": 0.0,
-                        "mean_score": 0.0,
-                        "subtopics": {},
-                    }
-                    all_tax_topics[t_name] = s_topics_map[t_name]
-
-                all_tax_subjects[s_name] = {
-                    "name": s_name,
-                    "taxonomy_name": s_name,
-                    "total_questions": 0,
-                    "attempted": 0,
-                    "correct": 0,
-                    "incorrect": 0,
-                    "accuracy_percentage": 0.0,
-                    "positive_marks": 0.0,
-                    "negative_marks": 0.0,
-                    "net_marks": 0.0,
-                    "mean_score": 0.0,
-                    "mean_score_per_exam": 0.0,
-                    "retention_percentage": 75.0,
-                    "status": "MODERATE",
-                    "status_label": "Focus Area",
-                    "topics": s_topics_map,
-                }
-
         n_att = max(1, len(exam_timeline))
         # Finalize Subject, Topic, Subtopic calculations
         for s_name, s_data in all_tax_subjects.items():
@@ -505,9 +501,9 @@ class CumulativeAnalyticsAggregator:
             s_data["net_marks"] = net_marks
             s_data["mean_score"] = mean_score
             s_data["mean_score_per_exam"] = mean_score
-            s_data["retention_percentage"] = round(min(98.0, 50.0 + s_acc * 0.48), 1)
-            s_data["status"] = "STRONG" if s_acc >= 75 else "MODERATE" if s_acc >= 50 else "WEAK_REVISION_REQUIRED"
-            s_data["status_label"] = "Mastered" if s_acc >= 75 else "Competent" if s_acc >= 50 else "Focus Area"
+            s_data["retention_percentage"] = accuracy_retention_estimate(s_acc)
+            s_data["status"], s_data["status_label"] = classify_strength(s_acc)
+            s_data["strength_status"] = s_data["status"]
 
             # Finalize nested topics
             t_map = s_data.get("topics", {})
@@ -527,9 +523,9 @@ class CumulativeAnalyticsAggregator:
                     t_obj["negative_marks"] = t_neg
                     t_obj["net_marks"] = t_net
                     t_obj["mean_score"] = t_mean
-                    t_obj["retention_percentage"] = round(min(98.0, 45.0 + t_acc * 0.50), 1)
-                    t_obj["status"] = "STRONG" if t_acc >= 75 else "MODERATE" if t_acc >= 50 else "WEAK_REVISION_REQUIRED"
-                    t_obj["status_label"] = "Mastered" if t_acc >= 75 else "Competent" if t_acc >= 50 else "Focus Area"
+                    t_obj["retention_percentage"] = accuracy_retention_estimate(t_acc)
+                    t_obj["status"], t_obj["status_label"] = classify_strength(t_acc)
+                    t_obj["strength_status"] = t_obj["status"]
 
                     sub_map = t_obj.get("subtopics", {})
                     if isinstance(sub_map, dict):
@@ -546,7 +542,8 @@ class CumulativeAnalyticsAggregator:
                             sub_obj["negative_marks"] = sub_neg
                             sub_obj["net_marks"] = sub_net
                             sub_obj["mean_score"] = round(sub_net / n_att, 2)
-                            sub_obj["status"] = "STRONG" if sub_acc >= 75 else "MODERATE" if sub_acc >= 50 else "WEAK_REVISION_REQUIRED"
+                            sub_obj["status"], sub_obj["status_label"] = classify_strength(sub_acc)
+                            sub_obj["strength_status"] = sub_obj["status"]
 
                 s_data["topics_list"] = list(t_map.values())
 
@@ -565,9 +562,9 @@ class CumulativeAnalyticsAggregator:
             t_data["negative_marks"] = neg_marks
             t_data["net_marks"] = net_marks
             t_data["mean_score"] = mean_score
-            t_data["retention_percentage"] = round(min(98.0, 45.0 + t_acc * 0.50), 1)
-            t_data["status"] = "STRONG" if t_acc >= 75 else "MODERATE" if t_acc >= 50 else "WEAK_REVISION_REQUIRED"
-            t_data["status_label"] = "Mastered" if t_acc >= 75 else "Competent" if t_acc >= 50 else "Focus Area"
+            t_data["retention_percentage"] = accuracy_retention_estimate(t_acc)
+            t_data["status"], t_data["status_label"] = classify_strength(t_acc)
+            t_data["strength_status"] = t_data["status"]
 
         # 2. Helper to compute weighted aggregates for any subset of attempts
         def _compute_subset_aggregate(items: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -684,8 +681,58 @@ class CumulativeAnalyticsAggregator:
             "satoi_scores": [i["satoi_score"] for i in exam_timeline],
         }
 
-        # 4. Formulate Full 12-Matrix Aggregation Schema & AI Synthesis
+        # 4. Formulate Full 12-Matrix Aggregation Schema & AI Synthesis (every value below is measured, none assumed)
         from app.engine.report_ai_synthesizer import ReportAISynthesizer
+
+        icrs_tier, icrs_label, icrs_interp = IntegratedCognitiveReadinessEngine.classify_tier(w_icrs)
+        gti_interp = GuessingTendencyStrategy.interpret_gti(w_gti)
+        oeei_rating = (
+            "ELITE_TACTICAL_PRECISION" if w_oeei >= 0.85
+            else "HIGH_TACTICAL_PRECISION" if w_oeei >= 0.70
+            else "MODERATE_ELIMINATION_DISCIPLINE" if w_oeei >= 0.50
+            else "VULNERABLE_TO_STATEMENT_TRAPS" if w_oeei >= 0.30
+            else "CRITICAL_DISTRACTOR_SUSCEPTIBILITY"
+        )
+        satoi_label = (
+            "Peak Focus & Endurance" if w_satoi >= 85
+            else "Consistent Cognitive Stamina" if w_satoi >= 70
+            else "Mild Late-Session Fatigue" if w_satoi >= 50
+            else "Significant Fatigue Decay"
+        )
+        percentile = _theta_percentile(w_irt)
+        ability_label = (
+            "Top Performer" if w_irt > 1.5
+            else "Above Average" if w_irt > 0.5
+            else "Foundation Needed" if w_irt < -1.0
+            else "Competent"
+        )
+        avg_sec_per_q = round(total_time_spent_sum / max(1, total_questions_attempted_sum), 1) if total_questions_attempted_sum > 0 else 0.0
+        latest_pacing = exam_timeline[-1]["pacing_status"] if exam_timeline else "OPTIMAL_SUSTAINED_PACING"
+        regret_ratio = round(switch_totals["negative"] / switch_totals["total"], 2) if switch_totals["total"] else 0.0
+        total_closeness_q = sum(closeness_totals.values())
+        near_miss_cnt = closeness_totals.get("High-Closeness Distractor (Near-Correct)", 0) + closeness_totals.get("Moderate Distractor (Plausible Alternative)", 0)
+        trap_cnt = (
+            closeness_totals.get("Misleading Distractor (Cognitive Trap)", 0)
+            + closeness_totals.get("Inverse Distractor (Inverted Logic)", 0)
+            + closeness_totals.get("Contradictory Distractor (Direct Opposing Fact)", 0)
+        )
+        trap_avoidance_pct = round((1.0 - trap_cnt / total_closeness_q) * 100.0, 1) if total_closeness_q else 0.0
+        time_eff_ratio = round(total_q_time_sec / total_q_expected_sec, 2) if total_q_expected_sec > 0 else 0.0
+        confidence_eval = ConfidenceCalibrationStrategy.summarize_counts(confidence_counts, total_questions_attempted_sum)
+
+        # Real FSRS memory state across the user's reviewed subtopics
+        mem_rows = (await session.exec(select(UserMemoryState).where(UserMemoryState.user_id == user_id))).all()
+        mem_retr: List[float] = []
+        mem_stab: List[float] = []
+        now_dt_mem = datetime.now(timezone.utc)
+        for m in mem_rows:
+            last_rev = m.last_reviewed_at if m.last_reviewed_at.tzinfo else m.last_reviewed_at.replace(tzinfo=timezone.utc)
+            elapsed_days = max(0.0, (now_dt_mem - last_rev).total_seconds() / 86400.0)
+            mem_retr.append(FSRSEngine.calculate_retrievability(elapsed_days, m.fsrs_stability) * 100.0)
+            mem_stab.append(m.fsrs_stability)
+        avg_retrievability = round(sum(mem_retr) / len(mem_retr), 1) if mem_retr else None
+        avg_stability = round(sum(mem_stab) / len(mem_stab), 1) if mem_stab else None
+        due_revisions = sum(1 for r_val in mem_retr if r_val < 70.0)
 
         precalc_payload = {
             "scoring": {
@@ -702,30 +749,32 @@ class CumulativeAnalyticsAggregator:
             },
             "psychometrics": {
                 "icrs_score": w_icrs,
-                "readiness_tier": "HIGH_COMPETENCE_READY" if w_icrs >= 75 else "MODERATE_COMPETENCE_DEVELOPING",
+                "readiness_tier": icrs_tier,
                 "irt_latent_theta": w_irt,
-                "percentile_rank": round(min(99.0, 50.0 + w_irt * 22.0), 1),
+                "percentile_rank": percentile,
                 "gti_aggregate": w_gti,
-                "gti_category": "CONTROLLED_CALCULATED_RISK" if w_gti <= 0.22 else "HIGH_IMPULSIVE_RISK",
+                "gti_category": gti_interp["category"],
                 "oeei_score_pct": round(w_oeei * 100.0, 1),
                 "satoi_score": w_satoi,
-                "pacing_status": exam_timeline[-1]["pacing_status"] if exam_timeline else "BALANCED_PACING",
-                "avg_seconds_per_question": round(total_time_spent_sum / max(1, total_questions_attempted_sum), 1) if total_questions_attempted_sum > 0 else 60.0,
-                "switch_regret_index": 0.0,
-                "negative_switches_count": 0,
-                "positive_switches_count": n_att * 2,
+                "pacing_status": latest_pacing,
+                "avg_seconds_per_question": avg_sec_per_q,
+                "switch_regret_index": regret_ratio,
+                "negative_switches_count": switch_totals["negative"],
+                "positive_switches_count": switch_totals["positive"],
+                "confidence_calibration": confidence_eval["calibration_status"],
+                "sure_but_wrong_count": confidence_eval["sure_but_wrong_count"],
+                "guess_net_marks": confidence_eval["guess_net_marks"],
             },
             "unattempted_analysis": {
                 "total_unattempted": total_unattempted_sum,
-                "time_starved": int(total_unattempted_sum * 0.4),
-                "hesitated_abandoned": int(total_unattempted_sum * 0.3),
-                "strategic_skip": int(total_unattempted_sum * 0.3),
-                "wasted_time_on_abandoned_sec": total_unattempted_sum * 15.0,
+                "time_starved": unattempted_totals["time_starved"],
+                "hesitated_abandoned": unattempted_totals["hesitated_abandoned"],
+                "strategic_skip": unattempted_totals["strategic_skip"],
+                "wasted_time_on_abandoned_sec": round(unattempted_totals["wasted_sec"], 1),
             },
             "distractor_vulnerability": {
-                "high_closeness_traps_fallen": int(total_incorrect_sum * 0.4),
-                "inverse_fact_traps_fallen": int(total_incorrect_sum * 0.2),
-                "neutral_distractor_misses": int(total_incorrect_sum * 0.4),
+                "near_miss_wrong_answers": near_miss_cnt,
+                "trap_wrong_answers": trap_cnt,
             },
             "blooms_mastery": blooms_mastery_payload,
             "weak_taxonomy_areas": [
@@ -733,18 +782,16 @@ class CumulativeAnalyticsAggregator:
                     "subject": t.get("subject", "General Studies"),
                     "topic": t.get("taxonomy_name", "Core Concepts"),
                     "subtopic": t.get("subtopic"),
-                    "accuracy": t.get("accuracy_percentage", 35.0),
+                    "accuracy": t.get("accuracy_percentage", 0.0),
                 }
                 for t in all_tax_topics.values()
-                if t.get("accuracy_percentage", 0) < 50
+                if t.get("attempted", 0) > 0 and t.get("accuracy_percentage", 0) < 50
             ][:5],
             "strong_taxonomy_areas": [
                 {
                     "subject": t.get("subject", "General Studies"),
                     "topic": t.get("taxonomy_name", "Core Concepts"),
-                    "accuracy": t.get("accuracy_percentage", 80.0),
-                    "fsrs_stability_days": t.get("fsrs_stability_days", 5.0),
-                    "retention_health": t.get("retention_health", "OPTIMAL_LONG_TERM_STABILITY"),
+                    "accuracy": t.get("accuracy_percentage", 0.0),
                 }
                 for t in all_tax_topics.values() if t.get("strength_status") in ("STRONG", "EXCEPTIONAL_MASTERY")
             ][:3],
@@ -776,16 +823,23 @@ class CumulativeAnalyticsAggregator:
                 "positive_marks_earned": round(total_correct_sum * 2.0, 2),
                 "negative_marks_lost": round(total_incorrect_sum * 0.6667, 2),
             },
-            "icrs": {"icrs_score": w_icrs, "readiness_tier": "HIGH_COMPETENCE_READY" if w_icrs >= 75 else "MODERATE_COMPETENCE_DEVELOPING", "readiness_label": "Competitive Benchmark Ready" if w_icrs >= 75 else "Developing Competence"},
-            "irt_3pl": {"latent_ability_theta": w_irt, "percentile_rank": round(min(99.0, 50.0 + w_irt * 22.0), 1), "ability_label": "Mastered Tier" if w_irt >= 1.0 else "Competent Tier"},
-            "gti": {"aggregate": w_gti, "label": "CONTROLLED_CALCULATED_RISK" if w_gti <= 0.22 else "HIGH_IMPULSIVE_RISK", "risk_classification": "CONTROLLED_TACTICAL_GUESSWORK" if w_gti <= 0.22 else "HIGH_IMPULSIVE_RISK"},
-            "oeei": {"oeei_score": w_oeei, "oeei_score_pct": round(w_oeei * 100.0, 1), "elimination_rating": "HIGH_TACTICAL_PRECISION" if w_oeei >= 0.70 else "MODERATE_PRUNING"},
-            "satoi": {"satoi_score": w_satoi, "stamina_label": "Optimal Cognitive Stamina" if w_satoi >= 80 else "Moderate Pacing Fatigue"},
-            "pacing": {"pacing_status": exam_timeline[-1]["pacing_status"] if exam_timeline else "BALANCED_PACING", "avg_time_per_question_sec": round(total_time_spent_sum / max(1, total_questions_attempted_sum), 1) if total_questions_attempted_sum > 0 else 60.0, "time_utilization_pct": 95},
-            "switch_regret": {"total_switches": n_att * 3, "positive_switches": n_att * 2, "negative_regret_switches": n_att * 1, "net_score_impact": round(n_att * 1.5, 2)},
+            "icrs": {"icrs_score": w_icrs, "readiness_tier": icrs_tier, "readiness_label": icrs_label, "interpretation": icrs_interp},
+            "irt_3pl": {"latent_ability_theta": w_irt, "percentile_rank": percentile, "ability_label": ability_label},
+            "gti": {"aggregate": w_gti, "category": gti_interp["category"], "label": gti_interp["label"], "recommendation": gti_interp["recommendation"]},
+            "oeei": {"oeei_score": w_oeei, "oeei_score_pct": round(w_oeei * 100.0, 1), "elimination_rating": oeei_rating},
+            "satoi": {"satoi_score": w_satoi, "stamina_label": satoi_label},
+            "pacing": {"pacing_status": latest_pacing, "avg_time_per_question_sec": avg_sec_per_q},
+            "switch_regret": {
+                "total_switches": switch_totals["total"],
+                "positive_switches": switch_totals["positive"],
+                "negative_regret_switches": switch_totals["negative"],
+                "regret_index": regret_ratio,
+                "net_score_impact": round(switch_totals["net_impact"], 2),
+            },
             "blooms": blooms_mastery_payload,
-            "distractor": {"high_closeness_count": int(total_incorrect_sum * 0.4), "trap_avoidance_rate_pct": 72.0},
-            "topic_decay": {"active_memory_topics_count": len(all_tax_topics), "avg_concept_stability_days": round(3.5 + (n_att * 1.8), 1)},
+            "confidence_calibration": confidence_eval,
+            "distractor": {"near_miss_count": near_miss_cnt, "trap_count": trap_cnt, "trap_avoidance_rate_pct": trap_avoidance_pct},
+            "topic_decay": {"active_memory_topics_count": len(mem_rows), "avg_concept_stability_days": avg_stability, "due_revisions": due_revisions},
             "ai_cognitive_insights": cum_insight,
             "actionable_tasks": cum_insight.get("study_plan_tasks", []),
             "subject_cumulative_mean_scoreboard": list(all_tax_subjects.values()),
@@ -795,105 +849,64 @@ class CumulativeAnalyticsAggregator:
         matrices_summary = {
             "1_integrated_cognitive_readiness": {
                 "name": "Integrated Cognitive Readiness Score (ICRS)",
-                "value": {
-                    "icrs_score": w_icrs,
-                    "readiness_tier": (
-                        "HIGH_COMPETENCE_READY"
-                        if w_icrs >= 75
-                        else "MODERATE_COMPETENCE_DEVELOPING"
-                        if w_icrs >= 55
-                        else "FOUNDATIONAL_REVISION_REQUIRED"
-                    ),
-                    "interpretation": (
-                        f"Cumulative multi-exam readiness across {n_att} evaluated sessions demonstrates balanced pacing, controlled guessing risk ({(w_gti*100):.1f}%), and robust latent knowledge ability."
-                    ),
-                },
+                "value": {"icrs_score": w_icrs, "readiness_tier": icrs_tier, "interpretation": icrs_interp},
             },
             "2_fsrs_memory_retention": {
                 "name": "FSRS Memory Retention & Stability",
                 "value": {
-                    "average_retrievability_pct": round(min(98.0, 60.0 + cum_accuracy * 0.38), 1),
-                    "average_stability_days": round(3.5 + (n_att * 1.8), 1),
-                    "syllabus_coverage_pct": round(min(100.0, len(all_tax_topics) * 8.5), 1),
+                    "average_retrievability_pct": avg_retrievability,
+                    "average_stability_days": avg_stability,
+                    "tracked_subtopics": len(mem_rows),
                 },
             },
             "3_irt_3pl_ability": {
                 "name": "Item Response Theory (IRT 3PL) Latent Ability",
-                "value": {
-                    "latent_ability_theta": w_irt,
-                    "percentile_rank": round(min(99.0, 50.0 + w_irt * 22.0), 1),
-                    "standard_error": round(0.35 / (1.0 + (n_att * 0.2)), 3),
-                    "confidence_tier": "HIGH_CONFIDENCE_MULTI_SESSION",
-                },
+                "value": {"latent_ability_theta": w_irt, "percentile_rank": percentile, "ability_label": ability_label},
             },
             "4_macro_pacing_efficiency": {
                 "name": "Macro Exam Pacing & Section Allocation",
                 "value": {
-                    "pacing_status": exam_timeline[-1]["pacing_status"] if exam_timeline else "BALANCED_PACING",
-                    "avg_seconds_per_question": round(total_time_spent_sum / max(1, total_questions_attempted_sum), 1) if total_questions_attempted_sum > 0 else 60.0,
+                    "pacing_status": latest_pacing,
+                    "avg_seconds_per_question": avg_sec_per_q,
                     "total_exam_time_minutes": round(total_time_spent_sum / 60.0, 1),
                 },
             },
             "5_option_elimination_efficiency": {
                 "name": "Option Elimination Efficiency Index (OEEI)",
-                "value": {
-                    "oeei_score": w_oeei,
-                    "conversion_rate_percentage": round(w_oeei * 100.0, 1),
-                    "elimination_competency": "HIGH_CONVERSION_EFFICIENCY" if w_oeei >= 0.70 else "MODERATE_CONVERSION",
-                },
+                "value": {"oeei_score": w_oeei, "conversion_rate_percentage": round(w_oeei * 100.0, 1), "elimination_rating": oeei_rating},
             },
             "6_guessing_tendency_index": {
                 "name": "Guessing Tendency Index (GTI)",
-                "value": {
-                    "aggregate": w_gti,
-                    "risk_classification": "CONTROLLED_TACTICAL_GUESSWORK" if w_gti <= 0.22 else "HIGH_IMPULSIVE_RISK",
-                    "penalty_loss_points": round(w_gti * 8.5, 2),
-                },
+                "value": {"aggregate": w_gti, "risk_classification": gti_interp["category"]},
             },
             "7_speed_accuracy_tradeoff": {
                 "name": "Speed-Accuracy Tradeoff Optimization Index (SATOI)",
-                "value": {
-                    "satoi_score": w_satoi,
-                    "stamina_stability": "OPTIMAL_COGNITIVE_STAMINA" if w_satoi >= 80 else "MODERATE_PACING_FATIGUE",
-                },
+                "value": {"satoi_score": w_satoi, "stamina_label": satoi_label},
             },
             "8_blooms_cognitive_mastery": {
                 "name": "Bloom's Cognitive Taxonomy Breakdown",
-                "value": {
-                    "ANALYZE": {"accuracy": round(min(100.0, cum_accuracy + 2.0), 1), "status": "PROFICIENT"},
-                    "APPLY": {"accuracy": round(min(100.0, cum_accuracy + 5.0), 1), "status": "PROFICIENT"},
-                    "EVALUATE": {"accuracy": round(max(0.0, cum_accuracy - 6.0), 1), "status": "DEVELOPING"},
-                    "REMEMBER": {"accuracy": round(min(100.0, cum_accuracy + 10.0), 1), "status": "STRONG"},
-                },
+                "value": blooms_mastery_payload["breakdown"],
             },
             "9_option_switch_regret": {
                 "name": "Option Switch Regret & Second-Guessing Index",
                 "value": {
-                    "total_switches_across_exams": n_att * 4,
-                    "switch_gain_ratio": 1.45,
-                    "recommendation": "Trust calibrated first instincts on conceptual multi-statement items.",
+                    "total_switches_across_exams": switch_totals["total"],
+                    "positive_switches": switch_totals["positive"],
+                    "negative_regret_switches": switch_totals["negative"],
+                    "regret_index": regret_ratio,
                 },
             },
             "10_question_closeness_distribution": {
                 "name": "Closeness & Conceptual Distractor Alignment",
-                "value": {
-                    "high_closeness_rate_pct": 28.5,
-                    "trap_avoidance_rate_pct": 71.5,
-                },
+                "value": {"distribution": closeness_totals, "trap_avoidance_rate_pct": trap_avoidance_pct},
             },
             "11_time_tiered_scoring": {
                 "name": "Time-Tiered Scoring Efficiency",
-                "value": {
-                    "time_efficiency_ratio": 0.88,
-                    "pacing_bonus_points": 14.5,
-                },
+                "value": {"time_efficiency_ratio": time_eff_ratio},
             },
             "12_topic_decay_projections": {
                 "name": "Topic FSRS Memory Decay & Revision Radar",
-                "value": {
-                    "active_memory_topics_count": len(all_tax_topics),
-                    "upcoming_revisions_scheduled": len([t for t in all_tax_topics.values() if t.get("status") == "WEAK_REVISION_REQUIRED"]),
-                },
+                "value": {"tracked_subtopics": len(mem_rows), "upcoming_revisions_due": due_revisions},
             },
         }
 
@@ -902,6 +915,7 @@ class CumulativeAnalyticsAggregator:
             "metadata": {
                 "report_title": f"Cumulative Longitudinal Performance Profile ({user.full_name})",
                 "report_type": "CUMULATIVE_MULTI_EXAM_AGGREGATE",
+                "report_version": CUMULATIVE_REPORT_VERSION,
                 "total_exams_evaluated": n_att,
                 "total_questions_attempted": total_questions_attempted_sum,
                 "total_correct": total_correct_sum,
@@ -945,6 +959,7 @@ class CumulativeAnalyticsAggregator:
                 "actionable_tasks": cum_insight.get("study_plan_tasks", []),
                 "cumulative_skill_profile": {
                     "cumulative_icrs": w_icrs,
+                    "cumulative_icrs_score": w_icrs,
                     "cumulative_irt_theta": w_irt,
                     "cumulative_gti": w_gti,
                     "cumulative_oeei": w_oeei,

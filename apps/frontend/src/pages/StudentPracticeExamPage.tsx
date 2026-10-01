@@ -16,7 +16,7 @@ import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { RecommendedQuestionsPanel, ExamFilterToggles } from '../components/exam/RecommendedQuestionsPanel';
 import { QuestionSolutionData } from '../components/exam/QuestionSolutionMarkdownCard';
-import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
+import { ConfidenceLevel, QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { fetchMasterSyllabus, verifySyllabusNode, listExams, fetchExamsByYear } from '../services/examService';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmarkService';
@@ -338,6 +338,7 @@ export function StudentPracticeExamPage() {
     Record<string | number, { optionId: number | string; optionLabel: string }>
   >({});
   const [revealedMap, setRevealedMap] = useState<Record<string, RevealAnswerResponse>>({});
+  const [confidenceMap, setConfidenceMap] = useState<Record<string | number, ConfidenceLevel>>({});
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
@@ -1468,6 +1469,7 @@ export function StudentPracticeExamPage() {
         time_taken_seconds: 60.0,
         expected_time_seconds: q.expected_time_seconds || 60.0,
         is_switched: false,
+        confidence_level: userResp || rev ? confidenceMap[q.question_id] ?? null : null,
       };
     });
 
@@ -1504,6 +1506,11 @@ export function StudentPracticeExamPage() {
     const qId = activeQuestion.question_id;
 
     setUserResponses((prev) => {
+      const updated = { ...prev };
+      delete updated[qId];
+      return updated;
+    });
+    setConfidenceMap((prev) => {
       const updated = { ...prev };
       delete updated[qId];
       return updated;
@@ -3738,6 +3745,17 @@ export function StudentPracticeExamPage() {
           }
           isRevealing={isSolutionLoading}
           onSelectOption={(optId, optLbl) => handleSelectOption(optId, optLbl)}
+          confidence={activeQuestion ? confidenceMap[activeQuestion.question_id] ?? null : null}
+          onConfidenceChange={(value) => {
+            if (!activeQuestion) return;
+            const qId = activeQuestion.question_id;
+            setConfidenceMap((prev) => {
+              const updated = { ...prev };
+              if (value) updated[qId] = value;
+              else delete updated[qId];
+              return updated;
+            });
+          }}
           onToggleBookmark={handleToggleBookmark}
           onRevealAnswer={() => handleRevealAnswer()}
           onShowSolution={() => handleShowSolution()}

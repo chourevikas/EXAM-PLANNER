@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-from app.db.models.enums import AttemptMode, QuestionResponseStatus, AttemptStatus
+from app.db.models.enums import AttemptMode, QuestionResponseStatus, AttemptStatus, ConfidenceLevel
 
 
 # --- Request Schemas ---
@@ -27,6 +27,7 @@ class SaveResponseRequest(BaseModel):
     is_marked_for_review: bool = False
     time_spent_seconds: float = 0.0
     option_switch_count: int = 0
+    confidence_level: Optional[ConfidenceLevel] = None
 
 
 class BatchSaveItem(BaseModel):
@@ -36,6 +37,7 @@ class BatchSaveItem(BaseModel):
     time_spent_seconds: float = 0.0
     is_switched: bool = False
     option_switch_count: int = 0
+    confidence_level: Optional[ConfidenceLevel] = None
     client_timestamp: Optional[datetime] = None
 
 
@@ -123,6 +125,7 @@ class ResponseState(BaseModel):
     time_spent_seconds: float = 0.0
     question_status: QuestionResponseStatus = QuestionResponseStatus.UNVISITED
     answer_revealed: bool = False
+    confidence_level: Optional[ConfidenceLevel] = None
 
 
 class QuestionNavResponse(BaseModel):

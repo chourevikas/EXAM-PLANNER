@@ -126,6 +126,8 @@ class ExamQuestionResponse(SQLModel, table=True):
     )
     is_switched: bool = Field(default=False, index=True)
     gti_item_score: float = Field(default=0.0)
+    # Self-reported ConfidenceLevel value (SURE / FIFTY_FIFTY / GUESS); None when not given
+    confidence_level: Optional[str] = Field(default=None, max_length=16)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,

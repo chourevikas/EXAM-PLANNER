@@ -39,6 +39,7 @@ import {
   RevealAnswerResponse,
   ResponseSummary,
   BatchSaveItem,
+  ConfidenceLevel,
 } from '../types/exam';
 
 export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
@@ -99,6 +100,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const [selectedOptionId, setSelectedOptionId] = useState<number | string | null>(null);
   const [selectedOptionLabel, setSelectedOptionLabel] = useState<string | null>(null);
   const [isMarkedForReview, setIsMarkedForReview] = useState(false);
+  const [confidence, setConfidence] = useState<ConfidenceLevel | null>(null);
+  // Per-question confidence, read by queueResponseUpdate so every save path carries it
+  const confidenceByQRef = useRef<Map<string, ConfidenceLevel | null>>(new Map());
   const [revealResults, setRevealResults] = useState<Record<string | number, RevealAnswerResponse>>({});
   const [solutionDataMap, setSolutionDataMap] = useState<Record<string | number, QuestionSolutionData>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
@@ -110,7 +114,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   });
 
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
-  const { isTabletOrBelow } = useBreakpoint();
+  const { isTabletOrBelow, isSmallScreen } = useBreakpoint();
   const [mobileTab, setMobileTab] = useState<'question' | 'palette'>('question');
 
   // Question Time Telemetry tracking & Multi-Visit Dwell Accumulator
@@ -140,7 +144,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   // ─── Asynchronous Batch Queue & Smart Dirty-Check Manager ─────────────────
   const pendingBatchQueueRef = useRef<Map<string, BatchSaveItem>>(new Map());
-  const lastSyncedSnapshotRef = useRef<Map<string, { selected_option_id: string | number | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
+  const lastSyncedSnapshotRef = useRef<Map<string, { selected_option_id: string | number | null; is_marked_for_review: boolean; time_spent_seconds: number; confidence_level?: ConfidenceLevel | null }>>(new Map());
   const optionSwitchesCountRef = useRef<Map<string, number>>(new Map());
   const isSyncingBatchRef = useRef<boolean>(false);
   const autoSubmittedRef = useRef<boolean>(false);
@@ -161,10 +165,12 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     const isOptionModified = !last ? optId !== null : String(last.selected_option_id ?? '') !== String(optId ?? '');
     const isReviewModified = !last ? markedForRev : last.is_marked_for_review !== markedForRev;
     const isTimeModified = !last ? timeSpent > 0.2 : Math.abs((last.time_spent_seconds || 0) - timeSpent) >= 1.0;
+    const conf = optId !== null ? confidenceByQRef.current.get(qKey) ?? null : null;
+    const isConfidenceModified = !last ? conf !== null : (last.confidence_level ?? null) !== conf;
 
     const switchCount = optionSwitchesCountRef.current.get(qKey) || 0;
 
-    if (isOptionModified || isReviewModified || isTimeModified) {
+    if (isOptionModified || isReviewModified || isTimeModified || isConfidenceModified) {
       const item: BatchSaveItem = {
         question_id: questionId,
         selected_option_id: optId,
@@ -172,6 +178,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         time_spent_seconds: Math.round(timeSpent * 10) / 10,
         is_switched: switchCount > 0,
         option_switch_count: switchCount,
+        confidence_level: conf,
         client_timestamp: new Date().toISOString(),
       };
       pendingBatchQueueRef.current.set(qKey, item);
@@ -202,6 +209,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             selected_option_id: item.selected_option_id ?? null,
             is_marked_for_review: Boolean(item.is_marked_for_review),
             time_spent_seconds: item.time_spent_seconds ?? 0,
+            confidence_level: item.confidence_level ?? null,
           });
           // Remove confirmed item from pending queue
           pendingBatchQueueRef.current.delete(k);
@@ -363,6 +371,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           setActiveQuestion(startRes.first_question.question);
           setSelectedOptionId(startRes.first_question.response_state.selected_option_id as string | null);
           setIsMarkedForReview(startRes.first_question.response_state.is_marked_for_review);
+          {
+            const startConf = startRes.first_question.response_state.confidence_level ?? null;
+            confidenceByQRef.current.set(String(startRes.first_question.question.question_id), startConf);
+            setConfidence(startConf);
+          }
 
           // Seed question 1 into memory
           setAllQuestions((prev) => {
@@ -655,12 +668,14 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       if (saved) {
         setSelectedOptionId(saved.selected_option_id != null ? String(saved.selected_option_id) : null);
         setIsMarkedForReview(Boolean(saved.is_marked_for_review));
+        setConfidence(confidenceByQRef.current.get(qKey) ?? saved.confidence_level ?? null);
         const matched = q.options?.find((o: any) => String(o.option_id) === String(saved.selected_option_id));
         setSelectedOptionLabel(matched ? matched.option_label : null);
       } else {
         setSelectedOptionId(null);
         setSelectedOptionLabel(null);
         setIsMarkedForReview(false);
+        setConfidence(confidenceByQRef.current.get(qKey) ?? null);
       }
 
       // Ensure active question translations if needed
@@ -682,6 +697,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       setActiveQuestion(qNav.question);
       setSelectedOptionId(qNav.response_state.selected_option_id as string | null);
       setIsMarkedForReview(qNav.response_state.is_marked_for_review);
+      {
+        const fetchedConf = qNav.response_state.confidence_level ?? null;
+        confidenceByQRef.current.set(String(qNav.question.question_id), fetchedConf);
+        setConfidence(fetchedConf);
+      }
 
       // Seed question into cache
       setAllQuestions((prev) => {
@@ -842,6 +862,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const handleClearResponse = () => {
     setSelectedOptionId(null);
     setSelectedOptionLabel(null);
+    setConfidence(null);
+    if (activeQuestion) confidenceByQRef.current.set(String(activeQuestion.question_id), null);
 
     const newStatus = isMarkedForReview ? 'MARKED_FOR_REVIEW' : 'VISITED';
     updatePaletteItemStatus(currentQIndex, newStatus);
@@ -849,6 +871,13 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     if (activeQuestion) {
       queueResponseUpdate(activeQuestion.question_id, null, isMarkedForReview);
     }
+  };
+
+  const handleConfidenceChange = (value: ConfidenceLevel | null) => {
+    if (!activeQuestion || selectedOptionId === null) return;
+    confidenceByQRef.current.set(String(activeQuestion.question_id), value);
+    setConfidence(value);
+    queueResponseUpdate(activeQuestion.question_id, selectedOptionId, isMarkedForReview);
   };
 
   const handleToggleMarkReview = () => {
@@ -1118,6 +1147,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             time_spent_seconds: Math.round(tSpent * 10) / 10,
             is_switched: switchCount > 0,
             option_switch_count: switchCount,
+            confidence_level: selOpt != null ? confidenceByQRef.current.get(qKey) ?? saved?.confidence_level ?? null : null,
           };
         });
 
@@ -1331,7 +1361,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       <div
         style={{
           marginTop: isTabletOrBelow ? 116 : 76,
-          marginBottom: isTabletOrBelow ? 76 : 80,
+          marginBottom: isTabletOrBelow ? (isSmallScreen ? 120 : 76) : 80,
           display: 'flex',
           flexDirection: isTabletOrBelow ? 'column' : 'row',
           height: isTabletOrBelow ? 'auto' : 'calc(100vh - 156px)',
@@ -1391,6 +1421,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       <ExamFooterBar
         isAnswered={selectedOptionId !== null}
         isMarkedForReview={isMarkedForReview}
+        confidence={confidence}
+        onConfidenceChange={handleConfidenceChange}
         isFirstQuestion={currentQIndex === 0}
         isLastQuestion={currentQIndex >= totalQuestions - 1}
         onClearResponse={handleClearResponse}

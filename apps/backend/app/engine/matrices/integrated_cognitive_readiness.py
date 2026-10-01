@@ -2,6 +2,39 @@ from typing import Dict, Any
 
 
 class IntegratedCognitiveReadinessEngine:
+    @staticmethod
+    def classify_tier(icrs: float) -> tuple[str, str, str]:
+        """Direct, clear UPSC Prelims preparedness scale shared by exam-wise and cumulative reports."""
+        if icrs >= 85.0:
+            return (
+                "EXCEPTIONAL_PRELIMS_READY",
+                "Prelims Ready - Top Rank Contender",
+                "Outstanding mastery. Consistently clearing historical UPSC cutoffs with high elimination discipline.",
+            )
+        if icrs >= 70.0:
+            return (
+                "COMPETITIVE_BENCHMARK_READY",
+                "Prelims Ready Benchmark",
+                "Comfortably within competitive qualification range. Targeted revision in weak topics will secure your seat.",
+            )
+        if icrs >= 50.0:
+            return (
+                "MODERATE_DEVELOPING_READINESS",
+                "Developing Readiness - Target Revision Needed",
+                "Moderate readiness. Solid foundation, but unforced errors and negative marking are holding back the qualifying score.",
+            )
+        if icrs >= 30.0:
+            return (
+                "FOUNDATIONAL_VULNERABILITY",
+                "Foundation Building Needed",
+                "Foundational gaps detected. Low syllabus coverage or excessive negative penalties require focused chapter revisions.",
+            )
+        return (
+            "CRITICAL_INTERVENTION_REQUIRED",
+            "Critical Foundation & Practice Required",
+            "Very low attempt coverage or conceptual gaps. Complete the full syllabus and practice 15-20 questions daily.",
+        )
+
     @classmethod
     def compute_icrs(
         cls,
@@ -48,27 +81,7 @@ class IntegratedCognitiveReadinessEngine:
             coverage_factor = max(0.12, min(1.0, coverage_factor))
             icrs = round(raw_composite * coverage_factor, 1)
 
-        # 3. Direct, Clear UPSC Prelims Preparedness Scale
-        if icrs >= 85.0:
-            tier = "EXCEPTIONAL_PRELIMS_READY"
-            tier_label = "Prelims Ready - Top Rank Contender"
-            interpretation = "Outstanding mastery. Consistently clearing historical UPSC cutoffs with high elimination discipline."
-        elif icrs >= 70.0:
-            tier = "COMPETITIVE_BENCHMARK_READY"
-            tier_label = "Prelims Ready Benchmark"
-            interpretation = "Comfortably within competitive qualification range. Targeted revision in weak topics will secure your seat."
-        elif icrs >= 50.0:
-            tier = "MODERATE_DEVELOPING_READINESS"
-            tier_label = "Developing Readiness - Target Revision Needed"
-            interpretation = "Moderate readiness. Solid foundation, but unforced errors and negative marking are holding back the qualifying score."
-        elif icrs >= 30.0:
-            tier = "FOUNDATIONAL_VULNERABILITY"
-            tier_label = "Foundation Building Needed"
-            interpretation = "Foundational gaps detected. Low syllabus coverage or excessive negative penalties require focused chapter revisions."
-        else:
-            tier = "CRITICAL_INTERVENTION_REQUIRED"
-            tier_label = "Critical Foundation & Practice Required"
-            interpretation = "Very low attempt coverage or conceptual gaps. Complete the full syllabus and practice 15-20 questions daily."
+        tier, tier_label, interpretation = cls.classify_tier(icrs)
 
         return {
             "icrs_score": icrs,

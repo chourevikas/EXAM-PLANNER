@@ -17,6 +17,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
+import type { ConfidenceLevel } from '../../types/exam';
+import { ConfidenceSelector } from './ConfidenceSelector';
 import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { ReportQuestionModal } from './ReportQuestionModal';
@@ -90,6 +92,9 @@ interface ExamQuestionCardProps {
   onNext?: () => void;
   isPYQ?: boolean;
   solutionData?: QuestionSolutionData | null;
+  /** Shown in the bottom action bar only when onConfidenceChange is provided */
+  confidence?: ConfidenceLevel | null;
+  onConfidenceChange?: (value: ConfidenceLevel | null) => void;
 }
 
 function cleanQuestionTextBody(rawText: string): string {
@@ -304,6 +309,8 @@ export function ExamQuestionCard({
   onNext,
   isPYQ = false,
   solutionData,
+  confidence = null,
+  onConfidenceChange,
 }: ExamQuestionCardProps) {
   const [showDetailedSolution, setShowDetailedSolution] = useState<boolean>(false);
   const [showReport, setShowReport] = useState<boolean>(false);
@@ -465,7 +472,7 @@ export function ExamQuestionCard({
     strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700 }} {...props} />,
   };
 
-  const { isTabletOrBelow } = useBreakpoint();
+  const { isTabletOrBelow, isMobile } = useBreakpoint();
 
   return (
     <main
@@ -1028,7 +1035,7 @@ export function ExamQuestionCard({
             )}
 
             {/* Action Buttons & Navigation (only rendered when there's something to show) */}
-            {(onPrev || onNext || mode !== 'EXAM') && (
+            {(onPrev || onNext || mode !== 'EXAM' || onConfidenceChange) && (
               <div
                 style={{
                   marginTop: 14,
@@ -1107,6 +1114,16 @@ export function ExamQuestionCard({
                     </button>
                   )}
                 </div>
+
+                {/* Middle: confidence, locked once the answer is revealed */}
+                {onConfidenceChange && (
+                  <ConfidenceSelector
+                    value={confidence}
+                    onChange={onConfidenceChange}
+                    disabled={!selectedOptionId || Boolean(revealResult)}
+                    compact={isMobile}
+                  />
+                )}
 
                 {/* Right: Single Action Button */}
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

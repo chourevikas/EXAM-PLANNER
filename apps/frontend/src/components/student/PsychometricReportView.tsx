@@ -62,6 +62,7 @@ import {
 } from 'recharts';
 import { formatEnum } from '../../utils/formatEnum';
 import { SimilarQuestionsSection } from '../exam/SimilarQuestionsSection';
+import { ReportSummary } from './ReportSummary';
 
 interface PsychometricReportViewProps {
   report: PsychometricReport;
@@ -98,15 +99,12 @@ export function PsychometricReportView({
     []
   );
 
-  const [activeTab, setActiveTab] = useState<
-    'exam-scorecard' | 'questions' | 'ai-insights' | 'user-trajectory' | 'topics'
-  >(isCumulative ? 'user-trajectory' : 'exam-scorecard');
+  const [activeTab, setActiveTab] = useState<'summary' | 'questions' | 'ai-insights' | 'topics'>('summary');
+  const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
 
   useEffect(() => {
-    if (isCumulative && (activeTab === 'exam-scorecard' || activeTab === 'questions')) {
-      setActiveTab('user-trajectory');
-    } else if (!isCumulative && activeTab === 'user-trajectory') {
-      setActiveTab('exam-scorecard');
+    if (isCumulative && activeTab === 'questions') {
+      setActiveTab('summary');
     }
   }, [isCumulative]);
 
@@ -1058,110 +1056,6 @@ export function PsychometricReportView({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Top Header Banner */}
-      <section
-        style={{
-          ...cardStyle,
-          background: 'linear-gradient(135deg, rgba(var(--primary-red-rgb), 0.12) 0%, rgba(147,51,234,0.12) 100%)',
-          border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 20,
-        }}
-      >
-        <div>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '4px 12px',
-              backgroundColor: 'rgba(var(--primary-red-rgb), 0.15)',
-              borderRadius: 'var(--radius)',
-              marginBottom: 10,
-              fontSize: 12,
-              fontWeight: 800,
-              color: 'var(--primary-red)',
-              textTransform: 'uppercase',
-            }}
-          >
-            <Brain size={14} /> Full 12-Matrix Diagnostic Platform
-          </div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 6px 0', color: isDark ? 'var(--bg-card)' : 'var(--deep-navy)' }}>
-            {metadata?.exam_attempt?.exam_name || 'UPSC Civil Services Examination'}
-          </h1>
-          <p style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', margin: 0 }}>
-            Candidate: <strong>{metadata?.candidate?.full_name || 'Candidate'}</strong> • Attempt Date:{' '}
-            {metadata?.exam_attempt?.attempt_date ? new Date(metadata.exam_attempt.attempt_date).toLocaleDateString() : 'Today'}
-          </p>
-        </div>
-
-        {/* Score, Accuracy & AI Data Status Badges */}
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div
-            style={{
-              backgroundColor: isDark ? 'rgba(15,23,42,0.6)' : 'var(--bg-card)',
-              padding: '10px 18px',
-              borderRadius: 'var(--radius)',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Net Marks</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--primary-red)' }}>
-              {metadata?.exam_attempt?.total_score_awarded !== undefined
-                ? metadata.exam_attempt.total_score_awarded.toFixed(2)
-                : (metadata?.exam_attempt as any)?.total_score !== undefined
-                  ? Number((metadata?.exam_attempt as any)?.total_score).toFixed(2)
-                  : '0.00'}
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> / {metadata?.exam_attempt?.max_possible_score || 200}</span>
-            </div>
-          </div>
-
-          <div
-            style={{
-              backgroundColor: isDark ? 'rgba(15,23,42,0.6)' : 'var(--bg-card)',
-              padding: '10px 18px',
-              borderRadius: 'var(--radius)',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'var(--border-color)'}`,
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>ICRS Index</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: '#3A8B53' }}>
-              {icrs?.icrs_score || 82}
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> / 100</span>
-            </div>
-          </div>
-
-          {/* AI Diagnostic Status Sign Badge */}
-          <div
-            style={{
-              padding: '10px 16px',
-              borderRadius: 'var(--radius)',
-              border: hasAiInsight ? '1px solid #A7F3D0' : '1px solid #FDE68A',
-              backgroundColor: hasAiInsight ? '#ECFDF5' : 'var(--status-warning-bg)',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 2,
-            }}
-          >
-            <div style={{ fontSize: 10.5, fontWeight: 800, color: hasAiInsight ? '#065F46' : '#92400E', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
-              {hasAiInsight ? <CheckCircle2 size={12} color="#059669" /> : <Loader2 size={12} className="animate-spin" color="#D97706" />}
-              Diagnostic Status
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: hasAiInsight ? '#059669' : '#D97706' }}>
-              {hasAiInsight ? 'Data Loaded' : 'Generating...'}
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Navigation Tabs (Separated Sub-Pages for Exam Report & User Report) */}
       <div
         style={{
@@ -1174,15 +1068,15 @@ export function PsychometricReportView({
       >
         {(isCumulative
           ? [
-              { id: 'user-trajectory', label: '1. Longitudinal Trajectory & Core Mastery', icon: TrendingUp },
-              { id: 'topics', label: '2. Topic Hierarchy & Subject Mastery', icon: BookOpen },
-              { id: 'ai-insights', label: '3. Strategic Roadmap & Study Plan', icon: Lightbulb },
+              { id: 'summary', label: 'Summary', icon: TrendingUp },
+              { id: 'topics', label: 'Topics', icon: BookOpen },
+              { id: 'ai-insights', label: 'Study plan', icon: Lightbulb },
             ]
           : [
-              { id: 'exam-scorecard', label: '1. Exam Scorecard & Performance Metrics', icon: Zap },
-              { id: 'questions', label: '2. Question Solutions & Distractor Traps', icon: Target },
-              { id: 'ai-insights', label: '3. Insights & Actionable Study Plan', icon: Lightbulb },
-              { id: 'topics', label: '4. Topic Hierarchy & Category Mastery', icon: BookOpen },
+              { id: 'summary', label: 'Summary', icon: Zap },
+              { id: 'questions', label: 'Questions', icon: Target },
+              { id: 'topics', label: 'Topics', icon: BookOpen },
+              { id: 'ai-insights', label: 'Study plan', icon: Lightbulb },
             ]
         ).map((tab) => {
           const IconComp = tab.icon;
@@ -1209,7 +1103,7 @@ export function PsychometricReportView({
             >
               <IconComp size={16} />
               <span>{tab.label}</span>
-              {tab.id === 'ai-insights' && (
+              {tab.id === 'ai-insights' && !hasAiInsight && (
                 <span
                   style={{
                     fontSize: 10,
@@ -1235,7 +1129,35 @@ export function PsychometricReportView({
       {/* ──────────────────────────────────────────────────────────────────────────
           PLACE 1: EXAM SCORECARD PERFORMANCE (Tab 1)
       ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'exam-scorecard' && (
+      {activeTab === 'summary' && (
+        <>
+          <ReportSummary report={report as any} isCumulative={Boolean(isCumulative)} />
+          <button
+            type="button"
+            onClick={() => setShowDetailedAnalysis((v) => !v)}
+            aria-expanded={showDetailedAnalysis}
+            style={{
+              alignSelf: 'flex-start',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 16px',
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--border-color)',
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-primary)',
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            {showDetailedAnalysis ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {showDetailedAnalysis ? 'Hide detailed analysis' : 'Show detailed analysis'}
+          </button>
+        </>
+      )}
+
+      {activeTab === 'summary' && showDetailedAnalysis && !isCumulative && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Executive Prelims / Practice Performance & Benchmark Card */}
           {(() => {
@@ -2935,7 +2857,7 @@ export function PsychometricReportView({
       {/* ──────────────────────────────────────────────────────────────────────────
           PAGE 1: USER LONGITUDINAL TRAJECTORY (Tab 1 for Cumulative Profile)
       ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'user-trajectory' && isCumulative && (
+      {activeTab === 'summary' && showDetailedAnalysis && isCumulative && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Header Banner */}
           <div
@@ -3157,9 +3079,9 @@ export function PsychometricReportView({
               <div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Longitudinal Competency Band</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#3A8B53' }}>
-                  {userProfile.cumulative_icrs_score >= 80
+                  {(userProfile.cumulative_icrs_score ?? (userProfile as any).cumulative_icrs ?? 0) >= 70
                     ? 'Prelims Ready Benchmark'
-                    : userProfile.cumulative_icrs_score >= 65
+                    : (userProfile.cumulative_icrs_score ?? (userProfile as any).cumulative_icrs ?? 0) >= 50
                       ? 'Competitive Contender'
                       : 'Developing Foundation'}
                 </div>
@@ -3734,6 +3656,34 @@ export function PsychometricReportView({
                                 border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'var(--border-color)'}`,
                               }}
                             >
+                              {/* 0. Self-reported confidence vs outcome */}
+                              {q.confidence_level && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>🎯 Your confidence</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    {(() => {
+                                      const lvl = String(q.confidence_level);
+                                      const label = lvl === 'SURE' ? 'Sure' : lvl === 'FIFTY_FIFTY' ? '50-50' : 'Guess';
+                                      const verdict = state.isCorr
+                                        ? lvl === 'GUESS' ? 'Lucky guess' : 'Right'
+                                        : lvl === 'SURE' ? 'Sure but wrong' : 'Wrong';
+                                      const good = state.isCorr && lvl !== 'GUESS';
+                                      const bad = !state.isCorr && lvl === 'SURE';
+                                      return (
+                                        <>
+                                          <span style={{ padding: '2px 8px', borderRadius: 'var(--radius)', fontSize: 11, fontWeight: 800, backgroundColor: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
+                                            You said: {label}
+                                          </span>
+                                          <span style={{ fontSize: 11.5, fontWeight: 700, color: good ? '#3A8B53' : bad ? 'var(--primary-red)' : 'var(--text-muted)' }}>
+                                            {verdict}
+                                          </span>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
+                              )}
+
                               {/* 1. Time Score & Pacing */}
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>⏱️ Time Score & Pacing</span>

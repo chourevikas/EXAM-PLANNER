@@ -119,6 +119,12 @@ class QuestionResponseStatus(str, enum.Enum):
     MARKED_FOR_REVIEW = "MARKED_FOR_REVIEW"
     ANSWERED_AND_MARKED = "ANSWERED_AND_MARKED"
 
+class ConfidenceLevel(str, enum.Enum):
+    """How sure the student was when answering, self-reported before seeing the solution."""
+    SURE = "SURE"
+    FIFTY_FIFTY = "FIFTY_FIFTY"
+    GUESS = "GUESS"
+
 class StudyActivityType(str, enum.Enum):
     REVISION = "REVISION"
     NEW_TOPIC = "NEW_TOPIC"

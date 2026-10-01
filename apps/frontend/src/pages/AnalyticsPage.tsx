@@ -13,7 +13,7 @@ import {
   AttemptHistoryItem,
 } from '../services/examService';
 import { PsychometricReport } from '../types/exam';
-import { Loader2, CheckCircle2, Activity, Cpu, RefreshCw, AlertCircle, BarChart3 } from 'lucide-react';
+import { Loader2, Activity, Cpu, RefreshCw, AlertCircle, BarChart3 } from 'lucide-react';
 import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { PerformanceAnalyticsSkeleton } from '../components/student/PerformanceAnalyticsSkeleton';
@@ -21,22 +21,7 @@ import { formatEnum } from '../utils/formatEnum';
 
 // ─── Static Style Constants (extracted to avoid per-render allocation) ───
 
-const backBannerStyle: React.CSSProperties = {
-  marginBottom: 20,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '12px 20px',
-  borderRadius: 'var(--radius)',
-  backgroundColor: 'rgba(var(--primary-red-rgb), 0.08)',
-  border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
-  flexWrap: 'wrap',
-  gap: 12,
-};
 
-const backBannerInnerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' };
-const backBannerLabelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' };
-const backBannerValueStyle: React.CSSProperties = { fontSize: 14, fontWeight: 800, color: 'var(--primary-red)' };
 
 const headerSectionStyle: React.CSSProperties = {
   marginBottom: 24,
@@ -53,33 +38,9 @@ const headerSectionStyle: React.CSSProperties = {
   gap: 20,
 };
 
-const headerBadgeStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '4px 12px',
-  backgroundColor: 'var(--accent-bg)',
-  borderRadius: 'var(--radius)',
-  marginBottom: 10,
-  border: '1px solid var(--accent-border)',
-};
 
-const headerBadgeTextStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' };
 const hasAiWrapperStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 };
 
-const aiBadgeLoadedStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '4px 12px',
-  backgroundColor: '#ECFDF5',
-  border: '1px solid #A7F3D0',
-  borderRadius: 'var(--radius)',
-  color: '#059669',
-  fontSize: 12,
-  fontWeight: 800,
-  letterSpacing: '0.03em',
-};
 
 const aiBadgePendingStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -648,80 +609,58 @@ export function AnalyticsPage() {
 
   return (
     <StudentLayout pageTitle="Deep Analytics">
-      {/* Single Exam Mode Back Banner */}
-      {selectedAttemptId !== 'CUMULATIVE_ALL' && (
-        <div
-          style={{
-            ...backBannerStyle,
-            padding: isMobile ? '10px 14px' : '12px 20px',
-            flexDirection: isMobile ? 'column' : 'row',
-            alignItems: isMobile ? 'flex-start' : 'center',
-            gap: isMobile ? 6 : 12,
-          }}
-        >
-          <div style={backBannerInnerStyle}>
-            <span style={backBannerLabelStyle}>Viewing Individual Exam Report:</span>
-            <span style={backBannerValueStyle}>
-              {attemptsHistory.find((a) => a.attempt_id === selectedAttemptId)?.exam_name || 'Selected Exam Paper'}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Header Banner */}
+      {/* Header */}
       <section
         style={{
           ...headerSectionStyle,
-          padding: isMobile ? '18px 14px' : isTabletOrBelow ? '24px 20px' : 32,
-          marginBottom: isMobile ? 16 : 24,
-          gap: isMobile ? 14 : 20,
+          padding: isMobile ? '16px 14px' : '20px 24px',
+          marginBottom: isMobile ? 14 : 18,
+          gap: 8,
         }}
       >
         <div>
-          <div style={headerBadgeStyle}>
-            <Ico.Chart size={14} />
-            <span style={headerBadgeTextStyle}>
-              {selectedAttemptId === 'CUMULATIVE_ALL' ? 'Cumulative Longitudinal Master Report' : 'Single Exam Psychometric Diagnostic'}
-            </span>
-          </div>
+          {selectedAttemptId !== 'CUMULATIVE_ALL' && (
+            <button
+              type="button"
+              onClick={() => setSearchParams({})}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                marginBottom: 6,
+                color: 'var(--primary-red)',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              ← All exams overview
+            </button>
+          )}
           <h1
             style={{
-              fontSize: isMobile ? 20 : isTabletOrBelow ? 24 : 28,
+              fontSize: isMobile ? 20 : 24,
               fontWeight: 800,
               color: 'var(--text-primary)',
-              margin: '0 0 6px 0',
+              margin: '0 0 4px 0',
               lineHeight: 1.25,
             }}
           >
-            {selectedAttemptId === 'CUMULATIVE_ALL' ? 'Cumulative Student Performance & Mastery Profile' : 'Exam Performance & Cognitive Diagnostic'}
-          </h1>
-          <p
-            style={{
-              fontSize: isMobile ? 13 : 14,
-              color: 'var(--text-muted)',
-              margin: '0 0 10px 0',
-              lineHeight: 1.5,
-            }}
-          >
             {selectedAttemptId === 'CUMULATIVE_ALL'
-              ? 'Multi-exam weighted synthesis across all completed tests with contextual diagnosis, subject mastery, and actionable study plans.'
-              : 'Detailed question-by-question breakdown, macro scores, and mentorship guidance for this completed test.'}
+              ? 'Your performance across all exams'
+              : attemptsHistory.find((a) => a.attempt_id === selectedAttemptId)?.exam_name || 'Exam report'}
+          </h1>
+          <p style={{ fontSize: isMobile ? 13 : 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+            {selectedAttemptId === 'CUMULATIVE_ALL'
+              ? 'How you are doing overall, where you are improving, and what to study next.'
+              : 'How you did in this exam and what to work on next.'}
           </p>
-
-          {/* Diagnostic Data Loaded Sign Badge */}
-          {!isLoading && (
-            <div style={hasAiWrapperStyle}>
-              {hasAi ? (
-                <span style={aiBadgeLoadedStyle}>
-                  <CheckCircle2 size={14} color="#059669" />
-                  Diagnostic Data: Loaded & Verified
-                </span>
-              ) : (
-                <span style={aiBadgePendingStyle}>
-                  <Loader2 size={14} className="animate-spin" color="#D97706" />
-                  Diagnostic Data: Generating Insights...
-                </span>
-              )}
+          {!isLoading && !hasAi && (
+            <div style={{ ...hasAiWrapperStyle, marginTop: 10 }}>
+              <span style={aiBadgePendingStyle}>
+                <Loader2 size={14} className="animate-spin" color="#D97706" />
+                Preparing your personalised study plan…
+              </span>
             </div>
           )}
         </div>
@@ -740,7 +679,7 @@ export function AnalyticsPage() {
         >
           <div style={attemptSwitcherLabelStyle}>
             <span style={attemptSwitcherTitleStyle}>
-              🔄 Multiple Attempts Found for this Exam ({attemptSwitcherData.sameExamAttempts.length} Total):
+              You took this exam {attemptSwitcherData.sameExamAttempts.length} times
             </span>
           </div>
           <div
@@ -843,12 +782,199 @@ export function AnalyticsPage() {
         </div>
       ) : (
         <>
+          {/* Long-Polling Evaluation State (Zero Deployment Timeout Guarantee) */}
+          {isEvaluating && (
+            <div
+              style={{
+                ...evaluatingContainerStyle,
+                padding: isMobile ? '20px 14px' : isTabletOrBelow ? '24px 20px' : 32,
+                marginBottom: isMobile ? 18 : 28,
+              }}
+            >
+              <div style={evaluatingIconsStyle}>
+                <Cpu size={28} className="animate-spin" />
+                <Activity size={24} color="#8b5cf6" />
+              </div>
+
+              <h2
+                style={{
+                  fontSize: isMobile ? 17 : 20,
+                  fontWeight: 800,
+                  margin: 0,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                Psychometric Evaluation Engine Active
+              </h2>
+
+              <p
+                style={{
+                  fontSize: isMobile ? 13 : 14,
+                  color: 'var(--text-muted)',
+                  margin: 0,
+                  maxWidth: isMobile ? '100%' : 520,
+                  lineHeight: 1.5,
+                }}
+              >
+                {evalMessage}
+              </p>
+
+              {/* Progress Bar */}
+              <div
+                style={{
+                  ...progressBarOuterStyle,
+                  maxWidth: isMobile ? '100%' : 480,
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${evalProgress}%`,
+                    background: 'linear-gradient(90deg, var(--primary-red), #8b5cf6)',
+                    borderRadius: 'var(--radius)',
+                    transition: 'width 0.4s ease',
+                  }}
+                />
+              </div>
+
+              <span style={evalLabelStyle}>
+                Polling live diagnostics ({evalProgress}% Complete)
+              </span>
+            </div>
+          )}
+
+          {/* Loading Skeleton */}
+          {(isLoading && !isEvaluating) && (
+            <div style={skeletonWrapperStyle}>
+              <PerformanceAnalyticsSkeleton />
+            </div>
+          )}
+
+          {/* Error / Processing Banner */}
+          {error && !isEvaluating && (
+            <div
+              style={{
+                ...errorBannerStyle,
+                padding: isMobile ? '14px 14px' : '20px 24px',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: isMobile ? 14 : 16,
+              }}
+            >
+              <div style={errorBannerContentStyle}>
+                <AlertCircle size={24} color="var(--primary-red)" style={{ flexShrink: 0 }} />
+                <div style={errorBannerTextStyle}>
+                  <strong style={errorBannerLabelStyle}>Evaluation Notice: </strong>
+                  <span>{error}</span>
+                </div>
+              </div>
+
+              {selectedAttemptId && selectedAttemptId !== 'CUMULATIVE_ALL' && (
+                <button
+                  onClick={handleRetryEvaluation}
+                  disabled={isRetrying}
+                  style={{
+                    ...retryBtnStyle,
+                    width: isMobile ? '100%' : 'auto',
+                    minHeight: 44,
+                    justifyContent: 'center',
+                    cursor: isRetrying ? 'not-allowed' : 'pointer',
+                    opacity: isRetrying ? 0.7 : 1,
+                  }}
+                >
+                  <RefreshCw size={16} className={isRetrying ? 'animate-spin' : ''} />
+                  <span>{isRetrying ? 'Retrying Evaluation...' : 'Retry Evaluation'}</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Live Saved Psychometric Report View */}
+          {report ? (
+            <PsychometricReportView
+              report={report}
+            />
+          ) : (
+            !isLoading && !isEvaluating && (
+              <div
+                style={{
+                  ...noReportContainerStyle,
+                  padding: isMobile ? '28px 14px' : isTabletOrBelow ? '36px 20px' : 48,
+                  maxWidth: isMobile ? '100%' : 680,
+                  margin: isMobile ? '16px auto' : '32px auto',
+                }}
+              >
+                <div style={noReportIconStyle}>
+                  ⚠️
+                </div>
+
+                <h2
+                  style={{
+                    fontSize: isMobile ? 18 : 22,
+                    fontWeight: 800,
+                    color: 'var(--text-primary)',
+                    margin: 0,
+                  }}
+                >
+                  Unable to Generate Report
+                </h2>
+
+                <p
+                  style={{
+                    fontSize: isMobile ? 13.5 : 14.5,
+                    color: 'var(--text-muted)',
+                    lineHeight: 1.6,
+                    maxWidth: 520,
+                    margin: 0,
+                  }}
+                >
+                  No evaluated telemetry or psychometric data is available for this exam attempt yet. Complete and submit a practice exam or mock test to generate your 12-matrix diagnostic report.
+                </p>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 12,
+                    marginTop: 12,
+                    flexDirection: isMobile ? 'column' : 'row',
+                    width: isMobile ? '100%' : 'auto',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    style={{
+                      ...refreshBtnStyle,
+                      width: isMobile ? '100%' : 'auto',
+                      minHeight: 44,
+                    }}
+                  >
+                    ↻ Refresh Analysis
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => (window.location.href = '/practice')}
+                    style={{
+                      ...practiceExamBtnStyle,
+                      width: isMobile ? '100%' : 'auto',
+                      minHeight: 44,
+                    }}
+                  >
+                    Take a Practice Exam →
+                  </button>
+                </div>
+              </div>
+            )
+          )}
           {/* Completed Exam History Quick-Access Table/Cards (When in Cumulative Mode) */}
           {selectedAttemptId === 'CUMULATIVE_ALL' && attemptsHistory.length > 0 && (
             <section
               style={{
                 ...historyTableSectionStyle,
                 padding: isMobile ? '16px 12px' : isTabletOrBelow ? '20px 16px' : 24,
+                marginTop: isMobile ? 16 : 24,
                 marginBottom: isMobile ? 16 : 24,
               }}
             >
@@ -1194,192 +1320,6 @@ export function AnalyticsPage() {
             </section>
           )}
 
-          {/* Long-Polling Evaluation State (Zero Deployment Timeout Guarantee) */}
-          {isEvaluating && (
-            <div
-              style={{
-                ...evaluatingContainerStyle,
-                padding: isMobile ? '20px 14px' : isTabletOrBelow ? '24px 20px' : 32,
-                marginBottom: isMobile ? 18 : 28,
-              }}
-            >
-              <div style={evaluatingIconsStyle}>
-                <Cpu size={28} className="animate-spin" />
-                <Activity size={24} color="#8b5cf6" />
-              </div>
-
-              <h2
-                style={{
-                  fontSize: isMobile ? 17 : 20,
-                  fontWeight: 800,
-                  margin: 0,
-                  color: 'var(--text-primary)',
-                }}
-              >
-                Psychometric Evaluation Engine Active
-              </h2>
-
-              <p
-                style={{
-                  fontSize: isMobile ? 13 : 14,
-                  color: 'var(--text-muted)',
-                  margin: 0,
-                  maxWidth: isMobile ? '100%' : 520,
-                  lineHeight: 1.5,
-                }}
-              >
-                {evalMessage}
-              </p>
-
-              {/* Progress Bar */}
-              <div
-                style={{
-                  ...progressBarOuterStyle,
-                  maxWidth: isMobile ? '100%' : 480,
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    width: `${evalProgress}%`,
-                    background: 'linear-gradient(90deg, var(--primary-red), #8b5cf6)',
-                    borderRadius: 'var(--radius)',
-                    transition: 'width 0.4s ease',
-                  }}
-                />
-              </div>
-
-              <span style={evalLabelStyle}>
-                Polling live diagnostics ({evalProgress}% Complete)
-              </span>
-            </div>
-          )}
-
-          {/* Loading Skeleton */}
-          {(isLoading && !isEvaluating) && (
-            <div style={skeletonWrapperStyle}>
-              <PerformanceAnalyticsSkeleton />
-            </div>
-          )}
-
-          {/* Error / Processing Banner */}
-          {error && !isEvaluating && (
-            <div
-              style={{
-                ...errorBannerStyle,
-                padding: isMobile ? '14px 14px' : '20px 24px',
-                flexDirection: isMobile ? 'column' : 'row',
-                alignItems: isMobile ? 'stretch' : 'center',
-                gap: isMobile ? 14 : 16,
-              }}
-            >
-              <div style={errorBannerContentStyle}>
-                <AlertCircle size={24} color="var(--primary-red)" style={{ flexShrink: 0 }} />
-                <div style={errorBannerTextStyle}>
-                  <strong style={errorBannerLabelStyle}>Evaluation Notice: </strong>
-                  <span>{error}</span>
-                </div>
-              </div>
-
-              {selectedAttemptId && selectedAttemptId !== 'CUMULATIVE_ALL' && (
-                <button
-                  onClick={handleRetryEvaluation}
-                  disabled={isRetrying}
-                  style={{
-                    ...retryBtnStyle,
-                    width: isMobile ? '100%' : 'auto',
-                    minHeight: 44,
-                    justifyContent: 'center',
-                    cursor: isRetrying ? 'not-allowed' : 'pointer',
-                    opacity: isRetrying ? 0.7 : 1,
-                  }}
-                >
-                  <RefreshCw size={16} className={isRetrying ? 'animate-spin' : ''} />
-                  <span>{isRetrying ? 'Retrying Evaluation...' : 'Retry Evaluation'}</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Live Saved Psychometric Report View */}
-          {report ? (
-            <PsychometricReportView
-              report={report}
-            />
-          ) : (
-            !isLoading && !isEvaluating && (
-              <div
-                style={{
-                  ...noReportContainerStyle,
-                  padding: isMobile ? '28px 14px' : isTabletOrBelow ? '36px 20px' : 48,
-                  maxWidth: isMobile ? '100%' : 680,
-                  margin: isMobile ? '16px auto' : '32px auto',
-                }}
-              >
-                <div style={noReportIconStyle}>
-                  ⚠️
-                </div>
-
-                <h2
-                  style={{
-                    fontSize: isMobile ? 18 : 22,
-                    fontWeight: 800,
-                    color: 'var(--text-primary)',
-                    margin: 0,
-                  }}
-                >
-                  Unable to Generate Report
-                </h2>
-
-                <p
-                  style={{
-                    fontSize: isMobile ? 13.5 : 14.5,
-                    color: 'var(--text-muted)',
-                    lineHeight: 1.6,
-                    maxWidth: 520,
-                    margin: 0,
-                  }}
-                >
-                  No evaluated telemetry or psychometric data is available for this exam attempt yet. Complete and submit a practice exam or mock test to generate your 12-matrix diagnostic report.
-                </p>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 12,
-                    marginTop: 12,
-                    flexDirection: isMobile ? 'column' : 'row',
-                    width: isMobile ? '100%' : 'auto',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    style={{
-                      ...refreshBtnStyle,
-                      width: isMobile ? '100%' : 'auto',
-                      minHeight: 44,
-                    }}
-                  >
-                    ↻ Refresh Analysis
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => (window.location.href = '/practice')}
-                    style={{
-                      ...practiceExamBtnStyle,
-                      width: isMobile ? '100%' : 'auto',
-                      minHeight: 44,
-                    }}
-                  >
-                    Take a Practice Exam →
-                  </button>
-                </div>
-              </div>
-            )
-          )}
         </>
       )}
     </StudentLayout>

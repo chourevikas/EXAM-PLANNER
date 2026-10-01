@@ -64,12 +64,16 @@ export interface StartExamRequest {
   dynamic_limit?: number;
 }
 
+/** Self-reported confidence in an answer, captured before the solution is seen. */
+export type ConfidenceLevel = 'SURE' | 'FIFTY_FIFTY' | 'GUESS';
+
 export interface SaveResponseRequest {
   question_id: number | string;
   selected_option_id?: number | string | null;
   is_marked_for_review?: boolean;
   time_spent_seconds?: number;
   option_switch_count?: number;
+  confidence_level?: ConfidenceLevel | null;
 }
 
 export interface BatchSaveItem {
@@ -79,6 +83,7 @@ export interface BatchSaveItem {
   time_spent_seconds?: number;
   is_switched?: boolean;
   option_switch_count?: number;
+  confidence_level?: ConfidenceLevel | null;
   client_timestamp?: string;
 }
 
@@ -166,6 +171,7 @@ export interface ResponseState {
   time_spent_seconds: number;
   question_status: QuestionResponseStatus;
   answer_revealed: boolean;
+  confidence_level?: ConfidenceLevel | null;
 }
 
 export interface QuestionNavResponse {

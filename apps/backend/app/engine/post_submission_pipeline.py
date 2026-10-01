@@ -26,6 +26,7 @@ from app.db.models import (
     ExamAttemptReport,
     UserSkillProgressionReport,
     StudyTask,
+    QuestionSwitchLog,
 )
 from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus
 from app.engine.matrix_orchestrator import MatrixOrchestrator, is_placeholder_taxonomy
@@ -189,11 +190,19 @@ async def load_exam_solutions_data(exam: Any, session: AsyncSession, storage: An
 _IN_FLIGHT_PIPELINES: set = set()
 
 
-async def run_post_submission_pipeline(attempt_id: int | str, session: Optional[AsyncSession] = None) -> None:
+async def run_post_submission_pipeline(
+    attempt_id: int | str,
+    session: Optional[AsyncSession] = None,
+    report_only: bool = False,
+) -> None:
     """
     Asynchronous, non-blocking post-submission pipeline.
     Phase 1 (fast): Matrix computation + DB persistence → status = SUBMITTED with math data.
     Phase 2 (async): LLM AI synthesis → status = EVALUATED with insights.
+
+    report_only=True rebuilds the attempt's report without touching the user's running
+    totals (skill profile, taxonomy mastery, FSRS memory, badges). Used to backfill reports
+    after a scoring fix.
     """
     # Normalize to int to prevent str/int dedup failures
     try:
@@ -210,10 +219,10 @@ async def run_post_submission_pipeline(attempt_id: int | str, session: Optional[
     try:
         logger.info(f"Starting post-submission pipeline for attempt '{attempt_id}'...")
         if session is not None:
-            await _run_pipeline_core(session, attempt_id)
+            await _run_pipeline_core(session, attempt_id, report_only=report_only)
         else:
             async with managed_async_session() as managed_sess:
-                await _run_pipeline_core(managed_sess, attempt_id)
+                await _run_pipeline_core(managed_sess, attempt_id, report_only=report_only)
     except Exception as e:
         logger.error(f"Post-submission pipeline encountered an unexpected error on attempt '{attempt_id}': {e}", exc_info=True)
         try:
@@ -236,14 +245,14 @@ async def run_post_submission_pipeline(attempt_id: int | str, session: Optional[
         _IN_FLIGHT_PIPELINES.discard(attempt_id)
 
 
-async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
+async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only: bool = False) -> None:
     # 1. Fetch Attempt
     attempt = await session.get(ExamAttempt, attempt_id)
     if not attempt:
         logger.error(f"Attempt '{attempt_id}' not found for post-submission pipeline.")
         return
 
-    if attempt.status == AttemptStatus.EVALUATED:
+    if attempt.status == AttemptStatus.EVALUATED and not report_only:
         logger.info(f"Attempt '{attempt_id}' is already EVALUATED. Skipping duplicate run.")
         return
 
@@ -440,6 +449,19 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
                         subj_res = await session.exec(select(Subject).where(col(Subject.id).in_(subject_ids)))
                         subject_map = {sb.id: sb for sb in subj_res.all()}
 
+    # First recorded "from" option per switched response = the student's initial answer
+    initial_option_by_resp: Dict[Any, Any] = {}
+    switched_resp_ids = [r.id for r in responses_db if r.is_switched and r.id is not None]
+    if switched_resp_ids:
+        sw_res = await session.exec(
+            select(QuestionSwitchLog)
+            .where(col(QuestionSwitchLog.exam_response_id).in_(switched_resp_ids))
+            .order_by(col(QuestionSwitchLog.created_at).asc())
+        )
+        for sw in sw_res.all():
+            if sw.exam_response_id not in initial_option_by_resp and sw.from_option_id is not None:
+                initial_option_by_resp[sw.exam_response_id] = sw.from_option_id
+
     responses_payload = []
     resolved_sol_questions = []
     unresolved_question_count = 0
@@ -606,7 +628,12 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
             "time_taken_seconds": float(r.time_taken_seconds or 0.0),
             "expected_time_seconds": float(r.expected_time_seconds if (r.expected_time_seconds and r.expected_time_seconds > 0) else 60.0),
             "is_switched": r.is_switched,
-            "initial_correct": False,
+            "confidence_level": r.confidence_level,
+            "initial_correct": bool(
+                correct_option_id
+                and r.id in initial_option_by_resp
+                and str(initial_option_by_resp[r.id]) == str(correct_option_id)
+            ),
             "gti_item_score": r.gti_item_score,
             "answer_revealed": r.answer_revealed,
             "explanation": expl_dict,
@@ -761,279 +788,285 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
     attempt.pacing_status = str(pacing_obj.get("pacing_status", "BALANCED_PACING"))
     session.add(attempt)
 
-    # 6. Update UserSkillProfile
-    actual_attempted_count = len([r for r in responses_db if r.selected_option_id is not None])
-    if not profile:
-        profile = UserSkillProfile(
-            user_id=user.id,
-            cumulative_irt_theta=attempt.irt_theta,
-            cumulative_gti=attempt.gti_score,
-            cumulative_oeei=attempt.oeei_score,
-            cumulative_icrs=attempt.icrs_score,
-            cumulative_satoi=attempt.satoi_score,
-            total_tests_given=1,
-            total_questions_answered=actual_attempted_count,
-        )
-    else:
-        n = profile.total_tests_given + 1
-        profile.cumulative_irt_theta = round((profile.cumulative_irt_theta * profile.total_tests_given + attempt.irt_theta) / n, 2)
-        profile.cumulative_gti = round((profile.cumulative_gti * profile.total_tests_given + attempt.gti_score) / n, 4)
-        profile.cumulative_oeei = round((profile.cumulative_oeei * profile.total_tests_given + attempt.oeei_score) / n, 2)
-        profile.cumulative_icrs = round((profile.cumulative_icrs * profile.total_tests_given + attempt.icrs_score) / n, 1)
-        profile.cumulative_satoi = round((profile.cumulative_satoi * profile.total_tests_given + attempt.satoi_score) / n, 1)
-        profile.total_tests_given = n
-        profile.total_questions_answered += actual_attempted_count
-        profile.updated_at = datetime.now(timezone.utc)
-    session.add(profile)
+    now_t = datetime.now(timezone.utc)
 
-    # 7. Bulk Update UserTaxonomyMastery (Filtering out synthetic wildcard/placeholder labels)
-    t_db_start = datetime.now(timezone.utc)
-    tax_by_blooms = [
-        {
-            "taxonomy_name": f"Bloom's {b_k.upper()} Thinking",
-            "taxonomy_id_code": b_k.upper(),
-            "total_questions": b_v.get("total", 0),
-            "correct": b_v.get("correct", 0),
-            "accuracy_percentage": b_v.get("accuracy", 0.0),
-            "strength_status": "STRONG" if b_v.get("accuracy", 0.0) >= 75.0 else ("MODERATE" if b_v.get("accuracy", 0.0) >= 50.0 else "WEAK_REVISION_REQUIRED"),
-        }
-        for b_k, b_v in (blooms_obj.get("breakdown", {}) or {}).items()
-        if b_v.get("total", 0) > 0
-    ]
-    all_tax_items = [
-        (t_type, x)
-        for (t_type, items) in [
-            ("SUBJECT", tax_by_subj),
-            ("TOPIC", tax_by_top),
-            ("SUBTOPIC", tax_by_sub),
-            ("BLOOMS", tax_by_blooms),
-        ]
-        for x in items
-        if not is_placeholder_taxonomy(x.get("taxonomy_name") or x.get("name"))
-    ]
-    aggregated_tax: Dict[tuple, Dict[str, Any]] = {}
-    for tax_type, item in all_tax_items:
-        code_id = (item.get("taxonomy_id_code") or item.get("taxonomy_name") or "General").strip()
-        disp_name = (item.get("taxonomy_name") or item.get("taxonomy_id_code") or code_id).strip()
-        norm_type = str(tax_type).strip().upper()
-        norm_code = code_id.strip().upper()[:100]
-        t_key = (norm_type, norm_code)
-        if t_key in aggregated_tax:
-            aggregated_tax[t_key]["total_questions"] += item.get("total_questions", 0)
-            aggregated_tax[t_key]["correct"] += item.get("correct", 0)
-            tot = aggregated_tax[t_key]["total_questions"]
-            cor = aggregated_tax[t_key]["correct"]
-            aggregated_tax[t_key]["accuracy_percentage"] = round((cor / max(1, tot)) * 100.0, 1)
+    # 6–7c mutate running per-user totals; a report-only re-run (backfill) must not apply them twice
+    if not report_only:
+        # 6. Update UserSkillProfile
+        actual_attempted_count = len([r for r in responses_db if r.selected_option_id is not None])
+        if not profile:
+            profile = UserSkillProfile(
+                user_id=user.id,
+                cumulative_irt_theta=attempt.irt_theta,
+                cumulative_gti=attempt.gti_score,
+                cumulative_oeei=attempt.oeei_score,
+                cumulative_icrs=attempt.icrs_score,
+                cumulative_satoi=attempt.satoi_score,
+                total_tests_given=1,
+                total_questions_answered=actual_attempted_count,
+            )
         else:
-            aggregated_tax[t_key] = {
+            n = profile.total_tests_given + 1
+            profile.cumulative_irt_theta = round((profile.cumulative_irt_theta * profile.total_tests_given + attempt.irt_theta) / n, 2)
+            profile.cumulative_gti = round((profile.cumulative_gti * profile.total_tests_given + attempt.gti_score) / n, 4)
+            profile.cumulative_oeei = round((profile.cumulative_oeei * profile.total_tests_given + attempt.oeei_score) / n, 2)
+            profile.cumulative_icrs = round((profile.cumulative_icrs * profile.total_tests_given + attempt.icrs_score) / n, 1)
+            profile.cumulative_satoi = round((profile.cumulative_satoi * profile.total_tests_given + attempt.satoi_score) / n, 1)
+            profile.total_tests_given = n
+            profile.total_questions_answered += actual_attempted_count
+            profile.updated_at = datetime.now(timezone.utc)
+        session.add(profile)
+
+        # 7. Bulk Update UserTaxonomyMastery (Filtering out synthetic wildcard/placeholder labels)
+        t_db_start = datetime.now(timezone.utc)
+        tax_by_blooms = [
+            {
+                "taxonomy_name": f"Bloom's {b_k.upper()} Thinking",
+                "taxonomy_id_code": b_k.upper(),
+                "total_questions": b_v.get("total", 0),
+                "correct": b_v.get("correct", 0),
+                "accuracy_percentage": b_v.get("accuracy", 0.0),
+                "strength_status": "STRONG" if b_v.get("accuracy", 0.0) >= 75.0 else ("MODERATE" if b_v.get("accuracy", 0.0) >= 50.0 else "WEAK_REVISION_REQUIRED"),
+            }
+            for b_k, b_v in (blooms_obj.get("breakdown", {}) or {}).items()
+            if b_v.get("total", 0) > 0
+        ]
+        all_tax_items = [
+            (t_type, x)
+            for (t_type, items) in [
+                ("SUBJECT", tax_by_subj),
+                ("TOPIC", tax_by_top),
+                ("SUBTOPIC", tax_by_sub),
+                ("BLOOMS", tax_by_blooms),
+            ]
+            for x in items
+            if not is_placeholder_taxonomy(x.get("taxonomy_name") or x.get("name"))
+        ]
+        aggregated_tax: Dict[tuple, Dict[str, Any]] = {}
+        for tax_type, item in all_tax_items:
+            code_id = (item.get("taxonomy_id_code") or item.get("taxonomy_name") or "General").strip()
+            disp_name = (item.get("taxonomy_name") or item.get("taxonomy_id_code") or code_id).strip()
+            norm_type = str(tax_type).strip().upper()
+            norm_code = code_id.strip().upper()[:100]
+            t_key = (norm_type, norm_code)
+            if t_key in aggregated_tax:
+                aggregated_tax[t_key]["total_questions"] += item.get("total_questions", 0)
+                aggregated_tax[t_key]["correct"] += item.get("correct", 0)
+                tot = aggregated_tax[t_key]["total_questions"]
+                cor = aggregated_tax[t_key]["correct"]
+                aggregated_tax[t_key]["accuracy_percentage"] = round((cor / max(1, tot)) * 100.0, 1)
+            else:
+                aggregated_tax[t_key] = {
+                    "taxonomy_type": norm_type,
+                    "taxonomy_id_code": norm_code,
+                    "taxonomy_name": disp_name,
+                    "total_questions": item.get("total_questions", 0),
+                    "correct": item.get("correct", 0),
+                    "accuracy_percentage": item.get("accuracy_percentage", 0.0),
+                    "strength_status": item.get("strength_status", "MODERATE"),
+                }
+
+        # Bulk query existing taxonomy masteries in 1 query with case-normalized upper keys
+        existing_tax_res = await session.exec(select(UserTaxonomyMastery).where(UserTaxonomyMastery.user_id == user.id))
+        existing_tax_all = existing_tax_res.all()
+        tax_map: Dict[tuple, UserTaxonomyMastery] = {}
+        for m in existing_tax_all:
+            norm_t = str(m.taxonomy_type).strip().upper()
+            norm_c = str(m.taxonomy_id_code).strip().upper()
+            norm_n = str(m.taxonomy_name).strip().upper()
+            tax_map[(norm_t, norm_c)] = m
+            tax_map[(norm_t, norm_n)] = m
+
+        # Compute all taxonomy row updates in-memory first (no DB calls), then persist in a single
+        # bulk upsert statement instead of 1 upsert exec per distinct taxonomy item.
+        tax_rows: List[Dict[str, Any]] = []
+        for (norm_type, norm_code), item in aggregated_tax.items():
+            m_obj = tax_map.get((norm_type, norm_code)) or tax_map.get((norm_type, item["taxonomy_name"].strip().upper()))
+            if not m_obj:
+                tot = item["total_questions"]
+                cor = item["correct"]
+                acc = item["accuracy_percentage"]
+                st = item["strength_status"]
+            else:
+                tot = m_obj.total_attempts + item["total_questions"]
+                cor = m_obj.correct_attempts + item["correct"]
+                acc = round((cor / max(1, tot)) * 100.0, 1)
+                st = "STRONG" if acc >= 75.0 else ("MODERATE" if acc >= 50.0 else "WEAK_REVISION_REQUIRED")
+
+            tax_rows.append({
+                "user_id": user.id,
                 "taxonomy_type": norm_type,
                 "taxonomy_id_code": norm_code,
-                "taxonomy_name": disp_name,
-                "total_questions": item.get("total_questions", 0),
-                "correct": item.get("correct", 0),
-                "accuracy_percentage": item.get("accuracy_percentage", 0.0),
-                "strength_status": item.get("strength_status", "MODERATE"),
-            }
+                "taxonomy_name": item["taxonomy_name"],
+                "total_attempts": tot,
+                "correct_attempts": cor,
+                "mastery_percentage": acc,
+                "strength_status": st,
+                "updated_at": datetime.now(timezone.utc),
+            })
 
-    # Bulk query existing taxonomy masteries in 1 query with case-normalized upper keys
-    existing_tax_res = await session.exec(select(UserTaxonomyMastery).where(UserTaxonomyMastery.user_id == user.id))
-    existing_tax_all = existing_tax_res.all()
-    tax_map: Dict[tuple, UserTaxonomyMastery] = {}
-    for m in existing_tax_all:
-        norm_t = str(m.taxonomy_type).strip().upper()
-        norm_c = str(m.taxonomy_id_code).strip().upper()
-        norm_n = str(m.taxonomy_name).strip().upper()
-        tax_map[(norm_t, norm_c)] = m
-        tax_map[(norm_t, norm_n)] = m
+        if tax_rows:
+            try:
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-    # Compute all taxonomy row updates in-memory first (no DB calls), then persist in a single
-    # bulk upsert statement instead of 1 upsert exec per distinct taxonomy item.
-    tax_rows: List[Dict[str, Any]] = []
-    for (norm_type, norm_code), item in aggregated_tax.items():
-        m_obj = tax_map.get((norm_type, norm_code)) or tax_map.get((norm_type, item["taxonomy_name"].strip().upper()))
-        if not m_obj:
-            tot = item["total_questions"]
-            cor = item["correct"]
-            acc = item["accuracy_percentage"]
-            st = item["strength_status"]
-        else:
-            tot = m_obj.total_attempts + item["total_questions"]
-            cor = m_obj.correct_attempts + item["correct"]
-            acc = round((cor / max(1, tot)) * 100.0, 1)
-            st = "STRONG" if acc >= 75.0 else ("MODERATE" if acc >= 50.0 else "WEAK_REVISION_REQUIRED")
+                # Deduplicate by unique index (user_id, taxonomy_type, taxonomy_id_code)
+                unique_tax_rows = {}
+                for r in tax_rows:
+                    unique_tax_rows[(r["user_id"], r["taxonomy_type"], r["taxonomy_id_code"])] = r
+                deduped_rows = list(unique_tax_rows.values())
 
-        tax_rows.append({
-            "user_id": user.id,
-            "taxonomy_type": norm_type,
-            "taxonomy_id_code": norm_code,
-            "taxonomy_name": item["taxonomy_name"],
-            "total_attempts": tot,
-            "correct_attempts": cor,
-            "mastery_percentage": acc,
-            "strength_status": st,
-            "updated_at": datetime.now(timezone.utc),
-        })
-
-    if tax_rows:
-        try:
-            from sqlalchemy.dialects.postgresql import insert as pg_insert
-
-            # Deduplicate by unique index (user_id, taxonomy_type, taxonomy_id_code)
-            unique_tax_rows = {}
-            for r in tax_rows:
-                unique_tax_rows[(r["user_id"], r["taxonomy_type"], r["taxonomy_id_code"])] = r
-            deduped_rows = list(unique_tax_rows.values())
-
-            stmt = pg_insert(UserTaxonomyMastery).values(deduped_rows)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["user_id", "taxonomy_type", "taxonomy_id_code"],
-                set_={
-                    "taxonomy_name": stmt.excluded.taxonomy_name,
-                    "total_attempts": stmt.excluded.total_attempts,
-                    "correct_attempts": stmt.excluded.correct_attempts,
-                    "mastery_percentage": stmt.excluded.mastery_percentage,
-                    "strength_status": stmt.excluded.strength_status,
-                    "updated_at": stmt.excluded.updated_at,
-                },
-            )
-            await session.exec(stmt)
-        except Exception as tax_err:
-            logger.warning(f"PostgreSQL ON CONFLICT upsert failed: {tax_err}. Falling back to safe row-by-row merge.")
-            for row in tax_rows:
-                m_obj = tax_map.get((row["taxonomy_type"], row["taxonomy_id_code"])) or tax_map.get(
-                    (row["taxonomy_type"], row["taxonomy_name"].strip().upper())
+                stmt = pg_insert(UserTaxonomyMastery).values(deduped_rows)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["user_id", "taxonomy_type", "taxonomy_id_code"],
+                    set_={
+                        "taxonomy_name": stmt.excluded.taxonomy_name,
+                        "total_attempts": stmt.excluded.total_attempts,
+                        "correct_attempts": stmt.excluded.correct_attempts,
+                        "mastery_percentage": stmt.excluded.mastery_percentage,
+                        "strength_status": stmt.excluded.strength_status,
+                        "updated_at": stmt.excluded.updated_at,
+                    },
                 )
-                if not m_obj:
-                    new_m = UserTaxonomyMastery(
-                        user_id=row["user_id"],
-                        taxonomy_type=row["taxonomy_type"],
-                        taxonomy_id_code=row["taxonomy_id_code"],
-                        taxonomy_name=row["taxonomy_name"],
-                        total_attempts=row["total_attempts"],
-                        correct_attempts=row["correct_attempts"],
-                        mastery_percentage=row["mastery_percentage"],
-                        strength_status=row["strength_status"],
-                        updated_at=row["updated_at"],
+                await session.exec(stmt)
+            except Exception as tax_err:
+                logger.warning(f"PostgreSQL ON CONFLICT upsert failed: {tax_err}. Falling back to safe row-by-row merge.")
+                for row in tax_rows:
+                    m_obj = tax_map.get((row["taxonomy_type"], row["taxonomy_id_code"])) or tax_map.get(
+                        (row["taxonomy_type"], row["taxonomy_name"].strip().upper())
                     )
-                    session.add(new_m)
-                    tax_map[(row["taxonomy_type"], row["taxonomy_id_code"])] = new_m
-                else:
-                    m_obj.total_attempts = row["total_attempts"]
-                    m_obj.correct_attempts = row["correct_attempts"]
-                    m_obj.mastery_percentage = row["mastery_percentage"]
-                    m_obj.strength_status = row["strength_status"]
-                    m_obj.updated_at = row["updated_at"]
-                    session.add(m_obj)
-
-    # 7b. Bulk Update FSRS UserMemoryState & UserConceptRetention
-    try:
-        async with session.begin_nested():
-            now_t = datetime.now(timezone.utc)
-            all_resp_q_ids = [r.question_id for r in responses_db if r.question_id]
-            uid = int(user.id) if user.id is not None else 0
-
-            # Bulk load memory records
-            existing_mem_res = await session.exec(
-                select(UserMemoryState).where(
-                    UserMemoryState.user_id == uid,
-                    col(UserMemoryState.question_id).in_(all_resp_q_ids),
-                )
-            )
-            existing_mem_map = {m.question_id: m for m in existing_mem_res.all()}
-
-            existing_ret_res = await session.exec(
-                select(UserConceptRetention).where(UserConceptRetention.user_id == uid)
-            )
-            existing_ret_map = {r.subtopic_id: r for r in existing_ret_res.all() if r.subtopic_id}
-
-            for resp in responses_db:
-                if not resp.question_id:
-                    continue
-                q_subtopic_id = None
-                if resp.question_id in q_map:
-                    q_subtopic_id = q_map[resp.question_id].subtopic_id
-
-                is_corr = bool(resp.is_correct)
-                mem_obj = existing_mem_map.get(resp.question_id)
-
-                if not mem_obj:
-                    diff = 5.0 if not is_corr else 3.5
-                    stab = 1.0 if not is_corr else 3.0
-                    ret = 0.4 if not is_corr else 1.0
-                else:
-                    if is_corr:
-                        stab = round(mem_obj.fsrs_stability * 1.5, 2)
-                        diff = max(1.0, round(mem_obj.fsrs_difficulty - 0.2, 2))
-                        ret = 1.0
+                    if not m_obj:
+                        new_m = UserTaxonomyMastery(
+                            user_id=row["user_id"],
+                            taxonomy_type=row["taxonomy_type"],
+                            taxonomy_id_code=row["taxonomy_id_code"],
+                            taxonomy_name=row["taxonomy_name"],
+                            total_attempts=row["total_attempts"],
+                            correct_attempts=row["correct_attempts"],
+                            mastery_percentage=row["mastery_percentage"],
+                            strength_status=row["strength_status"],
+                            updated_at=row["updated_at"],
+                        )
+                        session.add(new_m)
+                        tax_map[(row["taxonomy_type"], row["taxonomy_id_code"])] = new_m
                     else:
-                        stab = max(0.5, round(mem_obj.fsrs_stability * 0.6, 2))
-                        diff = min(10.0, round(mem_obj.fsrs_difficulty + 0.5, 2))
-                        ret = 0.4
+                        m_obj.total_attempts = row["total_attempts"]
+                        m_obj.correct_attempts = row["correct_attempts"]
+                        m_obj.mastery_percentage = row["mastery_percentage"]
+                        m_obj.strength_status = row["strength_status"]
+                        m_obj.updated_at = row["updated_at"]
+                        session.add(m_obj)
 
-                next_review_dt = now_t + timedelta(days=max(1, int(stab)))
+        # 7b. Bulk Update FSRS UserMemoryState & UserConceptRetention
+        try:
+            async with session.begin_nested():
+                all_resp_q_ids = [r.question_id for r in responses_db if r.question_id]
+                uid = int(user.id) if user.id is not None else 0
 
-                if not mem_obj:
-                    mem_obj = UserMemoryState(
-                        user_id=uid,
-                        question_id=resp.question_id,
-                        subtopic_id=q_subtopic_id,
-                        fsrs_difficulty=diff,
-                        fsrs_stability=stab,
-                        retrievability=ret,
-                        last_reviewed_at=now_t,
-                        next_scheduled_review=next_review_dt,
+                # Bulk load memory records
+                existing_mem_res = await session.exec(
+                    select(UserMemoryState).where(
+                        UserMemoryState.user_id == uid,
+                        col(UserMemoryState.question_id).in_(all_resp_q_ids),
                     )
-                    session.add(mem_obj)
-                    existing_mem_map[resp.question_id] = mem_obj
-                else:
-                    mem_obj.subtopic_id = q_subtopic_id
-                    mem_obj.fsrs_difficulty = diff
-                    mem_obj.fsrs_stability = stab
-                    mem_obj.retrievability = ret
-                    mem_obj.last_reviewed_at = now_t
-                    mem_obj.next_scheduled_review = next_review_dt
-                    session.add(mem_obj)
+                )
+                existing_mem_map = {m.question_id: m for m in existing_mem_res.all()}
 
-                if q_subtopic_id:
-                    ret_obj = existing_ret_map.get(q_subtopic_id)
-                    if not ret_obj:
-                        ret_obj = UserConceptRetention(
+                existing_ret_res = await session.exec(
+                    select(UserConceptRetention).where(UserConceptRetention.user_id == uid)
+                )
+                existing_ret_map = {r.subtopic_id: r for r in existing_ret_res.all() if r.subtopic_id}
+
+                for resp in responses_db:
+                    if not resp.question_id:
+                        continue
+                    q_subtopic_id = None
+                    if resp.question_id in q_map:
+                        q_subtopic_id = q_map[resp.question_id].subtopic_id
+
+                    is_corr = bool(resp.is_correct)
+                    mem_obj = existing_mem_map.get(resp.question_id)
+
+                    if not mem_obj:
+                        diff = 5.0 if not is_corr else 3.5
+                        stab = 1.0 if not is_corr else 3.0
+                        ret = 0.4 if not is_corr else 1.0
+                    else:
+                        if is_corr:
+                            stab = round(mem_obj.fsrs_stability * 1.5, 2)
+                            diff = max(1.0, round(mem_obj.fsrs_difficulty - 0.2, 2))
+                            ret = 1.0
+                        else:
+                            stab = max(0.5, round(mem_obj.fsrs_stability * 0.6, 2))
+                            diff = min(10.0, round(mem_obj.fsrs_difficulty + 0.5, 2))
+                            ret = 0.4
+
+                    next_review_dt = now_t + timedelta(days=max(1, int(stab)))
+
+                    if not mem_obj:
+                        mem_obj = UserMemoryState(
                             user_id=uid,
+                            question_id=resp.question_id,
                             subtopic_id=q_subtopic_id,
                             fsrs_difficulty=diff,
                             fsrs_stability=stab,
-                            fsrs_retrievability=ret,
-                            total_reviews=1,
-                            lapses=0 if is_corr else 1,
+                            retrievability=ret,
                             last_reviewed_at=now_t,
                             next_scheduled_review=next_review_dt,
                         )
-                        session.add(ret_obj)
-                        existing_ret_map[q_subtopic_id] = ret_obj
+                        session.add(mem_obj)
+                        existing_mem_map[resp.question_id] = mem_obj
                     else:
-                        ret_obj.fsrs_difficulty = diff
-                        ret_obj.fsrs_stability = stab
-                        ret_obj.fsrs_retrievability = ret
-                        ret_obj.total_reviews += 1
-                        if not is_corr:
-                            ret_obj.lapses += 1
-                        ret_obj.last_reviewed_at = now_t
-                        ret_obj.next_scheduled_review = next_review_dt
-                        session.add(ret_obj)
+                        mem_obj.subtopic_id = q_subtopic_id
+                        mem_obj.fsrs_difficulty = diff
+                        mem_obj.fsrs_stability = stab
+                        mem_obj.retrievability = ret
+                        mem_obj.last_reviewed_at = now_t
+                        mem_obj.next_scheduled_review = next_review_dt
+                        session.add(mem_obj)
 
-            await session.flush()
-    except Exception as mem_err:
-        logger.warning(f"Error updating UserMemoryState / UserConceptRetention: {mem_err}")
+                    if q_subtopic_id:
+                        ret_obj = existing_ret_map.get(q_subtopic_id)
+                        if not ret_obj:
+                            ret_obj = UserConceptRetention(
+                                user_id=uid,
+                                subtopic_id=q_subtopic_id,
+                                fsrs_difficulty=diff,
+                                fsrs_stability=stab,
+                                fsrs_retrievability=ret,
+                                total_reviews=1,
+                                lapses=0 if is_corr else 1,
+                                last_reviewed_at=now_t,
+                                next_scheduled_review=next_review_dt,
+                            )
+                            session.add(ret_obj)
+                            existing_ret_map[q_subtopic_id] = ret_obj
+                        else:
+                            ret_obj.fsrs_difficulty = diff
+                            ret_obj.fsrs_stability = stab
+                            ret_obj.fsrs_retrievability = ret
+                            ret_obj.total_reviews += 1
+                            if not is_corr:
+                                ret_obj.lapses += 1
+                            ret_obj.last_reviewed_at = now_t
+                            ret_obj.next_scheduled_review = next_review_dt
+                            session.add(ret_obj)
 
-    # 7c. Award Gamification Badges & XP (isolated so gamification never aborts submission pipeline)
-    try:
-        from app.services.gamification_service import GamificationService
-        async with session.begin_nested():
-            g_service = GamificationService(session)
-            if user.id is not None:
-                await g_service.check_and_update_daily_goal(int(user.id))
-    except Exception as badge_err:
-        logger.warning(f"Gamification processing warning: {badge_err}")
+                await session.flush()
+        except Exception as mem_err:
+            logger.warning(f"Error updating UserMemoryState / UserConceptRetention: {mem_err}")
+
+        # 7c. Award Gamification Badges & XP (isolated so gamification never aborts submission pipeline)
+        try:
+            from app.services.gamification_service import GamificationService
+            async with session.begin_nested():
+                g_service = GamificationService(session)
+                if user.id is not None:
+                    await g_service.check_and_update_daily_goal(int(user.id))
+        except Exception as badge_err:
+            logger.warning(f"Gamification processing warning: {badge_err}")
+
+    elif profile is None:
+        profile = UserSkillProfile(user_id=user.id, **profile_dict)
 
     # 8. AI Diagnostic Synthesis (Structured Output LLM Call with Zero Math Hallucination)
     from app.engine.report_ai_synthesizer import ReportAISynthesizer

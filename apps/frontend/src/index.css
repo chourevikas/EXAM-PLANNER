@@ -792,6 +792,20 @@ body {
 }
 
 /* ── 19. Exam Footer Responsive ── */
+.exam-footer-bar.has-confidence-row {
+  height: calc(var(--footer-height) + 44px);
+  flex-wrap: wrap;
+  align-content: center;
+  row-gap: 6px;
+}
+
+.exam-footer-confidence-row {
+  order: -1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 .exam-footer-bar {
   height: var(--footer-height);
   position: fixed;

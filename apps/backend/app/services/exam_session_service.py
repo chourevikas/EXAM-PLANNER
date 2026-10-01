@@ -26,7 +26,7 @@ from app.db.models import (
     Topic,
     Subtopic,
 )
-from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus, ExamStatus
+from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus, ExamStatus, ConfidenceLevel
 from app.schemas.exam_attempt import (
     StartExamRequest,
     StartExamResponse,
@@ -450,6 +450,7 @@ class ExamSessionService:
             time_spent_seconds=resp.time_taken_seconds if resp else 0.0,
             question_status=resp.question_status if resp else QuestionResponseStatus.UNVISITED,
             answer_revealed=resp.answer_revealed if resp else False,
+            confidence_level=resp.confidence_level if resp else None,
         )
 
         return QuestionNavResponse(
@@ -724,6 +725,10 @@ class ExamSessionService:
 
         resp.is_marked_for_review = req.is_marked_for_review
         resp.time_taken_seconds = max(0.0, req.time_spent_seconds)
+        # Confidence only means something for an answered question
+        resp.confidence_level = (
+            req.confidence_level.value if (req.confidence_level and resp.selected_option_id is not None) else None
+        )
         if req.option_switch_count > resp.option_switch_count:
             resp.option_switch_count = req.option_switch_count
 
@@ -943,6 +948,9 @@ class ExamSessionService:
 
                 resp.is_marked_for_review = item.is_marked_for_review
                 resp.time_taken_seconds = max(resp.time_taken_seconds, float(item.time_spent_seconds or 0.0))
+                resp.confidence_level = (
+                    item.confidence_level.value if (item.confidence_level and resp.selected_option_id is not None) else None
+                )
                 if item.option_switch_count > resp.option_switch_count:
                     resp.option_switch_count = item.option_switch_count
 
@@ -1547,6 +1555,8 @@ class ExamSessionService:
                     if opt_id:
                         resp.selected_option_id = opt_id
                         resp.question_status = QuestionResponseStatus.ANSWERED_AND_MARKED if item.is_marked_for_review else QuestionResponseStatus.ANSWERED
+                        if item.confidence_level:
+                            resp.confidence_level = item.confidence_level.value
                     resp.is_marked_for_review = item.is_marked_for_review
                     resp.time_taken_seconds = max(resp.time_taken_seconds, float(item.time_spent_seconds or 0.0))
                     if getattr(item, "is_switched", False):
@@ -2111,6 +2121,11 @@ class ExamSessionService:
                         expected_time_seconds=float(r_item.get("expected_time_seconds") or 60.0),
                         is_switched=bool(r_item.get("is_switched", False)),
                         closeness_score_awarded=1.0 if is_corr else 0.0,
+                        confidence_level=(
+                            str(r_item.get("confidence_level"))
+                            if opt_id_val and r_item.get("confidence_level") in {c.value for c in ConfidenceLevel}
+                            else None
+                        ),
                     )
                     self.session.add(resp_row)
                 except Exception as r_err:
