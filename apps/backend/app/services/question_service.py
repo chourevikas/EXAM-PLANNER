@@ -2289,15 +2289,18 @@ class QuestionService:
             
         candidates = (await self.session.exec(statement)).all()
         
+        def _norm(tags):
+            return {str(t).strip().lower() for t in (tags.get("concepts", []) + tags.get("entities", [])) if t}
+
         target_tags = target_q.knowledge_tags_ai
-        target_all = set(target_tags.get("concepts", [])) | set(target_tags.get("entities", []))
+        target_all = _norm(target_tags)
         if not target_all:
             return []
 
         scored_candidates = []
         for c in candidates:
             c_tags = c.knowledge_tags_ai
-            c_all = set(c_tags.get("concepts", [])) | set(c_tags.get("entities", []))
+            c_all = _norm(c_tags)
             if not c_all:
                 continue
                 

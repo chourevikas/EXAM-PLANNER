@@ -362,20 +362,22 @@ async def get_similar_questions(
     service = QuestionService(session)
     
     if target_q.knowledge_tags_ai:
-        # Use AI Jaccard Similarity
+        # Use AI Jaccard Similarity; if it finds nothing, fall through to the deterministic layer
         results = await service.get_similar_questions(qid_int, limit=limit)
-        if include_question and results:
-            lang_code = parse_language(language)
-            cards = await service._build_light_recommendation_cards([r["question"] for r in results], target_lang=lang_code)
-            by_id = {int(c["question_id"]): c for c in cards}
-            for r in results:
-                r["question"] = by_id.get(r["question"].id)
-                r["question_id"] = r["question"]["question_id"] if r["question"] else None
-        else:
-            for r in results:
-                r["question_id"] = r["question"].id
-                del r["question"]
-        return JSONResponse(content={"results": jsonable_encoder(results)})
+        if results:
+            if include_question:
+                from sqlmodel import select, col
+                lang_code = parse_language(language)
+                q_ids = [int(r["question_id"]) for r in results]
+                rows = (await session.exec(select(Question).where(col(Question.id).in_(q_ids)))).all()
+                cards = await service._build_light_recommendation_cards(list(rows), target_lang=lang_code)
+                by_id = {int(c["question_id"]): c for c in cards if c.get("question_id")}
+                for r in results:
+                    r["question"] = by_id.get(int(r["question_id"]))
+            else:
+                for r in results:
+                    r.pop("question", None)
+            return JSONResponse(content={"question_id": qid_int, "results": jsonable_encoder(results)})
 
     # Fallback to Original Deterministic Similarity
     from app.cache import get_cache, build_cache_key
