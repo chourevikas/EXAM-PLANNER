@@ -364,6 +364,17 @@ async def get_similar_questions(
     if target_q.knowledge_tags_ai:
         # Use AI Jaccard Similarity
         results = await service.get_similar_questions(qid_int, limit=limit)
+        if include_question and results:
+            lang_code = parse_language(language)
+            cards = await service._build_light_recommendation_cards([r["question"] for r in results], target_lang=lang_code)
+            by_id = {int(c["question_id"]): c for c in cards}
+            for r in results:
+                r["question"] = by_id.get(r["question"].id)
+                r["question_id"] = r["question"]["question_id"] if r["question"] else None
+        else:
+            for r in results:
+                r["question_id"] = r["question"].id
+                del r["question"]
         return JSONResponse(content={"results": jsonable_encoder(results)})
 
     # Fallback to Original Deterministic Similarity
@@ -384,11 +395,19 @@ async def get_similar_questions(
     )
     if include_question and results:
         from sqlmodel import select, col
-        rows = (await session.exec(select(Question).where(col(Question.id).in_([r["question_id"] for r in results])))).all()
+        q_ids = [int(r["question_id"]) for r in results if r.get("question_id") is not None]
+        rows = (await session.exec(select(Question).where(col(Question.id).in_(q_ids)))).all()
         cards = await service._build_light_recommendation_cards(list(rows), target_lang=lang_code)
-        by_id = {int(c["question_id"]): c for c in cards}
+        
+        by_id = {}
+        for c in cards:
+            if c.get("question_id"):
+                by_id[int(c["question_id"])] = c
+                
         for r in results:
-            r["question"] = by_id.get(r["question_id"])
+            q_id = r.get("question_id")
+            if q_id is not None:
+                r["question"] = by_id.get(int(q_id))
     
     # Map score to pseudo similarity_score for UI rendering of badges if missing
     max_score = max((r.get("score", 0) for r in results), default=1) or 1

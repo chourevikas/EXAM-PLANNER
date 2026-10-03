@@ -1,14 +1,15 @@
 FROM python:3.12-slim
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 # Install uv
-RUN pip install uv
+RUN pip install --no-cache-dir uv
 
-# Copy project files
+# Install dependencies first (cached layer; only rebuilt when pyproject.toml changes)
 COPY pyproject.toml .
-COPY . .
+RUN uv pip install --system --no-cache -r pyproject.toml
 
-# Install dependencies using uv
-RUN uv pip install --system -e .
+# Copy application source (code changes no longer bust the dependency layer)
+COPY . .
 
 CMD ["uvicorn", "app.fastapi_server:app", "--host", "0.0.0.0", "--port", "8000"]
