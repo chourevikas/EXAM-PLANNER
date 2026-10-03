@@ -192,6 +192,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             export GITHUB_REPOSITORY_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
             cd ~/examplanner
@@ -199,6 +200,10 @@ jobs:
               docker compose -f docker-compose.prod.yml pull superadmin
               docker compose -f docker-compose.prod.yml up -d --force-recreate superadmin
             else
+              # Free disk first: the backend image is ~10GB and old + new must not coexist
+              docker compose -f docker-compose.prod.yml stop api
+              docker image prune -af
+              docker builder prune -af || true
               docker compose -f docker-compose.prod.yml pull
               docker compose -f docker-compose.prod.yml up -d --force-recreate
               docker compose -f docker-compose.prod.yml exec -T api alembic upgrade head || true
