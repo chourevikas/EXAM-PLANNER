@@ -1,18 +1,10 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
+import { AuthenticateWithRedirectCallback, useAuth } from '@clerk/clerk-react';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { UserRole } from './types/auth';
 
-const LandingPage = lazy(() =>
-  import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })),
-);
-const SignInPage = lazy(() =>
-  import('./pages/SignInPage').then((m) => ({ default: m.SignInPage })),
-);
-const SignUpPage = lazy(() =>
-  import('./pages/SignUpPage').then((m) => ({ default: m.SignUpPage })),
-);
+const AuthPage = lazy(() => import('./pages/AuthPage').then((m) => ({ default: m.AuthPage })));
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
@@ -56,13 +48,6 @@ const MockSelectionPage = lazy(() =>
 const PricingPage = lazy(() =>
   import('./pages/PricingPage').then((m) => ({ default: m.PricingPage })),
 );
-const ExamsPage = lazy(() => import('./pages/ExamsPage').then((m) => ({ default: m.ExamsPage })));
-const AboutUsPage = lazy(() =>
-  import('./pages/AboutUsPage').then((m) => ({ default: m.AboutUsPage })),
-);
-const ContactUsPage = lazy(() =>
-  import('./pages/ContactUsPage').then((m) => ({ default: m.ContactUsPage })),
-);
 const VerifyEmailPage = lazy(() =>
   import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })),
 );
@@ -101,6 +86,7 @@ import { Spinner } from './components/common/Spinner';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { PersistentStudentLayout } from './components/student/PersistentStudentLayout';
 import { ClerkExchangeBridge } from './components/common/ClerkExchangeBridge';
+import { MarketingRedirect } from './components/common/MarketingRedirect';
 
 
 function LoadingFallback() {
@@ -120,6 +106,14 @@ function LoadingFallback() {
 }
 
 import { useEffect } from 'react';
+
+/** Unknown paths: signed-in users go to their dashboard, guests to the marketing homepage. */
+function UnknownRoute() {
+  const { isSignedIn, isLoaded } = useAuth();
+  if (!isLoaded) return <LoadingFallback />;
+  const hasCustomToken = !!localStorage.getItem('access_token');
+  return isSignedIn || hasCustomToken ? <Navigate to="/dashboard" replace /> : <MarketingRedirect to="/" />;
+}
 import { hydrateSession } from './services/authService';
 
 export default function App() {
@@ -134,20 +128,20 @@ export default function App() {
       <GlobalThemeToggle />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/signin" element={<LandingPage initialAuthMode="login" />} />
-          <Route path="/login" element={<LandingPage initialAuthMode="login" />} />
-          <Route path="/signup" element={<LandingPage initialAuthMode="signup" />} />
-          <Route path="/register" element={<LandingPage initialAuthMode="signup" />} />
+          {/* Public marketing pages are served by the Astro site (apps/marketing) */}
+          {['/', '/about', '/contact', '/pricing', '/exams/*', '/current-affairs/*', '/privacy', '/terms', '/refund-policy'].map(
+            (path) => <Route key={path} path={path} element={<MarketingRedirect />} />,
+          )}
+          <Route path="/signin" element={<AuthPage initialMode="login" />} />
+          <Route path="/login" element={<AuthPage initialMode="login" />} />
+          <Route path="/signup" element={<AuthPage initialMode="signup" />} />
+          <Route path="/register" element={<AuthPage initialMode="signup" />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/guest-exam" element={<GuestExamPage />} />
           <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
-          <Route path="/exams" element={<ExamsPage />} />
-          <Route path="/about" element={<AboutUsPage />} />
-          <Route path="/contact" element={<ContactUsPage />} />
 
           {/* Student Practice Exam - Protected Route */}
           <Route
@@ -195,8 +189,8 @@ export default function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/current-affairs" element={<CurrentAffairsPage />} />
-            <Route path="/current-affairs/:id" element={<CurrentAffairsDetailPage />} />
+            <Route path="/learn/current-affairs" element={<CurrentAffairsPage />} />
+            <Route path="/learn/current-affairs/:id" element={<CurrentAffairsDetailPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/notifications/:id" element={<NotificationsPage />} />
             <Route path="/challenges" element={<ChallengesPage />} />
@@ -212,7 +206,7 @@ export default function App() {
             <Route path="/mocks" element={<MockSelectionPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/bookmarks" element={<BookmarksPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/billing" element={<PricingPage />} />
           </Route>
           <Route
             path="/admin"
@@ -230,7 +224,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<UnknownRoute />} />
         </Routes>
       </Suspense>
       </ThemeProvider>

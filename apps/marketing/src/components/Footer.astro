@@ -1,0 +1,54 @@
+---
+const cols = [
+  {
+    h: 'Platform',
+    links: [
+      { label: 'Features', href: '/#features' },
+      { label: 'How It Works', href: '/#how-it-works' },
+      { label: 'Pricing', href: '/pricing' },
+      { label: 'Exams', href: '/exams' },
+      { label: 'Current Affairs', href: '/current-affairs' },
+    ],
+  },
+  {
+    h: 'Company',
+    links: [
+      { label: 'About Us', href: '/about' },
+      { label: 'Contact Us', href: '/contact' },
+    ],
+  },
+  {
+    h: 'Legal',
+    links: [
+      { label: 'Privacy Policy', href: '/privacy' },
+      { label: 'Terms of Service', href: '/terms' },
+      { label: 'Refund Policy', href: '/refund-policy' },
+    ],
+  },
+];
+---
+
+<footer id="footer" class="safe-area-bottom mk-footer">
+  <div class="landing-container">
+    <div class="mk-footer-top">
+      <div style="max-width:320px;width:100%">
+        <a href="/" class="mk-logo" aria-label="ExamPlanner home">
+          <img src="/logo-96.webp" alt="" width="40" height="40" loading="lazy" />
+          <span><span style="color:var(--bg-card)">Exam</span><span class="mk-logo-planner">Planner</span></span>
+        </a>
+        <p class="mk-footer-tagline">Master your UPSC preparation with actual PYQs and AI-driven analytics.</p>
+      </div>
+      <div class="mk-footer-cols">
+        {cols.map((col) => (
+          <div>
+            <div class="mk-footer-h">{col.h}</div>
+            <ul>
+              {col.links.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div class="mk-footer-bottom">© {new Date().getFullYear()} ExamPlanner. All rights reserved.</div>
+  </div>
+</footer>

@@ -95,7 +95,7 @@ export function ChallengesPage() {
 
       {nearOrOverLimit && (
         <div
-          onClick={() => navigate('/pricing')}
+          onClick={() => navigate('/billing')}
           style={{
             display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
             backgroundColor: 'var(--accent-bg)', border: '1px solid var(--accent-primary)',

@@ -1,0 +1,95 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Ico } from '@app/components/common/Icons';
+
+const FOUNDER_STATS = [
+  { value: '22', label: 'Prelims Attempts' },
+  { value: '21', label: 'Mains Attempts' },
+  { value: '15', label: 'Personality Tests' },
+];
+const PILLARS = [
+  { icon: Ico.Book, title: 'PYQs Are Our Foundation', desc: 'Previous Year Questions are the starting point of preparation, not an afterthought.' },
+  { icon: Ico.Trend, title: 'Trend & Pattern Analysis', desc: 'Understand recurring themes, question patterns, and how trends shift year over year.' },
+  { icon: Ico.Chart, title: 'Topic-Wise PYQ Analysis', desc: 'Subject-wise and topic-wise breakdowns so you know exactly where to focus.' },
+];
+const PHILOSOPHY = ['PYQs first.', 'Analysis next.', 'Preparation with purpose.', 'Revision with direction.', 'Performance through practice.'];
+---
+
+<BaseLayout
+  title="About Us – Founded by UPSC CSE Aspirants"
+  description="ExamPlanner is a PYQ-based preparation platform founded by CSE aspirants with a combined 22 Prelims, 21 Mains and 15 Personality Test attempts."
+>
+  <section class="landing-section-padding mk-page-hero">
+    <div class="landing-container mk-narrow" style="text-align:center">
+      <div class="section-label" style="justify-content:center">About Us</div>
+      <h1 class="section-heading" style="font-weight:800;color:var(--text-main);margin-bottom:16px">About ExamPlanner</h1>
+      <p class="section-subheading" style="color:var(--text-muted);margin:0 auto">
+        A PYQ-based preparation platform founded by past and current CSE aspirants with a cumulative experience of
+        22 Prelims, 21 Mains, and 15 Personality Tests.
+      </p>
+    </div>
+    <div class="landing-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:20px;max-width:620px;margin-top:44px">
+      {FOUNDER_STATS.map((s) => (
+        <div class="mk-card" style="text-align:center;padding:24px 16px">
+          <div style="font-size:34px;font-weight:800;color:var(--accent-primary);letter-spacing:-0.02em">{s.value}</div>
+          <div style="font-size:13px;color:var(--text-muted);font-weight:600;margin-top:4px">{s.label}</div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="landing-section-padding" style="background:var(--bg-card)">
+    <div class="landing-container mk-narrow" style="text-align:center">
+      <p style="font-size:17px;color:var(--text-main);line-height:1.75;margin:0 auto">
+        The platform uses Previous Year Questions (PYQs) as the foundation of preparation, helping aspirants identify
+        recurring themes, understand question patterns, analyse changing trends, connect static concepts with current
+        affairs, and prioritize what truly matters.
+      </p>
+    </div>
+    <div class="landing-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-top:44px">
+      {PILLARS.map((p) => (
+        <div style="padding:28px;background-color:var(--bg-body);border:1px solid var(--border-color)">
+          <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:var(--accent-bg);border:1px solid var(--accent-border);color:var(--accent-primary);margin-bottom:16px">
+            <p.icon size={20} />
+          </div>
+          <h2 style="font-size:16px;font-weight:700;color:var(--text-main);margin-bottom:8px">{p.title}</h2>
+          <p style="font-size:14px;color:var(--text-muted);line-height:1.6;margin:0">{p.desc}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="landing-section-padding" style="background:var(--deep-navy);text-align:center">
+    <div class="landing-container" style="max-width:720px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--primary-red);margin-bottom:18px;font-family:var(--font-mono)">Our Motto</div>
+      <p style="font-size:clamp(22px,3.5vw,32px);font-weight:700;color:var(--bg-card);line-height:1.5;font-style:italic;margin:0">
+        “Mistakes we have committed should not be repeated by aspirants.”
+      </p>
+    </div>
+  </section>
+
+  <section class="landing-section-padding" style="background:var(--bg-body)">
+    <div class="landing-container mk-narrow">
+      <div style="text-align:center;margin-bottom:44px">
+        <div class="section-label" style="justify-content:center">Our Philosophy</div>
+        <h2 class="section-heading" style="font-weight:800;color:var(--text-main)">A clear sequence, followed every time</h2>
+      </div>
+      <ol style="list-style:none;padding:0;margin:0">
+        {PHILOSOPHY.map((step, idx) => (
+          <li class="mk-card" style={`display:flex;align-items:center;gap:20px;padding:18px 24px;${idx ? 'border-top:none' : ''}`}>
+            <span style="width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background-color:var(--accent-primary);color:var(--bg-card);font-size:14px;font-weight:800">{idx + 1}</span>
+            <span style="font-size:17px;font-weight:700;color:var(--text-main)">{step}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="landing-section-padding" style="background:var(--bg-card);text-align:center">
+    <div class="landing-container">
+      <h2 class="section-heading" style="font-weight:800;color:var(--text-main);margin-bottom:8px">Always Plan Ahead.</h2>
+      <p style="font-size:15px;color:var(--text-muted);margin:0 0 28px 0">Start preparing the way toppers actually revise - PYQ first.</p>
+      <a href="/signup" class="btn btn-primary anim-glow touch-target" style="font-size:16px;padding:14px 32px">Create Your Free Account →</a>
+    </div>
+  </section>
+</BaseLayout>

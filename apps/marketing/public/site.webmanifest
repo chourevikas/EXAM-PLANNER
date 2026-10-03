@@ -1,0 +1,13 @@
+{
+  "name": "ExamPlanner",
+  "short_name": "ExamPlanner",
+  "description": "PYQ-first preparation platform for UPSC and State PSC aspirants.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#e31b23",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

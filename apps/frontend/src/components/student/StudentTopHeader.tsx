@@ -635,7 +635,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
                 <User size={15} /> Profile Settings
               </Link>
-              <Link to="/pricing" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
+              <Link to="/billing" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
                 <CreditCard size={15} /> Subscription Plan
               </Link>
               <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 4, paddingTop: 4 }}>

@@ -1605,7 +1605,7 @@ export function MockSelectionPage() {
           </p>
         </div>
         <Link
-          to="/pricing"
+          to="/billing"
           style={{
             display: 'inline-flex',
             alignItems: 'center',

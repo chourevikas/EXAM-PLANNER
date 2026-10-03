@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Page not found" description="The page you're looking for doesn't exist." noindex>
+  <section class="landing-section-padding mk-page-hero" style="text-align:center;min-height:60vh">
+    <div class="landing-container" style="max-width:560px">
+      <div class="section-label" style="justify-content:center">404</div>
+      <h1 class="section-heading" style="font-weight:800;color:var(--text-main);margin-bottom:12px">We couldn't find that page</h1>
+      <p class="section-subheading" style="color:var(--text-muted);margin:0 auto 28px">It may have moved, or the link may be wrong.</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px">
+        <a href="/" class="btn btn-primary anim-glow touch-target" style="padding:12px 24px">Go to homepage</a>
+        <a href="/exams" class="btn btn-ghost touch-target" style="padding:12px 24px">Browse exams</a>
+        <a href="/current-affairs" class="btn btn-ghost touch-target" style="padding:12px 24px">Current affairs</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

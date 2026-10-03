@@ -67,7 +67,7 @@ export function StudentSidebar({
     { icon: Calendar, label: 'Study Planner', to: '/study-planner' },
     { icon: Swords, label: 'Challenges', to: '/challenges' },
     { icon: BarChart2, label: 'Analytics', to: '/analytics' },
-    { icon: Globe, label: 'Current Affairs', to: '/current-affairs' },
+    { icon: Globe, label: 'Current Affairs', to: '/learn/current-affairs' },
     { icon: Bell, label: 'Announcements', to: '/notifications' },
     { icon: Bookmark, label: 'Bookmarks', to: '/bookmarks' },
   ];
@@ -276,7 +276,7 @@ export function StudentSidebar({
                 Unlock AI insights, detailed analytics and unlimited test attempts.
               </p>
               <Link
-                to="/pricing"
+                to="/billing"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',

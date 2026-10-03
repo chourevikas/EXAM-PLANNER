@@ -4,10 +4,9 @@ import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 
 /**
- * Shared chrome for standalone public marketing pages (Plans, About Us, Contact Us).
- * Login/Signup route to the existing `/signin` & `/signup` entries, which mount
- * LandingPage with the auth modal pre-opened - there's no separate full-page
- * sign-in/sign-up screen in this app.
+ * Shared public chrome for SPA pages visible to guests (e.g. a shared challenge link).
+ * The marketing pages themselves live in apps/marketing; Login/Signup go to the
+ * `/signin` & `/signup` AuthPage entries.
  */
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();

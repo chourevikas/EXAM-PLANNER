@@ -19,6 +19,20 @@ services:
       - app-network
     restart: unless-stopped
 
+  # Public marketing site (Astro SSR). Host nginx routes the marketing paths here and the rest to `web`;
+  # see deploy/nginx/examplanner.in.conf.
+  marketing:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/examplanner-marketing:latest
+    ports:
+      - "127.0.0.1:3020:4321"
+    environment:
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+    networks:
+      - app-network
+    restart: unless-stopped
+
   # Super Admin app (its own origin). Bound to loopback: put a TLS-terminating reverse proxy for the
   # Super Admin host in front of it, and restrict that host (VPN / IP allowlist).
   superadmin:

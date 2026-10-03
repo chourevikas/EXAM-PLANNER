@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /teacher
+Disallow: /exam/
+Disallow: /guest-exam
+Disallow: /practice-exam
+Disallow: /onboarding
+Disallow: /profile
+Disallow: /billing
+Disallow: /learn/
+Disallow: /challenges
+Disallow: /challenge/
+Disallow: /notifications
+Disallow: /signin
+Disallow: /login
+Disallow: /signup
+Disallow: /register
+Disallow: /verify-email
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /change-password
+Disallow: /sso-callback
+
+Sitemap: https://examplanner.in/sitemap-index.xml

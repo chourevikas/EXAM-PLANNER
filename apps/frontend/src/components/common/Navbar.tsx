@@ -80,7 +80,7 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
   const handleNavClick = (targetId: string) => {
     setMobileMenuOpen(false);
     // These anchors only exist on the landing page - navigate home first if elsewhere,
-    // and let LandingPage's hash-scroll effect handle the actual scroll on arrival.
+    // (the marketing site's homepage handles the anchor scroll on arrival).
     if (location.pathname !== '/') {
       navigate(`/${targetId}`);
       return;

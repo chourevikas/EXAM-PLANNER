@@ -117,7 +117,7 @@ export function CurrentAffairsPage() {
                       </div>
                       
                       <button 
-                        onClick={() => navigate(`/current-affairs/${affair.id}`)}
+                        onClick={() => navigate(`/learn/current-affairs/${affair.id}`)}
                         style={{
                           padding: '10px 20px', backgroundColor: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer',
                           fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, whiteSpace: 'nowrap', fontSize: 14
