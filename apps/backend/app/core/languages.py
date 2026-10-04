@@ -151,6 +151,16 @@ def get_22_indian_languages() -> list[LanguageInfo]:
     return [l for l in SUPPORTED_LANGUAGES_LIST if l.code != "en"]
 
 
+# Languages the platform actually translates exam content into (cost control).
+# The full 22-language catalogue above is still used for lookup/normalization.
+ACTIVE_TRANSLATION_LANGUAGE_CODES: list[str] = ["en", "hi", "mr"]
+
+
+def get_active_translation_languages() -> list[LanguageInfo]:
+    """Returns the languages exam content is translated into (English, Hindi, Marathi)."""
+    return [_BY_CODE[c] for c in ACTIVE_TRANSLATION_LANGUAGE_CODES]
+
+
 def get_all_supported_languages() -> list[dict[str, str]]:
     """Returns all supported languages as serializable dicts."""
     return [l.to_dict() for l in SUPPORTED_LANGUAGES_LIST]

@@ -26,7 +26,7 @@ from app.db.models import (
 )
 from app.db.models.pipeline_run import PipelineRun
 from app.core.languages import (
-    get_22_indian_languages,
+    get_active_translation_languages,
     normalize_language,
     SUPPORTED_LANGUAGES_LIST,
 )
@@ -120,7 +120,7 @@ class QuestionTranslationService:
                 langs_to_process = [normalize_language(l) for l in target_languages]
             else:
                 langs_to_process = [
-                    (l.code, l.enum_name) for l in get_22_indian_languages()
+                    (l.code, l.enum_name) for l in get_active_translation_languages()
                 ]
 
             # 1. Fetch questions for this exam

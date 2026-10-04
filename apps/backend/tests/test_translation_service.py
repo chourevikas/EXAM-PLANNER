@@ -39,6 +39,12 @@ class TestLanguageCoreAndProtection(unittest.TestCase):
         # 22 Indian languages + English = 23
         self.assertEqual(len(supported), 23)
 
+    def test_active_translation_languages_limited_to_en_hi_mr(self):
+        from app.core.languages import get_active_translation_languages
+
+        codes = sorted(l.code for l in get_active_translation_languages())
+        self.assertEqual(codes, ["en", "hi", "mr"])
+
     def test_normalize_language(self):
         # Test English
         self.assertEqual(normalize_language("en"), ("en", "ENGLISH"))
