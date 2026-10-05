@@ -476,7 +476,7 @@ export function DashboardPage() {
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, textAlign: 'center', maxWidth: 280 }}>
                 Unlock deep behavioral tracking and psychometric insights with the Pro Plan.
               </p>
-              <Link to="/pricing" className="touch-target" style={{
+              <Link to="/billing" className="touch-target" style={{
                 padding: '12px 24px', backgroundColor: 'var(--accent-primary)', color: '#FFF',
                 borderRadius: 'var(--radius)', fontSize: 14, fontWeight: 700, textDecoration: 'none',
                 boxShadow: '0 8px 16px var(--shadow-color-accent)'

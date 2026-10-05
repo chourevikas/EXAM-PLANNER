@@ -48,7 +48,7 @@ export function CurrentAffairsDetailPage() {
     <StudentLayout pageTitle="Read Article">
       <div style={{ paddingBottom: 64, width: '100%' }}>
         <button 
-          onClick={() => navigate('/current-affairs')}
+          onClick={() => navigate('/learn/current-affairs')}
           style={{ 
             display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', 
             color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 24, padding: 0, fontWeight: 500, fontSize: 14 

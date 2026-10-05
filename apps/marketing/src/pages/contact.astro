@@ -1,0 +1,77 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../lib/site';
+---
+
+<BaseLayout
+  title="Contact Us"
+  description="Get in touch with the ExamPlanner team for account help, bug reports or feedback. Email support@examplanner.in – we usually reply within 1–2 business days."
+>
+  <section class="landing-section-padding mk-page-hero" style="padding-bottom:0;text-align:center">
+    <div class="landing-container" style="max-width:640px">
+      <div class="section-label" style="justify-content:center">Get In Touch</div>
+      <h1 class="section-heading" style="font-weight:800;color:var(--text-main);margin-bottom:12px">We're here to help</h1>
+      <p class="section-subheading" style="color:var(--text-muted);margin:0 auto">
+        Questions about your account, a bug you've hit, or feedback on the platform - reach out and we'll get back to you.
+      </p>
+    </div>
+  </section>
+
+  <section class="landing-section-padding" style="background:var(--bg-body)">
+    <div class="landing-container contact-grid" style="display:grid;gap:32px;max-width:980px">
+      <form id="contact-form" class="mk-card" style="padding:32px;display:flex;flex-direction:column;gap:18px">
+        <p id="contact-sent" hidden style="padding:12px 14px;background-color:var(--success-bg);color:var(--success-primary);font-size:13.5px;font-weight:600;margin:0">
+          Your email client should have opened with this message pre-filled - send it from there and we'll reply as soon as we can.
+        </p>
+        <div class="contact-form-row" style="display:grid;gap:16px">
+          <label class="mk-field">Name<input required name="name" placeholder="Your name" autocomplete="name" /></label>
+          <label class="mk-field">Email<input required type="email" name="email" placeholder="you@example.com" autocomplete="email" /></label>
+        </div>
+        <label class="mk-field">Subject<input required name="subject" placeholder="What's this about?" /></label>
+        <label class="mk-field">Message<textarea required name="message" rows="6" placeholder="Tell us what's going on..."></textarea></label>
+        <button type="submit" class="btn btn-primary anim-glow" style="padding:14px;font-size:14px">Send Message</button>
+        <p style="font-size:12px;color:var(--text-muted);margin:0;text-align:center">
+          This opens your email app with the message ready to send to {SITE.supportEmail}.
+        </p>
+      </form>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="mk-card" style="padding:24px">
+          <h2 class="mk-info-h">Email Us</h2>
+          <a href={`mailto:${SITE.supportEmail}`} style="font-size:15px;color:var(--text-main);text-decoration:none;font-weight:600">{SITE.supportEmail}</a>
+        </div>
+        <div class="mk-card" style="padding:24px">
+          <h2 class="mk-info-h">Response Time</h2>
+          <p style="font-size:14px;color:var(--text-muted);margin:0;line-height:1.6">We typically reply within 1-2 business days.</p>
+        </div>
+        <div class="mk-card" style="padding:24px">
+          <h2 class="mk-info-h">Already a student?</h2>
+          <p style="font-size:14px;color:var(--text-muted);margin:0;line-height:1.6">
+            <a href="/signin" style="color:var(--primary-red)">Sign in</a> and use the in-app support options for faster, account-linked help.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .mk-field { font-size: 13px; font-weight: 600; color: var(--text-main); display: flex; flex-direction: column; gap: 6px; }
+  .mk-field input, .mk-field textarea {
+    width: 100%; padding: 12px 14px; border: 1px solid var(--border-color); background-color: var(--bg-body);
+    color: var(--text-main); font-size: 14px; box-sizing: border-box; font-family: inherit; font-weight: 400;
+  }
+  .mk-field textarea { resize: vertical; }
+  .mk-info-h { font-size: 13px; font-weight: 700; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 10px; }
+</style>
+
+<script define:vars={{ supportEmail: SITE.supportEmail }}>
+  const form = document.getElementById('contact-form');
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const d = new FormData(form);
+    const body = `From: ${d.get('name')} (${d.get('email')})\n\n${d.get('message')}`;
+    window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(d.get('subject') || 'ExamPlanner Support Request')}&body=${encodeURIComponent(body)}`;
+    document.getElementById('contact-sent').hidden = false;
+  });
+</script>

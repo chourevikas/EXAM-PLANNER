@@ -1,0 +1,83 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { api, type CurrentAffairPage } from '../../lib/api';
+import { breadcrumbLd } from '../../lib/jsonld';
+import { excerpt, slugify } from '../../lib/site';
+
+export const prerender = false;
+
+const PAGE_SIZE = 20;
+const rawPage = Astro.url.searchParams.get('page');
+const page = rawPage ? Number(rawPage) : 1;
+// ?page=1 and junk values collapse onto the canonical URL.
+if (!Number.isInteger(page) || page < 1 || rawPage === '1') return Astro.redirect('/current-affairs', 301);
+
+let data: CurrentAffairPage;
+try {
+  data = await api.currentAffairs(page, PAGE_SIZE);
+} catch (err) {
+  console.error('current-affairs: list failed', err);
+  return new Response('Current affairs are temporarily unavailable.', { status: 503, headers: { 'Retry-After': '120' } });
+}
+
+const lastPage = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
+if (page > lastPage) return Astro.redirect('/current-affairs', 302);
+
+Astro.response.headers.set('Cache-Control', 'public, max-age=300');
+const canonical = page === 1 ? '/current-affairs' : `/current-affairs?page=${page}`;
+const crumbs = [{ name: 'Home', path: '/' }, { name: 'Current Affairs', path: '/current-affairs' }];
+const fmt = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+---
+
+<BaseLayout
+  title={page === 1 ? 'Daily Current Affairs for UPSC & State PSC' : `Daily Current Affairs for UPSC & State PSC – Page ${page}`}
+  description="Daily current affairs for UPSC CSE and State PSC preparation – key national and international developments, linked to the static syllabus and PYQ themes."
+  canonical={canonical}
+  jsonLd={breadcrumbLd(crumbs)}
+>
+  <section class="landing-section-padding mk-page-hero">
+    <div class="landing-container mk-narrow">
+      <Breadcrumbs items={crumbs} />
+      <h1 class="section-heading" style="font-weight:800;color:var(--text-main);margin-bottom:12px">Daily Current Affairs</h1>
+      <p class="section-subheading" style="color:var(--text-muted);margin:0 0 40px">
+        The developments that matter for UPSC and State PSC exams, connected to the static syllabus.
+      </p>
+
+      {data.items.length === 0 ? (
+        <p style="color:var(--text-muted)">No current affairs published yet. Check back soon.</p>
+      ) : (
+        <ul class="mk-ca-list">
+          {data.items.map((a) => (
+            <li class="mk-card">
+              <div class="mk-ca-meta">
+                <time datetime={a.date}>{fmt(a.date)}</time>
+                {a.topic && <span>· {a.topic}</span>}
+              </div>
+              <h2><a href={`/current-affairs/${a.id}-${slugify(a.title)}`}>{a.title}</a></h2>
+              <p>{excerpt(a.content, 180)}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {lastPage > 1 && (
+        <nav class="mk-pagination" aria-label="Pagination">
+          {page > 1 ? <a class="btn btn-ghost" rel="prev" href={page === 2 ? '/current-affairs' : `/current-affairs?page=${page - 1}`}>← Newer</a> : <span />}
+          <span style="align-self:center;font-size:13px;color:var(--text-muted)">Page {page} of {lastPage}</span>
+          {page < lastPage ? <a class="btn btn-ghost" rel="next" href={`/current-affairs?page=${page + 1}`}>Older →</a> : <span />}
+        </nav>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .mk-ca-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+  .mk-ca-list li { padding: 20px 24px; }
+  .mk-ca-meta { font-size: 12.5px; color: var(--text-muted); font-weight: 600; display: flex; gap: 6px; margin-bottom: 6px; }
+  .mk-ca-list h2 { font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.35; }
+  .mk-ca-list h2 a { color: var(--text-main); text-decoration: none; }
+  .mk-ca-list h2 a:hover { color: var(--primary-red); }
+  .mk-ca-list p { font-size: 14px; color: var(--text-muted); margin: 0; line-height: 1.6; }
+</style>

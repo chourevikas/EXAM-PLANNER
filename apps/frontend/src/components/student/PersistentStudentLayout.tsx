@@ -78,7 +78,7 @@ function SubscriptionExpiryNotice({ user }: { user: any }) {
     >
       <span>{message}</span>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <a href="/pricing" style={{ color: 'inherit', textDecoration: 'underline', fontWeight: 700 }}>
+        <a href="/billing" style={{ color: 'inherit', textDecoration: 'underline', fontWeight: 700 }}>
           Renew
         </a>
         <button

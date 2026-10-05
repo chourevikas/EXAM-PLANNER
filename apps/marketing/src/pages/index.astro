@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../islands/Hero';
+import CTA from '../islands/CTA';
+import { WorkflowSection } from '@app/components/landing/WorkflowSection';
+import { FeaturesSection } from '@app/components/landing/FeaturesSection';
+import { WhySection } from '@app/components/landing/WhySection';
+import { StatsSection } from '@app/components/landing/StatsSection';
+import { Testimonials } from '@app/components/landing/Testimonials';
+import { organizationLd, websiteLd } from '../lib/jsonld';
+---
+
+<BaseLayout
+  title="ExamPlanner – PYQ-Based UPSC & State PSC Preparation Platform"
+  description="Prepare for UPSC CSE and State PSC exams PYQ-first: 25+ years of previous year questions, smart mock tests, daily current affairs and AI analytics."
+  jsonLd={[organizationLd, websiteLd]}
+>
+  <Hero client:load path="/" />
+  <WorkflowSection />
+  <FeaturesSection />
+  <WhySection />
+  <StatsSection client:visible />
+  <Testimonials client:visible />
+  <CTA client:visible />
+</BaseLayout>

@@ -223,7 +223,7 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
               <button
                 onClick={() => {
                   onClose();
-                  navigate('/pricing');
+                  navigate('/billing');
                 }}
                 style={{
                   backgroundColor: 'var(--accent-primary)',

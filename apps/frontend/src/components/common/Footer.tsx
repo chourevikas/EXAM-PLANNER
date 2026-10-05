@@ -86,7 +86,7 @@ export function Footer() {
                     const handleFooterClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
                       e.preventDefault();
 
-                      if (l === 'Plans') return navigate('/plans');
+                      if (l === 'Plans') return navigate('/pricing');
                       if (l === 'About Us') return navigate('/about');
                       if (l === 'Contact Us') return navigate('/contact');
 

@@ -30,7 +30,7 @@ export function prefetchRoute(routePath: string) {
     case '/pyq':
       import('../pages/PYQSelectionPage');
       break;
-    case '/current-affairs':
+    case '/learn/current-affairs':
       import('../pages/CurrentAffairsPage');
       break;
     case '/notifications':
@@ -42,7 +42,7 @@ export function prefetchRoute(routePath: string) {
     case '/reports/monthly':
       import('../pages/MonthlyReportPage');
       break;
-    case '/pricing':
+    case '/billing':
       import('../pages/PricingPage');
       break;
     case '/profile':

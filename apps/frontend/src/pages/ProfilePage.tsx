@@ -369,7 +369,7 @@ export function ProfilePage() {
         {/* Upgrade / Billing CTA if Student & Free */}
         {!(isSuperAdmin || isAdmin) && !isPro && (
           <Link
-            to="/pricing"
+            to="/billing"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -835,7 +835,7 @@ export function ProfilePage() {
 
               {!isPro ? (
                 <Link
-                  to="/pricing"
+                  to="/billing"
                   style={{
                     padding: '10px 20px',
                     borderRadius: 'var(--radius)',

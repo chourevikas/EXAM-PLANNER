@@ -1,0 +1,27 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const docs = await getCollection('legal');
+  return docs.map((entry) => ({ params: { legal: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const d = entry.data;
+---
+
+<BaseLayout title={d.title} description={d.description} noindex={!d.reviewed}>
+  <section class="landing-section-padding mk-page-hero">
+    <div class="landing-container mk-narrow">
+      <h1 class="section-heading" style="font-weight:800;color:var(--text-main);margin-bottom:8px">{d.title}</h1>
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 32px">
+        Last updated <time datetime={d.updated.toISOString().slice(0, 10)}>{d.updated.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</time>
+      </p>
+      <article class="prose">
+        <Content />
+      </article>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,16 +1,18 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import select, desc
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlmodel import select, desc, func
 from app.db.session import AsyncSession, get_async_session
 from app.core.deps import get_current_user, require_roles, require_admin_section
 from app.db.models.enums import UserRole
 from app.db.models.user import User
 from app.db.models.current_affairs import CurrentAffair
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import datetime as dt
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/current-affairs", tags=["Current Affairs"])
+# Unauthenticated, read-only feed for the public marketing site (SEO pages).
+public_router = APIRouter(prefix="/public/current-affairs", tags=["Public — Current Affairs"])
 
 class CurrentAffairCreate(BaseModel):
     title: str
@@ -65,7 +67,8 @@ async def get_current_affair(
     current_user: User = Depends(get_current_user)
 ):
     affair = await session.get(CurrentAffair, id)
-    if not affair:
+    is_staff = current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    if not affair or (not affair.is_published and not is_staff):
         raise HTTPException(status_code=404, detail="Current affair not found")
     return affair
 
@@ -107,3 +110,55 @@ async def delete_current_affair(
     await session.delete(affair)
     await session.commit()
     return {"status": "deleted"}
+
+
+class PublicCurrentAffair(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    content: str
+    topic: Optional[str]
+    subtopic: Optional[str]
+    date: dt.date
+    updated_at: datetime
+
+
+class PublicCurrentAffairPage(BaseModel):
+    items: List[PublicCurrentAffair]
+    total: int
+    page: int
+    size: int
+
+
+@public_router.get("", response_model=PublicCurrentAffairPage)
+async def list_public_current_affairs(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=1000),
+    topic: Optional[str] = None,
+    session: AsyncSession = Depends(get_async_session),
+):
+    filters = [CurrentAffair.is_published == True]
+    if topic:
+        filters.append(CurrentAffair.topic == topic)
+    total = (await session.exec(select(func.count()).select_from(CurrentAffair).where(*filters))).one()
+    stmt = (
+        select(CurrentAffair)
+        .where(*filters)
+        .order_by(desc(CurrentAffair.date), desc(CurrentAffair.id))
+        .offset((page - 1) * size)
+        .limit(size)
+    )
+    items = (await session.exec(stmt)).all()
+    return PublicCurrentAffairPage(items=items, total=total, page=page, size=size)
+
+
+@public_router.get("/{id}", response_model=PublicCurrentAffair)
+async def get_public_current_affair(
+    id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    affair = await session.get(CurrentAffair, id)
+    if not affair or not affair.is_published:
+        raise HTTPException(status_code=404, detail="Current affair not found")
+    return affair

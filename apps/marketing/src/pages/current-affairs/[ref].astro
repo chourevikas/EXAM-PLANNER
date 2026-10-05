@@ -1,0 +1,75 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { api, NotFoundError, type CurrentAffair } from '../../lib/api';
+import { breadcrumbLd } from '../../lib/jsonld';
+import { renderMarkdown } from '../../lib/markdown';
+import { SITE, absoluteUrl, excerpt, slugify } from '../../lib/site';
+
+export const prerender = false;
+
+// URL shape: /current-affairs/{id}-{slug}. The id is authoritative; a stale or missing slug 301s to the canonical one.
+const ref = Astro.params.ref ?? '';
+const id = Number(ref.match(/^(\d+)/)?.[1]);
+if (!id) return new Response(null, { status: 404 });
+
+let affair: CurrentAffair;
+try {
+  affair = await api.currentAffair(id);
+} catch (err) {
+  if (err instanceof NotFoundError) return new Response(null, { status: 404 });
+  console.error('current-affairs: detail failed', err);
+  return new Response('Current affairs are temporarily unavailable.', { status: 503, headers: { 'Retry-After': '120' } });
+}
+
+const path = `/current-affairs/${affair.id}-${slugify(affair.title)}`;
+if (Astro.url.pathname !== path) return Astro.redirect(path, 301);
+
+Astro.response.headers.set('Cache-Control', 'public, max-age=300');
+const html = renderMarkdown(affair.content);
+const description = excerpt(affair.content);
+const crumbs = [
+  { name: 'Home', path: '/' },
+  { name: 'Current Affairs', path: '/current-affairs' },
+  { name: affair.title, path },
+];
+const jsonLd = [
+  breadcrumbLd(crumbs),
+  {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: affair.title.slice(0, 110),
+    description,
+    datePublished: affair.date,
+    dateModified: affair.updated_at,
+    mainEntityOfPage: absoluteUrl(path),
+    image: [absoluteUrl(SITE.ogImage)],
+    articleSection: affair.topic ?? undefined,
+    inLanguage: 'en-IN',
+    author: { '@type': 'Organization', name: SITE.name, url: SITE.url },
+    publisher: { '@type': 'Organization', name: SITE.name, logo: { '@type': 'ImageObject', url: absoluteUrl('/icon-512.png') } },
+  },
+];
+const dateLabel = new Date(affair.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<BaseLayout title={affair.title} description={description} canonical={path} type="article" jsonLd={jsonLd}>
+  <section class="landing-section-padding mk-page-hero">
+    <div class="landing-container mk-narrow">
+      <Breadcrumbs items={crumbs} />
+      <div class="section-label">
+        Current Affairs{affair.topic && ` · ${affair.topic}`}{affair.subtopic && ` · ${affair.subtopic}`}
+      </div>
+      <h1 class="section-heading" style="font-weight:800;color:var(--text-main);margin-bottom:8px">{affair.title}</h1>
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 32px"><time datetime={affair.date}>{dateLabel}</time></p>
+      <article class="prose" set:html={html} />
+
+      <section class="mk-card" style="margin-top:48px;padding:28px;text-align:center">
+        <h2 style="font-size:20px;font-weight:800;color:var(--text-main);margin:0 0 8px">Turn current affairs into marks</h2>
+        <p style="color:var(--text-muted);margin:0 0 18px">Practise the PYQs this topic connects to, and track your accuracy by subject.</p>
+        <a href="/signup" class="btn btn-primary anim-glow touch-target" style="padding:14px 28px">Create free account</a>
+      </section>
+      <p style="margin-top:28px"><a href="/current-affairs" style="color:var(--primary-red)">← All current affairs</a></p>
+    </div>
+  </section>
+</BaseLayout>

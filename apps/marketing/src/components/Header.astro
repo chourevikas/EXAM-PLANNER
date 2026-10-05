@@ -1,0 +1,76 @@
+---
+const links = [
+  { label: 'Platform', href: '/#features' },
+  { label: 'Exams', href: '/exams' },
+  { label: 'Current Affairs', href: '/current-affairs' },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'About Us', href: '/about' },
+  { label: 'Contact Us', href: '/contact' },
+];
+const path = Astro.url.pathname;
+const isActive = (href: string) => !href.includes('#') && (path === href || path.startsWith(`${href}/`));
+---
+
+<nav class="glass-nav mk-nav" aria-label="Main Navigation">
+  <div class="mk-nav-inner">
+    <a href="/" class="mk-logo" aria-label="ExamPlanner home">
+      <img src="/logo-96.webp" alt="" width="40" height="40" />
+      <span><span class="mk-logo-exam">Exam</span><span class="mk-logo-planner">Planner</span></span>
+    </a>
+
+    <div class="mk-nav-links">
+      {links.map((l) => (
+        <a href={l.href} class="nav-link" aria-current={isActive(l.href) ? 'page' : undefined}>{l.label}</a>
+      ))}
+    </div>
+
+    <div class="mk-nav-actions" data-auth="guest">
+      <a href="/signin" class="btn btn-ghost touch-target mk-guest">Login</a>
+      <a href="/signup" class="btn btn-primary anim-glow touch-target mk-guest">Get Started</a>
+      <a href="/dashboard" class="btn btn-primary anim-glow touch-target mk-member">Go to Dashboard</a>
+    </div>
+
+    <button class="theme-toggle-btn touch-target mk-menu-btn" aria-label="Open Menu" aria-expanded="false" aria-controls="mk-drawer">☰</button>
+  </div>
+</nav>
+
+<div id="mk-drawer" class="mobile-drawer-content mk-drawer" hidden>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    {links.map((l) => <a href={l.href} class="nav-link touch-target">{l.label}</a>)}
+    <div class="mk-drawer-actions" data-auth="guest">
+      <a href="/signin" class="btn btn-ghost mk-guest">Login</a>
+      <a href="/signup" class="btn btn-primary anim-glow mk-guest">Get Started</a>
+      <a href="/dashboard" class="btn btn-primary anim-glow mk-member">Go to Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Signed-in visitors (Clerk session cookie or the SPA's custom JWT) get a dashboard CTA.
+  // Crawlers see the same markup; only button visibility changes.
+  let signedIn = /(?:^|;\s*)__client_uat(?:_[^=]*)?=(?!0(?:;|$))[^;]+/.test(document.cookie);
+  try {
+    signedIn ||= !!localStorage.getItem('access_token');
+  } catch {}
+  if (signedIn) document.querySelectorAll('[data-auth]').forEach((el) => el.setAttribute('data-auth', 'member'));
+
+  const nav = document.querySelector('.mk-nav')!;
+  const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 20);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  const btn = document.querySelector<HTMLButtonElement>('.mk-menu-btn')!;
+  const drawer = document.getElementById('mk-drawer')!;
+  const setOpen = (open: boolean) => {
+    drawer.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    btn.setAttribute('aria-label', open ? 'Close Menu' : 'Open Menu');
+    btn.textContent = open ? '✕' : '☰';
+    document.body.classList.toggle('scroll-lock', open);
+  };
+  btn.addEventListener('click', () => setOpen(drawer.hidden));
+  drawer.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('a')) setOpen(false);
+  });
+  document.addEventListener('keydown', (e) => e.key === 'Escape' && setOpen(false));
+</script>
