@@ -37,6 +37,8 @@ def get_vision_llm(
     rate_limit_rps: Optional[float] = None,
     feature: str = "unspecified",
     usage_context: Optional[Dict[str, Any]] = None,
+    model_name: Optional[str] = None,
+    thinking_budget: Optional[int] = None,
 ):
     """Returns rate-limited vision LLM instance configured with retries and timeout via provider delegator.
 
@@ -47,8 +49,11 @@ def get_vision_llm(
     `feature` names the product feature the requests belong to (e.g. "translation"); every request is
     recorded in llm_usage_events under it and labelled with it for the GCP billing export.
     `usage_context` (exam_id / attempt_id / user_id / detail) adds to any `llm_usage_scope` context.
+    `model_name` overrides GEMINI_MODEL_NAME for this caller (and is what usage is priced at);
+    `thinking_budget` caps Gemini's hidden reasoning tokens, 0 = off. Both default to the model's own.
     """
     settings = get_settings()
+    model = model_name or settings.GEMINI_MODEL_NAME
     provider_name = (settings.LLM_PROVIDER or "vertexai").lower()
     rate_limiter = get_rate_limiter(rate_limit_rps)
 
@@ -61,7 +66,7 @@ def get_vision_llm(
     if settings.LLM_USAGE_TRACKING_ENABLED:
         from app.llm.usage import LlmUsageCallback
 
-        callbacks = [LlmUsageCallback(feature, settings.GEMINI_MODEL_NAME, usage_context)]
+        callbacks = [LlmUsageCallback(feature, model, usage_context)]
 
     from app.llm.usage import vertex_labels
 
@@ -70,4 +75,6 @@ def get_vision_llm(
         max_retries=max_retries,
         callbacks=callbacks,
         labels=vertex_labels(feature, settings.ENVIRONMENT),
+        model_name=model,
+        thinking_budget=thinking_budget,
     )

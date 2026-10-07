@@ -75,6 +75,7 @@ YOUR MANDATE:
                 timeout=settings.REPORT_LLM_TIMEOUT_SECONDS,
                 max_retries=settings.REPORT_LLM_MAX_RETRIES,
                 rate_limit_rps=settings.REPORT_LLM_RATE_LIMIT_RPS,
+                thinking_budget=settings.REPORT_LLM_THINKING_BUDGET,
                 feature="cumulative_report" if is_cumulative else "attempt_report",
                 usage_context={
                     "exam_id": exam_info.get("exam_id"),

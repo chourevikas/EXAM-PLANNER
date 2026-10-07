@@ -28,12 +28,14 @@ class GeminiProvider(BaseLLMProvider):
         max_retries: Optional[int] = None,
         callbacks: Optional[List[Any]] = None,
         labels: Optional[Dict[str, str]] = None,
+        model_name: Optional[str] = None,
+        thinking_budget: Optional[int] = None,
     ) -> BaseChatModel:
         global _cached_credentials, _cached_cred_path
         from langchain_google_genai import ChatGoogleGenerativeAI
 
         kwargs = {
-            "model": self.settings.GEMINI_MODEL_NAME,
+            "model": model_name or self.settings.GEMINI_MODEL_NAME,
             "vertexai": True,
             "temperature": 0,
             "max_retries": max_retries if max_retries is not None else 10,
@@ -46,6 +48,9 @@ class GeminiProvider(BaseLLMProvider):
         if labels:
             # Vertex AI copies request labels into the GCP billing export (cost per label)
             kwargs["labels"] = labels
+        if thinking_budget is not None:
+            # Thinking tokens are billed at the output rate; 0 turns thinking off
+            kwargs["thinking_budget"] = thinking_budget
 
         if self.settings.GCP_PROJECT_ID:
             kwargs["project"] = self.settings.GCP_PROJECT_ID

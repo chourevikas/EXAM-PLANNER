@@ -2,6 +2,7 @@ import asyncio
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from sqlmodel import select, col
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
@@ -1280,6 +1281,11 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
         existing_att_rep.llm_insight_json = mentorship_insight
         existing_att_rep.full_report_json = report
         existing_att_rep.s3_report_url = None
+        # The session keeps objects after commit, so these attributes still hold the very dicts Phase 1
+        # saved; the AI insight was added to them in place. Re-assigning the same object is not seen as a
+        # change, so without this the narrative is never written when a report is rebuilt.
+        for json_field in ("matrices_summary_json", "taxonomy_breakdown_json", "llm_insight_json", "full_report_json"):
+            flag_modified(existing_att_rep, json_field)
         session.add(existing_att_rep)
 
     # Persist User Progression Delta Report

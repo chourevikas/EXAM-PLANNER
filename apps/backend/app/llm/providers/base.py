@@ -13,6 +13,8 @@ class BaseLLMProvider(ABC):
         max_retries: Optional[int] = None,
         callbacks: Optional[List[Any]] = None,
         labels: Optional[Dict[str, str]] = None,
+        model_name: Optional[str] = None,
+        thinking_budget: Optional[int] = None,
     ) -> BaseChatModel:
         """Constructs and returns a configured BaseChatModel instance.
 
@@ -20,5 +22,7 @@ class BaseLLMProvider(ABC):
         user-facing latency budget (e.g. a call with its own fallback) can fail fast instead of
         inheriting settings tuned for long-running background ingestion jobs. `callbacks` observe
         every request (usage tracking); `labels` are billing labels where the provider supports them.
+        `model_name` overrides the configured model; `thinking_budget` caps hidden reasoning tokens
+        (0 switches thinking off) where the model supports it. Omitted = provider defaults.
         """
         pass

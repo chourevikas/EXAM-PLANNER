@@ -108,7 +108,12 @@ class Settings(BaseSettings):
     # Runs in the background enrichment job, never in the upload request; on failure the rule-based
     # extraction still applies, so a slow provider should fail fast rather than retry for minutes.
     KNOWLEDGE_AI_ENABLED: bool = Field(default=True)
+    # Measured 2026-10-07 on 32 tagged questions: 8 per batch with thinking off keeps tags as close to the
+    # previous output as a plain re-run does, at half the cost. 16 per batch dropped ~18% of relationships;
+    # gemini-2.5-flash-lite dropped ~39% of relationships and ~20% of concepts.
     KNOWLEDGE_AI_BATCH_SIZE: int = Field(default=8, description="Questions per LLM call")
+    KNOWLEDGE_AI_MODEL_NAME: str = Field(default="gemini-2.5-flash", description="Model used for knowledge tagging")
+    KNOWLEDGE_AI_THINKING_BUDGET: int = Field(default=0, description="Thinking tokens per tagging call; 0 = off")
     KNOWLEDGE_LLM_TIMEOUT_SECONDS: int = Field(default=90)
     KNOWLEDGE_LLM_MAX_RETRIES: int = Field(default=3)
     KNOWLEDGE_LLM_RATE_LIMIT_RPS: float = Field(default=1.0)
@@ -170,6 +175,7 @@ class Settings(BaseSettings):
     REPORT_LLM_TIMEOUT_SECONDS: int = Field(default=30)
     REPORT_LLM_MAX_RETRIES: int = Field(default=2)
     REPORT_LLM_RATE_LIMIT_RPS: float = Field(default=2.0)
+    REPORT_LLM_THINKING_BUDGET: int = Field(default=512, description="Max thinking tokens per report narrative call")
 
     # Celery & Broker Settings
     CELERY_BROKER_URL: str = Field(default="redis://localhost:6379/0")

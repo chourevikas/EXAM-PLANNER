@@ -307,9 +307,11 @@ class KnowledgeAIExtractor:
                 max_retries=settings.KNOWLEDGE_LLM_MAX_RETRIES,
                 rate_limit_rps=settings.KNOWLEDGE_LLM_RATE_LIMIT_RPS,
                 feature="knowledge_tagging",
+                model_name=settings.KNOWLEDGE_AI_MODEL_NAME,
+                thinking_budget=settings.KNOWLEDGE_AI_THINKING_BUDGET,
             )
 
-        return cls(_factory, batch_size=settings.KNOWLEDGE_AI_BATCH_SIZE, model_name=settings.GEMINI_MODEL_NAME)
+        return cls(_factory, batch_size=settings.KNOWLEDGE_AI_BATCH_SIZE, model_name=settings.KNOWLEDGE_AI_MODEL_NAME)
 
     def _model(self):
         if self._structured is None:
@@ -320,7 +322,10 @@ class KnowledgeAIExtractor:
         """Cleaned tags per question_id for one batch. Raises on provider errors (the caller decides)."""
         if not items:
             return {}
-        payload: Dict[str, Any] = {"questions": [i.to_prompt() for i in items]}
+        # The vocabulary is identical for every batch in a run, so it goes first: Gemini then serves that
+        # prefix from its implicit cache (billed at the cached rate) and only the questions are new input.
+        # Compact JSON: the lists run to ~1,200 names, and indentation would be paid for on every batch.
+        payload: Dict[str, Any] = {}
         if vocabulary.entities or vocabulary.concepts:
             payload["existing_vocabulary"] = {
                 "entities": vocabulary.entities[:MAX_VOCABULARY_NAMES],
@@ -328,9 +333,13 @@ class KnowledgeAIExtractor:
             }
         if vocabulary.syllabus and any(i.syllabus_missing for i in items):
             payload["existing_syllabus"] = vocabulary.syllabus[:MAX_SYLLABUS_LINES]
+        payload["questions"] = [i.to_prompt() for i in items]
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": "Tag these questions:\n\n" + json.dumps(payload, ensure_ascii=False, indent=1)},
+            {
+                "role": "user",
+                "content": "Tag these questions:\n\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            },
         ]
         res = await self._model().ainvoke(messages)
         batch = res if isinstance(res, AIKnowledgeBatch) else AIKnowledgeBatch.model_validate(res)
