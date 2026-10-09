@@ -244,6 +244,8 @@ class ExamSessionService:
                     palette=status_res.palette,
                     questions_presigned_url=None,
                     questions_folder_url=None,
+                    remaining_seconds=status_res.remaining_seconds,
+                    current_question_index=status_res.current_question_index,
                 )
 
         # Save dynamic filters to report_metadata_json
@@ -1338,6 +1340,21 @@ class ExamSessionService:
         final_remaining = min(req.remaining_time_seconds, server_remaining)
 
         attempt.time_spent_seconds = elapsed
+        # Remember where the student is so a resume reopens that question
+        if req.active_question_id is not None:
+            try:
+                active_qid = int(req.active_question_id)
+            except (ValueError, TypeError):
+                active_qid = None
+            if active_qid is not None:
+                qid_res = await self.session.exec(
+                    select(ExamQuestionResponse.question_id)
+                    .where(ExamQuestionResponse.attempt_id == attempt.id)
+                    .order_by(col(ExamQuestionResponse.created_at).asc(), col(ExamQuestionResponse.id).asc())
+                )
+                ordered_qids = list(qid_res.all())
+                if active_qid in ordered_qids:
+                    attempt.current_question_index = ordered_qids.index(active_qid) + 1
         self.session.add(attempt)
         await self.session.commit()
 

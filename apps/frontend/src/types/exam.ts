@@ -211,6 +211,9 @@ export interface StartExamResponse {
   palette: QuestionPaletteItem[];
   questions_presigned_url?: string | null;
   questions_folder_url?: string | null;
+  /** Set when an IN_PROGRESS attempt is resumed: time left and the 1-based question the student was on. */
+  remaining_seconds?: number | null;
+  current_question_index?: number;
 }
 
 export interface SaveResponseResponse {

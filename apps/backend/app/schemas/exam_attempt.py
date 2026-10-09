@@ -158,6 +158,9 @@ class StartExamResponse(BaseModel):
     palette: List[QuestionPaletteItem]
     questions_presigned_url: Optional[str] = None
     questions_folder_url: Optional[str] = None
+    # Set on a resumed attempt: time left on the clock and the 1-based question the student was on
+    remaining_seconds: Optional[int] = None
+    current_question_index: int = 1
 
 
 class SaveResponseResponse(BaseModel):

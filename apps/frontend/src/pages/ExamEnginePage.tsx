@@ -46,7 +46,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const { examId, attemptId: paramAttemptId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isDark = false;
 
   const token = localStorage.getItem('access_token');
@@ -297,7 +297,14 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   );
 
   // ─── 1. Session Initialization / Resume ─────────────────────────────────────
+  // Guards against a second init for the same route (React StrictMode re-runs effects in dev),
+  // which would start a duplicate attempt or, with forceNew, abandon the one just created
+  const initKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    const initKey = `${examId ?? ''}|${paramAttemptId ?? ''}|${isGuestMode}`;
+    if (initKeyRef.current === initKey) return;
+    initKeyRef.current = initKey;
+
     async function initSession() {
       setIsLoadingSession(true);
       try {
@@ -364,16 +371,18 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           setTimeLeft(sessionStatus.remaining_seconds);
           setTotalQuestions(sessionStatus.total_questions);
           setPalette(sessionStatus.palette);
-          seedLeftUnanswered(sessionStatus.palette, sessionStatus.palette?.[sessionStatus.current_question_index]?.question_id);
+          // Server index is 1-based; currentQIndex is 0-based
+          const resumeIdx = Math.max(0, (sessionStatus.current_question_index || 1) - 1);
+          seedLeftUnanswered(sessionStatus.palette, sessionStatus.palette?.[resumeIdx]?.question_id);
           setResponseSummary(sessionStatus.response_summary);
-          setCurrentQIndex(sessionStatus.current_question_index);
+          setCurrentQIndex(resumeIdx);
 
           // Load just the current question first so the user can start
           // immediately — don't wait on the full bulk preload for that.
-          await loadQuestion(sessionStatus.attempt_id, sessionStatus.current_question_index + 1);
+          await loadQuestion(sessionStatus.attempt_id, resumeIdx + 1);
 
           // In complete PYQ exams, load 20 questions in batches so initial start and transitions are fast
-          const initialBatch = Math.floor(sessionStatus.current_question_index / BATCH_SIZE);
+          const initialBatch = Math.floor(resumeIdx / BATCH_SIZE);
           loadQuestionBatch(initialBatch, sessionStatus.attempt_id, language);
           if ((initialBatch + 1) * BATCH_SIZE < sessionStatus.total_questions) {
             loadQuestionBatch(initialBatch + 1, sessionStatus.attempt_id, language);
@@ -382,9 +391,19 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           // Start new attempt session
           const forceNew = searchParams.get('forceNew') === 'true';
           const startRes = await startExamAttempt({ exam_id: examId, mode: 'EXAM', language, force_new: forceNew });
+          if (forceNew) {
+            // The retake has started: drop the flag so a reload resumes it instead of abandoning it
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete('forceNew');
+            setSearchParams(nextParams, { replace: true });
+          }
           setAttemptId(startRes.attempt_id);
           setAttemptMode(startRes.mode);
-          setTimeLeft(startRes.max_duration_seconds);
+          // A resumed attempt keeps its clock; a new one starts full
+          setTimeLeft(startRes.remaining_seconds ?? startRes.max_duration_seconds);
+          // start returns the question the student was on (1-based) when resuming
+          const startIdx = Math.max(0, (startRes.current_question_index || 1) - 1);
+          setCurrentQIndex(startIdx);
           setTotalQuestions(startRes.total_questions);
           setPalette(startRes.palette);
           // start also resumes an IN_PROGRESS attempt (page reload / Resume link)
@@ -402,18 +421,19 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             setConfidence(startConf);
           }
 
-          // Seed question 1 into memory
+          // Seed the opening question (Q1, or the resumed one) into memory
           setAllQuestions((prev) => {
             const next = [...prev];
-            next[0] = startRes.first_question.question;
+            next[startIdx] = startRes.first_question.question;
             return next;
           });
 
-          // In complete PYQ exams, load questions in batches of 20 starting with Batch 0 (Q1-20)
-          loadQuestionBatch(0, startRes.attempt_id, language);
-          if (startRes.total_questions > BATCH_SIZE) {
+          // In complete PYQ exams, load questions in batches of 20 starting with the opening question's batch
+          const startBatch = Math.floor(startIdx / BATCH_SIZE);
+          loadQuestionBatch(startBatch, startRes.attempt_id, language);
+          if ((startBatch + 1) * BATCH_SIZE < startRes.total_questions) {
             setTimeout(() => {
-              loadQuestionBatch(1, startRes.attempt_id, language);
+              loadQuestionBatch(startBatch + 1, startRes.attempt_id, language);
             }, 300);
           }
         } else {
@@ -836,6 +856,12 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     handleConfirmSubmit('TIMER_EXPIRED');
   }, [timeLeft, isLoadingSession, attemptId]);
 
+  // Latest values for the heartbeat, read through refs so the 15s interval isn't reset every tick
+  const timeLeftRef = useRef(timeLeft);
+  timeLeftRef.current = timeLeft;
+  const activeQuestionIdRef = useRef<string | number | null>(null);
+  activeQuestionIdRef.current = activeQuestion?.question_id ?? null;
+
   useEffect(() => {
     if (!attemptId) return;
 
@@ -843,8 +869,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     const heartbeatInterval = setInterval(async () => {
       try {
         const hbRes = await sendExamHeartbeat(attemptId, {
-          remaining_time_seconds: timeLeft,
-          active_question_id: activeQuestion?.question_id || null,
+          remaining_time_seconds: timeLeftRef.current,
+          active_question_id: activeQuestionIdRef.current,
         });
 
         if (hbRes.auto_submitted) {
@@ -856,7 +882,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     }, 15000);
 
     return () => clearInterval(heartbeatInterval);
-  }, [attemptId, timeLeft, activeQuestion]);
+  }, [attemptId]);
 
   // ─── Zero-Lag Action Handlers with Asynchronous Batching ──────────────────────
   const handleToggleBookmark = async () => {
