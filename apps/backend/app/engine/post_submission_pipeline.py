@@ -630,6 +630,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
             "expected_time_seconds": float(r.expected_time_seconds if (r.expected_time_seconds and r.expected_time_seconds > 0) else 60.0),
             "is_switched": r.is_switched,
             "confidence_level": r.confidence_level,
+            "answer_round": r.answer_round,
             "initial_correct": bool(
                 correct_option_id
                 and r.id in initial_option_by_resp

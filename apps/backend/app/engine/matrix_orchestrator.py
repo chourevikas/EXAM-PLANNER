@@ -17,6 +17,7 @@ from app.engine.matrices.speed_accuracy_tradeoff import SATOIEngine
 from app.engine.matrices.topic_fsrs_decay import TopicFSRSDecayEngine
 from app.engine.matrices.integrated_cognitive_readiness import IntegratedCognitiveReadinessEngine
 from app.engine.matrices.confidence_calibration import ConfidenceCalibrationStrategy
+from app.engine.matrices.answer_rounds import AnswerRoundStrategy
 from app.config.logger import setup_logger
 
 logger = setup_logger("MatrixOrchestrator")
@@ -328,6 +329,7 @@ class MatrixOrchestrator:
                     "gti_item_score": round(gti_item, 4),
                     "item_guessing_label": item_guessing_label,
                     "confidence_level": r.get("confidence_level"),
+                    "answer_round": r.get("answer_round"),
                     "is_option_switched": is_sw,
                     "osri_status": osri_status,
                     "osri_impact": round(osri_impact, 2),
@@ -380,6 +382,7 @@ class MatrixOrchestrator:
 
         part_1_questions.sort(key=lambda x: x["question_number"])
         confidence_eval = ConfidenceCalibrationStrategy.evaluate(part_1_questions)
+        answer_rounds = AnswerRoundStrategy.evaluate(part_1_questions)
 
         # 2. Part 3 — Taxonomy Hierarchy & Topic Retention Analysis
         part_3_taxonomy = {
@@ -843,6 +846,7 @@ class MatrixOrchestrator:
             "unattempted_summary": unattempted_summary,
             "unattempted_analysis": unattempted_summary,
             "confidence_calibration": confidence_eval,
+            "answer_rounds": answer_rounds,
             "mentorship_insight": instant_mentorship_insight,
             "llm_insight": instant_mentorship_insight,
             "weak_spots_categorized": weak_spots_categorized,

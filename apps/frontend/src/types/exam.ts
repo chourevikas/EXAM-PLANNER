@@ -74,6 +74,8 @@ export interface SaveResponseRequest {
   time_spent_seconds?: number;
   option_switch_count?: number;
   confidence_level?: ConfidenceLevel | null;
+  /** Exam-simulation pass: 1 = answered on first visit, 2 = left unanswered and came back. */
+  answer_round?: 1 | 2 | null;
 }
 
 export interface BatchSaveItem {
@@ -84,6 +86,8 @@ export interface BatchSaveItem {
   is_switched?: boolean;
   option_switch_count?: number;
   confidence_level?: ConfidenceLevel | null;
+  /** Exam-simulation pass: 1 = answered on first visit, 2 = left unanswered and came back. */
+  answer_round?: 1 | 2 | null;
   client_timestamp?: string;
 }
 
@@ -172,6 +176,8 @@ export interface ResponseState {
   question_status: QuestionResponseStatus;
   answer_revealed: boolean;
   confidence_level?: ConfidenceLevel | null;
+  /** Exam-simulation pass: 1 = answered on first visit, 2 = left unanswered and came back. */
+  answer_round?: 1 | 2 | null;
 }
 
 export interface QuestionNavResponse {

@@ -92,6 +92,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   // Preloaded All Questions for Zero-Lag Client-Side Caching & Language Switching
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
   const BATCH_SIZE = 20;
+  // A visit shorter than this (accidental click / flicking past) does not count as skipping the question
+  const MIN_SKIP_DWELL_SECONDS = 2;
   const loadedBatchesRef = useRef<Set<number>>(new Set());
   const inFlightBatchesRef = useRef<Set<number>>(new Set());
 
@@ -103,6 +105,21 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const [confidence, setConfidence] = useState<ConfidenceLevel | null>(null);
   // Per-question confidence, read by queueResponseUpdate so every save path carries it
   const confidenceByQRef = useRef<Map<string, ConfidenceLevel | null>>(new Map());
+  // Round tracking: questions the student left unanswered (>= MIN_SKIP_DWELL_SECONDS), and the pass each answer was given in
+  const leftUnansweredRef = useRef<Set<string>>(new Set());
+  const answerRoundByQRef = useRef<Map<string, 1 | 2>>(new Map());
+  // On resume: questions seen but left unanswered before the reload count as Round 2 when answered.
+  // A fresh attempt already has its opening question VISITED; if nothing else was touched yet, that
+  // question has not been left, so it is skipped.
+  const seedLeftUnanswered = (items: QuestionPaletteItem[] | undefined, currentQuestionId?: string | number) => {
+    const touched = (items || []).filter((item) => item.question_status !== 'UNVISITED');
+    for (const item of touched) {
+      if (touched.length === 1 && currentQuestionId != null && String(item.question_id) === String(currentQuestionId)) continue;
+      if (item.question_status === 'VISITED' || item.question_status === 'MARKED_FOR_REVIEW') {
+        leftUnansweredRef.current.add(String(item.question_id));
+      }
+    }
+  };
   const [revealResults, setRevealResults] = useState<Record<string | number, RevealAnswerResponse>>({});
   const [solutionDataMap, setSolutionDataMap] = useState<Record<string | number, QuestionSolutionData>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
@@ -179,6 +196,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         is_switched: switchCount > 0,
         option_switch_count: switchCount,
         confidence_level: conf,
+        answer_round: optId !== null ? answerRoundByQRef.current.get(qKey) ?? null : null,
         client_timestamp: new Date().toISOString(),
       };
       pendingBatchQueueRef.current.set(qKey, item);
@@ -346,6 +364,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           setTimeLeft(sessionStatus.remaining_seconds);
           setTotalQuestions(sessionStatus.total_questions);
           setPalette(sessionStatus.palette);
+          seedLeftUnanswered(sessionStatus.palette, sessionStatus.palette?.[sessionStatus.current_question_index]?.question_id);
           setResponseSummary(sessionStatus.response_summary);
           setCurrentQIndex(sessionStatus.current_question_index);
 
@@ -368,6 +387,12 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           setTimeLeft(startRes.max_duration_seconds);
           setTotalQuestions(startRes.total_questions);
           setPalette(startRes.palette);
+          // start also resumes an IN_PROGRESS attempt (page reload / Resume link)
+          seedLeftUnanswered(startRes.palette, startRes.first_question.question.question_id);
+          {
+            const startRound = startRes.first_question.response_state.answer_round;
+            if (startRound) answerRoundByQRef.current.set(String(startRes.first_question.question.question_id), startRound);
+          }
           setActiveQuestion(startRes.first_question.question);
           setSelectedOptionId(startRes.first_question.response_state.selected_option_id as string | null);
           setIsMarkedForReview(startRes.first_question.response_state.is_marked_for_review);
@@ -655,10 +680,25 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const loadQuestion = async (attId: number | string, qNum: number) => {
     // Record elapsed time on the outgoing question before switching
     if (activeQuestion) {
+      // Leaving it unanswered after a real look means a later answer counts as Round 2
+      const visitSeconds = (Date.now() - questionStartTimeRef.current) / 1000.0;
+      if (selectedOptionId === null && visitSeconds >= MIN_SKIP_DWELL_SECONDS) {
+        leftUnansweredRef.current.add(String(activeQuestion.question_id));
+      }
       saveQuestionVisitTime(activeQuestion.question_id);
     }
 
-    if (allQuestions[qNum - 1]) {
+    // Answered/marked before a page reload: the cached question carries no response state, so fetch
+    // it from the server instead of showing it blank (a blank visit would save over the stored answer)
+    const cachedQ = allQuestions[qNum - 1];
+    const serverStatus = palette[qNum - 1]?.question_status;
+    const needsServerState =
+      !!cachedQ &&
+      (serverStatus === 'ANSWERED' || serverStatus === 'ANSWERED_AND_MARKED' || serverStatus === 'MARKED_FOR_REVIEW') &&
+      !lastSyncedSnapshotRef.current.has(String(cachedQ.question_id)) &&
+      !pendingBatchQueueRef.current.has(String(cachedQ.question_id));
+
+    if (cachedQ && !needsServerState) {
       // Instant Client-Side Zero-Lag Question Flipping
       questionStartTimeRef.current = Date.now();
       const q = allQuestions[qNum - 1];
@@ -701,6 +741,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         const fetchedConf = qNav.response_state.confidence_level ?? null;
         confidenceByQRef.current.set(String(qNav.question.question_id), fetchedConf);
         setConfidence(fetchedConf);
+        const fetchedRound = qNav.response_state.answer_round;
+        if (fetchedRound) answerRoundByQRef.current.set(String(qNav.question.question_id), fetchedRound);
       }
 
       // Seed question into cache
@@ -841,6 +883,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const handleSelectOption = (optionId: number | string, optionLabel: string) => {
     if (activeQuestion) {
       const qKey = String(activeQuestion.question_id);
+      if (!answerRoundByQRef.current.has(qKey)) {
+        answerRoundByQRef.current.set(qKey, leftUnansweredRef.current.has(qKey) ? 2 : 1);
+      }
       const prevOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qKey)?.selected_option_id;
       if (prevOpt && String(prevOpt) !== String(optionId)) {
         const curCount = (optionSwitchesCountRef.current.get(qKey) || 0) + 1;
@@ -863,7 +908,10 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     setSelectedOptionId(null);
     setSelectedOptionLabel(null);
     setConfidence(null);
-    if (activeQuestion) confidenceByQRef.current.set(String(activeQuestion.question_id), null);
+    if (activeQuestion) {
+      confidenceByQRef.current.set(String(activeQuestion.question_id), null);
+      answerRoundByQRef.current.delete(String(activeQuestion.question_id));
+    }
 
     const newStatus = isMarkedForReview ? 'MARKED_FOR_REVIEW' : 'VISITED';
     updatePaletteItemStatus(currentQIndex, newStatus);
@@ -1148,6 +1196,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             is_switched: switchCount > 0,
             option_switch_count: switchCount,
             confidence_level: selOpt != null ? confidenceByQRef.current.get(qKey) ?? saved?.confidence_level ?? null : null,
+            answer_round: selOpt != null ? answerRoundByQRef.current.get(qKey) ?? null : null,
           };
         });
 
