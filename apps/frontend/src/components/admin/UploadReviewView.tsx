@@ -892,22 +892,27 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
 
     const matchesStage = stageFilter === 'ALL' || exam.stage?.toLowerCase() === stageFilter.toLowerCase();
     
-    const matchesExam = examFilter === 'ALL' || exam.name.startsWith(examFilter);
+    const matchesExam = examFilter === 'ALL' || (exam.exam_type_code || '').toLowerCase() === examFilter;
 
     return matchesSearch && matchesStatus && matchesStage && matchesExam;
   });
 
-  // Unique exams for the filter dropdown
+  // Exam filter options come from the exam-types API (keyed by type code) so the
+  // dropdown matches the configured exam types rather than ad-hoc paper names.
+  // Types referenced by papers but missing from the active list are appended.
   const uniqueExamOptions = useMemo(() => {
-    const options = new Set<string>();
-    pipelineExams.forEach(e => {
-      if (e.name) {
-        const baseName = e.name.split(' ')[0];
-        if (baseName) options.add(baseName);
-      }
+    const options = new Map<string, string>();
+    (availableExamTypes || []).forEach((t) => {
+      if (t.type) options.set(t.type.toLowerCase(), t.name || t.type.toUpperCase());
     });
-    return Array.from(options).sort().map(name => ({ value: name, label: name }));
-  }, [pipelineExams]);
+    pipelineExams.forEach((e) => {
+      const code = (e.exam_type_code || '').toLowerCase();
+      if (code && !options.has(code)) options.set(code, e.exam_type_name || code.toUpperCase());
+    });
+    return Array.from(options.entries())
+      .map(([value, name]) => ({ value, label: `${name} (${value.toUpperCase()})` }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [availableExamTypes, pipelineExams]);
 
   // Table Pagination Computations
   const totalPages = Math.max(1, Math.ceil(filteredQueueExams.length / pageSize));
