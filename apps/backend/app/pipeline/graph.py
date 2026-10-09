@@ -121,6 +121,21 @@ async def node_regex_parse_and_stitch(state: OverallPipelineState) -> dict:
         f"💾 [STITCH & COMMIT COMPLETE] Successfully processed {summary.total_processed_questions} questions for Exam {exam_id}."
     )
 
+    # Failed DB batches don't abort the run, so the run still ends COMPLETED: alert admins explicitly
+    if summary.failed_batches:
+        from app.services.pipeline_alert_service import notify_pipeline_failure
+        await notify_pipeline_failure(
+            exam_id,
+            "DOCUMENT_EXTRACTION",
+            "\n".join(summary.errors[:5]),
+            failed_step="regex_parse_and_stitch (DB batch commit)",
+            details={
+                "Failed batches": str(summary.failed_batches),
+                "Questions committed": f"{summary.total_processed_questions}/{len(records)}",
+            },
+            partial=True,
+        )
+
     return {
         "detected_format": detected_fmt,
         "question_records": records,

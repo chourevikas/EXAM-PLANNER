@@ -192,6 +192,32 @@ async def send_admin_notification_subscription(user_email: str, user_name: str):
         logger.error(f"Failed to send admin notification email: {e}")
         return False
 
+async def send_admin_alert_email(recipients: List[str], subject: str, html: str) -> bool:
+    """Sends an operational alert (e.g. pipeline failure) to admin recipients."""
+    message = MessageSchema(
+        subject=subject,
+        recipients=recipients,
+        body=html,
+        subtype=MessageType.html
+    )
+
+    try:
+        if settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            fm = FastMail(get_fastmail_config())
+            await fm.send_message(message)
+            logger.info(f"Admin alert email sent to {recipients}: {subject}")
+            return True
+
+        ses_ok = await _send_via_aws_ses(recipients, subject, html)
+        if ses_ok:
+            return True
+
+        logger.info(f"📧 [DEV] Admin alert email simulated for {recipients}: {subject}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send admin alert email to {recipients}: {e}")
+        return False
+
 async def send_verification_email(email: str, token: str):
     """Dispatches a magic verification link to verify user email address."""
     verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"

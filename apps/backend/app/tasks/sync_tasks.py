@@ -139,4 +139,10 @@ async def async_sync_exam_s3(
                     log.info(f"📊 [PIPELINE_RUN] Recorded failure state in PipelineRun {run_id}")
         except Exception as inner_e:
             log.error(f"Failed to record failure for exam {exam_id_str}: {inner_e}")
+
+        from app.services.pipeline_alert_service import notify_pipeline_failure
+        await notify_pipeline_failure(
+            exam_id, "S3_SYNC", str(e), failed_step="S3_SYNC_FAILED",
+            details={"Scope": scope_str, "Pipeline run": str(run_id)},
+        )
         raise e

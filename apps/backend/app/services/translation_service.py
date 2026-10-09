@@ -78,6 +78,7 @@ class QuestionTranslationService:
         error_log: Optional[str] = None,
     ) -> PipelineRun:
         run = await self._get_or_create_pipeline_run(sess, exam_id)
+        step_before_update = run.current_step
         run.status = status
         run.current_step = current_step
         run.progress_percent = max(0.0, min(100.0, progress_percent))
@@ -90,6 +91,12 @@ class QuestionTranslationService:
         await sess.commit()
         await sess.refresh(run)
         await invalidate_pipeline_status_cache()
+
+        if status == "FAILED":
+            from app.services.pipeline_alert_service import notify_pipeline_failure
+            await notify_pipeline_failure(
+                exam_id, "QUESTION_TRANSLATION", error_log, failed_step=f"{step_before_update} → {current_step}"
+            )
         return run
 
     async def translate_exam(

@@ -50,6 +50,7 @@ class PipelineManagementService:
     ) -> PipelineRun:
         """Updates real-time step, status, progress percentage, and error logs for the frontend UI."""
         run = await self.get_or_create_pipeline_run(exam_id, pipeline_type)
+        step_before_update = run.current_step
         run.status = status
         run.current_step = current_step
         run.progress_percent = max(0.0, min(100.0, progress_percent))
@@ -65,6 +66,12 @@ class PipelineManagementService:
 
         from app.cache import invalidate_pipeline_status_cache
         await invalidate_pipeline_status_cache()
+
+        if status == "FAILED":
+            from app.services.pipeline_alert_service import notify_pipeline_failure
+            await notify_pipeline_failure(
+                exam_id, pipeline_type, error_log, failed_step=f"{step_before_update} → {current_step}"
+            )
 
         return run
 

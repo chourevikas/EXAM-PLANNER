@@ -150,6 +150,13 @@ class Settings(BaseSettings):
     MAIL_STARTTLS: bool = Field(default=False)
     MAIL_SSL_TLS: bool = Field(default=True)
 
+    # Pipeline failure alerts (email + Discord) sent to admins when any pipeline run fails
+    PIPELINE_ALERTS_ENABLED: bool = Field(default=True)
+    PIPELINE_ALERT_EMAILS: Optional[str] = Field(
+        default=None, description="Comma-separated alert recipients; falls back to SUPERADMIN_EMAIL"
+    )
+    DISCORD_ALERT_WEBHOOK_URL: Optional[str] = Field(default=None)
+
     # LLM Settings & Provider Credentials
     LLM_PROVIDER: str = Field(default="vertexai")  # vertexai, openai, bedrock
     GCP_PROJECT_ID: Optional[str] = Field(default=None)
