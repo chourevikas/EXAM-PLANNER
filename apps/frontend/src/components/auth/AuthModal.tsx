@@ -548,7 +548,7 @@ export function AuthModal({
                 <div style={{ textAlign: 'right', marginTop: 4, marginBottom: 2 }}>
                   <a
                     href="/forgot-password"
-                    onClick={(e) => { e.preventDefault(); onClose(); navigate('/forgot-password'); }}
+                    onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }}
                     style={{
                       fontSize: 12.5,
                       color: 'var(--primary-red)',

@@ -172,7 +172,7 @@ class AuthService:
         user = await self.user_repo.get_by_email_for_auth(user_in.email)
         # Always run bcrypt (even for missing users) to prevent timing-based user enumeration
         _DUMMY_HASH = "$2b$12$placeholderHashToPreventTimingLeakOnMissingUser000000000"
-        hash_to_check = user.password_hash if user else _DUMMY_HASH
+        hash_to_check = user.password_hash if (user and user.password_hash) else _DUMMY_HASH
         loop = asyncio.get_event_loop()
         password_ok = await loop.run_in_executor(None, verify_password, user_in.password, hash_to_check)
         if not user or not password_ok:
