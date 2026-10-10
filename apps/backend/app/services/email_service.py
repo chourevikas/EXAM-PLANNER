@@ -313,12 +313,14 @@ async def send_password_reset_email(email: str, token: str):
         if ses_ok:
             return True
 
-        if settings.ENVIRONMENT.lower() in ("production", "prod", "staging"):
-            logger.error(f"Password reset email NOT delivered to {email}: SMTP not configured and SES failed.")
-            return False
+        # Only simulate delivery (and print the link) for a local frontend. Anywhere
+        # else a reset token in logs would let anyone with log access take over accounts.
+        if "localhost" in settings.FRONTEND_URL or "127.0.0.1" in settings.FRONTEND_URL:
+            logger.warning(f"📧 [DEV] Email not delivered; password reset link simulated for {email}: {reset_url}")
+            return True
 
-        logger.warning(f"📧 [DEV] Email not delivered; password reset link simulated for {email}: {reset_url}")
-        return True
+        logger.error(f"Password reset email NOT delivered to {email}: SMTP not configured and SES failed.")
+        return False
     except Exception as e:
         logger.error(f"Failed to send password reset email: {e}")
         return False
