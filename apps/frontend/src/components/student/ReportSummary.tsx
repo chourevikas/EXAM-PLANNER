@@ -197,6 +197,45 @@ function ConfidenceCard({ calibration }: { calibration?: AnyRecord }) {
   );
 }
 
+const ANSWER_ROUNDS: { key: string; label: string; color: string }[] = [
+  { key: 'round_1', label: 'Round 1 (first pass)', color: '#1D4ED8' },
+  { key: 'round_2', label: 'Round 2 (came back)', color: '#7C3AED' },
+];
+
+/** Answers given on the first visit vs after skipping and returning. Hidden for reports without round data. */
+function RoundsCard({ rounds }: { rounds?: AnyRecord }) {
+  if (!rounds || num(rounds.tracked_count) === 0) return null;
+  const cameBack = num(rounds.round_2?.answered);
+  return (
+    <section style={card}>
+      <h3 style={sectionTitle}>Rounds</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
+        {ANSWER_ROUNDS.map(({ key, label, color }) => {
+          const r: AnyRecord = rounds[key] || {};
+          const answered = num(r.answered);
+          const net = num(r.net_marks);
+          return (
+            <div key={key} style={{ borderLeft: `3px solid ${color}`, paddingLeft: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color }}>{label}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>
+                {answered} {answered === 1 ? 'question' : 'questions'}
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                {answered ? `${Math.round(num(r.accuracy_pct))}% right · ${net >= 0 ? '+' : ''}${net.toFixed(1)} marks` : 'None'}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p style={{ margin: '12px 0 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
+        {cameBack
+          ? `You came back and answered ${cameBack} ${cameBack === 1 ? 'question' : 'questions'} you had skipped.`
+          : 'You answered every question on your first pass.'}
+      </p>
+    </section>
+  );
+}
+
 function ExamSummary({ report }: { report: AnyRecord }) {
   const p2: AnyRecord = report.part_2_exam_macro_scorecard || report.part_3_aggregated_user_report || {};
   const score: AnyRecord = p2.score_summary || {};
@@ -254,6 +293,8 @@ function ExamSummary({ report }: { report: AnyRecord }) {
       </div>
 
       <ConfidenceCard calibration={p2.confidence_calibration} />
+
+      <RoundsCard rounds={p2.answer_rounds} />
 
       <section style={card}>
         <h3 style={sectionTitle}>Your skills in this exam</h3>

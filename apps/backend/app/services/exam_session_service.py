@@ -244,6 +244,8 @@ class ExamSessionService:
                     palette=status_res.palette,
                     questions_presigned_url=None,
                     questions_folder_url=None,
+                    remaining_seconds=status_res.remaining_seconds,
+                    current_question_index=status_res.current_question_index,
                 )
 
         # Save dynamic filters to report_metadata_json
@@ -451,6 +453,7 @@ class ExamSessionService:
             question_status=resp.question_status if resp else QuestionResponseStatus.UNVISITED,
             answer_revealed=resp.answer_revealed if resp else False,
             confidence_level=resp.confidence_level if resp else None,
+            answer_round=resp.answer_round if resp else None,
         )
 
         return QuestionNavResponse(
@@ -729,6 +732,11 @@ class ExamSessionService:
         resp.confidence_level = (
             req.confidence_level.value if (req.confidence_level and resp.selected_option_id is not None) else None
         )
+        # Round is fixed by the first answer; later option changes keep it
+        if resp.selected_option_id is None:
+            resp.answer_round = None
+        elif prev_opt_id is None or resp.answer_round is None:
+            resp.answer_round = req.answer_round
         if req.option_switch_count > resp.option_switch_count:
             resp.option_switch_count = req.option_switch_count
 
@@ -951,6 +959,11 @@ class ExamSessionService:
                 resp.confidence_level = (
                     item.confidence_level.value if (item.confidence_level and resp.selected_option_id is not None) else None
                 )
+                # Round is fixed by the first answer; later option changes keep it
+                if resp.selected_option_id is None:
+                    resp.answer_round = None
+                elif prev_opt_id is None or resp.answer_round is None:
+                    resp.answer_round = item.answer_round
                 if item.option_switch_count > resp.option_switch_count:
                     resp.option_switch_count = item.option_switch_count
 
@@ -1327,6 +1340,21 @@ class ExamSessionService:
         final_remaining = min(req.remaining_time_seconds, server_remaining)
 
         attempt.time_spent_seconds = elapsed
+        # Remember where the student is so a resume reopens that question
+        if req.active_question_id is not None:
+            try:
+                active_qid = int(req.active_question_id)
+            except (ValueError, TypeError):
+                active_qid = None
+            if active_qid is not None:
+                qid_res = await self.session.exec(
+                    select(ExamQuestionResponse.question_id)
+                    .where(ExamQuestionResponse.attempt_id == attempt.id)
+                    .order_by(col(ExamQuestionResponse.created_at).asc(), col(ExamQuestionResponse.id).asc())
+                )
+                ordered_qids = list(qid_res.all())
+                if active_qid in ordered_qids:
+                    attempt.current_question_index = ordered_qids.index(active_qid) + 1
         self.session.add(attempt)
         await self.session.commit()
 
@@ -1557,6 +1585,8 @@ class ExamSessionService:
                         resp.question_status = QuestionResponseStatus.ANSWERED_AND_MARKED if item.is_marked_for_review else QuestionResponseStatus.ANSWERED
                         if item.confidence_level:
                             resp.confidence_level = item.confidence_level.value
+                        if item.answer_round and resp.answer_round is None:
+                            resp.answer_round = item.answer_round
                     resp.is_marked_for_review = item.is_marked_for_review
                     resp.time_taken_seconds = max(resp.time_taken_seconds, float(item.time_spent_seconds or 0.0))
                     if getattr(item, "is_switched", False):

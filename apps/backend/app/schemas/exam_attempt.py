@@ -28,6 +28,8 @@ class SaveResponseRequest(BaseModel):
     time_spent_seconds: float = 0.0
     option_switch_count: int = 0
     confidence_level: Optional[ConfidenceLevel] = None
+    # Exam-simulation pass: 1 = answered on first visit, 2 = left unanswered and came back
+    answer_round: Optional[int] = Field(default=None, ge=1, le=2)
 
 
 class BatchSaveItem(BaseModel):
@@ -38,6 +40,7 @@ class BatchSaveItem(BaseModel):
     is_switched: bool = False
     option_switch_count: int = 0
     confidence_level: Optional[ConfidenceLevel] = None
+    answer_round: Optional[int] = Field(default=None, ge=1, le=2)
     client_timestamp: Optional[datetime] = None
 
 
@@ -126,6 +129,7 @@ class ResponseState(BaseModel):
     question_status: QuestionResponseStatus = QuestionResponseStatus.UNVISITED
     answer_revealed: bool = False
     confidence_level: Optional[ConfidenceLevel] = None
+    answer_round: Optional[int] = None
 
 
 class QuestionNavResponse(BaseModel):
@@ -154,6 +158,9 @@ class StartExamResponse(BaseModel):
     palette: List[QuestionPaletteItem]
     questions_presigned_url: Optional[str] = None
     questions_folder_url: Optional[str] = None
+    # Set on a resumed attempt: time left on the clock and the 1-based question the student was on
+    remaining_seconds: Optional[int] = None
+    current_question_index: int = 1
 
 
 class SaveResponseResponse(BaseModel):
