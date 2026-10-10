@@ -338,7 +338,10 @@ class AuthService:
     async def forgot_password(self, email: str) -> bool:
         user = await self.user_repo.get_by_email(email)
         if not user:
+            logger.info(f"forgot-password: no account for {email}; no email sent (response stays generic).")
             return True
+        if not user.password_hash:
+            logger.info(f"forgot-password: {email} has no password (social/Clerk account); sending link so they can set one.")
 
         reset_token = jwt.encode(
             {
@@ -350,7 +353,11 @@ class AuthService:
             algorithm=settings.ALGORITHM,
         )
         try:
-            await email_service.send_password_reset_email(user.email, reset_token)
+            sent = await email_service.send_password_reset_email(user.email, reset_token)
+            if sent:
+                logger.info(f"forgot-password: reset email dispatched for user_id={user.id}")
+            else:
+                logger.error(f"forgot-password: reset email FAILED to dispatch for user_id={user.id}")
         except Exception as e:
             logger.error(f"Failed to send password reset email: {e}")
         return True

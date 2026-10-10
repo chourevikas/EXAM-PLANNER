@@ -3,8 +3,9 @@ from typing import Optional, List
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import EmailStr
 from app.config.settings import settings
+from app.config.logger import setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger("EmailService")
 
 def get_fastmail_config() -> ConnectionConfig:
     """Builds FastMail ConnectionConfig dynamically from current settings."""
@@ -23,6 +24,7 @@ def get_fastmail_config() -> ConnectionConfig:
 async def _send_via_aws_ses(recipients: list[str], subject: str, html_body: str) -> bool:
     """Fallback email dispatcher using AWS SES if SMTP credentials are not configured."""
     if not (settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY):
+        logger.warning("AWS SES skipped: AWS credentials not configured.")
         return False
     try:
         import boto3
@@ -46,7 +48,7 @@ async def _send_via_aws_ses(recipients: list[str], subject: str, html_body: str)
         logger.info(f"Email sent via AWS SES to {recipients}. MessageId: {response.get('MessageId')}")
         return True
     except Exception as e:
-        logger.debug(f"AWS SES fallback dispatch note: {e}")
+        logger.warning(f"AWS SES send FAILED for {recipients}: {e}")
         return False
 
 async def send_subscription_confirmation(email: EmailStr, user_name: str):
@@ -306,11 +308,16 @@ async def send_password_reset_email(email: str, token: str):
             logger.info(f"Password reset email sent successfully to {email}")
             return True
 
+        logger.info("SMTP not configured (MAIL_USERNAME/MAIL_PASSWORD); trying AWS SES for password reset.")
         ses_ok = await _send_via_aws_ses([str(email)], message.subject, html)
         if ses_ok:
             return True
 
-        logger.info(f"📧 [DEV] Password reset link simulated for {email}: {reset_url}")
+        if settings.ENVIRONMENT.lower() in ("production", "prod", "staging"):
+            logger.error(f"Password reset email NOT delivered to {email}: SMTP not configured and SES failed.")
+            return False
+
+        logger.warning(f"📧 [DEV] Email not delivered; password reset link simulated for {email}: {reset_url}")
         return True
     except Exception as e:
         logger.error(f"Failed to send password reset email: {e}")
