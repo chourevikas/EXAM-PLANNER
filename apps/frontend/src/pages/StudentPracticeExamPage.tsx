@@ -62,6 +62,43 @@ export function StudentPracticeExamPage() {
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
 
+  // Focus mode also takes the browser itself fullscreen (hides tabs/address bar).
+  // Leaving fullscreen via Esc or browser UI drops focus mode too.
+  const toggleFocusMode = useCallback(() => {
+    const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => Promise<void> };
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
+    const isFullscreen = !!(document.fullscreenElement || doc.webkitFullscreenElement);
+    if (!isFocusMode) {
+      setIsFocusMode(true);
+      if (!isFullscreen) {
+        const request = el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
+        Promise.resolve(request?.()).catch(() => undefined);
+      }
+    } else {
+      setIsFocusMode(false);
+      if (isFullscreen) {
+        const exit = document.exitFullscreen?.bind(document) ?? doc.webkitExitFullscreen?.bind(doc);
+        Promise.resolve(exit?.()).catch(() => undefined);
+      }
+    }
+  }, [isFocusMode]);
+
+  useEffect(() => {
+    const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => Promise<void> };
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement && !doc.webkitFullscreenElement) setIsFocusMode(false);
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+      // Don't leave the browser stuck fullscreen after navigating away from practice.
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+      else if (doc.webkitFullscreenElement) doc.webkitExitFullscreen?.().catch(() => undefined);
+    };
+  }, []);
+
   // Master Syllabus Taxonomy & Available Exams state fetched directly from live APIs
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
   const [availableExams, setAvailableExams] = useState<string[]>([]);
@@ -1710,9 +1747,9 @@ export function StudentPracticeExamPage() {
         onLanguageChange={handleLanguageChange}
         onSubmitClick={() => handleFinishPracticeExam()}
         focusMode={isFocusMode}
-        onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
+        onToggleFocusMode={toggleFocusMode}
         onFilterClick={!isFocusMode ? () => setShowMobileFilterPanel(true) : undefined}
-        onRecsClick={!isFocusMode ? () => setShowMobileRecs(true) : undefined}
+        onRecsClick={() => setShowMobileRecs(true)}
         recsCount={displayRecs.length}
       />
 
@@ -3708,7 +3745,7 @@ export function StudentPracticeExamPage() {
           overflow: 'visible',
           position: 'relative',
           backgroundColor: 'var(--bg-subtle)',
-          gap: !isTabletOrBelow && !isFocusMode ? 20 : 0,
+          gap: !isTabletOrBelow ? 20 : 0,
           marginTop: isFocusMode || isTabletOrBelow ? 60 : 0,
           paddingTop: 12,
           paddingBottom: 16,
@@ -3770,8 +3807,8 @@ export function StudentPracticeExamPage() {
           }}
         />
 
-        {/* Right Side Recommended Questions Fixed Sidebar (Desktop) */}
-        {!isTabletOrBelow && !isFocusMode && (
+        {/* Right Side Recommended Questions Fixed Sidebar (Desktop, kept in focus mode) */}
+        {!isTabletOrBelow && (
           <aside
             style={{
               width: 380,

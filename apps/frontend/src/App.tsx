@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthenticateWithRedirectCallback, useAuth } from '@clerk/clerk-react';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { UserRole } from './types/auth';
@@ -114,6 +114,20 @@ function UnknownRoute() {
   const hasCustomToken = !!localStorage.getItem('access_token');
   return isSignedIn || hasCustomToken ? <Navigate to="/dashboard" replace /> : <MarketingRedirect to="/" />;
 }
+/**
+ * Public PYQ links (homepage featured PYQs, search, exam pages) land on /guest-exam.
+ * Signed-in users get the real practice session instead, with the same filters.
+ */
+function GuestExamRoute() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const { search } = useLocation();
+  const hasCustomToken = !!localStorage.getItem('access_token');
+  if (hasCustomToken || (isLoaded && isSignedIn)) {
+    return <Navigate to={`/practice-exam${search}`} replace />;
+  }
+  if (!isLoaded) return <LoadingFallback />;
+  return <GuestExamPage />;
+}
 import { hydrateSession } from './services/authService';
 
 export default function App() {
@@ -140,7 +154,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
-          <Route path="/guest-exam" element={<GuestExamPage />} />
+          <Route path="/guest-exam" element={<GuestExamRoute />} />
           <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
 
           {/* Student Practice Exam - Protected Route */}
