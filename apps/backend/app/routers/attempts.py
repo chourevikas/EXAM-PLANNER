@@ -84,6 +84,29 @@ async def get_attempt_status_by_exam(
     return JSONResponse(content=summary)
 
 
+@router.get("/dynamic-question-count", summary="Count questions matching subject-wise test filters")
+async def count_dynamic_questions(
+    dynamic_exams: Optional[str] = Query(default=None, description="Comma separated exam labels"),
+    dynamic_years: Optional[str] = Query(default=None, description="Comma separated years"),
+    dynamic_subject: Optional[str] = None,
+    dynamic_topic: Optional[str] = None,
+    dynamic_subtopic: Optional[str] = None,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """The pool a subject-wise test started with the same filters draws from (POST /start, exam_id 'dynamic')."""
+    req = StartExamRequest(
+        exam_id="dynamic",
+        dynamic_exams=dynamic_exams,
+        dynamic_years=dynamic_years,
+        dynamic_subject=dynamic_subject,
+        dynamic_topic=dynamic_topic,
+        dynamic_subtopic=dynamic_subtopic,
+    )
+    count = await ExamSessionService(session).count_dynamic_questions(req)
+    return {"count": count}
+
+
 @router.post("/start", response_model=StartExamResponse, status_code=status.HTTP_201_CREATED)
 async def start_exam_attempt(
     req: StartExamRequest,

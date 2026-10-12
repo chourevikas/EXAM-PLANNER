@@ -385,6 +385,29 @@ export async function listSubjectWiseAttempts(page: number, pageSize: number): P
   return { items: data.items || [], total: data.total || 0, totalPages: data.total_pages || 1 };
 }
 
+export interface DynamicTestFilters {
+  dynamic_exams?: string;
+  dynamic_years?: string;
+  dynamic_subject?: string;
+  dynamic_topic?: string;
+  dynamic_subtopic?: string;
+}
+
+/** How many questions a Subject-wise test with these filters can draw from. */
+export async function countDynamicQuestions(filters: DynamicTestFilters): Promise<number> {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([k, v]) => { if (v) params.append(k, v); });
+  const response = await guardedFetch(`${API_BASE_URL}/attempts/dynamic-question-count?${params.toString()}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to count matching questions.');
+  }
+  const data = await response.json();
+  return Number(data.count) || 0;
+}
+
 export interface ExamAttemptStatusEntry {
   in_progress_attempt_id?: number | string;
   completed_attempt_id?: number | string;

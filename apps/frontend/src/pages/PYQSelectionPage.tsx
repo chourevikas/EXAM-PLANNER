@@ -9,7 +9,9 @@ import {
   fetchExamsByYear,
   startExamAttempt,
   listSubjectWiseAttempts,
+  countDynamicQuestions,
   type AttemptHistoryItem,
+  type DynamicTestFilters,
 } from '../services/examService';
 import { guardedFetch } from '../utils/apiGuard';
 import { StatusBadge } from '../components/common/StatusBadge';
@@ -561,6 +563,31 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   // A warning about the previous filters no longer applies once they change
   useEffect(() => { setStartError(null); }, [selExams, selYears, selSubject, selTopic, selSubtopic, qSize, customCount]);
 
+  const dynamicFilters = useMemo<DynamicTestFilters>(() => {
+    const exs = selExams.filter((x) => x !== 'all');
+    const yrs = selYears.filter((x) => x !== 'all');
+    return {
+      dynamic_exams: exs.length ? exs.join(',') : undefined,
+      dynamic_years: yrs.length ? yrs.join(',') : undefined,
+      dynamic_subject: selSubject !== 'all' ? selSubject : undefined,
+      dynamic_topic: selTopic !== 'all' ? selTopic : undefined,
+      dynamic_subtopic: selSubtopic !== 'all' ? selSubtopic : undefined,
+    };
+  }, [selExams, selYears, selSubject, selTopic, selSubtopic]);
+
+  // Questions the current filters match (null while counting or when the count failed)
+  const [matchCount, setMatchCount] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setMatchCount(null);
+    const timer = setTimeout(() => {
+      countDynamicQuestions(dynamicFilters)
+        .then((n) => { if (!cancelled) setMatchCount(n); })
+        .catch(() => {});
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [dynamicFilters]);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -636,9 +663,13 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
     setSelYears(next.includes(v) ? next.filter((x) => x !== v) || ['all'] : [...next, v]);
   };
 
+  // A test never has more questions than the filters match
+  const requestedCount = qSize === 'all' ? matchCount : (qSize === 'custom' ? Number(customCount) || 0 : Number(qSize));
+  const testCount = requestedCount !== null && matchCount !== null ? Math.min(requestedCount, matchCount) : requestedCount;
+
   const estTime = (() => {
-    if (qSize === 'all') return '—';
-    const n = qSize === 'custom' ? Number(customCount) || 0 : Number(qSize);
+    if (!testCount) return '—';
+    const n = testCount;
     const m = Math.round((n * 72) / 60);
     return `${m} min`;
   })();
@@ -650,21 +681,16 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
     setStartError(null);
     
     try {
-      const exs = selExams.filter((x) => x !== 'all');
-      const yrs = selYears.filter((x) => x !== 'all');
-      const qLimit = qSize === 'custom' && customCount ? Number(customCount) : (qSize !== 'all' ? Number(qSize) : 100);
-      
+      // "All available" takes every matching question, not the API's default of 100
+      const qLimit = qSize === 'all' ? matchCount : (qSize === 'custom' && customCount ? Number(customCount) : Number(qSize));
+
       const payload: any = {
         exam_id: 'dynamic',
         force_new: true,
         dynamic_limit: qLimit || 100,
+        ...dynamicFilters,
       };
-      if (selSubject !== 'all') payload.dynamic_subject = selSubject;
-      if (selTopic !== 'all') payload.dynamic_topic = selTopic;
-      if (selSubtopic !== 'all') payload.dynamic_subtopic = selSubtopic;
-      if (exs.length) payload.dynamic_exams = exs.join(',');
-      if (yrs.length) payload.dynamic_years = yrs.join(',');
-      
+
       const res = await startExamAttempt(payload);
       // The exam engine route takes an exam id/code and resumes its in-progress attempt
       navigate(`/exam/${res.exam_id}?type=PYQ`);
@@ -791,7 +817,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {['all', '10', '20', '30', '50', 'custom'].map((v) => (
                     <button type="button" key={v} onClick={() => setQSize(v)} style={chipStyle(qSize === v)}>
-                      {v === 'all' ? 'All available' : v === 'custom' ? 'Custom' : v}
+                      {v === 'all' ? `All available${matchCount !== null ? ` (${matchCount})` : ''}` : v === 'custom' ? 'Custom' : v}
                     </button>
                   ))}
                 </div>
@@ -799,7 +825,13 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
                   <input type="number" value={customCount} onChange={(e) => setCustomCount(e.target.value)} placeholder="e.g. 75" min={1} style={{ marginTop: 10, width: 140, height: 40, padding: '0 12px', border: '1px solid var(--border-default)', borderRadius: 10, fontWeight: 700, fontSize: 14, outline: 'none', backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)' }} />
                 )}
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 7 }}>
-                  {qSize === 'all' ? 'Test will include all matching questions' : `Test will include ${qSize === 'custom' ? customCount || '—' : qSize} questions`}
+                  {matchCount === 0
+                    ? 'No questions match these filters yet. Try a different topic, exam or year.'
+                    : qSize === 'all'
+                      ? (matchCount !== null ? `Test will include all ${matchCount} matching questions` : 'Test will include all matching questions')
+                      : matchCount !== null && requestedCount !== null && requestedCount > matchCount
+                        ? `Only ${matchCount} questions match these filters, so the test will include ${matchCount}`
+                        : `Test will include ${qSize === 'custom' ? customCount || '—' : qSize} questions`}
                 </div>
               </div>
 

@@ -1415,13 +1415,29 @@ class ExamSessionService:
 
     async def _select_dynamic_questions(self, req: StartExamRequest) -> List[Tuple[int, int, Any]]:
         """Random published questions matching the subject-wise filters, as (question_id, number, expected_time)."""
-        from sqlalchemy import func, or_
+        q_stmt = await self._dynamic_questions_query(req)
+        if q_stmt is None:
+            return []
+        limit = req.dynamic_limit if req.dynamic_limit and req.dynamic_limit > 0 else 100
+        q_stmt = q_stmt.order_by(func.random()).limit(limit)
+        rows = (await self.session.exec(q_stmt)).all()
+        return [(r.id, i, r.expected_time_seconds) for i, r in enumerate(rows, 1)]
+
+    async def count_dynamic_questions(self, req: StartExamRequest) -> int:
+        """How many published questions the subject-wise filters match: the pool a test draws from."""
+        q_stmt = await self._dynamic_questions_query(req)
+        if q_stmt is None:
+            return 0
+        return (await self.session.exec(select(func.count()).select_from(q_stmt.subquery()))).one()
+
+    async def _dynamic_questions_query(self, req: StartExamRequest):
+        """Published questions matching the subject-wise filters, or None when the chosen exams have no papers."""
+        from sqlalchemy import or_
 
         def _one(value: Optional[str]) -> Optional[str]:
             return value if value and value != "all" else None
 
         subject, topic, subtopic = _one(req.dynamic_subject), _one(req.dynamic_topic), _one(req.dynamic_subtopic)
-        limit = req.dynamic_limit if req.dynamic_limit and req.dynamic_limit > 0 else 100
 
         q_stmt = (
             select(Question.id, Question.expected_time_seconds)
@@ -1463,12 +1479,9 @@ class ExamSessionService:
                 and canonical_exam_name(r.name or r.code, type_codes) in exam_names
             ]
             if not exam_ids:
-                return []
+                return None
             q_stmt = q_stmt.where(Question.exam_id.in_(exam_ids))
-
-        q_stmt = q_stmt.order_by(func.random()).limit(limit)
-        rows = (await self.session.exec(q_stmt)).all()
-        return [(r.id, i, r.expected_time_seconds) for i, r in enumerate(rows, 1)]
+        return q_stmt
 
     async def get_exam_status(
         self, attempt_id: int | str, user_id: int
