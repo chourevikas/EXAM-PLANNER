@@ -1,7 +1,7 @@
 import re
 from typing import List, Optional, Dict, Any
 from fastapi import HTTPException, status
-from sqlmodel import select, col, or_
+from sqlmodel import select, col, func, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.models import ExamType, Exam
 from app.schemas.exam_type import ExamTypeCreate, ExamTypeUpdate, ExamTypeResponse
@@ -122,18 +122,22 @@ class ExamTypeService:
         """Keep uploaded papers' display names in step with the exam type code.
 
         Upload stores Exam.name as "<CODE> (<year>) - Set X", a copy of the type code at upload
-        time, so renaming the code left existing papers showing the old one. Only the leading
-        code token is rewritten, and only when it is the old code or the code the paper was
-        uploaded under (the prefix of its canonical Exam.code) — hand-written names are left alone.
-        Running on every save also repairs papers whose type was renamed before this existed.
+        time, so renaming the code left existing papers showing the old one. Only a leading token
+        equal to the old code is rewritten: hand-written names, and papers of another exam that
+        were linked to this type at upload (e.g. "UPPCS (2021)" under upsc), are left alone.
         """
         new_upper = exam_type.type.upper()
-        old_prefix = f"{old_code.lower()}-"
+        old_lower = old_code.lower()
         stmt = select(Exam).where(
             or_(
                 col(Exam.exam_type_id) == exam_type.id,
-                # Papers under this code that were never linked by FK (older uploads).
-                (col(Exam.exam_type_id).is_(None)) & (col(Exam.code).startswith(old_prefix)),
+                # Papers under this code that were never linked by FK (older uploads). Exam.code
+                # keeps the upload-time code, so after one rename only the name still carries it.
+                (col(Exam.exam_type_id).is_(None))
+                & or_(
+                    func.lower(Exam.code).startswith(f"{old_lower}-", autoescape=True),
+                    func.lower(Exam.name).startswith(old_lower, autoescape=True),
+                ),
             )
         )
         exams = (await self.session.exec(stmt)).all()
@@ -144,10 +148,7 @@ class ExamTypeService:
             if not match:
                 continue
             leading, rest = match.groups()
-            is_code_token = leading.lower() == old_code.lower() or (exam.code or "").lower().startswith(
-                f"{leading.lower()}-"
-            )
-            if is_code_token and leading != new_upper:
+            if leading.lower() == old_lower and leading != new_upper:
                 exam.name = f"{new_upper}{rest}"
                 self.session.add(exam)
                 renamed.append(exam)
