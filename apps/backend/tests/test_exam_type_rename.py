@@ -57,21 +57,32 @@ class TestExamTypeRenameSyncsPaperNames(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
-    async def test_resave_repairs_papers_renamed_before_the_fix(self):
-        # Type code already changed without cascading (the pre-fix state); a plain save resyncs.
+    async def test_paper_of_another_exam_linked_to_the_type_is_left_alone(self):
+        # An UPPCS paper linked to the upsc type at upload: renaming or re-saving upsc must not rename it.
         async with self.session_factory() as s:
-            et = await s.get(ExamType, self.et_id)
-            et.type = "uppcspre"
-            s.add(et)
+            s.add(Exam(code="uppcs-prelims-gs1-2019-set_a", name="UPPCS", exam_type_id=self.other_id, source_year=2019))
             await s.commit()
         async with self.session_factory() as s:
-            await ExamTypeService(s).update_exam_type(self.et_id, ExamTypeUpdate(name="Uppcs Prelims"))
+            await ExamTypeService(s).update_exam_type(self.other_id, ExamTypeUpdate(type="upsccse"))
+        async with self.session_factory() as s:
+            await ExamTypeService(s).update_exam_type(self.other_id, ExamTypeUpdate(name="UPSC CSE"))
 
         names = await self._names()
-        self.assertEqual(names[0], "UPPCSPRE (2025) - Set A")
-        self.assertEqual(names[1], "UPPCSPRE Prelims (2024) - Set A")
-        self.assertEqual(names[3], "Uttar Pradesh PCS 2021")
+        self.assertEqual(names[-2:], ["UPSCCSE (2020) - Set A", "UPPCS"])
 
+    async def test_unlinked_paper_follows_every_rename(self):
+        # Exam.code keeps the upload-time code, so the second rename has to find the paper by name.
+        for code in ("UPPCSPRE", "UPPCS_P"):
+            async with self.session_factory() as s:
+                await ExamTypeService(s).update_exam_type(self.et_id, ExamTypeUpdate(type=code))
+
+        names = await self._names()
+        self.assertEqual(names[:4], [
+            "UPPCS_P (2025) - Set A",
+            "UPPCS_P Prelims (2024) - Set A",
+            "UPPCS_P (2023) - Set A",
+            "Uttar Pradesh PCS 2021",
+        ])
 
 if __name__ == "__main__":
     unittest.main()

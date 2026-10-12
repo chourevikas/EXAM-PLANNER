@@ -252,7 +252,8 @@ interface ExamCacheEntry<T> {
   data: T;
   timestamp: number;
 }
-const EXAM_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// Short: the API cache is invalidated on every exam edit, this only dedupes calls within one page load
+const EXAM_CACHE_TTL_MS = 30 * 1000;
 const listExamsCache = new Map<string, ExamCacheEntry<ExamItem[]>>();
 let examsByYearCache: ExamCacheEntry<any> | null = null;
 
@@ -261,7 +262,7 @@ export function invalidateExamCatalogCache(): void {
   examsByYearCache = null;
 }
 
-/** 11. Fetch All Available Registered Exams (Cached in-memory for 5 minutes) */
+/** 11. Fetch All Available Registered Exams (Cached in-memory for 30 seconds) */
 export async function listExams(
   status?: string,
   includeInactive: boolean = false,
@@ -382,6 +383,29 @@ export async function listSubjectWiseAttempts(page: number, pageSize: number): P
   }
   const data = await response.json();
   return { items: data.items || [], total: data.total || 0, totalPages: data.total_pages || 1 };
+}
+
+export interface DynamicTestFilters {
+  dynamic_exams?: string;
+  dynamic_years?: string;
+  dynamic_subject?: string;
+  dynamic_topic?: string;
+  dynamic_subtopic?: string;
+}
+
+/** How many questions a Subject-wise test with these filters can draw from. */
+export async function countDynamicQuestions(filters: DynamicTestFilters): Promise<number> {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([k, v]) => { if (v) params.append(k, v); });
+  const response = await guardedFetch(`${API_BASE_URL}/attempts/dynamic-question-count?${params.toString()}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to count matching questions.');
+  }
+  const data = await response.json();
+  return Number(data.count) || 0;
 }
 
 export interface ExamAttemptStatusEntry {

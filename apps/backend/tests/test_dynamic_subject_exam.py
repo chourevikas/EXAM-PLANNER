@@ -111,6 +111,22 @@ class TestDynamicSubjectExam(unittest.IsolatedAsyncioTestCase):
         res = await self._start(exam_id="dynamic", force_new=True, dynamic_limit=30, dynamic_subject="Polity", dynamic_years="2022")
         self.assertEqual(res.total_questions, 1)
 
+    async def test_count_matches_the_pool_a_test_draws_from(self):
+        async def count(**kwargs):
+            async with self.session_factory() as s:
+                return await ExamSessionService(s).count_dynamic_questions(StartExamRequest(exam_id="dynamic", **kwargs))
+
+        # A question linked twice is counted once, as it can only be picked once
+        self.assertEqual(await count(dynamic_subject="Polity"), len(self.polity_ids))
+        self.assertEqual(await count(dynamic_subject="Polity", dynamic_topic="Constitution"), len(self.constitution_ids))
+        self.assertEqual(await count(dynamic_subject="Polity", dynamic_exams="BPSC"), 1)
+        self.assertEqual(await count(dynamic_subject="Polity", dynamic_years="2022"), 1)
+        self.assertEqual(await count(dynamic_exams="SSC"), 0)
+        self.assertEqual(await count(), len(self.polity_ids) + len(self.history_ids))
+
+        res = await self._start(exam_id="dynamic", force_new=True, dynamic_limit=await count(dynamic_subject="Polity"), dynamic_subject="Polity")
+        self.assertEqual(set(await self._question_ids(res.attempt_id)), self.polity_ids)
+
     async def test_no_match_raises_and_creates_nothing(self):
         with self.assertRaises(HTTPException) as ctx:
             await self._start(exam_id="dynamic", force_new=True, dynamic_subject="Economy")
