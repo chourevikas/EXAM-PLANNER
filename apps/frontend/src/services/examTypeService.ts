@@ -1,5 +1,7 @@
 import { ExamType, ExamTypeCreatePayload, ExamTypeUpdatePayload } from '../types/examType';
 import { guardedFetch } from '../utils/apiGuard';
+import { setExamTypeCodes } from '../utils/formatEnum';
+import { invalidateExamCatalogCache } from './examService';
 
 const API_BASE = '/api/v1';
 
@@ -24,7 +26,7 @@ interface CacheEntry<T> {
   data: T;
   timestamp: number;
 }
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 30 * 1000; // short, so a renamed exam type code reaches open student tabs
 let activeExamTypesCache: CacheEntry<ExamType[]> | null = null;
 
 export function invalidateActiveExamTypesCache(): void {
@@ -33,7 +35,7 @@ export function invalidateActiveExamTypesCache(): void {
 
 /**
  * Public list of active exam types (single source of truth across candidate and admin UI).
- * Cached in-memory for 5 minutes with fallback safety.
+ * Cached in-memory for 30 seconds with fallback safety.
  */
 export async function fetchActiveExamTypes(forceRefresh: boolean = false): Promise<ExamType[]> {
   const now = Date.now();
@@ -47,6 +49,7 @@ export async function fetchActiveExamTypes(forceRefresh: boolean = false): Promi
     }
     const data = await res.json();
     activeExamTypesCache = { data, timestamp: now };
+    setExamTypeCodes(data.map((t: ExamType) => t.type));
     return data;
   } catch (err) {
     if (activeExamTypesCache) {
@@ -117,6 +120,7 @@ export async function adminUpdateExamType(
     throw new Error(errorData.detail || 'Update failed.');
   }
   invalidateActiveExamTypesCache();
+  invalidateExamCatalogCache(); // a code change renames the type's papers
   return await res.json();
 }
 
