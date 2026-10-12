@@ -1,7 +1,8 @@
 import asyncio
+import re
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List, Set, Tuple
 from fastapi import HTTPException, status, BackgroundTasks
 from sqlmodel import select, col, desc, func
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -25,6 +26,7 @@ from app.db.models import (
     Subject,
     Topic,
     Subtopic,
+    ExamType,
 )
 from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus, ExamStatus, ConfidenceLevel
 from app.schemas.exam_attempt import (
@@ -77,10 +79,41 @@ _CANONICAL_EXAM_KEYWORDS = [
 ]
 
 
-def canonical_exam_name(raw: Optional[str]) -> str:
-    """Mirror of the frontend's extractCanonicalExamName, which builds the exam chips on the PYQ page."""
-    import re
+def exam_type_code_label(raw: Optional[str], type_codes: Optional[Set[str]]) -> Optional[str]:
+    """The exam type code a name starts with, upper-cased ("MPSCPRE (2024) - Set A" -> "MPSCPRE"), or None.
 
+    Paper names lead with their type code (ExamTypeService._sync_exam_names keeps that true across code
+    renames), so this follows the admin's current codes instead of a hard-coded keyword list.
+    """
+    if not raw or not type_codes:
+        return None
+    match = re.match(r"^([A-Za-z0-9_-]+)", str(raw).strip())
+    if not match:
+        return None
+    token = match.group(1).lower()
+    for candidate in (token, re.split(r"[-_]", token)[0]):
+        if candidate in type_codes:
+            return candidate.upper()
+    return None
+
+
+async def load_exam_type_codes(session: AsyncSession) -> Set[str]:
+    """Lower-cased codes of active exam types: the same set the public /exam-types list gives the frontend."""
+    rows = (await session.exec(select(ExamType.type).where(col(ExamType.is_active).is_(True)))).all()
+    return {str(t).lower() for t in rows if t}
+
+
+def canonical_exam_name(raw: Optional[str], type_codes: Optional[Set[str]] = None) -> str:
+    """Mirror of the frontend's extractCanonicalExamName, which builds the exam chips on the PYQ page.
+
+    With type_codes, a name led by an exam type code is labelled by that code, and the legacy labels
+    below ("UPSC CSE") collapse onto their type code ("UPSC") so old links and defaults still match.
+    """
+    legacy = _legacy_exam_name(raw)
+    return exam_type_code_label(raw, type_codes) or exam_type_code_label(legacy, type_codes) or legacy
+
+
+def _legacy_exam_name(raw: Optional[str]) -> str:
     if not raw:
         return "UPSC CSE"
     clean = str(raw).strip()
@@ -1420,12 +1453,14 @@ class ExamSessionService:
         if years:
             q_stmt = q_stmt.where(func.coalesce(Question.source_year, Exam.source_year).in_(years))
 
-        exam_names = {e.upper() for e in _csv_filter(req.dynamic_exams)}
+        type_codes = await load_exam_type_codes(self.session)
+        exam_names = {canonical_exam_name(e, type_codes).upper() for e in _csv_filter(req.dynamic_exams)}
         if exam_names:
             exam_rows = (await self.session.exec(select(Exam.id, Exam.name, Exam.code))).all()
             exam_ids = [
                 r.id for r in exam_rows
-                if not str(r.code or "").startswith("DYN_") and canonical_exam_name(r.name or r.code) in exam_names
+                if not str(r.code or "").startswith("DYN_")
+                and canonical_exam_name(r.name or r.code, type_codes) in exam_names
             ]
             if not exam_ids:
                 return []

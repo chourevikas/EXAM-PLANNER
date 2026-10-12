@@ -151,12 +151,52 @@ export const formatEnumLabel = formatEnum;
 export const DEFAULT_TARGET_EXAMS = ['UPSC CSE'];
 export const CANONICAL_TARGET_EXAMS = DEFAULT_TARGET_EXAMS;
 
+// Lower-cased codes of the active exam types, filled by fetchActiveExamTypes. Mirrors the backend's
+// load_exam_type_codes so exam labels on both sides agree.
+let examTypeCodes = new Set<string>();
+
+export function setExamTypeCodes(codes: string[]): void {
+  examTypeCodes = new Set(codes.filter(Boolean).map((c) => c.toLowerCase()));
+}
+
 /**
- * Extracts a clean canonical examination name (e.g. 'UPSC CSE', 'MPPSC', 'BPSC', 'UPPCS')
- * from raw exam titles, codes, or database keys (e.g. 'upsc-prelims-gs1-2021-set_a' -> 'UPSC CSE').
+ * The exam type code a name starts with, upper-cased ('MPSCPRE (2024) - Set A' -> 'MPSCPRE'), or null.
+ * Paper names lead with their type code and the backend keeps that true when an admin renames the code.
+ */
+function examTypeCodeLabel(raw?: string | null): string | null {
+  if (!raw || examTypeCodes.size === 0) return null;
+  const match = String(raw).trim().match(/^[A-Za-z0-9_-]+/);
+  if (!match) return null;
+  const token = match[0].toLowerCase();
+  for (const candidate of [token, token.split(/[-_]/)[0]]) {
+    if (examTypeCodes.has(candidate)) return candidate.toUpperCase();
+  }
+  return null;
+}
+
+/**
+ * Extracts a clean canonical examination name from raw exam titles, codes, or database keys.
+ * Names led by an active exam type code are labelled by that code ('MPSCPRE (2024) - Set A' -> 'MPSCPRE'),
+ * and the legacy labels below collapse onto their type code ('UPSC CSE' -> 'UPSC') so old links still match.
  * Never returns raw PYQ codes, years, or set names.
  */
 export function extractCanonicalExamName(raw?: string | null): string {
+  const legacy = legacyCanonicalExamName(raw);
+  return examTypeCodeLabel(raw) || examTypeCodeLabel(legacy) || legacy;
+}
+
+/** The label of the default exam ('UPSC CSE' resolved through the exam type codes, e.g. 'UPSC'). */
+export function defaultExamLabel(): string {
+  return extractCanonicalExamName(DEFAULT_TARGET_EXAMS[0]);
+}
+
+/** Distinct exam labels, default exam first, the rest alphabetical. */
+export function sortExamLabels(labels: string[]): string[] {
+  const first = defaultExamLabel();
+  return Array.from(new Set(labels)).sort((a, b) => (a === first ? -1 : b === first ? 1 : a.localeCompare(b)));
+}
+
+function legacyCanonicalExamName(raw?: string | null): string {
   if (!raw) return 'UPSC CSE';
   const clean = String(raw).trim();
   const lower = clean.toLowerCase();

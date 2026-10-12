@@ -252,7 +252,8 @@ interface ExamCacheEntry<T> {
   data: T;
   timestamp: number;
 }
-const EXAM_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// Short: the API cache is invalidated on every exam edit, this only dedupes calls within one page load
+const EXAM_CACHE_TTL_MS = 30 * 1000;
 const listExamsCache = new Map<string, ExamCacheEntry<ExamItem[]>>();
 let examsByYearCache: ExamCacheEntry<any> | null = null;
 
@@ -261,7 +262,7 @@ export function invalidateExamCatalogCache(): void {
   examsByYearCache = null;
 }
 
-/** 11. Fetch All Available Registered Exams (Cached in-memory for 5 minutes) */
+/** 11. Fetch All Available Registered Exams (Cached in-memory for 30 seconds) */
 export async function listExams(
   status?: string,
   includeInactive: boolean = false,

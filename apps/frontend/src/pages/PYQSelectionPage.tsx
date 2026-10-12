@@ -13,7 +13,8 @@ import {
 } from '../services/examService';
 import { guardedFetch } from '../utils/apiGuard';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { extractCanonicalExamName } from '../utils/formatEnum';
+import { extractCanonicalExamName, sortExamLabels, defaultExamLabel } from '../utils/formatEnum';
+import { fetchActiveExamTypes } from '../services/examTypeService';
 import { formatTaxonomyParam } from '../utils/taxonomyParam';
 import {
   PlayCircle, BarChart2, RotateCcw, BookOpen, Target,
@@ -51,6 +52,7 @@ function usePublishedExams() {
         const [liveExams, statusByExam] = await Promise.all([
           listExams('PUBLISHED', true, token || undefined),
           getAttemptStatusByExam(token || undefined),
+          fetchActiveExamTypes().catch(() => []),
         ]);
         const published = liveExams.filter((e) => {
           if (!e.is_active || (e.status !== 'PUBLISHED' && e.status !== 'ExamStatus.PUBLISHED')) return false;
@@ -270,21 +272,13 @@ function YearWiseScreen({ onBack }: { onBack: () => void }) {
 
   const archiveYearOptions = useMemo(() => ['All Years', ...Array.from(new Set(examsList.map((e) => String(e.year)))).sort((a, b) => Number(b) - Number(a))], [examsList]);
   const archiveExamOptions = useMemo(() => {
-    const names = Array.from(new Set(examsList.map((e) => {
-      const t = e.title.toLowerCase();
-      if (t.includes('upsc')) return 'UPSC CSE';
-      if (t.includes('mpsc')) return 'MPSC';
-      if (t.includes('mppsc')) return 'MPPSC';
-      if (t.includes('bpsc')) return 'BPSC';
-      return e.title.split(' ')[0];
-    }))).sort();
-    return ['All Exams', ...names];
+    return ['All Exams', ...sortExamLabels(examsList.map((e) => extractCanonicalExamName(e.title)))];
   }, [examsList]);
   const filteredExams = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return examsList.filter((e) => {
       if (yearFilter !== 'All Years' && String(e.year) !== yearFilter) return false;
-      if (examFilter !== 'All Exams' && !e.title.toLowerCase().includes(examFilter.toLowerCase().split(' ')[0])) return false;
+      if (examFilter !== 'All Exams' && extractCanonicalExamName(e.title) !== examFilter) return false;
       if (q && !e.title.toLowerCase().includes(q) && !String(e.code || '').toLowerCase().includes(q)) return false;
       return true;
     });
@@ -575,6 +569,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
           fetchExamsByYear().catch(() => null),
           listExams('PUBLISHED').catch(() => []),
           fetchMasterSyllabus().catch(() => null),
+          fetchActiveExamTypes().catch(() => []),
         ]);
         if (syllabus) setMasterSyllabus(syllabus);
         if (yearsData?.years) setAvailableYears([...yearsData.years].sort((a: number, b: number) => b - a));
@@ -610,9 +605,8 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
         }
         setExamToYears(finalMapping);
         
-        const distinct = Array.from(new Set(names)) as string[];
-        distinct.sort((a, b) => (a === 'UPSC CSE' ? -1 : b === 'UPSC CSE' ? 1 : a.localeCompare(b)));
-        setAvailableExams(distinct.length > 0 ? distinct : ['UPSC CSE']);
+        const distinct = sortExamLabels(names);
+        setAvailableExams(distinct.length > 0 ? distinct : [defaultExamLabel()]);
 
       } catch (_) {}
       finally { setLoading(false); }
@@ -866,7 +860,10 @@ function AnalysisScreen({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     (async () => {
       try {
-        const publishedExams = await listExams('PUBLISHED').catch(() => []);
+        const [publishedExams] = await Promise.all([
+          listExams('PUBLISHED').catch(() => []),
+          fetchActiveExamTypes().catch(() => []),
+        ]);
         setAllExamsData(publishedExams);
         const names: { val: string; label: string }[] = [];
         (publishedExams as any[]).forEach((e: any) => {

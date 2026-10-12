@@ -12,7 +12,8 @@ import {
 } from '../services/examService';
 import { guardedFetch } from '../utils/apiGuard';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
+import { formatEnum, extractCanonicalExamName, sortExamLabels, defaultExamLabel } from '../utils/formatEnum';
+import { fetchActiveExamTypes } from '../services/examTypeService';
 import { formatTaxonomyParam } from '../utils/taxonomyParam';
 import {
   CheckCircle2,
@@ -100,6 +101,7 @@ export function MockSelectionPage() {
         const [yearsData, publishedExams] = await Promise.all([
           fetchExamsByYear().catch(() => null),
           listExams('PUBLISHED').catch(() => []),
+          fetchActiveExamTypes().catch(() => []),
         ]);
 
         if (yearsData) {
@@ -115,14 +117,9 @@ export function MockSelectionPage() {
           });
         }
 
-        const distinctExams = Array.from(new Set(dynamicExams)) as string[];
-        distinctExams.sort((a, b) => (a === 'UPSC CSE' ? -1 : b === 'UPSC CSE' ? 1 : a.localeCompare(b)));
-
-        if (distinctExams.length > 0) {
-          setAvailableExams(distinctExams);
-        } else {
-          setAvailableExams(['UPSC CSE']);
-        }
+        const distinctExams = sortExamLabels(dynamicExams);
+        setAvailableExams(distinctExams.length > 0 ? distinctExams : [defaultExamLabel()]);
+        setSelectedExam((prev) => extractCanonicalExamName(prev));
       } catch (err) {
         console.warn('Exam years fetch warning:', err);
       } finally {

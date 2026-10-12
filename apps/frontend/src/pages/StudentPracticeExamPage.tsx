@@ -21,7 +21,8 @@ import { fetchMasterSyllabus, verifySyllabusNode, listExams, fetchExamsByYear } 
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
-import { formatEnum, extractCanonicalExamName, cleanExamTitle } from '../utils/formatEnum';
+import { formatEnum, extractCanonicalExamName, cleanExamTitle, sortExamLabels, defaultExamLabel } from '../utils/formatEnum';
+import { fetchActiveExamTypes } from '../services/examTypeService';
 import { availableQuestionYears } from '../utils/examYears';
 import { guardedFetch } from '../utils/apiGuard';
 import {
@@ -37,6 +38,8 @@ export function StudentPracticeExamPage() {
 
   // URL Params
   const gExam = searchParams.get('exam') || 'UPSC CSE';
+  // What the exam picker shows: the exam's current type code, even for links made before a code rename
+  const gExamLabel = gExam === 'All Exams' || gExam.includes(',') ? gExam : extractCanonicalExamName(gExam);
   const gYear = searchParams.get('year') || '';
   const gSubject = searchParams.get('subject') || '';
   const gTopic = searchParams.get('topic') || '';
@@ -571,8 +574,8 @@ export function StudentPracticeExamPage() {
       const canonicalTarget = extractCanonicalExamName(gExam);
       if (availableExams.includes(canonicalTarget)) {
         initialToggles[canonicalTarget] = true;
-      } else if (availableExams.includes('UPSC CSE')) {
-        initialToggles['UPSC CSE'] = true;
+      } else if (availableExams.includes(defaultExamLabel())) {
+        initialToggles[defaultExamLabel()] = true;
       } else if (availableExams.length > 0) {
         initialToggles[availableExams[0]] = true;
       }
@@ -913,6 +916,8 @@ export function StudentPracticeExamPage() {
 
       // 1. Fetch Master Syllabus Tree & Published Exams from API
       try {
+        // Exam labels come from the type codes, so they load before anything is labelled
+        await fetchActiveExamTypes().catch(() => []);
         const [sData, eList, yData] = await Promise.all([
           fetchMasterSyllabus(undefined, gExam === 'All Exams' ? undefined : extractCanonicalExamName(gExam)).catch(() => null),
           listExams('PUBLISHED').catch(() => []),
@@ -923,8 +928,7 @@ export function StudentPracticeExamPage() {
           const dynamicExams = eList.map((e: any) =>
             extractCanonicalExamName(e.name || e.title || e.exam_name || e.code),
           ).filter(Boolean);
-          const names = Array.from(new Set(dynamicExams)) as string[];
-          names.sort((a, b) => (a === 'UPSC CSE' ? -1 : b === 'UPSC CSE' ? 1 : a.localeCompare(b)));
+          const names = sortExamLabels(dynamicExams as string[]);
           if (names.length > 0) setAvailableExams(names);
         }
         if (yData && yData.exams_by_year) {
@@ -1871,7 +1875,7 @@ export function StudentPracticeExamPage() {
                     <span
                       style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                      {gExam}
+                      {gExamLabel}
                     </span>
                     <ChevronDown
                       size={14}
@@ -1913,9 +1917,9 @@ export function StudentPracticeExamPage() {
                               padding: '9px 12px',
                               borderRadius: 'var(--radius)',
                               fontSize: 12.5,
-                              fontWeight: gExam === opt ? 700 : 500,
-                              color: gExam === opt ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                              backgroundColor: gExam === opt ? 'var(--bg-subtle)' : 'transparent',
+                              fontWeight: gExamLabel === opt ? 700 : 500,
+                              color: gExamLabel === opt ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                              backgroundColor: gExamLabel === opt ? 'var(--bg-subtle)' : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -1923,7 +1927,7 @@ export function StudentPracticeExamPage() {
                             }}
                           >
                             <span>{opt}</span>
-                            {gExam === opt && <Check size={14} color="var(--accent-primary)" />}
+                            {gExamLabel === opt && <Check size={14} color="var(--accent-primary)" />}
                           </div>
                         ),
                       )}
@@ -2827,7 +2831,7 @@ export function StudentPracticeExamPage() {
                   <span
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
-                    {gExam}
+                    {gExamLabel}
                   </span>
                   <ChevronDown
                     size={14}
@@ -2869,9 +2873,9 @@ export function StudentPracticeExamPage() {
                             padding: '9px 12px',
                             borderRadius: 'var(--radius)',
                             fontSize: 12.5,
-                            fontWeight: gExam === opt ? 700 : 500,
-                            color: gExam === opt ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            backgroundColor: gExam === opt ? 'var(--bg-subtle)' : 'transparent',
+                            fontWeight: gExamLabel === opt ? 700 : 500,
+                            color: gExamLabel === opt ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            backgroundColor: gExamLabel === opt ? 'var(--bg-subtle)' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -2879,7 +2883,7 @@ export function StudentPracticeExamPage() {
                           }}
                         >
                           <span>{opt}</span>
-                          {gExam === opt && <Check size={14} color="var(--accent-primary)" />}
+                          {gExamLabel === opt && <Check size={14} color="var(--accent-primary)" />}
                         </div>
                       ),
                     )}

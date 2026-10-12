@@ -28,7 +28,8 @@ import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode, listExams } from '../services/examService';
 import { useBreakpoint } from '../hooks/useBreakpoint';
-import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
+import { formatEnum, extractCanonicalExamName, sortExamLabels, defaultExamLabel } from '../utils/formatEnum';
+import { fetchActiveExamTypes } from '../services/examTypeService';
 import { availableQuestionYears } from '../utils/examYears';
 import { guardedFetch } from '../utils/apiGuard';
 import {
@@ -39,14 +40,7 @@ import {
 import { parseTaxonomyParam, formatTaxonomyParam, parseYearParam } from '../utils/taxonomyParam';
 
 
-const shortenExamName = (name: string) => {
-  if (!name) return name;
-  const n = name.toLowerCase();
-  if (n.includes('upsc') || n.includes('union public service')) return 'UPSC CSE';
-  if (n.includes('mpsc') || n.includes('maharashtra public service')) return 'MPSC';
-  if (n.includes('ssc') || n.includes('staff selection')) return 'SSC';
-  return name;
-};
+const shortenExamName = (name: string) => (name ? extractCanonicalExamName(name) : name);
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -74,7 +68,9 @@ export function GuestExamPage() {
   const [availableExams, setAvailableExams] = useState<string[]>([]);
 
   const selectedExamsList = useMemo(() => {
-    return parseTaxonomyParam(gExam, availableExams.length > 0 ? availableExams : []);
+    // Links may carry a legacy label ('UPSC CSE') or one from before a code rename, so match by label
+    const labels = Array.from(new Set(parseTaxonomyParam(gExam).map(extractCanonicalExamName)));
+    return availableExams.length > 0 ? labels.filter((l) => availableExams.includes(l)) : labels;
   }, [gExam, availableExams]);
 
   // Paper years plus question years inside mixed banks ("[MPSC Mains 2017]")
@@ -432,6 +428,7 @@ export function GuestExamPage() {
         const [yearsData, publishedExams] = await Promise.all([
           fetchExamsByYear().catch(() => null),
           listExams('PUBLISHED').catch(() => []),
+          fetchActiveExamTypes().catch(() => []),
         ]);
 
         if (yearsData) {
@@ -441,8 +438,7 @@ export function GuestExamPage() {
           const dynamicExams = publishedExams
             .map((e: any) => extractCanonicalExamName(e.name || e.title || e.exam_name || e.code))
             .filter(Boolean);
-          const names = Array.from(new Set(dynamicExams)) as string[];
-          names.sort((a, b) => (a === 'UPSC CSE' ? -1 : b === 'UPSC CSE' ? 1 : a.localeCompare(b)));
+          const names = sortExamLabels(dynamicExams as string[]);
           if (names.length > 0) setAvailableExams(names);
         }
       } catch (err) {
@@ -456,6 +452,7 @@ export function GuestExamPage() {
   useEffect(() => {
     async function loadTaxonomy() {
       try {
+        await fetchActiveExamTypes().catch(() => []);
         const examParam = gExam === 'All Exams' ? undefined : extractCanonicalExamName(gExam);
         const syllabusData = await fetchMasterSyllabus(undefined, examParam).catch(() => null);
         if (syllabusData) {
@@ -735,8 +732,8 @@ export function GuestExamPage() {
       const canonicalTarget = extractCanonicalExamName(gExam);
       if (availableExams.includes(canonicalTarget)) {
         initialToggles[canonicalTarget] = true;
-      } else if (availableExams.includes('UPSC CSE')) {
-        initialToggles['UPSC CSE'] = true;
+      } else if (availableExams.includes(defaultExamLabel())) {
+        initialToggles[defaultExamLabel()] = true;
       } else if (availableExams.length > 0) {
         initialToggles[availableExams[0]] = true;
       }

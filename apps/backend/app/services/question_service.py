@@ -259,6 +259,8 @@ class QuestionService:
             wave1[name] = res.all()
 
         exams_map = {e.id: e for e in wave1.get("exams", [])}
+        from app.services.exam_session_service import exam_type_code_label, load_exam_type_codes
+        type_codes = await load_exam_type_codes(self.session) if exams_map else set()
 
         qt_map: Dict[int, Dict[str, str]] = {}
         for qt in wave1.get("qt", []):
@@ -367,8 +369,10 @@ class QuestionService:
 
             exam_obj = exams_map.get(q.exam_id) if q.exam_id else None
             raw_exam_name = exam_obj.name if exam_obj else None
-            clean_exam_badge = "UPSC"
-            if raw_exam_name:
+            # Badge by the paper's exam type code, so a renamed code shows up here too
+            type_label = exam_type_code_label(raw_exam_name, type_codes)
+            clean_exam_badge = type_label or "UPSC"
+            if raw_exam_name and not type_label:
                 for known in ["MPPSC", "BPSC", "UPPCS", "MPSC", "SSC", "UPSC"]:
                     if known.lower() in raw_exam_name.lower():
                         clean_exam_badge = known
