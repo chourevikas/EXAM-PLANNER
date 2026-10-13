@@ -285,8 +285,14 @@ async def test_unreviewed_question_detail_and_solution_are_404_for_students(clie
 async def test_exam_review_and_artifact_endpoints_hide_unreviewed(client):
     eid = _state["exam_id"]
     uid = _state["unreviewed"]
-    anon = await client.get(f"/api/v1/exams/{eid}/review-questions?limit=50")
-    assert anon.status_code == 200 and uid not in _ids(anon.json())
+    # The whole-exam answer dump is staff-only (it would let anyone scrape every solution at once).
+    assert (await client.get(f"/api/v1/exams/{eid}/review-questions?limit=50")).status_code == 401
+    assert (await client.get(f"/api/v1/exams/{eid}/solutions?limit=50", headers=_h("student"))).status_code == 403
+    assert (await client.get(f"/api/v1/exams/{eid}/integrity-questions")).status_code == 401
+    assert (await client.get(f"/api/v1/exams/{eid}/integrity-questions", headers=_h("student"))).status_code == 403
+    qa = await client.get(f"/api/v1/exams/{eid}/review-questions?limit=50", headers=_h("admin_qa"))
+    assert qa.status_code == 200
+    assert (await client.get(f"/api/v1/exams/{eid}/review-questions", headers=_h("admin_testimonials"))).status_code == 403
     staff = await client.get(f"/api/v1/exams/{eid}/review-questions?limit=50", headers=_h("admin_open"))
     assert uid in _ids(staff.json())
     # question #3 is the unreviewed one

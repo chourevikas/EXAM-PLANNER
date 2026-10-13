@@ -187,11 +187,15 @@ async def test_super_admin_cannot_use_google_sign_in(env, monkeypatch):
     _, email, _ = await _seed(env, UserRole.SUPER_ADMIN, clerk_id="user_clerk_sa")
 
     async def fake_verify(_token):
-        return {"sub": "user_clerk_sa", "email": email}
+        return {"sub": "user_clerk_sa"}
+
+    async def fake_identity(_clerk_id):
+        return {"email": email, "full_name": None, "profile_image": None}
 
     import app.routers.auth as auth_router
 
     monkeypatch.setattr(auth_router, "verify_clerk_token", fake_verify)
+    monkeypatch.setattr(auth_router, "fetch_clerk_google_identity", fake_identity)
     async with _client() as client:
         res = await client.post("/api/v1/auth/clerk-exchange", json={"clerk_token": "x"})
     assert res.status_code == 403
@@ -290,11 +294,15 @@ async def test_google_sign_in_of_inactive_account_is_a_final_readable_refusal(en
         await session.commit()
 
     async def fake_verify(_token):
-        return {"sub": "user_clerk_gone", "email": email}
+        return {"sub": "user_clerk_gone"}
+
+    async def fake_identity(_clerk_id):
+        return {"email": email, "full_name": None, "profile_image": None}
 
     import app.routers.auth as auth_router
 
     monkeypatch.setattr(auth_router, "verify_clerk_token", fake_verify)
+    monkeypatch.setattr(auth_router, "fetch_clerk_google_identity", fake_identity)
     async with _client() as client:
         res = await client.post("/api/v1/auth/clerk-exchange", json={"clerk_token": "x"})
     # The frontend treats 403 as final (no retry loop) and shows this detail on the sign-in page.

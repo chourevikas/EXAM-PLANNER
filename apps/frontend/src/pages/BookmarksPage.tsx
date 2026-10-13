@@ -4,6 +4,8 @@ import { listBookmarks, removeBookmark, BookmarkItem } from '../services/bookmar
 import { formatEnum } from '../utils/formatEnum';
 import { Search, Bookmark, Trash2, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface BookmarkCardProps {
   bookmark: BookmarkItem;
@@ -185,8 +187,10 @@ const BookmarkCard = React.memo(function BookmarkCard({
           lineHeight: 1.6,
           wordBreak: 'break-word',
         }}
-        dangerouslySetInnerHTML={{ __html: bookmark.question_text }}
-      />
+      >
+        {/* Markdown like the exam screens; raw HTML in question text is not rendered (prevents script injection). */}
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{bookmark.question_text || ''}</ReactMarkdown>
+      </div>
     </div>
   );
 });

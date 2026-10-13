@@ -30,7 +30,13 @@ from app.schemas.auth import (
 import jwt
 from app.config.settings import settings
 from app.services.auth_service import AuthService
-from app.core.deps import get_current_user, require_roles, verify_clerk_token, get_or_create_user_from_clerk
+from app.core.deps import (
+    get_current_user,
+    require_roles,
+    verify_clerk_token,
+    fetch_clerk_google_identity,
+    get_or_create_user_from_clerk,
+)
 from app.cache import get_cache, build_cache_key
 from app.core import rate_limit, totp
 from app.services import audit_service
@@ -240,56 +246,13 @@ async def clerk_exchange(
     """
     payload = await verify_clerk_token(body.clerk_token)
     clerk_id = payload["sub"]
-    clerk_email = (
-        payload.get("email")
-        or payload.get("email_address")
-        or payload.get("primary_email_address")
-        or body.email
-    )
-    clerk_name = (
-        payload.get("name")
-        or payload.get("full_name")
-        or body.full_name
-    )
-    clerk_image = (
-        body.profile_image
-        or payload.get("picture")
-        or payload.get("image_url")
-    )
-
-    # Server-side fallback via Clerk REST API if email/name missing and CLERK_SECRET_KEY configured
-    if (not clerk_email or not clerk_name) and getattr(settings, "CLERK_SECRET_KEY", None):
-        try:
-            import httpx
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                c_res = await client.get(
-                    f"https://api.clerk.com/v1/users/{clerk_id}",
-                    headers={"Authorization": f"Bearer {settings.CLERK_SECRET_KEY}"},
-                )
-                if c_res.status_code == 200:
-                    c_data = c_res.json()
-                    first = c_data.get("first_name") or ""
-                    last = c_data.get("last_name") or ""
-                    c_full = f"{first} {last}".strip()
-                    if c_full and not clerk_name:
-                        clerk_name = c_full
-                    
-                    emails = c_data.get("email_addresses", [])
-                    primary_id = c_data.get("primary_email_address_id")
-                    for em in emails:
-                        if em.get("id") == primary_id:
-                            clerk_email = em.get("email_address")
-                            break
-                    if not clerk_email and emails:
-                        clerk_email = emails[0].get("email_address")
-                    
-                    if not clerk_image:
-                        clerk_image = c_data.get("image_url") or c_data.get("profile_image_url")
-        except Exception as e:
-            logger.warning(f"Could not fetch user details directly from Clerk API: {e}")
+    # Clerk is only used for Google sign-in. Email, name and photo come from Clerk's server-side
+    # record of the Google account; the email/full_name/profile_image in the request body are ignored,
+    # otherwise anyone could claim another student's email and be linked to their account.
+    identity = await fetch_clerk_google_identity(clerk_id)
 
     user = await get_or_create_user_from_clerk(
-        session, clerk_id, clerk_email, clerk_name, clerk_image
+        session, clerk_id, identity["email"], identity["full_name"], identity["profile_image"]
     )
 
     # Super Admins must use password + authenticator; a Google sign-in would bypass the second factor.

@@ -10,12 +10,12 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 import asyncio
 
 from app.db.session import get_async_session, async_session_factory
-from app.db.models.user import User
+from app.db.models.user import User, UserRole
 from app.db.models.study_plan import StudyTask, StudyActivity
 from app.db.models.enums import StudyActivityType, ActivitySource
 from app.db.models.analytics import ExamAttempt
 from app.db.models.gamification import Badge, UserBadge
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, require_roles
 from app.services.gamification_service import GamificationService
 from app.services.email_service import send_pending_tasks_summary_email
 from app.config.logger import setup_logger
@@ -1121,7 +1121,9 @@ async def send_pending_tasks_email(
 
 
 @router.post("/trigger-daily-digests")
-async def trigger_daily_digests_for_all_users():
+async def trigger_daily_digests_for_all_users(
+    _admin: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
     """Admin / Background Trigger: Scans all users and dispatches pending task email digests for tasks in the last 14 days up to today."""
     from app.services.daily_scheduler_service import run_daily_midnight_dispatch
     res = await run_daily_midnight_dispatch(force=True)
@@ -1129,7 +1131,9 @@ async def trigger_daily_digests_for_all_users():
 
 
 @router.post("/trigger-midnight-translation")
-async def trigger_midnight_translation():
+async def trigger_midnight_translation(
+    _admin: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
     """Admin Trigger: Runs the midnight batch translation job immediately (for testing/manual force-run).
     Translates all un-translated question stems + options into Hindi and Marathi.
     Cache deduplication is bypassed when called directly."""

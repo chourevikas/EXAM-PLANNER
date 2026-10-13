@@ -332,3 +332,7 @@ whitesource/
 # gcp-credentials.json
 
 temp_pdf_cache/
+
+# Local logs / one-off output
+server_logs.txt
+api_test_results.json

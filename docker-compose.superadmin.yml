@@ -8,4 +8,5 @@ services:
     container_name: examplanner_superadmin
     restart: unless-stopped
     ports:
-      - "3005:80"
+      # Loopback only; put the restricted Super Admin host (TLS + IP allowlist/VPN) in front of it.
+      - "127.0.0.1:3005:80"
