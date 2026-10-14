@@ -385,6 +385,9 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
     topic_map: Dict[Any, Topic] = {}
     subject_map: Dict[Any, Subject] = {}
 
+    def _is_english(lang: Any) -> bool:
+        return str(getattr(lang, "value", lang)).upper() in ("ENGLISH", "EN")
+
     async def _ensure_db_fallback_loaded():
         nonlocal db_loaded, q_map, opt_map, opts_by_qid, expl_map, meta_map, q_trans_map, opt_trans_map, subtopic_map, topic_map, subject_map
         if db_loaded:
@@ -413,19 +416,28 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
                     select(OptionTranslation).where(col(OptionTranslation.option_id).in_(all_opt_ids))
                 )
                 for ot in opt_trans_res.all():
-                    opt_trans_map[ot.option_id] = ot
+                    prev = opt_trans_map.get(ot.option_id)
+                    if prev is None or (_is_english(ot.language) and not _is_english(prev.language)):
+                        opt_trans_map[ot.option_id] = ot
 
             q_trans_res = await session.exec(
                 select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids))
             )
+            q_trans_lang: Dict[Any, Any] = {}
             for qt in q_trans_res.all():
-                q_trans_map[qt.question_id] = qt.question_text
+                if qt.question_id not in q_trans_map or (
+                    _is_english(qt.language) and not _is_english(q_trans_lang[qt.question_id])
+                ):
+                    q_trans_map[qt.question_id] = qt.question_text
+                    q_trans_lang[qt.question_id] = qt.language
 
             expl_res = await session.exec(
                 select(QuestionExplanation).where(col(QuestionExplanation.question_id).in_(q_ids))
             )
             for ex in expl_res.all():
-                expl_map[ex.question_id] = ex
+                prev_ex = expl_map.get(ex.question_id)
+                if prev_ex is None or (_is_english(ex.language) and not _is_english(prev_ex.language)):
+                    expl_map[ex.question_id] = ex
 
             meta_res = await session.exec(
                 select(QuestionMetadata).where(col(QuestionMetadata.question_id).in_(q_ids))
