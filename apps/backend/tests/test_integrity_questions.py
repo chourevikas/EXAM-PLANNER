@@ -41,6 +41,10 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
                 yield session
 
         app.dependency_overrides[get_async_session] = override_get_session
+        # The endpoint is staff-only; these tests exercise its diagnostics, not auth.
+        from app.routers.exams import view_exam_review
+        from app.db.models.user import User, UserRole
+        app.dependency_overrides[view_exam_review] = lambda: User(id=1, email="qa@test", role=UserRole.ADMIN)
 
     async def asyncTearDown(self):
         app.dependency_overrides.clear()

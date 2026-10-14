@@ -85,6 +85,10 @@ class Settings(BaseSettings):
     # Clerk Authentication
     CLERK_SECRET_KEY: Optional[str] = Field(default=None)
     CLERK_WEBHOOK_SECRET: Optional[str] = Field(default=None)
+    CLERK_AUTHORIZED_PARTIES: Optional[str] = Field(
+        default=None,
+        description="Comma-separated origins allowed in a Clerk token's `azp` claim, e.g. https://examplanner.in. Unset skips the check.",
+    )
 
     # RBAC / Teacher Review Rewards
     REVIEW_POINTS_PER_ACTION: int = Field(

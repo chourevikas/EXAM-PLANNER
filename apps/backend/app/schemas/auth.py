@@ -108,6 +108,7 @@ class RefreshTokenRequest(BaseModel):
 
 class ClerkExchangeRequest(BaseModel):
     clerk_token: str
+    # Accepted for compatibility with older clients but ignored: identity comes from Clerk's API.
     email: Optional[str] = None
     full_name: Optional[str] = None
     profile_image: Optional[str] = None

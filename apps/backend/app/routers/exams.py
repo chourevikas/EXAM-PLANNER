@@ -13,7 +13,7 @@ from app.core.languages import parse_language
 from app.core.deps import (
     require_roles,
     require_admin_section,
-    get_optional_user,
+    require_admin_section_or_permission,
     can_see_unpublished,
     require_exam_question_visible,
 )
@@ -31,6 +31,10 @@ from app.services.syllabus_service import SyllabusService
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/exams", tags=["Exams & Document Ingestion"])
+
+# Whole-exam answer dumps and integrity diagnostics are QA tools: staff only, so the answer bank
+# can't be scraped in one request. Students get solutions per question (/questions/{id}/solution).
+view_exam_review = require_admin_section_or_permission("admin.review", "questions.review")
 
 
 def _remove_temp_file(path_str: str):
@@ -141,10 +145,10 @@ async def get_exam_questions_for_review(
     target_question_number: Optional[int] = Query(default=None, description="Jump to specific question number in paper"),
     target_question_id: Optional[Union[str, int]] = Query(default=None, description="Jump to specific question ID"),
     session: AsyncSession = Depends(get_async_session),
-    viewer: Optional[User] = Depends(get_optional_user),
+    viewer: User = Depends(view_exam_review),
 ):
     """
-    Students and anonymous visitors only get PUBLISHED questions; staff can see every status.
+    Staff only. Reviewers with only the questions.review permission still see every status.
 
     Dedicated endpoint for user/admin review per question in an exam.
     Returns complete questions alongside full step-by-step solutions,
@@ -735,6 +739,7 @@ async def get_exam_integrity_questions(
     limit: int = Query(default=250, ge=1, le=500, description="Items per page"),
     force_refresh: bool = Query(default=False, description="Bypass cache and recalculate integrity diagnostics"),
     session: AsyncSession = Depends(get_async_session),
+    _reviewer: User = Depends(view_exam_review),
 ):
     """
     Inspects database integrity across all questions in an exam.

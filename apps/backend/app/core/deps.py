@@ -17,57 +17,127 @@ reusable_oauth2 = OAuth2PasswordBearer(
 )
 http_bearer = HTTPBearer(auto_error=False)
 
-# Cache PyJWKClient instances per issuer so Clerk's JWKS is fetched once and
-# reused (cache_jwk_set/cache_keys) instead of being re-fetched over the
-# network on every single request. Only used by verify_clerk_token, which
-# backs the one-time POST /auth/clerk-exchange handshake — Clerk tokens are
-# no longer accepted as ongoing bearer tokens by get_current_user.
-_jwks_clients: dict[str, jwt.PyJWKClient] = {}
+# Clerk is used only for "Sign in with Google". Its tokens are accepted solely by the one-time
+# POST /auth/clerk-exchange handshake; get_current_user never accepts them.
+#
+# The signing keys come from Clerk's Backend API, authenticated with our CLERK_SECRET_KEY, so only
+# tokens minted by OUR Clerk instance verify. (Never take the JWKS URL from the token's own `iss`
+# claim: an attacker can point it at keys they control.)
+CLERK_API_URL = "https://api.clerk.com/v1"
+_GOOGLE_PROVIDERS = ("oauth_google", "google")
+_jwks_client: Optional[jwt.PyJWKClient] = None
 
 
-def _get_jwks_client(issuer: str) -> jwt.PyJWKClient:
-    client = _jwks_clients.get(issuer)
-    if client is None:
-        jwks_url = f"{issuer}/.well-known/jwks.json"
-        client = jwt.PyJWKClient(jwks_url, cache_keys=True, lifespan=3600)
-        _jwks_clients[issuer] = client
-    return client
+def _clerk_secret_key() -> str:
+    secret = settings.CLERK_SECRET_KEY
+    if not secret:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured on the server.")
+    return secret
+
+
+def _get_jwks_client() -> jwt.PyJWKClient:
+    global _jwks_client
+    if _jwks_client is None:
+        _jwks_client = jwt.PyJWKClient(
+            f"{CLERK_API_URL}/jwks",
+            cache_keys=True,
+            lifespan=3600,
+            # Clerk's edge rejects urllib's default "Python-urllib" User-Agent with 403.
+            headers={"Authorization": f"Bearer {_clerk_secret_key()}", "User-Agent": "examplanner-api"},
+            timeout=10,
+        )
+    return _jwks_client
+
+
+def _clerk_authorized_parties() -> list[str]:
+    raw = settings.CLERK_AUTHORIZED_PARTIES or ""
+    return [p.strip().rstrip("/") for p in raw.split(",") if p.strip()]
 
 
 async def verify_clerk_token(token: str) -> dict:
-    """Verifies a Clerk-issued JWT via JWKS and returns its payload.
+    """Verifies a session JWT from our Clerk instance and returns its payload.
 
-    Used only by the POST /auth/clerk-exchange handshake (see routers/auth.py)
-    to mint our own session right after a Clerk OAuth login. Unlike the old
-    inline verification this replaced, a verification failure always raises
-    401 instead of silently falling back to trusting unverified claims.
+    Used only by the POST /auth/clerk-exchange handshake (see routers/auth.py).
+    Any verification failure raises 401; an unreachable Clerk API raises 503.
     """
+    _clerk_secret_key()
     try:
-        unverified_claims = jwt.decode(token, options={"verify_signature": False})
+        signing_key = await asyncio.to_thread(_get_jwks_client().get_signing_key_from_jwt, token)
+    except jwt.PyJWKClientConnectionError as e:
+        raise HTTPException(status_code=503, detail="Could not reach the sign-in provider.") from e
     except Exception as e:
-        raise HTTPException(status_code=401, detail="Malformed Clerk token") from e
-
-    issuer = unverified_claims.get("iss", "")
-    if not issuer:
-        raise HTTPException(status_code=401, detail="Clerk token missing issuer")
+        raise HTTPException(status_code=401, detail="Invalid Clerk token") from e
 
     try:
-        jwks_client = _get_jwks_client(issuer)
-        signing_key = await asyncio.to_thread(jwks_client.get_signing_key_from_jwt, token)
         payload = jwt.decode(
             token,
             signing_key.key,
             algorithms=["RS256"],
-            issuer=issuer,
+            options={"require": ["exp", "iat", "sub"]},
             # Clerk's default leeway is sometimes needed
             leeway=60,
         )
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid Clerk token") from e
 
-    if not payload.get("sub"):
-        raise HTTPException(status_code=401, detail="Clerk token missing subject")
+    allowed = _clerk_authorized_parties()
+    if allowed and str(payload.get("azp", "")).rstrip("/") not in allowed:
+        raise HTTPException(status_code=401, detail="Clerk token issued for another origin")
     return payload
+
+
+async def fetch_clerk_google_identity(clerk_id: str) -> dict:
+    """Looks the Clerk user up server-side and returns their Google-verified identity.
+
+    Clerk is only used for Google sign-in, so a Clerk user without a verified Google account is
+    refused. The email returned here is the only email ever trusted for linking accounts; nothing
+    the browser sends is used for that.
+    """
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.get(
+                f"{CLERK_API_URL}/users/{clerk_id}",
+                headers={"Authorization": f"Bearer {_clerk_secret_key()}"},
+            )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail="Could not reach the sign-in provider.") from e
+    if res.status_code == 404:
+        raise HTTPException(status_code=401, detail="Unknown Clerk user")
+    if res.status_code != 200:
+        raise HTTPException(status_code=503, detail="Could not reach the sign-in provider.")
+    data = res.json()
+
+    email = None
+    for acct in data.get("external_accounts") or []:
+        verification = acct.get("verification") or {}
+        if (
+            acct.get("provider") in _GOOGLE_PROVIDERS
+            and verification.get("status") == "verified"
+            and acct.get("email_address")
+        ):
+            email = acct["email_address"]
+            break
+    if not email:
+        # Older Clerk payloads mark the address itself as proven by Google.
+        for addr in data.get("email_addresses") or []:
+            verification = addr.get("verification") or {}
+            if verification.get("status") == "verified" and verification.get("strategy") == "from_oauth_google":
+                email = addr.get("email_address")
+                break
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please sign in with Google.",
+        )
+
+    full_name = f"{data.get('first_name') or ''} {data.get('last_name') or ''}".strip() or None
+    return {
+        "email": email.strip().lower(),
+        "full_name": full_name,
+        "profile_image": data.get("image_url") or data.get("profile_image_url"),
+    }
 
 
 async def get_or_create_user_from_clerk(

@@ -17,6 +17,26 @@ from app.db.models.study_plan import StudyActivity
 router = APIRouter(prefix="/analytics", tags=["Psychometric & Cognitive Analytics"])
 
 
+async def _owned_attempt_id(session: AsyncSession, current_user: User, attempt_id: int | str) -> int:
+    """Resolves an attempt id the caller may access: their own attempt, or any attempt for admins.
+
+    Attempt ids are sequential, so another user's attempt answers 404 (not 403) to avoid confirming it exists.
+    """
+    from app.db.models.analytics import ExamAttempt
+
+    not_found = HTTPException(status_code=404, detail="Attempt not found")
+    try:
+        aid_int = int(attempt_id)
+    except (ValueError, TypeError):
+        raise not_found
+    owner_id = (await session.exec(select(ExamAttempt.user_id).where(ExamAttempt.id == aid_int))).first()
+    if owner_id is None:
+        raise not_found
+    if owner_id != current_user.id and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        raise not_found
+    return aid_int
+
+
 @router.get("/reports/attempts/{attempt_id}/status", summary="Check Post-Submission Evaluation Status (Long-Polling)")
 async def get_attempt_evaluation_status(
     attempt_id: int | str,
@@ -27,10 +47,7 @@ async def get_attempt_evaluation_status(
     Long-polling status endpoint for post-submission psychometric pipeline evaluation.
     Guarantees zero proxy/deployment timeout errors by returning lightweight progress updates.
     """
-    try:
-        aid_int = int(attempt_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Attempt not found")
+    aid_int = await _owned_attempt_id(session, current_user, attempt_id)
     service = AnalyticsService(session)
     res = await service.get_attempt_evaluation_status(attempt_id=aid_int)
     return JSONResponse(
@@ -48,10 +65,7 @@ async def retry_attempt_evaluation(
     """
     Manually re-triggers the post-submission evaluation pipeline for a failed attempt.
     """
-    try:
-        aid_int = int(attempt_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Attempt not found")
+    aid_int = await _owned_attempt_id(session, current_user, attempt_id)
     service = AnalyticsService(session)
     res = await service.retry_attempt_evaluation(attempt_id=aid_int)
     return JSONResponse(content=jsonable_encoder(res))
@@ -69,10 +83,7 @@ async def get_attempt_question_report(
     Report 1: Detailed question cards with explanations, core concepts, step-by-step solutions,
     distractor traps, time window, and question-level scores with optional pagination.
     """
-    try:
-        aid_int = int(attempt_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Attempt not found")
+    aid_int = await _owned_attempt_id(session, current_user, attempt_id)
     service = AnalyticsService(session)
     res = await service.get_attempt_question_report(attempt_id=aid_int, page=page, page_size=page_size)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
@@ -87,10 +98,7 @@ async def get_attempt_exam_report(
     """
     Report 2: Comprehensive 12-matrix aggregated exam diagnostic summary, taxonomy mastery grid, and AI insights.
     """
-    try:
-        aid_int = int(attempt_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Attempt not found")
+    aid_int = await _owned_attempt_id(session, current_user, attempt_id)
     service = AnalyticsService(session)
     res = await service.get_attempt_exam_report(attempt_id=aid_int)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
@@ -106,10 +114,7 @@ async def get_attempt_user_progression_report(
     Report 3: Longitudinal user skill progression, tracking exact matrix score deltas (ICRS, IRT, GTI, OEEI, SATOI),
     taxonomy promotions, and spaced repetition review schedules.
     """
-    try:
-        aid_int = int(attempt_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Attempt not found")
+    aid_int = await _owned_attempt_id(session, current_user, attempt_id)
     service = AnalyticsService(session)
     res = await service.get_attempt_user_progression_report(attempt_id=aid_int)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
@@ -189,10 +194,7 @@ async def get_attempt_report_json(
     current_user: User = Depends(get_current_user),
 ):
     """Generates/fetches full psychometric report in JSON format directly by attempt_id."""
-    try:
-        aid_int = int(attempt_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Attempt not found")
+    aid_int = await _owned_attempt_id(session, current_user, attempt_id)
     service = AnalyticsService(session)
     return await service.get_psychometric_report_json(attempt_id=aid_int)
 
@@ -204,10 +206,7 @@ async def get_attempt_report_yaml(
     current_user: User = Depends(get_current_user),
 ):
     """Generates/fetches full psychometric report in YAML format directly by attempt_id."""
-    try:
-        aid_int = int(attempt_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Attempt not found")
+    aid_int = await _owned_attempt_id(session, current_user, attempt_id)
     service = AnalyticsService(session)
     return await service.get_psychometric_report_yaml(attempt_id=aid_int)
 
@@ -219,10 +218,7 @@ async def get_attempt_report_markdown(
     current_user: User = Depends(get_current_user),
 ):
     """Generates/fetches full psychometric report in Markdown format directly by attempt_id."""
-    try:
-        aid_int = int(attempt_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Attempt not found")
+    aid_int = await _owned_attempt_id(session, current_user, attempt_id)
     service = AnalyticsService(session)
     return await service.get_psychometric_report_markdown(attempt_id=aid_int)
 
