@@ -27,7 +27,6 @@ export interface ExamTypeCreatePayload {
 }
 
 export interface ExamTypeUpdatePayload {
-  type?: string;
   name?: string;
   total_duration?: number;
   number_of_questions?: number;

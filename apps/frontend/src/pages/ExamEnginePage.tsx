@@ -6,6 +6,7 @@ import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { QuestionSolutionData } from '../components/exam/QuestionSolutionMarkdownCard';
 import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { ExamFooterBar } from '../components/exam/ExamFooterBar';
+import { useLatestCallback } from '../hooks/useLatestCallback';
 import { ExamSubmitModal } from '../components/exam/ExamSubmitModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { useBreakpoint } from '../hooks/useBreakpoint';
@@ -41,6 +42,10 @@ import {
   BatchSaveItem,
   ConfidenceLevel,
 } from '../types/exam';
+
+// The timer ticks every second; memoizing the (heavy) question card keeps those ticks from
+// re-rendering it, which otherwise makes scrolling a question stutter on phones.
+const MemoExamQuestionCard = React.memo(ExamQuestionCard);
 
 export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const { examId, attemptId: paramAttemptId } = useParams();
@@ -1302,6 +1307,13 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     return result;
   }, [allQuestions, totalQuestions]);
 
+  // Stable handler identities so MemoExamQuestionCard only re-renders when its data changes
+  const onCardSelectOption = useLatestCallback(handleSelectOption);
+  const onCardToggleBookmark = useLatestCallback(handleToggleBookmark);
+  const onCardRevealAnswer = useLatestCallback(handleRevealAnswer);
+  const onCardShowSolution = useLatestCallback(() => handleShowSolution());
+  const onCardToggleSidebar = useLatestCallback(() => setIsSidebarOpen((prev) => !prev));
+
   if (isLoadingSession) {
     return (
       <ExamLoaderOverlay
@@ -1436,7 +1448,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       <div
         style={{
           marginTop: isTabletOrBelow ? 116 : 76,
-          marginBottom: isTabletOrBelow ? (isSmallScreen ? 120 : 76) : 80,
+          marginBottom: isTabletOrBelow ? (isSmallScreen ? 136 : 84) : 80,
           display: 'flex',
           flexDirection: isTabletOrBelow ? 'column' : 'row',
           height: isTabletOrBelow ? 'auto' : 'calc(100vh - 156px)',
@@ -1455,7 +1467,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>Loading question #{currentQIndex + 1}...</span>
               </div>
             ) : activeQuestion ? (
-              <ExamQuestionCard
+              <MemoExamQuestionCard
                 reportable
                 question={activeQuestion}
                 questionIndex={currentQIndex}
@@ -1468,11 +1480,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 revealResult={activeQuestion ? revealResults[activeQuestion.question_id] : null}
                 solutionData={activeQuestion ? solutionDataMap[activeQuestion.question_id] || solutionDataMap[String(activeQuestion.question_id)] || null : null}
                 isRevealing={isRevealing}
-                onSelectOption={handleSelectOption}
-                onToggleBookmark={handleToggleBookmark}
-                onRevealAnswer={isPYQ ? undefined : handleRevealAnswer}
-                onShowSolution={() => handleShowSolution()}
-                onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+                onSelectOption={onCardSelectOption}
+                onToggleBookmark={onCardToggleBookmark}
+                onRevealAnswer={isPYQ ? undefined : onCardRevealAnswer}
+                onShowSolution={onCardShowSolution}
+                onToggleSidebar={onCardToggleSidebar}
                 isPYQ={isPYQ}
               />
             ) : null}

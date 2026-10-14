@@ -48,6 +48,11 @@ export function ExamHeader({
   const rootBreadcrumb = parentBreadcrumb || (isAuth ? 'Dashboard' : 'Home');
   const { isMobile, isTabletOrBelow } = useBreakpoint();
 
+  // One height for every header control so the select, icon buttons and Submit line up
+  // (the touch-target class would otherwise stretch only the buttons to 44px).
+  const controlSize = isTabletOrBelow ? 36 : 34;
+  const controlBox = { height: controlSize, minHeight: controlSize, boxSizing: 'border-box' as const };
+
   const isCriticalTime = timeLeft < 120; // < 2 mins
   const isLowTime = timeLeft < 600; // < 10 mins
 
@@ -183,6 +188,8 @@ export function ExamHeader({
             backdropFilter: 'blur(4px)',
             WebkitBackdropFilter: 'blur(4px)',
             padding: '4px 10px',
+            // Phones: the timer is in normal flow; auto margins centre it between logo and controls
+            ...(isTabletOrBelow && { margin: '0 auto', flexShrink: 0 }),
           }}
         >
           <Clock size={14} color={timerColor} />
@@ -223,7 +230,7 @@ export function ExamHeader({
           display: 'flex',
           alignItems: 'center',
           gap: 'clamp(6px, 1.2vw, 10px)',
-          flex: 1,
+          flex: isTabletOrBelow ? '0 0 auto' : 1,
           justifyContent: 'flex-end',
           minWidth: 0,
         }}
@@ -236,7 +243,9 @@ export function ExamHeader({
             gap: 5,
             backgroundColor: 'rgba(255, 255, 255, 0.08)',
             border: '1px solid rgba(255, 255, 255, 0.22)',
-            padding: '4px 8px',
+            borderRadius: 'var(--radius)',
+            padding: '0 8px',
+            ...controlBox,
             color: 'var(--bg-card)',
             flexShrink: 0,
             transition: 'border-color 0.2s ease',
@@ -256,7 +265,7 @@ export function ExamHeader({
               outline: 'none',
               cursor: 'pointer',
               fontFamily: "'IBM Plex Sans', sans-serif",
-              maxWidth: isMobile ? 72 : 130,
+              maxWidth: isMobile ? 84 : 130,
             }}
             aria-label="Select exam language"
           >
@@ -266,7 +275,8 @@ export function ExamHeader({
                 value={lang.code}
                 style={{ background: 'var(--deep-navy)', color: '#FFFFFF' }}
               >
-                {lang.nativeName} ({lang.name})
+                {/* Phones only have room for the short native name */}
+                {isMobile ? lang.nativeName : `${lang.nativeName} (${lang.name})`}
               </option>
             ))}
           </select>
@@ -280,8 +290,9 @@ export function ExamHeader({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 32,
-              height: 32,
+              width: controlSize,
+              minWidth: controlSize,
+              ...controlBox,
               borderRadius: 'var(--radius)',
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
@@ -306,8 +317,9 @@ export function ExamHeader({
               alignItems: 'center',
               justifyContent: 'center',
               gap: 3,
-              width: recsCount ? 'auto' : 32,
-              height: 32,
+              width: recsCount ? 'auto' : controlSize,
+              minWidth: controlSize,
+              ...controlBox,
               padding: recsCount ? '0 8px' : 0,
               borderRadius: 'var(--radius)',
               border: '1px solid rgba(255, 255, 255, 0.25)',
@@ -334,8 +346,11 @@ export function ExamHeader({
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 6,
-              padding: '6px 10px',
+              padding: '0 10px',
+              minWidth: controlSize,
+              ...controlBox,
               borderRadius: 'var(--radius)',
               border: `1px solid ${focusMode ? 'rgba(var(--primary-red-rgb), 0.5)' : 'rgba(255, 255, 255, 0.25)'}`,
               backgroundColor: focusMode ? 'rgba(var(--primary-red-rgb), 0.18)' : 'rgba(255, 255, 255, 0.09)',
@@ -359,7 +374,8 @@ export function ExamHeader({
             disabled={isSubmitting}
             className="touch-target"
             style={{
-              padding: isMobile ? '6px 10px' : '6px 14px',
+              padding: isMobile ? '0 12px' : '0 14px',
+              ...controlBox,
               flexShrink: 0,
               borderRadius: 'var(--radius)',
               border: '1px solid rgba(255, 255, 255, 0.25)',

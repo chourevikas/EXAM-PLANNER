@@ -793,10 +793,14 @@ body {
 
 /* ── 19. Exam Footer Responsive ── */
 .exam-footer-bar.has-confidence-row {
-  height: calc(var(--footer-height) + 44px);
+  /* Two stacked rows: size to content with breathing room above the first row */
+  height: auto;
+  min-height: calc(var(--footer-height) + 44px);
   flex-wrap: wrap;
   align-content: center;
-  row-gap: 6px;
+  row-gap: 8px;
+  padding-top: 10px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
 }
 
 .exam-footer-confidence-row {
