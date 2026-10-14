@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   SlidersHorizontal,
@@ -347,7 +347,9 @@ export function StudentPracticeExamPage() {
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(gCount);
-  const [timeLeft, setTimeLeft] = useState(600); // Exactly 10 mins (600s)
+  // Exactly 10 mins (600s). Not shown on screen, so it lives in a ref: ticking it as state
+  // re-rendered the whole page (and re-wrote sessionStorage) every second, making scrolling stutter.
+  const timeLeftRef = useRef(600);
   const [language, setLanguage] = useState<string>(() => {
     try {
       const userRaw = localStorage.getItem('user');
@@ -874,11 +876,27 @@ export function StudentPracticeExamPage() {
   const [showMobileFilterPanel, setShowMobileFilterPanel] = useState(false);
 
   const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
+  const sessionKeyRef = useRef(SESSION_KEY);
+  sessionKeyRef.current = SESSION_KEY;
 
   // Timer countdown
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+      timeLeftRef.current = Math.max(0, timeLeftRef.current - 1);
+      // Keep the saved session's clock roughly current without a re-render
+      if (timeLeftRef.current % 10 === 0) {
+        try {
+          const raw = sessionStorage.getItem(sessionKeyRef.current);
+          if (raw) {
+            sessionStorage.setItem(
+              sessionKeyRef.current,
+              JSON.stringify({ ...JSON.parse(raw), timeLeft: timeLeftRef.current }),
+            );
+          }
+        } catch {
+          /* storage unavailable */
+        }
+      }
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -1177,7 +1195,7 @@ export function StudentPracticeExamPage() {
             }
             if (savedData.bookmarkedQs) setBookmarkedQs(savedData.bookmarkedQs);
             if (typeof savedData.timeLeft === 'number' && savedData.timeLeft > 0) {
-              setTimeLeft(savedData.timeLeft);
+              timeLeftRef.current = savedData.timeLeft;
             }
             if (
               typeof savedData.currentQIndex === 'number' &&
@@ -1243,7 +1261,7 @@ export function StudentPracticeExamPage() {
         markedForReview,
         bookmarkedQs,
         currentQIndex,
-        timeLeft,
+        timeLeft: timeLeftRef.current,
       };
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
     } catch (err) {
@@ -1255,7 +1273,6 @@ export function StudentPracticeExamPage() {
     markedForReview,
     bookmarkedQs,
     currentQIndex,
-    timeLeft,
     isLoading,
     allQuestions,
   ]);
@@ -1531,7 +1548,7 @@ export function StudentPracticeExamPage() {
       subtopicName: '',
       targetExam: gExam,
       targetYear: gYear,
-      timeSpentSeconds: Math.max(30, 600 - timeLeft),
+      timeSpentSeconds: Math.max(30, 600 - timeLeftRef.current),
       responses: responsesPayload,
     };
 
@@ -1740,7 +1757,7 @@ export function StudentPracticeExamPage() {
       <ExamHeader
         examTitle={cleanExamTitle(gExam)}
         paperSubtitle={`${cleanExamTitle(gExam)} · ${gYear || (yearOptions[0] || 'All Years')}${gSubject ? ' · ' + gSubject : ''}`}
-        timeLeft={timeLeft}
+        timeLeft={timeLeftRef.current}
         language={language}
         showSubmitButton={true}
         showTimer={false}

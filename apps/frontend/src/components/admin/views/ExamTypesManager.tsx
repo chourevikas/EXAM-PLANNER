@@ -124,7 +124,9 @@ export function ExamTypesManager() {
     setModalSubmitting(true);
     try {
       if (editingExamType) {
-        await adminUpdateExamType(editingExamType.id, formData);
+        // The code is fixed after creation; send everything else.
+        const { type: _code, ...updatePayload } = formData;
+        await adminUpdateExamType(editingExamType.id, updatePayload);
         showToast('success', `Exam type '${formData.name}' updated successfully!`);
       } else {
         await adminCreateExamType(formData);
@@ -630,6 +632,8 @@ export function ExamTypesManager() {
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value.toLowerCase().trim() })}
                     required
+                    readOnly={!!editingExamType}
+                    title={editingExamType ? 'The type code cannot be changed after creation.' : undefined}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -639,8 +643,18 @@ export function ExamTypesManager() {
                       outline: 'none',
                       fontFamily: 'monospace',
                       boxSizing: 'border-box',
+                      ...(editingExamType && {
+                        backgroundColor: 'var(--bg-secondary)',
+                        color: 'var(--text-muted)',
+                        cursor: 'not-allowed',
+                      }),
                     }}
                   />
+                  {editingExamType && (
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                      Code is fixed after creation.
+                    </div>
+                  )}
                 </div>
 
                 <div>

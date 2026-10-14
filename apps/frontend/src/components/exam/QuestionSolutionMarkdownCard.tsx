@@ -102,6 +102,38 @@ function extractOptionAnalysisFromText(text: string, label: string): string | nu
   return null;
 }
 
+// A block that markdown must keep separate: heading, list item, table, quote, code fence or rule.
+const STRUCTURAL_BLOCK = /^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|\||>|```|---|\*\*\*)/;
+
+/**
+ * Re-joins sentences that the source text (often PDF extraction) split with blank lines, e.g.
+ * "…wrote Mahaviracharita,\n\nMalatimadhava and\n\nUttararamacharita." — markdown would
+ * otherwise render every fragment as its own paragraph. A block is merged into the previous one
+ * only when the previous one does not end a sentence and neither is structural markdown.
+ */
+function reflowBrokenParagraphs(md: string): string {
+  if (!md) return md;
+  const blocks = md.split(/\n[ \t]*\n+/);
+  const out: string[] = [];
+  for (const block of blocks) {
+    const prev = out[out.length - 1];
+    const prevLastLine = prev?.split('\n').pop() ?? '';
+    const endsSentence = /[.!?:;]["'”’)\]*_]*\s*$/.test(prevLastLine);
+    if (
+      prev !== undefined &&
+      !endsSentence &&
+      !STRUCTURAL_BLOCK.test(prevLastLine) &&
+      !STRUCTURAL_BLOCK.test(block) &&
+      block.trim()
+    ) {
+      out[out.length - 1] = `${prev.trimEnd()} ${block.trimStart()}`;
+    } else {
+      out.push(block);
+    }
+  }
+  return out.join('\n\n');
+}
+
 export function QuestionSolutionMarkdownCard({
   isUserCorrect,
   selectedOptionLabel,
@@ -136,11 +168,11 @@ export function QuestionSolutionMarkdownCard({
   const difficulty = solution.difficulty || 'MEDIUM';
 
   const explObj = typeof solution.explanation === 'object' && solution.explanation !== null ? solution.explanation : null;
-  const detailedMarkdown =
+  const detailedMarkdown = reflowBrokenParagraphs(
     explObj?.detailed_solution ||
     explObj?.detailed_text ||
     explObj?.text ||
-    (typeof solution.explanation === 'string' ? solution.explanation : 'Detailed explanation is available.');
+    (typeof solution.explanation === 'string' ? solution.explanation : 'Detailed explanation is available.'));
 
   // Extract all takeaways and points to remember safely
   const keyTakeaways: string[] = Array.isArray(explObj?.key_takeaways)
@@ -154,7 +186,7 @@ export function QuestionSolutionMarkdownCard({
   // Combined option-by-option reasoning, written by the admin as one block.
   // Falls back to the per-option distractor list below only when a question
   // hasn't been re-saved through the new Reverse Logic Box yet.
-  const reverseLogic = (explObj?.reverse_logic || '').trim();
+  const reverseLogic = reflowBrokenParagraphs((explObj?.reverse_logic || '').trim());
 
   // Extract common traps
   const commonTraps: string[] = Array.isArray(explObj?.common_traps)
@@ -209,19 +241,18 @@ export function QuestionSolutionMarkdownCard({
       }
     }
 
-    // Contextual fallback if still empty — use actual option text to make it meaningful
+    // Leading tick/cross marks, bullets and dashes duplicate the row's own icon and badge
+    analysis = String(analysis).replace(/^[\s✓✔✗✘×•·*\-–—:]+/, '').trim();
+
+    // Fallback if still empty. The option text is already in the row header, so don't repeat it.
     if (!analysis) {
       if (isOptionCorrect) {
         analysis = explObj?.core_concept
-          ? `✓ This is the correct answer. ${explObj.core_concept}`
-          : optText
-          ? `✓ "${optText}" — This is the correct answer.`
-          : `✓ This option is correct.`;
+          ? `This is the correct answer. ${explObj.core_concept}`
+          : 'This is the correct answer.';
       } else {
         const trapHint = commonTraps.length > 0 ? ` Common trap: ${commonTraps[0]}` : '';
-        analysis = optText
-          ? `✗ "${optText}" — This option is incorrect.${trapHint}`
-          : `✗ This option is incorrect.${trapHint}`;
+        analysis = `This option is incorrect.${trapHint}`;
       }
     }
 
@@ -475,62 +506,65 @@ export function QuestionSolutionMarkdownCard({
                         borderTop: idx === 0 ? 'none' : '1px solid #F1F5F9',
                       }}
                     >
+                      {/* Letter chip + option text on the left (wraps freely), badge on the right;
+                          the badge drops to its own line when the row is too narrow. */}
                       <div
                         style={{
                           display: 'flex',
-                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          alignItems: 'flex-start',
                           justifyContent: 'space-between',
-                          marginBottom: 4,
-                          gap: 8,
+                          marginBottom: 6,
+                          gap: '6px 10px',
                         }}
                       >
-                        <span
-                          style={{
-                            fontSize: 13.5,
-                            fontWeight: 700,
-                            color: isOptionCorrect ? 'var(--status-success)' : 'var(--text-secondary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          {isOptionCorrect ? (
-                            <CheckCircle2 size={16} style={{ color: 'var(--status-success)' }} />
-                          ) : (
-                            <span
-                              style={{
-                                width: 20,
-                                height: 20,
-                                borderRadius: 'var(--radius)',
-                                backgroundColor: 'var(--border-color)',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: 11,
-                                fontWeight: 700,
-                                color: 'var(--text-secondary)',
-                              }}
-                            >
-                              {item.label || String.fromCharCode(65 + idx)}
-                            </span>
-                          )}
-                          Option ({item.label || String.fromCharCode(65 + idx)})
-                          {item.text && (
-                            <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>
-                              — {item.text}
-                            </span>
-                          )}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flex: '1 1 180px', minWidth: 0 }}>
+                          <span
+                            style={{
+                              width: 22,
+                              height: 22,
+                              flexShrink: 0,
+                              borderRadius: 'var(--radius)',
+                              backgroundColor: isOptionCorrect ? 'var(--status-success-bg)' : 'var(--border-color)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              color: isOptionCorrect ? 'var(--status-success)' : 'var(--text-secondary)',
+                            }}
+                          >
+                            {isOptionCorrect ? (
+                              <CheckCircle2 size={15} style={{ color: 'var(--status-success)' }} />
+                            ) : (
+                              item.label || String.fromCharCode(65 + idx)
+                            )}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 13.5,
+                              fontWeight: 700,
+                              lineHeight: '22px',
+                              color: isOptionCorrect ? 'var(--status-success)' : 'var(--text-primary, var(--deep-navy))',
+                              minWidth: 0,
+                              overflowWrap: 'anywhere',
+                            }}
+                          >
+                            {item.text || `Option ${item.label || String.fromCharCode(65 + idx)}`}
+                          </span>
+                        </div>
 
                         <span
                           style={{
                             fontSize: 11,
                             fontWeight: 700,
-                            padding: '2px 8px',
+                            lineHeight: 1.3,
+                            padding: '3px 8px',
                             borderRadius: 'var(--radius)',
                             backgroundColor: isOptionCorrect ? 'var(--status-success-bg)' : 'var(--bg-hover)',
                             color: isOptionCorrect ? '#15803D' : 'var(--text-muted)',
-                            flexShrink: 0,
+                            maxWidth: '100%',
+                            marginLeft: 30,
                           }}
                         >
                           {isOptionCorrect
@@ -540,14 +574,12 @@ export function QuestionSolutionMarkdownCard({
                       </div>
 
                       {item.distractor_analysis ? (
-                        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        <p style={{ margin: '0 0 0 30px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, overflowWrap: 'anywhere' }}>
                           {item.distractor_analysis}
                         </p>
                       ) : (
-                        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          {isOptionCorrect
-                            ? item.text ? `✓ "${item.text}" — This is the correct answer.` : '✓ This option is correct.'
-                            : item.text ? `✗ "${item.text}" — This option is incorrect.` : '✗ This option is incorrect.'}
+                        <p style={{ margin: '0 0 0 30px', fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          {isOptionCorrect ? 'This is the correct answer.' : 'This option is incorrect.'}
                         </p>
                       )}
                     </div>

@@ -1038,8 +1038,8 @@ export function ExamQuestionCard({
             {(onPrev || onNext || mode !== 'EXAM' || onConfidenceChange) && (
               <div
                 style={{
-                  marginTop: 14,
-                  paddingTop: 12,
+                  marginTop: isMobile ? 16 : 14,
+                  paddingTop: isMobile ? 14 : 12,
                   borderTop: '1px solid #F1F5F9',
                   display: 'flex',
                   flexWrap: 'wrap',
@@ -1054,7 +1054,8 @@ export function ExamQuestionCard({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 12,
+                    gap: isMobile ? 8 : 12,
+                    order: isMobile ? 1 : undefined,
                   }}
                 >
                   {/* Previous Question Button */}
@@ -1066,8 +1067,10 @@ export function ExamQuestionCard({
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
                         gap: 5,
-                        padding: '7px 14px',
+                        padding: isMobile ? '0 12px' : '7px 14px',
+                        ...(isMobile && { minHeight: 44, minWidth: 44, boxSizing: 'border-box' as const }),
                         borderRadius: 3,
                         border: '1px solid #CBD5E1',
                         backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
@@ -1081,7 +1084,7 @@ export function ExamQuestionCard({
                       }}
                     >
                       <ChevronLeft size={15} />
-                      <span>Prev</span>
+                      {!isMobile && <span>Prev</span>}
                     </button>
                   )}
 
@@ -1094,8 +1097,10 @@ export function ExamQuestionCard({
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
                         gap: 5,
-                        padding: '7px 14px',
+                        padding: isMobile ? '0 14px' : '7px 14px',
+                        ...(isMobile && { minHeight: 44, boxSizing: 'border-box' as const }),
                         borderRadius: 3,
                         border: '1px solid #CBD5E1',
                         backgroundColor:
@@ -1117,16 +1122,26 @@ export function ExamQuestionCard({
 
                 {/* Middle: confidence, locked once the answer is revealed */}
                 {onConfidenceChange && (
-                  <ConfidenceSelector
-                    value={confidence}
-                    onChange={onConfidenceChange}
-                    disabled={!selectedOptionId || Boolean(revealResult)}
-                    compact={isMobile}
-                  />
+                  /* Phones: own centred row above the navigation */
+                  <div style={isMobile ? { width: '100%', display: 'flex', justifyContent: 'center' } : { display: 'contents' }}>
+                    <ConfidenceSelector
+                      value={confidence}
+                      onChange={onConfidenceChange}
+                      disabled={!selectedOptionId || Boolean(revealResult)}
+                      compact={isMobile}
+                    />
+                  </div>
                 )}
 
-                {/* Right: Single Action Button */}
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                {/* Right: Single Action Button (fills the rest of the row on phones) */}
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    justifyContent: 'flex-end',
+                    ...(isMobile && { order: 2, flex: 1, minWidth: 0 }),
+                  }}
+                >
                   {mode !== 'EXAM' && (
                     <>
                       {!revealResult ? (
@@ -1141,7 +1156,8 @@ export function ExamQuestionCard({
                           }}
                           disabled={!selectedOptionId || isRevealing}
                           style={{
-                            padding: '8px 20px',
+                            padding: isMobile ? '0 12px' : '8px 20px',
+                            ...(isMobile && { minHeight: 44, flex: 1, justifyContent: 'center', boxSizing: 'border-box' as const, whiteSpace: 'nowrap' as const }),
                             borderRadius: 3,
                             border: !selectedOptionId ? '1px solid #CBD5E1' : '1px solid var(--primary-red)',
                             backgroundColor: !selectedOptionId ? '#E2E8F0' : 'var(--primary-red)',
@@ -1189,7 +1205,8 @@ export function ExamQuestionCard({
                             }
                           }}
                           style={{
-                            padding: '8px 18px',
+                            padding: isMobile ? '0 12px' : '8px 18px',
+                            ...(isMobile && { minHeight: 44, flex: 1, justifyContent: 'center', boxSizing: 'border-box' as const, whiteSpace: 'nowrap' as const }),
                             borderRadius: 3,
                             border: showDetailedSolution
                               ? '1px solid var(--primary-red)'

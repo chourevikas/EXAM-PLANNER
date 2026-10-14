@@ -38,7 +38,20 @@ export function HeroSection({}: HeroSectionProps) {
   const [examTypeOptions, setExamTypeOptions] = useState<ExamType[]>([]);
   useEffect(() => {
     fetchActiveExamTypes()
-      .then((types) => setExamTypeOptions(types.filter((t) => t.is_active)))
+      .then((types) => {
+        // Several types can share a display label (e.g. two UPSC types both shorten to
+        // "UPSC CSE"); offer each label once.
+        const seen = new Set<string>();
+        setExamTypeOptions(
+          types.filter((t) => {
+            if (!t.is_active) return false;
+            const label = shortenExamName(t.name).trim().toLowerCase();
+            if (seen.has(label)) return false;
+            seen.add(label);
+            return true;
+          }),
+        );
+      })
       .catch(() => setExamTypeOptions([]));
   }, []);
 

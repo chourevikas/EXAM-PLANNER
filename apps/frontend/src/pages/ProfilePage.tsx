@@ -217,8 +217,8 @@ export function ProfilePage() {
           borderRadius: 'var(--radius)',
           border: '1px solid var(--border-default, #e2e8f0)',
           boxShadow: 'var(--shadow-color-base, 0 4px 20px rgba(0,0,0,0.04))',
-          padding: 32,
-          marginBottom: 28,
+          padding: isMobile ? 20 : 32,
+          marginBottom: isMobile ? 20 : 28,
           backgroundImage: 'linear-gradient(135deg, rgba(var(--primary-red-rgb), 0.06) 0%, rgba(91,92,235,0.04) 100%)',
           display: 'flex',
           flexWrap: 'wrap',
@@ -227,11 +227,11 @@ export function ProfilePage() {
           gap: 24
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 14 : 20, minWidth: 0, flex: isMobile ? '1 1 100%' : undefined }}>
           {/* Avatar Display */}
           <UserAvatar
             userOrImage={clerkUser?.imageUrl || profileImage || user}
-            size={84}
+            size={isMobile ? 56 : 84}
             fullName={fullName}
             style={{
               borderRadius: 'var(--radius)',
@@ -241,9 +241,9 @@ export function ProfilePage() {
           />
 
           {/* User Details */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #172033)', margin: 0, letterSpacing: '-0.02em' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: isMobile ? 6 : 10, marginBottom: 4 }}>
+              <h1 style={{ fontSize: isMobile ? 19 : 24, fontWeight: 800, color: 'var(--text-primary, #172033)', margin: 0, letterSpacing: '-0.02em', lineHeight: 1.25, overflowWrap: 'anywhere' }}>
                 {fullName}
               </h1>
               {isSuperAdmin ? (
@@ -306,7 +306,8 @@ export function ProfilePage() {
                     borderRadius: 'var(--radius)',
                     backgroundColor: 'var(--bg-subtle, #f8fafc)',
                     color: 'var(--text-muted, #64748b)',
-                    border: '1px solid var(--border-default, #e2e8f0)'
+                    border: '1px solid var(--border-default, #e2e8f0)',
+                    whiteSpace: 'nowrap'
                   }}
                 >
                   Free Account
@@ -314,7 +315,7 @@ export function ProfilePage() {
               )}
             </div>
 
-            <div style={{ fontSize: 14, color: 'var(--text-muted, #64748b)', marginBottom: 12 }}>
+            <div style={{ fontSize: isMobile ? 13 : 14, color: 'var(--text-muted, #64748b)', marginBottom: 12, overflowWrap: 'anywhere' }}>
               {clerkUser?.primaryEmailAddress?.emailAddress || user.email || 'superadmin@examplanner.com'}
               {!(isSuperAdmin || isAdmin) && (
                 targetExam && (
@@ -327,7 +328,7 @@ export function ProfilePage() {
             </div>
 
             {/* Quick Badges */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 6 : 10 }}>
               {isSuperAdmin ? (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 'var(--radius)', backgroundColor: 'rgba(249, 115, 22, 0.1)', color: '#ea580c', border: '1px solid rgba(249, 115, 22, 0.25)' }}>
@@ -373,7 +374,10 @@ export function ProfilePage() {
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 8,
+              width: isMobile ? '100%' : undefined,
+              boxSizing: 'border-box',
               padding: '12px 20px',
               backgroundColor: 'var(--primary-red)',
               color: 'var(--bg-card)',
@@ -395,10 +399,13 @@ export function ProfilePage() {
       <div
         style={{
           display: 'flex',
-          gap: 8,
-          marginBottom: 24,
+          gap: isMobile ? 4 : 8,
+          marginBottom: isMobile ? 16 : 24,
           borderBottom: '1px solid var(--border-default, #e2e8f0)',
-          paddingBottom: 4
+          paddingBottom: 4,
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none'
         }}
       >
         {availableTabs.map((tab) => {
@@ -412,13 +419,15 @@ export function ProfilePage() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '10px 18px',
+                gap: isMobile ? 6 : 8,
+                padding: isMobile ? '9px 12px' : '10px 18px',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
                 borderRadius: 'var(--radius)',
                 border: 'none',
                 backgroundColor: isActive ? 'var(--accent-bg, rgba(var(--primary-red-rgb), 0.1))' : 'transparent',
                 color: isActive ? 'var(--accent-primary, var(--primary-red))' : 'var(--text-muted, #64748b)',
-                fontSize: 14,
+                fontSize: isMobile ? 13 : 14,
                 fontWeight: isActive ? 700 : 500,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
@@ -443,7 +452,7 @@ export function ProfilePage() {
             <div
               style={{
                 backgroundColor: 'var(--bg-card)',
-                padding: 24,
+                padding: isMobile ? 16 : 24,
                 borderRadius: 'var(--radius)',
                 border: '1px solid var(--border-default)',
                 boxShadow: 'var(--shadow-color-base)'
@@ -482,13 +491,13 @@ export function ProfilePage() {
             <div
               style={{
                 backgroundColor: 'var(--bg-card)',
-                padding: 24,
+                padding: isMobile ? 16 : 24,
                 borderRadius: 'var(--radius)',
                 border: '1px solid var(--border-default)',
                 boxShadow: 'var(--shadow-color-base)',
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 20
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: isMobile ? 16 : 20
               }}
             >
               <div>
@@ -617,7 +626,7 @@ export function ProfilePage() {
                 </p>
               </div>
 
-              <div style={{ gridColumn: 'span 2' }}>
+              <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
                   Personal Goal / Aspirant Motto
                 </label>
@@ -635,7 +644,8 @@ export function ProfilePage() {
                     fontSize: 14,
                     outline: 'none',
                     boxSizing: 'border-box',
-                    resize: 'vertical'
+                    resize: 'vertical',
+                    fontFamily: 'inherit'
                   }}
                 />
               </div>
@@ -649,13 +659,13 @@ export function ProfilePage() {
           <div
             style={{
               backgroundColor: 'var(--bg-card)',
-              padding: 24,
+              padding: isMobile ? 16 : 24,
               borderRadius: 'var(--radius)',
               border: '1px solid var(--border-default)',
               boxShadow: 'var(--shadow-color-base)',
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 20
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              gap: isMobile ? 16 : 20
             }}
           >
             <div>
@@ -809,11 +819,13 @@ export function ProfilePage() {
             <div
               style={{
                 backgroundColor: 'var(--bg-card)',
-                padding: 24,
+                padding: isMobile ? 16 : 24,
                 borderRadius: 'var(--radius)',
                 border: isPro ? '2px solid var(--accent-primary)' : '1px solid var(--border-default)',
                 boxShadow: 'var(--shadow-color-base)',
                 display: 'flex',
+                flexWrap: 'wrap',
+                gap: 16,
                 alignItems: 'center',
                 justifyContent: 'space-between'
               }}
@@ -872,7 +884,7 @@ export function ProfilePage() {
             <div
               style={{
                 backgroundColor: 'var(--bg-card)',
-                padding: 24,
+                padding: isMobile ? 16 : 24,
                 borderRadius: 'var(--radius)',
                 border: '1px solid var(--border-default)',
                 boxShadow: 'var(--shadow-color-base)'
@@ -897,7 +909,7 @@ export function ProfilePage() {
           <div
             style={{
               backgroundColor: 'var(--bg-card)',
-              padding: 24,
+              padding: isMobile ? 16 : 24,
               borderRadius: 'var(--radius)',
               border: '1px solid var(--border-default)',
               boxShadow: 'var(--shadow-color-base)',
@@ -975,7 +987,7 @@ export function ProfilePage() {
               />
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Two-Factor Authentication (2FA)</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Add an extra layer of security to your account with SMS or Authenticator app code</div>
@@ -991,7 +1003,8 @@ export function ProfilePage() {
                   color: twoFactor ? 'var(--bg-card)' : 'var(--text-muted)',
                   fontSize: 12,
                   fontWeight: 700,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  flexShrink: 0
                 }}
               >
                 {twoFactor ? 'Enabled ✓' : 'Disabled'}
@@ -1002,11 +1015,13 @@ export function ProfilePage() {
         )}
 
         {/* ─── Save Changes Sticky Action Bar ───────────────────────────────────── */}
-        <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ marginTop: 24, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: isMobile ? 12 : 16 }}>
           <button
             type="submit"
             style={{
               padding: '12px 24px',
+              width: isMobile ? '100%' : undefined,
+              justifyContent: 'center',
               borderRadius: 'var(--radius)',
               border: 'none',
               backgroundColor: 'var(--primary-red)',

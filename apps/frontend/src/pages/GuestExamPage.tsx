@@ -1999,7 +1999,7 @@ export function GuestExamPage() {
           )}
           {/* Language Selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-            <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+            {!isTabletOrBelow && <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)' }} />}
             <select
               value={language}
               onChange={(e) => handleLanguageChange(e.target.value)}
@@ -2008,7 +2008,9 @@ export function GuestExamPage() {
                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
                 color: '#FFFFFF',
                 border: '1px solid rgba(255, 255, 255, 0.25)',
-                padding: '5px 8px',
+                borderRadius: 'var(--radius)',
+                padding: '0 8px',
+                height: 36,
                 fontSize: 12.5,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -2018,7 +2020,8 @@ export function GuestExamPage() {
             >
               {SUPPORTED_LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code} style={{ backgroundColor: '#1E293B', color: '#FFFFFF' }}>
-                  {lang.nativeName} ({lang.name})
+                  {/* Phones only have room for the short native name */}
+                  {isTabletOrBelow ? lang.nativeName : `${lang.nativeName} (${lang.name})`}
                 </option>
               ))}
             </select>
