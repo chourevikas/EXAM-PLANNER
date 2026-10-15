@@ -63,6 +63,10 @@ async def test_recent_uploads_match_exams_list(session):
     assert "DYN_student_sim" not in recent
     assert set(recent) == {"NEW-UPLOAD", "READY-REVIEW", "PUBLISHED", "ARCHIVED-EMPTY"}
     assert recent["PUBLISHED"].raw_status == "PUBLISHED"
+    # Real paper details and a timezone-aware upload time for the row's subtitle and "Uploaded" column.
+    pub = recent["PUBLISHED"]
+    assert (pub.stage, pub.source_year, pub.paper_set_code) == ("prelims", 2024, "SET_A")
+    assert datetime.fromisoformat(pub.created_at).utcoffset() == timedelta(0)
     assert recent["READY-REVIEW"].is_extracting is False
     assert recent["PUBLISHED"].is_extracting is False
     # An archived paper with no questions used to be guessed as "In Extraction".
