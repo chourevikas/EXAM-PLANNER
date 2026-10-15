@@ -315,16 +315,12 @@ function TableRowItem({
       {/* ACTION */}
       <td style={{ padding: '14px 16px', textAlign: 'right', verticalAlign: 'middle' }}>
         {(() => {
-          const isExtracting =
-            paper.is_extracting ||
-            ['EXTRACTING', 'PROCESSING', 'AI PROCESSING', 'IN_PROGRESS', 'IN PIPELINE', 'PARSING', 'INITIALIZING'].includes((paper.status || '').toUpperCase()) ||
-            ['RUNNING', 'PROCESSING', 'INITIALIZING'].includes((paper.raw_status || '').toUpperCase());
-
+          // The backend decides extraction with the same rule as the exams list ("View All").
+          // `status` is a display label ("Approved & Published"), so states are read from `raw_status`.
+          const rawStatus = (paper.raw_status || '').toUpperCase();
+          const isExtracting = Boolean(paper.is_extracting);
           const isCompleted =
-            !isExtracting &&
-            ((paper.status || '').toUpperCase() === 'COMPLETED' ||
-              (paper.status || '').toUpperCase() === 'PUBLISHED' ||
-              (paper.status || '').toUpperCase() === 'READY_FOR_REVIEW');
+            !isExtracting && ['COMPLETED', 'PUBLISHED', 'PENDING_HUMAN_REVIEW', 'READY_FOR_REVIEW'].includes(rawStatus);
 
           if (isExtracting) {
             return (
@@ -361,7 +357,7 @@ function TableRowItem({
                     code: primaryTitle,
                     source_year: 2023,
                     stage: 'prelims',
-                    status: paper.status || 'COMPLETED',
+                    status: paper.raw_status || 'COMPLETED',
                     total_questions: paper.questions,
                     extracted_questions_count: paper.questions,
                   })

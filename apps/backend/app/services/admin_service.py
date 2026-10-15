@@ -198,6 +198,50 @@ class AdminService:
             return SystemStatsOut(**stats) if isinstance(stats, dict) else stats
         return stats
 
+    async def _exam_pipeline_status_by_id(self) -> dict:
+        """Per-exam pipeline status as shown on the admin exams list, keyed by exam id.
+
+        Reuses that list's 60s cache when warm. Returns {} if it can't be computed, in which case
+        recent uploads show as not extracting rather than failing the whole dashboard.
+        """
+        from app.cache import get_cache
+
+        try:
+            # Same key the /admin/exams/pipeline-status route caches under.
+            items = await get_cache().get("ep:admin:pipeline_status")
+            if items is None:
+                # Lazy import: the computation lives with the /admin/exams/pipeline-status route.
+                from app.routers.admin import _compute_exam_pipeline_statuses
+
+                items = await _compute_exam_pipeline_statuses(self.session)
+            return {str(item.get("id")): item for item in items}
+        except Exception:
+            return {}
+
+    @staticmethod
+    def _shown_as_extracting(item: dict | None) -> bool:
+        """Whether the exams list shows this paper as "In Extraction".
+
+        Mirrors the row logic in apps/frontend/src/components/admin/UploadReviewView.tsx: the list
+        never shows a paper as extracting once stage 1 counts as complete there.
+        """
+        if not item:
+            return False
+        status = str(item.get("status") or "").upper()
+        overall = str(item.get("overall_status") or "").upper()
+        total = item.get("total_questions") or 100
+        extracted = item.get("extracted_questions_count") or 0
+        published = "PUBLISHED" in status or bool(item.get("questions_json_path") and item.get("solutions_json_path"))
+        stage1_done = item.get("stage1_status") == "COMPLETED" or published or (extracted >= total and extracted > 0)
+        if stage1_done:
+            return False
+        return bool(
+            item.get("is_extracting")
+            or item.get("stage1_status") == "IN_PROGRESS"
+            or status in ("PROCESSING", "EXTRACTING", "RUNNING", "INITIALIZING", "PARSING_PDF")
+            or overall in ("PROCESSING", "EXTRACTING", "RUNNING", "INITIALIZING")
+        )
+
     async def get_admin_overview_stats(self) -> AdminOverviewStatsOut:
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
@@ -284,36 +328,24 @@ class AdminService:
             ),
         ]
 
-        # 5. Recent Exam Uploads (top 5 from DB)
+        # 5. Recent Exam Uploads: the 5 newest uploaded papers. Subject-wise simulations (DYN_*)
+        # are per-student question sets, not uploads, and the exams list ("View All") hides them too.
         recent_exams_res = await self.session.exec(
-            select(Exam).order_by(Exam.created_at.desc()).limit(5)
+            select(Exam)
+            .where(~Exam.code.startswith("DYN_"))
+            .order_by(Exam.created_at.desc())
+            .limit(5)
         )
         recent_exams = recent_exams_res.all()
 
         recent_uploads = []
-        # Collect recent exam IDs to check for active extraction pipeline runs
-        e_ids = [e.id for e in recent_exams if e.id is not None]
-        active_extracting_exam_ids = set()
-        if e_ids:
-            try:
-                run_stmt = (
-                    select(PipelineRun.exam_id)
-                    .where(PipelineRun.exam_id.in_(e_ids))
-                    .where(PipelineRun.pipeline_type.in_(["QUESTION_EXTRACTION", "DOCUMENT_EXTRACTION"]))
-                    .where(PipelineRun.status.in_(["RUNNING", "PROCESSING", "INITIALIZING"]))
-                )
-                run_res = await self.session.exec(run_stmt)
-                active_extracting_exam_ids = set(run_res.all())
-            except Exception:
-                pass
+        # The Action column must say exactly what the exams list says for the same paper, so read
+        # the per-exam result that list is built from instead of re-deriving it here.
+        pipeline_by_id = await self._exam_pipeline_status_by_id()
 
         for e in recent_exams:
             status_enum = e.status.value if hasattr(e.status, "value") else str(e.status)
-            is_extracting = (
-                e.id in active_extracting_exam_ids
-                or status_enum in ("PARSING_PDF", "PROCESSING", "EXTRACTING")
-                or (status_enum not in ("PUBLISHED", "PENDING_HUMAN_REVIEW") and (e.extracted_questions_count or 0) == 0)
-            )
+            is_extracting = self._shown_as_extracting(pipeline_by_id.get(str(e.id)))
 
             if is_extracting:
                 status_text = "AI Processing"
