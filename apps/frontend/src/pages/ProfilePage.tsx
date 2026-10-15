@@ -430,7 +430,9 @@ export function ProfilePage() {
           marginBottom: isMobile ? 16 : 24,
           borderBottom: '1px solid var(--border-default, #e2e8f0)',
           paddingBottom: 4,
-          overflowX: 'auto',
+          // On phones the tabs wrap into a grid; a hidden-scrollbar strip cut off the last tab.
+          flexWrap: isMobile ? 'wrap' : 'nowrap',
+          overflowX: isMobile ? 'visible' : 'auto',
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none'
         }}
@@ -447,9 +449,12 @@ export function ProfilePage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: isMobile ? 6 : 8,
-                padding: isMobile ? '9px 12px' : '10px 18px',
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
+                padding: isMobile ? '9px 10px' : '10px 18px',
+                flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto',
+                justifyContent: isMobile ? 'center' : undefined,
+                minWidth: 0,
+                whiteSpace: isMobile ? 'normal' : 'nowrap',
+                textAlign: 'center',
                 borderRadius: 'var(--radius)',
                 border: 'none',
                 backgroundColor: isActive ? 'var(--accent-bg, rgba(var(--primary-red-rgb), 0.1))' : 'transparent',

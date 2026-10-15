@@ -743,7 +743,7 @@ export function StudyPlannerPage() {
                   <div style={{
                     backgroundColor: 'var(--bg-card)',
                     border: '2px solid var(--accent-primary)',
-                    borderRadius: 'var(--radius)', padding: 24,
+                    borderRadius: 'var(--radius)', padding: 'clamp(14px, 4vw, 24px)', minWidth: 0,
                     boxShadow: '0 10px 30px rgba(79, 70, 229, 0.10)',
                     backgroundImage: 'linear-gradient(135deg, rgba(79, 70, 229, 0.03) 0%, rgba(34, 197, 94, 0.02) 100%)'
                   }}>
@@ -759,16 +759,19 @@ export function StudyPlannerPage() {
                       </div>
 
                       {/* Dropdown Day Selector */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Select Day:</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
+                        <label htmlFor="planner-day-select" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Select Day:</label>
                         <select
+                          id="planner-day-select"
                           value={currentSelectedDate}
                           onChange={(e) => setSelectedDayDate(e.target.value)}
                           style={{
                             padding: '10px 16px', borderRadius: 'var(--radius)',
                             backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)',
                             border: '1px solid var(--border-default)', fontSize: 13, fontWeight: 700,
-                            cursor: 'pointer', outline: 'none'
+                            cursor: 'pointer', outline: 'none',
+                            // Long option labels must not push the card wider than a phone screen.
+                            flex: '1 1 220px', minWidth: 0, maxWidth: '100%', textOverflow: 'ellipsis'
                           }}
                         >
                           {schedule.days.map(d => (
