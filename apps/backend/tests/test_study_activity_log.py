@@ -162,3 +162,22 @@ async def test_weekly_schedule_shows_generated_and_deleted_tasks_immediately(cli
     task_id = next(t["id"] for d in after["days"] for t in d["tasks"])
     assert (await client.delete(f"/api/v1/study-plan/tasks/{task_id}", headers=_h())).status_code == 200
     assert count((await schedule()).json()) == count(after) - 1
+
+    # creating, editing and completing tasks show up straight away too
+    tasks = lambda sch: [t for d in sch["days"] for t in d["tasks"]]
+    before = count((await schedule()).json())
+    created = await client.post(
+        "/api/v1/study-plan/tasks", json={"title": "QA cache check task", "due_in_days": 0}, headers=_h()
+    )
+    assert created.status_code == 200, created.text
+    new_id = created.json()["task_id"]
+    assert count((await schedule()).json()) == before + 1
+
+    edited = await client.put(f"/api/v1/study-plan/tasks/{new_id}", json={"title": "QA cache check renamed"}, headers=_h())
+    assert edited.status_code == 200, edited.text
+    assert any(t["title"] == "QA cache check renamed" for t in tasks((await schedule()).json()))
+
+    done = await client.post(f"/api/v1/study-plan/tasks/{new_id}/complete", headers=_h())
+    assert done.status_code == 200, done.text
+    mine = next(t for t in tasks((await schedule()).json()) if str(t["id"]) == str(new_id))
+    assert mine["is_completed"] is True

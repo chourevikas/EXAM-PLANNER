@@ -24,6 +24,19 @@ logger = setup_logger("StudyPlanRouter")
 
 router = APIRouter(prefix="/study-plan", tags=["Study Plan & Gamification"])
 
+async def _drop_cached_schedule(user_id) -> None:
+    """Clear the cached weekly schedule/insights after a task or activity changes.
+
+    Without this the planner keeps showing the old week for up to the cache TTL.
+    A cache failure must never fail the write that already committed.
+    """
+    try:
+        from app.cache import invalidate_study_activity_cache
+        await invalidate_study_activity_cache(user_id)
+    except Exception:
+        logger.warning("Could not clear cached study schedule for user %s", user_id, exc_info=True)
+
+
 @router.post("/tasks/{task_id}/complete")
 async def complete_study_task(
     task_id: int | str,
@@ -53,6 +66,7 @@ async def complete_study_task(
     task.is_completed = True
     task.completed_at = datetime.now(timezone.utc)
     await session.commit()
+    await _drop_cached_schedule(current_user.id)
     
     from app.cache import get_cache
     cache = get_cache()
@@ -122,6 +136,7 @@ async def create_study_task(
     session.add(new_task)
     await session.commit()
     await session.refresh(new_task)
+    await _drop_cached_schedule(current_user.id)
     return {
         "message": "Task added to study plan successfully",
         "task_id": str(new_task.id),
@@ -185,6 +200,7 @@ async def update_study_task(
 
     await session.commit()
     await session.refresh(task)
+    await _drop_cached_schedule(current_user.id)
     return {"message": "Task updated successfully", "task_id": str(task.id)}
 
 @router.delete("/tasks/{task_id}")
@@ -208,12 +224,7 @@ async def delete_study_task(
 
     await session.delete(task)
     await session.commit()
-    # The cached weekly schedule still lists the deleted task.
-    try:
-        from app.cache import invalidate_study_activity_cache
-        await invalidate_study_activity_cache(current_user.id)
-    except Exception:
-        pass
+    await _drop_cached_schedule(current_user.id)
     return {"message": "Task deleted successfully", "task_id": str(task_id)}
 
 class BulkTaskItem(SQLModel):
@@ -298,6 +309,7 @@ async def bulk_add_tasks_from_report(
         existing_titles.add(full_title)
         
     await session.commit()
+    await _drop_cached_schedule(current_user.id)
     return {
         "status": "SUCCESS",
         "scheduled_tasks_count": len(created_task_ids),
@@ -526,12 +538,7 @@ async def generate_weekly_study_plan(
             created_tasks.append(new_task)
 
     await session.commit()
-    # The planner fetches the (empty) weekly schedule before generating; drop that cached copy.
-    try:
-        from app.cache import invalidate_study_activity_cache
-        await invalidate_study_activity_cache(current_user.id)
-    except Exception:
-        pass
+    await _drop_cached_schedule(current_user.id)
     return {
         "message": f"Successfully generated 7-day study plan with {len(created_tasks)} target tasks!",
         "task_count": len(created_tasks),
@@ -1008,6 +1015,7 @@ async def delete_study_activity(
         raise HTTPException(status_code=404, detail="Study activity record not found")
     await session.delete(activity)
     await session.commit()
+    await _drop_cached_schedule(current_user.id)
     return {"message": "Study activity deleted successfully"}
 
 @router.get("/activities/summary")
