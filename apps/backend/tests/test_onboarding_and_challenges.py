@@ -264,6 +264,15 @@ async def test_ratings_are_optional_at_onboarding_and_editable_later(client):
     )
     assert locked.status_code == 403
 
+    # spelling variants are stored under the taxonomy's spelling; unknown subjects keep theirs
+    canon = await client.patch(
+        "/api/v1/auth/me",
+        json={"subject_proficiency": {"HISTORY": 3, "Indian Polity and Governance": 4, "Ethics": 2}},
+        headers=_h("bob"),
+    )
+    assert canon.status_code == 200, canon.text
+    assert canon.json()["subject_proficiency"] == {"History": 3, "Indian Polity & Governance": 4, "Ethics": 2}
+
     # an empty map clears the ratings
     cleared = await client.patch("/api/v1/auth/me", json={"subject_proficiency": {}}, headers=_h("bob"))
     assert cleared.status_code == 200
@@ -400,3 +409,14 @@ async def test_challenge_subjects_are_multi_select_with_exact_matching(client):
     # blanks and duplicates are ignored
     dedup = await _create(client, "dave", subject_names=["History", " history ", ""])
     assert dedup.json()["subject_names"] == ["History"]
+
+
+def test_subject_key_matches_spelling_variants():
+    from app.services.subject_names import subject_key
+
+    assert len({subject_key(n) for n in ("Art & Culture", "Arts & Culture", "Arts and Culture", " arts AND culture ")}) == 1
+    assert subject_key("Science & Tech") == subject_key("Science and Technology")
+    assert subject_key("Economics") == subject_key("Economy")
+    assert subject_key("Current Affairs") == subject_key("Current Affair")
+    assert subject_key("Polity") != subject_key("Politics")
+    assert subject_key("Class") == "class"  # double-s words aren't treated as plurals

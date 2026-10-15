@@ -556,7 +556,8 @@ async def complete_onboarding(
     profile.target_year = payload.target_year.strip()
     profile.optional_subject = (payload.optional_subject or "").strip() or None
     profile.weekly_hours = payload.weekly_hours.strip()
-    profile.subject_proficiency = payload.subject_proficiency
+    from app.services.subject_names import canonicalize_proficiency
+    profile.subject_proficiency = await canonicalize_proficiency(session, payload.subject_proficiency)
     profile.onboarding_completed_at = datetime.now(timezone.utc)
     session.add(profile)
 
@@ -627,7 +628,8 @@ async def update_current_user(
             setattr(profile, field, new_value)
         if wants_ratings:
             # Ratings stay editable after onboarding; the client always sends the full map.
-            profile.subject_proficiency = user_update.subject_proficiency
+            from app.services.subject_names import canonicalize_proficiency
+            profile.subject_proficiency = await canonicalize_proficiency(session, user_update.subject_proficiency)
         session.add(profile)
     if user_update.preferred_language is not None:
         from app.core.languages import normalize_language, is_supported_language
