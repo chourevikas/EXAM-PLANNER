@@ -375,6 +375,8 @@ export interface UserProfileUpdate {
   target_year?: string;
   optional_subject?: string;
   weekly_hours?: string;
+  // Replaces all subject ratings; {} clears them.
+  subject_proficiency?: Record<string, number>;
 }
 
 export async function updateUserProfile(updateData: UserProfileUpdate, customToken?: string): Promise<any> {
@@ -406,7 +408,7 @@ export interface OnboardingPayload {
   optional_subject?: string;
   weekly_hours: string;
   preferred_language: string;
-  subject_proficiency: Record<string, number>;
+  subject_proficiency?: Record<string, number>;
 }
 
 /** Saves the first-login questionnaire; the server locks the primary target from then on. */

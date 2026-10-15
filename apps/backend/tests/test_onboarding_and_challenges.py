@@ -231,6 +231,54 @@ async def test_onboarding_validation_and_roles(client):
     assert (await client.get("/api/v1/auth/me", headers=_h("admin"))).json()["onboarding_completed"] is True
 
 
+@pytest.mark.anyio
+async def test_ratings_are_optional_at_onboarding_and_editable_later(client):
+    # onboarding no longer needs ratings
+    without = {k: v for k, v in ONBOARDING.items() if k != "subject_proficiency"}
+    done = await client.post("/api/v1/auth/me/onboarding", json=without, headers=_h("bob"))
+    assert done.status_code == 200, done.text
+    assert done.json()["onboarding_completed"] is True
+    assert not done.json()["subject_proficiency"]
+
+    # ratings can be set after onboarding (e.g. from the profile or study planner)
+    r = await client.patch(
+        "/api/v1/auth/me", json={"subject_proficiency": {" History ": 1, "Polity": 5}}, headers=_h("bob")
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["subject_proficiency"] == {"History": 1, "Polity": 5}
+    me = (await client.get("/api/v1/auth/me", headers=_h("bob"))).json()
+    assert me["subject_proficiency"] == {"History": 1, "Polity": 5}
+
+    # a later save replaces the whole map rather than merging
+    r = await client.patch("/api/v1/auth/me", json={"subject_proficiency": {"Economy": 3}}, headers=_h("bob"))
+    assert r.json()["subject_proficiency"] == {"Economy": 3}
+
+    # out-of-range ratings are rejected and nothing changes
+    bad = await client.patch("/api/v1/auth/me", json={"subject_proficiency": {"Economy": 6}}, headers=_h("bob"))
+    assert bad.status_code == 422
+    assert (await client.get("/api/v1/auth/me", headers=_h("bob"))).json()["subject_proficiency"] == {"Economy": 3}
+
+    # editing ratings doesn't unlock the primary target
+    locked = await client.patch(
+        "/api/v1/auth/me", json={"subject_proficiency": {"Economy": 2}, "target_year": "2030"}, headers=_h("bob")
+    )
+    assert locked.status_code == 403
+
+    # spelling variants are stored under the taxonomy's spelling; unknown subjects keep theirs
+    canon = await client.patch(
+        "/api/v1/auth/me",
+        json={"subject_proficiency": {"HISTORY": 3, "Indian Polity and Governance": 4, "Ethics": 2}},
+        headers=_h("bob"),
+    )
+    assert canon.status_code == 200, canon.text
+    assert canon.json()["subject_proficiency"] == {"History": 3, "Indian Polity & Governance": 4, "Ethics": 2}
+
+    # an empty map clears the ratings
+    cleared = await client.patch("/api/v1/auth/me", json={"subject_proficiency": {}}, headers=_h("bob"))
+    assert cleared.status_code == 200
+    assert not cleared.json()["subject_proficiency"]
+
+
 # ── Challenges ───────────────────────────────────────────────────────────────
 
 async def _create(client, who, **extra):
@@ -361,3 +409,14 @@ async def test_challenge_subjects_are_multi_select_with_exact_matching(client):
     # blanks and duplicates are ignored
     dedup = await _create(client, "dave", subject_names=["History", " history ", ""])
     assert dedup.json()["subject_names"] == ["History"]
+
+
+def test_subject_key_matches_spelling_variants():
+    from app.services.subject_names import subject_key
+
+    assert len({subject_key(n) for n in ("Art & Culture", "Arts & Culture", "Arts and Culture", " arts AND culture ")}) == 1
+    assert subject_key("Science & Tech") == subject_key("Science and Technology")
+    assert subject_key("Economics") == subject_key("Economy")
+    assert subject_key("Current Affairs") == subject_key("Current Affair")
+    assert subject_key("Polity") != subject_key("Politics")
+    assert subject_key("Class") == "class"  # double-s words aren't treated as plurals

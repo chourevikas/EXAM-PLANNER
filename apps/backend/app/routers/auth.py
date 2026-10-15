@@ -556,7 +556,8 @@ async def complete_onboarding(
     profile.target_year = payload.target_year.strip()
     profile.optional_subject = (payload.optional_subject or "").strip() or None
     profile.weekly_hours = payload.weekly_hours.strip()
-    profile.subject_proficiency = payload.subject_proficiency
+    from app.services.subject_names import canonicalize_proficiency
+    profile.subject_proficiency = await canonicalize_proficiency(session, payload.subject_proficiency)
     profile.onboarding_completed_at = datetime.now(timezone.utc)
     session.add(profile)
 
@@ -605,7 +606,9 @@ async def update_current_user(
         "optional_subject": (user_update.optional_subject, 150),
         "weekly_hours": (user_update.weekly_hours, 10),
     }
-    if db_user.role == UserRole.STUDENT and any(v is not None for v, _ in prep.values()):
+    wants_prep = any(v is not None for v, _ in prep.values())
+    wants_ratings = user_update.subject_proficiency is not None
+    if db_user.role == UserRole.STUDENT and (wants_prep or wants_ratings):
         profile = (await session.exec(select(StudentProfile).where(StudentProfile.user_id == db_user.id))).first()
         if profile is None:
             profile = StudentProfile(user_id=db_user.id)
@@ -623,6 +626,10 @@ async def update_current_user(
                     )
                 continue
             setattr(profile, field, new_value)
+        if wants_ratings:
+            # Ratings stay editable after onboarding; the client always sends the full map.
+            from app.services.subject_names import canonicalize_proficiency
+            profile.subject_proficiency = await canonicalize_proficiency(session, user_update.subject_proficiency)
         session.add(profile)
     if user_update.preferred_language is not None:
         from app.core.languages import normalize_language, is_supported_language

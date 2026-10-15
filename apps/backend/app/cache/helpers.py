@@ -214,6 +214,8 @@ async def invalidate_pipeline_status_cache() -> None:
     prefix = settings.CACHE_KEY_PREFIX or "ep"
     await cache.delete(f"{prefix}:exams:pipeline_status")
     await cache.delete(f"{prefix}:admin:pipeline_status")
+    # The admin dashboard's Recent Exam Paper Uploads is built from the pipeline status.
+    await cache.delete_pattern(f"{prefix}:admin:overview_stats*")
     await cache.delete(f"{prefix}:admin:stuck_pipelines")
 
 

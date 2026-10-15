@@ -1,25 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Target, Languages, BarChart3, Check, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Target, Languages, Check, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Logo } from '../components/common/Logo';
 import { Spinner } from '../components/common/Spinner';
 import { completeOnboarding, fetchCurrentUser } from '../services/authService';
 import { fetchActiveExamTypes } from '../services/examTypeService';
-import { fetchSubjectNames } from '../services/challengeService';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import {
   TARGET_YEAR_OPTIONS,
-  OPTIONAL_SUBJECT_OPTIONS,
   WEEKLY_HOURS_OPTIONS,
-  PROFICIENCY_LABELS,
-  FALLBACK_SUBJECTS,
 } from '../constants/onboarding';
 
 const STEPS = [
   { title: 'Your exam target', icon: Target },
   { title: 'Preferred language', icon: Languages },
-  { title: 'Rate your subjects', icon: BarChart3 },
 ];
 
 const labelStyle: React.CSSProperties = {
@@ -56,14 +51,11 @@ export function OnboardingPage() {
 
   const [step, setStep] = useState(0);
   const [examOptions, setExamOptions] = useState<string[]>([]);
-  const [subjects, setSubjects] = useState<string[]>([]);
 
   const [targetExam, setTargetExam] = useState('');
   const [targetYear, setTargetYear] = useState('');
-  const [optionalSubject, setOptionalSubject] = useState('');
   const [weeklyHours, setWeeklyHours] = useState('');
   const [language, setLanguage] = useState<string>(() => localStorage.getItem('preferred_language') || 'en');
-  const [proficiency, setProficiency] = useState<Record<string, number>>({});
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +67,6 @@ export function OnboardingPage() {
         setUser(fresh);
         if (fresh?.target_exam) setTargetExam(fresh.target_exam);
         if (fresh?.target_year) setTargetYear(fresh.target_year);
-        if (fresh?.optional_subject) setOptionalSubject(fresh.optional_subject);
         if (fresh?.weekly_hours) setWeeklyHours(fresh.weekly_hours);
         if (fresh?.preferred_language) setLanguage(fresh.preferred_language);
       })
@@ -90,7 +81,6 @@ export function OnboardingPage() {
       setExamOptions(names.length ? names : ['UPSC CSE']);
       setTargetExam((cur) => cur || (names.length === 1 ? names[0] : ''));
     });
-    fetchSubjectNames().then((names) => setSubjects(names.length ? names : FALLBACK_SUBJECTS));
   }, []);
 
   const firstName = useMemo(() => (user?.full_name || '').split(' ')[0] || 'there', [user]);
@@ -137,10 +127,8 @@ export function OnboardingPage() {
       await completeOnboarding({
         target_exam: targetExam,
         target_year: targetYear,
-        optional_subject: optionalSubject || undefined,
         weekly_hours: weeklyHours,
         preferred_language: language,
-        subject_proficiency: proficiency,
       });
       navigate('/dashboard', { replace: true });
     } catch (err) {
@@ -148,8 +136,6 @@ export function OnboardingPage() {
       setSaving(false);
     }
   };
-
-  const ratedCount = Object.keys(proficiency).length;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-body, #f8fafc)', display: 'flex', flexDirection: 'column' }}>
@@ -244,15 +230,6 @@ export function OnboardingPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="ob-optional">Optional Subject (Mains)</label>
-                  <select id="ob-optional" style={selectStyle} value={optionalSubject} onChange={(e) => setOptionalSubject(e.target.value)}>
-                    <option value="">Not decided / Not applicable</option>
-                    {OPTIONAL_SUBJECT_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
                   <label style={labelStyle} htmlFor="ob-hours">Weekly Study Goal</label>
                   <select id="ob-hours" style={selectStyle} value={weeklyHours} onChange={(e) => setWeeklyHours(e.target.value)}>
                     <option value="">Select hours…</option>
@@ -276,7 +253,7 @@ export function OnboardingPage() {
                 >
                   <Lock size={14} style={{ flexShrink: 0, marginTop: 2 }} />
                   <span>
-                    Your target exam, year and optional subject are locked after this step so your plan stays consistent.
+                    Your target exam and year are locked after this step so your plan stays consistent.
                     Your weekly study goal can be changed later from your profile.
                   </span>
                 </div>
@@ -311,74 +288,6 @@ export function OnboardingPage() {
                         <div style={{ fontSize: 16, fontWeight: 800 }}>{lang.nativeName}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{lang.name}</div>
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div>
-                <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 0, marginBottom: 16 }}>
-                  Rate how confident you feel in each subject, from 1 (just starting) to 5 (expert). Skip any you are unsure about.
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {subjects.map((subject) => {
-                    const value = proficiency[subject];
-                    return (
-                      <div
-                        key={subject}
-                        style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 10,
-                          padding: '10px 12px',
-                          borderRadius: 'var(--radius)',
-                          border: '1px solid var(--border-default)',
-                          backgroundColor: 'var(--bg-subtle)',
-                        }}
-                      >
-                        <div style={{ minWidth: 0, flex: '1 1 160px' }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{subject}</div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', minHeight: 16 }}>
-                            {value ? `${value}/5 · ${PROFICIENCY_LABELS[value]}` : 'Not rated'}
-                          </div>
-                        </div>
-                        <div role="radiogroup" aria-label={`${subject} proficiency`} style={{ display: 'flex', gap: 6 }}>
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <button
-                              key={n}
-                              type="button"
-                              role="radio"
-                              aria-checked={value === n}
-                              aria-label={`${subject}: ${n} of 5`}
-                              onClick={() =>
-                                setProficiency((prev) => {
-                                  const nextValue = { ...prev };
-                                  if (prev[subject] === n) delete nextValue[subject];
-                                  else nextValue[subject] = n;
-                                  return nextValue;
-                                })
-                              }
-                              style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 'var(--radius)',
-                                cursor: 'pointer',
-                                fontWeight: 800,
-                                fontSize: 14,
-                                border: value === n ? '2px solid var(--primary-red)' : '1px solid var(--border-default)',
-                                backgroundColor: value === n ? 'var(--primary-red)' : 'var(--bg-card)',
-                                color: value === n ? '#fff' : 'var(--text-primary)',
-                              }}
-                            >
-                              {n}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
                     );
                   })}
                 </div>
@@ -457,7 +366,7 @@ export function OnboardingPage() {
                     opacity: saving ? 0.7 : 1,
                   }}
                 >
-                  {saving ? 'Saving…' : ratedCount ? 'Finish & go to dashboard' : 'Skip ratings & finish'}
+                  {saving ? 'Saving…' : 'Finish & go to dashboard'}
                   {!saving && <Check size={15} />}
                 </button>
               )}

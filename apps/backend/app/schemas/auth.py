@@ -80,6 +80,21 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+def clean_subject_proficiency(v: dict[str, int]) -> dict[str, int]:
+    """Validate self-rated subject proficiency: at most 60 subjects, ratings 1 (weak) to 5 (strong)."""
+    if len(v) > 60:
+        raise ValueError("Too many subjects")
+    cleaned = {}
+    for subject, rating in v.items():
+        name = subject.strip()
+        if not name or len(name) > 150:
+            raise ValueError("Invalid subject name")
+        if not 1 <= rating <= 5:
+            raise ValueError(f"Proficiency for '{name}' must be between 1 and 5")
+        cleaned[name] = rating
+    return cleaned
+
+
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
@@ -91,6 +106,13 @@ class UserUpdate(BaseModel):
     optional_subject: Optional[str] = None
     weekly_hours: Optional[str] = None
     preferred_language: Optional[str] = None
+    # Full replacement of the student's subject ratings; {} clears them.
+    subject_proficiency: Optional[dict[str, int]] = None
+
+    @field_validator("subject_proficiency")
+    @classmethod
+    def _validate_proficiency(cls, v: Optional[dict[str, int]]) -> Optional[dict[str, int]]:
+        return None if v is None else clean_subject_proficiency(v)
 
 
 class TokenResponse(BaseModel):
@@ -239,17 +261,7 @@ class OnboardingRequest(BaseModel):
     @field_validator("subject_proficiency")
     @classmethod
     def _validate_proficiency(cls, v: dict[str, int]) -> dict[str, int]:
-        if len(v) > 60:
-            raise ValueError("Too many subjects")
-        cleaned = {}
-        for subject, rating in v.items():
-            name = subject.strip()
-            if not name or len(name) > 150:
-                raise ValueError("Invalid subject name")
-            if not 1 <= rating <= 5:
-                raise ValueError(f"Proficiency for '{name}' must be between 1 and 5")
-            cleaned[name] = rating
-        return cleaned
+        return clean_subject_proficiency(v)
 
 
 class MfaSetupOut(BaseModel):
