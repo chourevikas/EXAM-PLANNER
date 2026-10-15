@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ReportPreparingLoader } from '../components/common/ReportPreparingLoader';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { Section, Question } from '../components/exam/ExamSectionSidebar';
@@ -1806,32 +1807,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         </div>
       )}
 
-      {/* Fullscreen Submitting & Evaluating Overlay */}
-      {isSubmitting && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            backgroundColor: 'rgba(15, 23, 42, 0.85)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--bg-card)',
-            gap: 16,
-          }}
-        >
-          <Loader2 size={44} className="animate-spin" color="var(--primary-red)" />
-          <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-display, sans-serif)' }}>
-            Submitting & Evaluating Test...
-          </div>
-          <div style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.75)', maxWidth: 420, textAlign: 'center', lineHeight: 1.5 }}>
-            Please wait while your responses are securely saved and your psychometric performance analysis is computed.
-          </div>
-        </div>
-      )}
+      {/* Fullscreen overlay while the test is submitted and the report starts */}
+      {isSubmitting && <ReportPreparingLoader variant="overlay" />}
     </div>
   );
 }

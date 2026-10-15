@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { ReportPreparingLoader } from '../components/common/ReportPreparingLoader';
 import { useSearchParams } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { PsychometricReportView } from '../components/student/PsychometricReportView';
@@ -13,7 +14,7 @@ import {
   AttemptHistoryItem,
 } from '../services/examService';
 import { PsychometricReport } from '../types/exam';
-import { Loader2, Activity, Cpu, RefreshCw, AlertCircle, BarChart3 } from 'lucide-react';
+import { Loader2, RefreshCw, AlertCircle, BarChart3 } from 'lucide-react';
 import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { PerformanceAnalyticsSkeleton } from '../components/student/PerformanceAnalyticsSkeleton';
@@ -193,33 +194,6 @@ const paginationWrapperStyle: React.CSSProperties = {
 const paginationInfoStyle: React.CSSProperties = { fontSize: 12.5, color: 'var(--text-muted)' };
 const paginationControlsStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6 };
 
-const evaluatingContainerStyle: React.CSSProperties = {
-  padding: 32,
-  marginBottom: 28,
-  borderRadius: 'var(--radius)',
-  backgroundColor: 'var(--bg-card)',
-  border: '2px solid rgba(var(--primary-red-rgb), 0.3)',
-  boxShadow: '0 8px 32px rgba(var(--primary-red-rgb), 0.12)',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 16,
-  alignItems: 'center',
-  textAlign: 'center',
-};
-
-const evaluatingIconsStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, color: 'var(--primary-red)' };
-const progressBarOuterStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 480,
-  height: 8,
-  borderRadius: 'var(--radius)',
-  backgroundColor: 'var(--bg-subtle)',
-  overflow: 'hidden',
-  marginTop: 6,
-};
-
-const evalLabelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' };
-
 const errorBannerStyle: React.CSSProperties = {
   padding: '20px 24px',
   borderRadius: 'var(--radius)',
@@ -334,7 +308,6 @@ export function AnalyticsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evalProgress, setEvalProgress] = useState(25);
-  const [evalMessage, setEvalMessage] = useState('Evaluating responses...');
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadTrigger, setReloadTrigger] = useState(0);
@@ -509,7 +482,6 @@ export function AnalyticsPage() {
         if (initialStatus && !initialStatus.is_ready && initialStatus.status !== 'COMPLETED' && initialStatus.status !== 'EVALUATED') {
           setIsEvaluating(true);
           setEvalProgress(initialStatus.progress_percentage || 40);
-          setEvalMessage(initialStatus.message || 'Synthesizing psychometric matrices & smart mentor recommendations...');
 
           // Long-polling loop with delay strictly AFTER previous response completes
           const isReady = await pollAttemptReportUntilReady(
@@ -517,7 +489,6 @@ export function AnalyticsPage() {
             (statusUpdate) => {
               if (isCancelled) return;
               setEvalProgress(statusUpdate.progress_percentage || 60);
-              setEvalMessage(statusUpdate.message || 'Computing knowledge ability and decay curves...');
             },
             30,
             6000,
@@ -782,69 +753,14 @@ export function AnalyticsPage() {
         </div>
       ) : (
         <>
-          {/* Long-Polling Evaluation State (Zero Deployment Timeout Guarantee) */}
-          {isEvaluating && (
-            <div
-              style={{
-                ...evaluatingContainerStyle,
-                padding: isMobile ? '20px 14px' : isTabletOrBelow ? '24px 20px' : 32,
-                marginBottom: isMobile ? 18 : 28,
-              }}
-            >
-              <div style={evaluatingIconsStyle}>
-                <Cpu size={28} className="animate-spin" />
-                <Activity size={24} color="#8b5cf6" />
-              </div>
-
-              <h2
-                style={{
-                  fontSize: isMobile ? 17 : 20,
-                  fontWeight: 800,
-                  margin: 0,
-                  color: 'var(--text-primary)',
-                }}
-              >
-                Psychometric Evaluation Engine Active
-              </h2>
-
-              <p
-                style={{
-                  fontSize: isMobile ? 13 : 14,
-                  color: 'var(--text-muted)',
-                  margin: 0,
-                  maxWidth: isMobile ? '100%' : 520,
-                  lineHeight: 1.5,
-                }}
-              >
-                {evalMessage}
-              </p>
-
-              {/* Progress Bar */}
-              <div
-                style={{
-                  ...progressBarOuterStyle,
-                  maxWidth: isMobile ? '100%' : 480,
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    width: `${evalProgress}%`,
-                    background: 'linear-gradient(90deg, var(--primary-red), #8b5cf6)',
-                    borderRadius: 'var(--radius)',
-                    transition: 'width 0.4s ease',
-                  }}
-                />
-              </div>
-
-              <span style={evalLabelStyle}>
-                Polling live diagnostics ({evalProgress}% Complete)
-              </span>
-            </div>
+          {/* A specific test's report: simple "Preparing your report" loader while it loads or is evaluated */}
+          {isEvaluating && <ReportPreparingLoader progress={evalProgress} />}
+          {isLoading && !isEvaluating && selectedAttemptId && selectedAttemptId !== 'CUMULATIVE_ALL' && (
+            <ReportPreparingLoader />
           )}
 
-          {/* Loading Skeleton */}
-          {(isLoading && !isEvaluating) && (
+          {/* Loading Skeleton (all-exams summary) */}
+          {isLoading && !isEvaluating && (!selectedAttemptId || selectedAttemptId === 'CUMULATIVE_ALL') && (
             <div style={skeletonWrapperStyle}>
               <PerformanceAnalyticsSkeleton />
             </div>
