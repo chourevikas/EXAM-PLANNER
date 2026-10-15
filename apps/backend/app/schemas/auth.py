@@ -211,6 +211,12 @@ class RecentUploadItemOut(BaseModel):
     raw_status: Optional[str] = None
     total_questions: Optional[int] = 100
     extracted_questions_count: Optional[int] = 0
+    # Upload time as an ISO-8601 UTC timestamp, so the browser can show it in the viewer's timezone.
+    created_at: Optional[str] = None
+    stage: Optional[str] = None
+    source_year: Optional[int] = None
+    paper_set_code: Optional[str] = None
+    is_mixed_bank: bool = False
 
 
 class SubjectBreakdownItemOut(BaseModel):

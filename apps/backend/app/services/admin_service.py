@@ -359,6 +359,8 @@ class AdminService:
                 status_text = status_enum.replace("_", " ").title()
 
             e_date = e.created_at
+            if e_date and e_date.tzinfo is None:
+                e_date = e_date.replace(tzinfo=timezone.utc)  # stored in UTC
             if e_date:
                 if e_date.date() == now.date():
                     date_str = f"Today, {e_date.strftime('%I:%M %p')}"
@@ -388,6 +390,11 @@ class AdminService:
                     raw_status=status_enum,
                     total_questions=total_exp,
                     extracted_questions_count=ext_cnt,
+                    created_at=e_date.isoformat() if e_date else None,
+                    stage=e.stage,
+                    source_year=e.source_year,
+                    paper_set_code=e.paper_set_code,
+                    is_mixed_bank=bool(getattr(e, "is_mixed_bank", False)),
                 )
             )
 

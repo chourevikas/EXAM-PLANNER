@@ -225,6 +225,31 @@ function MetricCard({
 // ----------------------------------------------------------------------
 // 2. TableRowItem Component (Subtle Row Hover & 2px Left Accent Line)
 // ----------------------------------------------------------------------
+const titleCase = (v: string) => v.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
+/** "Prelims · 2024 · Set A" from the paper's own details; empty when none are known. */
+function paperSubtitle(paper: any): string {
+  const parts: string[] = [];
+  // Mixed banks have stage 'mixed'; "Mixed years" below already says so.
+  if (paper.stage && !paper.is_mixed_bank) parts.push(titleCase(String(paper.stage).replace(/_/g, ' ')));
+  if (paper.is_mixed_bank) parts.push('Mixed years');
+  else if (paper.source_year) parts.push(String(paper.source_year));
+  if (paper.paper_set_code) parts.push(titleCase(String(paper.paper_set_code).replace(/_/g, ' ')));
+  return parts.join(' · ');
+}
+
+/** Upload time in the viewer's own timezone, in one fixed format: "Today, 3:35 PM", "Yesterday" or "Oct 12, 2026". */
+function formatUploadedAt(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+  if (days === 0) return `Today, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  if (days === 1) return 'Yesterday';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function TableRowItem({
   paper,
   isLast,
@@ -236,13 +261,9 @@ function TableRowItem({
 }) {
   const [hovered, setHovered] = useState(false);
 
-  // Formatting two-line paper title hierarchy
-  const primaryTitle = paper.primaryTitle || paper.title || 'UPSC Civil Services';
-  const secondaryTitle =
-    paper.secondaryTitle ||
-    (paper.title && paper.title.includes('Set')
-      ? paper.title
-      : 'Prelims · 2023 · Set B');
+  // Two-line title: paper name, then its real stage · year · set.
+  const primaryTitle = paper.title || 'Untitled paper';
+  const secondaryTitle = paperSubtitle(paper);
 
   return (
     <tr
@@ -265,9 +286,11 @@ function TableRowItem({
         <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--deep-navy)', lineHeight: 1.3 }}>
           {primaryTitle}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-          {secondaryTitle}
-        </div>
+        {secondaryTitle && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            {secondaryTitle}
+          </div>
+        )}
       </td>
 
       {/* QUESTIONS */}
@@ -289,7 +312,7 @@ function TableRowItem({
 
       {/* UPLOADED */}
       <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-        {paper.date}
+        {formatUploadedAt(paper.created_at) || paper.date}
       </td>
 
       {/* STATUS / CONFIDENCE */}
@@ -355,8 +378,8 @@ function TableRowItem({
                     id: paper.id,
                     name: primaryTitle,
                     code: primaryTitle,
-                    source_year: 2023,
-                    stage: 'prelims',
+                    source_year: paper.source_year ?? undefined,
+                    stage: paper.stage ?? undefined,
                     status: paper.raw_status || 'COMPLETED',
                     total_questions: paper.questions,
                     extracted_questions_count: paper.questions,

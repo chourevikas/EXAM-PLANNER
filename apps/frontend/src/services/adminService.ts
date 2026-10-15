@@ -624,6 +624,14 @@ export interface RecentUploadItem {
   date: string;
   status: string;
   confidence: number;
+  is_extracting?: boolean;
+  raw_status?: string;
+  /** ISO-8601 UTC upload time. */
+  created_at?: string | null;
+  stage?: string | null;
+  source_year?: number | null;
+  paper_set_code?: string | null;
+  is_mixed_bank?: boolean;
 }
 
 export interface SubjectBreakdownItem {
