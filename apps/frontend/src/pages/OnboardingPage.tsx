@@ -9,7 +9,6 @@ import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import {
   TARGET_YEAR_OPTIONS,
-  OPTIONAL_SUBJECT_OPTIONS,
   WEEKLY_HOURS_OPTIONS,
 } from '../constants/onboarding';
 
@@ -55,7 +54,6 @@ export function OnboardingPage() {
 
   const [targetExam, setTargetExam] = useState('');
   const [targetYear, setTargetYear] = useState('');
-  const [optionalSubject, setOptionalSubject] = useState('');
   const [weeklyHours, setWeeklyHours] = useState('');
   const [language, setLanguage] = useState<string>(() => localStorage.getItem('preferred_language') || 'en');
 
@@ -69,7 +67,6 @@ export function OnboardingPage() {
         setUser(fresh);
         if (fresh?.target_exam) setTargetExam(fresh.target_exam);
         if (fresh?.target_year) setTargetYear(fresh.target_year);
-        if (fresh?.optional_subject) setOptionalSubject(fresh.optional_subject);
         if (fresh?.weekly_hours) setWeeklyHours(fresh.weekly_hours);
         if (fresh?.preferred_language) setLanguage(fresh.preferred_language);
       })
@@ -130,7 +127,6 @@ export function OnboardingPage() {
       await completeOnboarding({
         target_exam: targetExam,
         target_year: targetYear,
-        optional_subject: optionalSubject || undefined,
         weekly_hours: weeklyHours,
         preferred_language: language,
       });
@@ -234,15 +230,6 @@ export function OnboardingPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="ob-optional">Optional Subject (Mains)</label>
-                  <select id="ob-optional" style={selectStyle} value={optionalSubject} onChange={(e) => setOptionalSubject(e.target.value)}>
-                    <option value="">Not decided / Not applicable</option>
-                    {OPTIONAL_SUBJECT_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
                   <label style={labelStyle} htmlFor="ob-hours">Weekly Study Goal</label>
                   <select id="ob-hours" style={selectStyle} value={weeklyHours} onChange={(e) => setWeeklyHours(e.target.value)}>
                     <option value="">Select hours…</option>
@@ -266,7 +253,7 @@ export function OnboardingPage() {
                 >
                   <Lock size={14} style={{ flexShrink: 0, marginTop: 2 }} />
                   <span>
-                    Your target exam, year and optional subject are locked after this step so your plan stays consistent.
+                    Your target exam and year are locked after this step so your plan stays consistent.
                     Your weekly study goal can be changed later from your profile.
                   </span>
                 </div>

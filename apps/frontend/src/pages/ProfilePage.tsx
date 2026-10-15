@@ -730,6 +730,8 @@ export function ProfilePage() {
               />
             </div>
 
+            {/* Only older UPSC profiles have an optional subject; onboarding no longer asks for it. */}
+            {optionalSubject && (
             <div>
               <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                 Optional Subject (Mains) <Lock size={12} color="var(--text-muted)" aria-hidden="true" />
@@ -744,6 +746,7 @@ export function ProfilePage() {
                 style={{ ...lockedFieldStyle }}
               />
             </div>
+            )}
 
             <div>
               <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
@@ -902,8 +905,7 @@ export function ProfilePage() {
             >
               <Lock size={14} style={{ flexShrink: 0, marginTop: 2 }} />
               <span>
-                Your primary target exam, attempt year and optional subject were set during onboarding and can't be
-                edited here. Your weekly goal can be changed any time.
+                Your primary target exam and attempt year were set during onboarding and can't be edited here. Your weekly goal can be changed any time.
               </span>
             </div>
 
