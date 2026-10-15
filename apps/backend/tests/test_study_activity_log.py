@@ -136,3 +136,29 @@ async def test_logged_sessions_show_up_in_todays_log_immediately(client):
     )
     assert other.status_code == 200, other.text
     assert (await today()).json()[0]["subject"] == "Economy"
+
+
+@pytest.mark.anyio
+async def test_weekly_schedule_shows_generated_and_deleted_tasks_immediately(client, monkeypatch):
+    """The planner reads the (empty) weekly schedule, then generates the plan and reads it again.
+    The second read used to serve the cached empty week, so the new plan didn't show for 5 minutes."""
+    from sqlalchemy.orm import sessionmaker
+    import app.routers.study_plan as study_plan
+
+    monkeypatch.setattr(
+        study_plan, "async_session_factory",
+        sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False),
+    )
+    count = lambda sch: sum(len(d["tasks"]) for d in sch["days"])
+    schedule = lambda: client.get("/api/v1/study-plan/weekly-schedule", headers=_h())
+
+    assert count((await schedule()).json()) == 0  # primes the cache with an empty week
+
+    generated = await client.post("/api/v1/study-plan/generate-weekly-plan", json={}, headers=_h())
+    assert generated.status_code == 200, generated.text
+    after = (await schedule()).json()
+    assert count(after) == generated.json()["task_count"] > 0
+
+    task_id = next(t["id"] for d in after["days"] for t in d["tasks"])
+    assert (await client.delete(f"/api/v1/study-plan/tasks/{task_id}", headers=_h())).status_code == 200
+    assert count((await schedule()).json()) == count(after) - 1

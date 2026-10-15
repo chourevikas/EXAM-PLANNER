@@ -26,6 +26,7 @@ import { useRefreshUserOnFocus } from '../hooks/useRefreshUserOnFocus';
 import { UserAvatar } from '../components/common/UserAvatar';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import { WEEKLY_HOURS_OPTIONS, PROFICIENCY_LABELS } from '../constants/onboarding';
+import { SubjectRatingEditor } from '../components/student/SubjectRatingEditor';
 
 const lockedFieldStyle: React.CSSProperties = {
   width: '100%',
@@ -77,6 +78,32 @@ export function ProfilePage() {
     () => localStorage.getItem('preferred_language') || user.preferred_language || 'en'
   );
   const [switchingLanguage, setSwitchingLanguage] = useState(false);
+
+  // Subject ratings: moved out of onboarding, edited here (or prompted for on the study planner).
+  const [editingRatings, setEditingRatings] = useState(false);
+  const [draftRatings, setDraftRatings] = useState<Record<string, number>>({});
+  const [savingRatings, setSavingRatings] = useState(false);
+  const [ratingsError, setRatingsError] = useState<string | null>(null);
+
+  const startEditingRatings = () => {
+    setDraftRatings({ ...(user.subject_proficiency || {}) });
+    setRatingsError(null);
+    setEditingRatings(true);
+  };
+
+  const saveRatings = async () => {
+    setSavingRatings(true);
+    setRatingsError(null);
+    try {
+      const fresh = await updateUserProfile({ subject_proficiency: draftRatings });
+      setUser(fresh);
+      setEditingRatings(false);
+    } catch {
+      setRatingsError('Could not save your ratings. Please try again.');
+    } finally {
+      setSavingRatings(false);
+    }
+  };
 
   const handleLanguageChange = async (nextLang: string) => {
     if (nextLang === activeLanguage) return;
@@ -739,13 +766,80 @@ export function ProfilePage() {
               </select>
             </div>
 
-            {/* Self-rated proficiency captured during onboarding */}
+            {/* Self-rated proficiency: editable here, also prompted for before the first study plan */}
             <div style={{ gridColumn: '1 / -1' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>
-                Subject Proficiency
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Subject Proficiency</div>
+                {!editingRatings && (
+                  <button
+                    type="button"
+                    onClick={startEditingRatings}
+                    style={{
+                      padding: '7px 14px',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid var(--primary-red)',
+                      backgroundColor: 'transparent',
+                      color: 'var(--primary-red)',
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {Object.keys(user.subject_proficiency || {}).length ? 'Edit ratings' : 'Rate now'}
+                  </button>
+                )}
               </div>
-              {Object.keys(user.subject_proficiency || {}).length === 0 ? (
-                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>You haven't rated any subjects yet.</div>
+              {editingRatings ? (
+                <div>
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 0, marginBottom: 12 }}>
+                    Rate how confident you feel in each subject, from 1 (just starting) to 5 (expert). Skip any you are unsure about.
+                  </p>
+                  <SubjectRatingEditor value={draftRatings} onChange={setDraftRatings} disabled={savingRatings} />
+                  {ratingsError && (
+                    <div role="alert" style={{ marginTop: 12, color: '#d32f2f', fontSize: 13, fontWeight: 600 }}>{ratingsError}</div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setEditingRatings(false)}
+                      disabled={savingRatings}
+                      style={{
+                        padding: '9px 16px',
+                        borderRadius: 'var(--radius)',
+                        border: '1px solid var(--border-default)',
+                        backgroundColor: 'transparent',
+                        color: 'var(--text-primary)',
+                        fontWeight: 700,
+                        fontSize: 13,
+                        cursor: savingRatings ? 'default' : 'pointer',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveRatings}
+                      disabled={savingRatings}
+                      style={{
+                        padding: '9px 18px',
+                        borderRadius: 'var(--radius)',
+                        border: 'none',
+                        backgroundColor: 'var(--primary-red)',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: 13,
+                        cursor: savingRatings ? 'default' : 'pointer',
+                        opacity: savingRatings ? 0.7 : 1,
+                      }}
+                    >
+                      {savingRatings ? 'Saving…' : 'Save ratings'}
+                    </button>
+                  </div>
+                </div>
+              ) : Object.keys(user.subject_proficiency || {}).length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  You haven't rated any subjects yet. Rating them helps us personalise your study plan.
+                </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))', gap: 10 }}>
                   {Object.entries(user.subject_proficiency as Record<string, number>)

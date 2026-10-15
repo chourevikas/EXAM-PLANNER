@@ -208,6 +208,12 @@ async def delete_study_task(
 
     await session.delete(task)
     await session.commit()
+    # The cached weekly schedule still lists the deleted task.
+    try:
+        from app.cache import invalidate_study_activity_cache
+        await invalidate_study_activity_cache(current_user.id)
+    except Exception:
+        pass
     return {"message": "Task deleted successfully", "task_id": str(task_id)}
 
 class BulkTaskItem(SQLModel):
@@ -520,6 +526,12 @@ async def generate_weekly_study_plan(
             created_tasks.append(new_task)
 
     await session.commit()
+    # The planner fetches the (empty) weekly schedule before generating; drop that cached copy.
+    try:
+        from app.cache import invalidate_study_activity_cache
+        await invalidate_study_activity_cache(current_user.id)
+    except Exception:
+        pass
     return {
         "message": f"Successfully generated 7-day study plan with {len(created_tasks)} target tasks!",
         "task_count": len(created_tasks),

@@ -3,6 +3,8 @@ import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { LogStudyModal } from '../components/student/LogStudyModal';
 import { CreateTaskModal } from '../components/student/CreateTaskModal';
+import { SubjectRatingPrompt } from '../components/student/SubjectRatingPrompt';
+import { fetchCurrentUser } from '../services/authService';
 import {
   fetchWeeklySchedule,
   fetchStudyTasks,
@@ -21,6 +23,29 @@ import {
 import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 import { StudyPlannerSkeleton } from '../components/student/StudyPlannerSkeleton';
 import { formatEnum } from '../utils/formatEnum';
+
+const ratingPromptSkipKey = (userId: string) => `ep_skip_rating_prompt_${userId}`;
+
+/** True when a student has no subject ratings and hasn't already dismissed the prompt. */
+function shouldAskForRatings(): boolean {
+  try {
+    const stored = JSON.parse(localStorage.getItem('user') || '{}');
+    if (stored.role && stored.role !== 'STUDENT') return false;
+    if (Object.keys(stored.subject_proficiency || {}).length > 0) return false;
+    return !(stored.id && localStorage.getItem(ratingPromptSkipKey(String(stored.id))));
+  } catch {
+    return false;
+  }
+}
+
+function rememberRatingPromptSkipped() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('user') || '{}');
+    if (stored.id) localStorage.setItem(ratingPromptSkipKey(String(stored.id)), '1');
+  } catch {
+    // Storage unavailable: the prompt may show again next time, which is harmless.
+  }
+}
 
 function getActivityTypeBadge(activityType?: string, title?: string) {
   const act = (activityType || '').toUpperCase();
@@ -270,6 +295,8 @@ export function StudyPlannerPage() {
   const [selectedDayDate, setSelectedDayDate] = useState<string>('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
+  const [showRatingPrompt, setShowRatingPrompt] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   const handleSendPendingEmail = async () => {
     setIsSendingEmail(true);
@@ -282,6 +309,32 @@ export function StudyPlannerPage() {
     } finally {
       setIsSendingEmail(false);
       setTimeout(() => setEmailFeedback(null), 6000);
+    }
+  };
+
+  const generatePlan = async () => {
+    await generateWeeklyStudyPlan(undefined, true);
+    const [newSch, newTasks] = await Promise.all([
+      fetchWeeklySchedule(),
+      fetchStudyTasks()
+    ]);
+    return { schedule: newSch, tasks: newTasks };
+  };
+
+  const handleRatingPromptDone = async (saved: boolean) => {
+    if (!saved) rememberRatingPromptSkipped();
+    setShowRatingPrompt(false);
+    setPlanError(null);
+    setLoading(true);
+    try {
+      const generated = await generatePlan();
+      if (generated.schedule) setSchedule(generated.schedule);
+      setTasks(generated.tasks);
+    } catch (err) {
+      console.error('Error generating study plan:', err);
+      setPlanError("We couldn't generate your study plan. Please refresh the page to try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -300,16 +353,23 @@ export function StudyPlannerPage() {
       let actData = actRes.status === 'fulfilled' ? actRes.value : [];
       let sumData = sumRes.status === 'fulfilled' ? sumRes.value : null;
 
-      // Auto-generate full 7-day weekly plan if schedule is empty for the current week
+      // Auto-generate full 7-day weekly plan if schedule is empty for the current week.
+      // Students without subject ratings are asked for them first; generation resumes from the prompt.
       const totalWeekTasks = schData?.days?.reduce((acc: any, d: any) => acc + (d.tasks?.length || 0), 0) || 0;
       if (schData && schData.days && totalWeekTasks === 0) {
-        await generateWeeklyStudyPlan(undefined, true);
-        const [newSch, newTasks] = await Promise.all([
-          fetchWeeklySchedule(),
-          fetchStudyTasks()
-        ]);
-        schData = newSch;
-        tasksData = newTasks;
+        // The cached user may be stale (ratings saved on another device), so confirm before asking.
+        let ask = shouldAskForRatings();
+        if (ask) {
+          await fetchCurrentUser().catch(() => {});
+          ask = shouldAskForRatings();
+        }
+        if (ask) {
+          setShowRatingPrompt(true);
+        } else {
+          const generated = await generatePlan();
+          schData = generated.schedule;
+          tasksData = generated.tasks;
+        }
       }
 
       if (schData) setSchedule(schData);
@@ -512,6 +572,7 @@ export function StudyPlannerPage() {
   return (
     <StudentLayout pageTitle="Study Planner">
       {/* Modals */}
+      <SubjectRatingPrompt isOpen={showRatingPrompt} onDone={handleRatingPromptDone} />
       <LogStudyModal
         isOpen={isLogModalOpen}
         onClose={() => setIsLogModalOpen(false)}
@@ -559,6 +620,18 @@ export function StudyPlannerPage() {
           </button>
         </div>
       </section>
+
+      {planError && (
+        <div
+          role="alert"
+          style={{
+            padding: '12px 16px', borderRadius: 'var(--radius)', marginBottom: 16, fontSize: 14, fontWeight: 600,
+            backgroundColor: 'var(--danger-bg)', color: 'var(--danger-primary)', border: '1px solid rgba(var(--primary-red-rgb), 0.2)'
+          }}
+        >
+          {planError}
+        </div>
+      )}
 
       {/* Top Summary Stat Cards */}
       <div style={{
