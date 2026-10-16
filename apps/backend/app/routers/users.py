@@ -10,6 +10,7 @@ from app.services.user_service import UserService
 from app.db.models.user import User, UserRole, QuestionBookmark
 from app.db.models.question import Question, QuestionTranslation
 from app.db.models.enums import DifficultyLevel, LanguageCode
+from app.db.models.hierarchy import Exam
 from app.core.deps import get_current_user, require_roles, require_admin_section
 from app.cache import get_cache, build_cache_key, invalidate_user_cache
 from app.services import audit_service
@@ -39,7 +40,7 @@ async def list_bookmarks(
     cache_key = build_cache_key(
         "users:bookmarks",
         str(current_user.id),
-        "page",  # keeps paged {items, total} entries apart from the old plain-list ones
+        "page-v2",  # v2 items carry exam/year; keeps them apart from older cached shapes
         skip=skip,
         limit=limit,
         q=search.lower(),
@@ -77,9 +78,14 @@ async def list_bookmarks(
             col(Question.difficulty),
             col(QuestionBookmark.created_at),
             func.coalesce(col(QuestionTranslation.question_text), "").label("question_text"),
+            col(Question.source_year).label("question_year"),
+            col(Exam.name).label("exam_full_name"),
+            col(Exam.source_year).label("exam_year"),
+            col(Exam.is_mixed_bank),
         )
         .join(Question, col(QuestionBookmark.question_id) == col(Question.id))
         .join(QuestionTranslation, english_text, isouter=True)
+        .join(Exam, col(Question.exam_id) == col(Exam.id), isouter=True)
         .where(*filters)
         .order_by(col(QuestionBookmark.created_at).desc(), col(QuestionBookmark.id).desc())
         .offset(skip)
@@ -88,16 +94,24 @@ async def list_bookmarks(
     result = await session.exec(stmt)
     rows = result.all()
 
+    from app.services.exam_session_service import exam_badge_label, load_exam_type_codes
+    type_codes = await load_exam_type_codes(session) if any(row.exam_full_name for row in rows) else set()
+
     items = []
     for row in rows:
         difficulty_raw = getattr(row, "difficulty", None)
         diff_val = difficulty_raw.value if hasattr(difficulty_raw, "value") else (difficulty_raw or "MEDIUM")
+        # A mixed bank's own year is a placeholder; its questions carry their real year.
+        year = row.question_year or (None if row.is_mixed_bank else row.exam_year)
         items.append({
             "bookmark_id": str(getattr(row, "bookmark_id", "")),
             "question_id": str(getattr(row, "question_id", "")),
             "question_text": getattr(row, "question_text", "") or "",
             "difficulty": diff_val,
             "created_at": row.created_at.isoformat() if getattr(row, "created_at", None) else None,
+            "exam_name": exam_badge_label(row.exam_full_name, type_codes),
+            "exam_full_name": row.exam_full_name,
+            "source_year": year,
         })
 
     out = {"items": items, "total": int(total or 0)}

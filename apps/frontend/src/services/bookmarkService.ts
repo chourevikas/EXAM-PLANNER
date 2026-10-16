@@ -7,6 +7,10 @@ export interface BookmarkItem {
   question_text: string;
   difficulty: 'EASY' | 'MEDIUM' | 'HARD' | string;
   created_at: string | null;
+  /** Short exam tag such as "UPSC"; null when the question has no paper. */
+  exam_name: string | null;
+  exam_full_name: string | null;
+  source_year: number | null;
 }
 
 export interface BookmarkPage {

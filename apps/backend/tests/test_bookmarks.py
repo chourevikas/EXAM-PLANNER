@@ -35,6 +35,7 @@ async def test_bookmark_api_flow():
         assert "question_id" in items[0]
         assert "question_text" in items[0]
         assert "difficulty" in items[0]
+        assert {"exam_name", "exam_full_name", "source_year"} <= items[0].keys()
 
         # Test remove bookmark
         res_del = await remove_bookmark(question_id=question.id, session=session, current_user=user)

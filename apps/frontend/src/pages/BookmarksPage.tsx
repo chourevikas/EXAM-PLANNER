@@ -26,6 +26,7 @@ interface BookmarkCardProps {
 const BADGE_EASY_STYLE: React.CSSProperties = { color: '#059669', background: '#ECFDF5', border: '1px solid #A7F3D0' };
 const BADGE_HARD_STYLE: React.CSSProperties = { color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA' };
 const BADGE_DEFAULT_STYLE: React.CSSProperties = { color: '#D97706', background: '#FFFBEB', border: '1px solid #FDE68A' };
+const EXAM_TAG_STYLE: React.CSSProperties = { color: '#7E22CE', background: '#F3E8FF', border: '1px solid #E9D5FF' };
 
 const CARD_BASE_STYLE: React.CSSProperties = {
   border: '1px solid #E2E8F0',
@@ -153,8 +154,9 @@ const BookmarkCard = React.memo(function BookmarkCard({
         pointerEvents: isRemoving ? 'none' : 'auto',
       }}
     >
-      <div style={CARD_HEADER_STYLE}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      {/* Tags wrap among themselves; Remove stays on the top row (icon-only on phones). */}
+      <div style={{ ...CARD_HEADER_STYLE, flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
           <span
             style={{
               ...BADGE_BASE_STYLE,
@@ -163,9 +165,14 @@ const BookmarkCard = React.memo(function BookmarkCard({
           >
             {formatEnum(bookmark.difficulty)}
           </span>
+          {(bookmark.exam_name || bookmark.source_year) && (
+            <span style={{ ...BADGE_BASE_STYLE, ...EXAM_TAG_STYLE }} title={bookmark.exam_full_name || undefined}>
+              {[bookmark.exam_name, bookmark.source_year].filter(Boolean).join(' • ')}
+            </span>
+          )}
           {bookmark.created_at && (
             <span style={{ fontSize: 11.5, color: 'var(--text-disabled)' }}>
-              {new Date(bookmark.created_at).toLocaleDateString(undefined, {
+              Saved {new Date(bookmark.created_at).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',
@@ -181,12 +188,14 @@ const BookmarkCard = React.memo(function BookmarkCard({
           style={{
             ...DELETE_BTN_BASE_STYLE,
             cursor: isRemoving ? 'not-allowed' : 'pointer',
+            flexShrink: 0,
+            marginTop: -6,
           }}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FEF2F2')}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
         >
           <Trash2 size={15} />
-          <span>{isRemoving ? 'Removing...' : 'Remove'}</span>
+          {!isMobile && <span>{isRemoving ? 'Removing...' : 'Remove'}</span>}
         </button>
       </div>
       <div
