@@ -1,8 +1,13 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { listBookmarks, removeBookmark, BookmarkItem } from '../services/bookmarkService';
+import { listBookmarks, removeBookmark, getBookmarkSolution, BookmarkItem } from '../services/bookmarkService';
 import { formatEnum } from '../utils/formatEnum';
-import { Search, Bookmark, Trash2, Filter, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, Bookmark, Trash2, Filter, AlertCircle, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import {
+  QuestionSolutionMarkdownCard,
+  QuestionSolutionData,
+  DistractorItem,
+} from '../components/exam/QuestionSolutionMarkdownCard';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,6 +17,8 @@ interface BookmarkCardProps {
   onRemove: (questionId: string) => void;
   isRemoving: boolean;
   isMobile: boolean;
+  isExpanded: boolean;
+  onToggle: (questionId: string) => void;
 }
 
 // ==================== BASE MODULE STYLES ====================
@@ -123,6 +130,8 @@ const BookmarkCard = React.memo(function BookmarkCard({
   onRemove,
   isRemoving,
   isMobile,
+  isExpanded,
+  onToggle,
 }: BookmarkCardProps) {
   const badgeStyle = useMemo(() => {
     switch (bookmark.difficulty?.toUpperCase()) {
@@ -181,19 +190,155 @@ const BookmarkCard = React.memo(function BookmarkCard({
         </button>
       </div>
       <div
-        style={{
-          fontSize: isMobile ? 14 : 15,
-          color: '#1E293B',
-          lineHeight: 1.6,
-          wordBreak: 'break-word',
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        onClick={() => onToggle(bookmark.question_id)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle(bookmark.question_id);
+          }
         }}
+        style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}
       >
-        {/* Markdown like the exam screens; raw HTML in question text is not rendered (prevents script injection). */}
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{bookmark.question_text || ''}</ReactMarkdown>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: isMobile ? 14 : 15,
+            color: '#1E293B',
+            lineHeight: 1.6,
+            wordBreak: 'break-word',
+          }}
+        >
+          {/* Markdown like the exam screens; raw HTML in question text is not rendered (prevents script injection). */}
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{bookmark.question_text || ''}</ReactMarkdown>
+        </div>
+        <ChevronDown
+          size={18}
+          aria-hidden="true"
+          style={{
+            flexShrink: 0,
+            marginTop: 3,
+            color: 'var(--text-muted)',
+            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease',
+          }}
+        />
       </div>
+      {!isExpanded && (
+        <button type="button" onClick={() => onToggle(bookmark.question_id)} style={SHOW_DETAILS_BTN_STYLE}>
+          Show options &amp; explanation
+        </button>
+      )}
+      {isExpanded && <BookmarkDetails questionId={bookmark.question_id} />}
     </div>
   );
 });
+
+const SHOW_DETAILS_BTN_STYLE: React.CSSProperties = {
+  marginTop: 8,
+  padding: 0,
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--accent-primary)',
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const cleanLabel = (label: unknown) => String(label ?? '').replace(/[().\s]/g, '').toUpperCase();
+
+function BookmarkDetails({ questionId }: { questionId: string }) {
+  const [solution, setSolution] = useState<QuestionSolutionData | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFailed(false);
+    getBookmarkSolution(questionId)
+      .then((data) => !cancelled && setSolution(data))
+      .catch((err) => {
+        console.error('Failed to load bookmark details:', err);
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [questionId]);
+
+  if (failed) {
+    return (
+      <div style={{ ...ERROR_ALERT_STYLE, marginTop: 14, marginBottom: 0 }}>
+        <AlertCircle size={18} />
+        <span>Couldn't load the options and explanation. Please try again.</span>
+      </div>
+    );
+  }
+  if (!solution) return <QuestionSolutionMarkdownCard solution={{}} isLoading />;
+
+  const options: DistractorItem[] = Array.isArray(solution.distractor_scores)
+    ? solution.distractor_scores
+    : Object.values(solution.distractor_scores ?? {});
+  const correctLabel = cleanLabel(solution.correct_option_label);
+  const isCorrect = (opt: DistractorItem) =>
+    solution.correct_option_id != null
+      ? String(opt.option_id) === String(solution.correct_option_id)
+      : !!correctLabel && cleanLabel(opt.label) === correctLabel;
+
+  return (
+    <div style={{ marginTop: 14, borderTop: '1px solid var(--border-color)', paddingTop: 14 }}>
+      {options.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {options.map((opt, idx) => {
+            const correct = isCorrect(opt);
+            return (
+              <div
+                key={String(opt.option_id ?? idx)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${correct ? '#3A8B53' : '#E2E8F0'}`,
+                  background: correct ? '#ECFDF5' : 'var(--bg-card)',
+                  fontSize: 14,
+                  color: '#1E293B',
+                  lineHeight: 1.5,
+                }}
+              >
+                <span style={{ fontWeight: 800, color: correct ? '#047857' : 'var(--text-secondary)' }}>
+                  {opt.label || String.fromCharCode(65 + idx)}.
+                </span>
+                <div style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{opt.text || ''}</ReactMarkdown>
+                </div>
+                {correct && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      flexShrink: 0,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: '#047857',
+                    }}
+                  >
+                    <CheckCircle2 size={14} /> Correct
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <QuestionSolutionMarkdownCard solution={solution} />
+    </div>
+  );
+}
 
 function BookmarkSkeleton() {
   return (
@@ -208,80 +353,123 @@ function BookmarkSkeleton() {
   );
 }
 
+const PAGE_SIZE = 10;
+
+const pageBtnStyle = (disabled: boolean): React.CSSProperties => ({
+  height: 36,
+  padding: '0 12px',
+  borderRadius: 8,
+  border: '1px solid var(--border-default)',
+  backgroundColor: disabled ? 'var(--bg-subtle)' : 'var(--bg-card)',
+  color: disabled ? 'var(--text-muted)' : 'var(--text-primary)',
+  fontWeight: 600,
+  fontSize: 13,
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  opacity: disabled ? 0.6 : 1,
+});
+
 export function BookmarksPage(): React.ReactElement {
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<string>('ALL');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const listTopRef = useRef<HTMLDivElement>(null);
+
+  const handleToggle = useCallback((questionId: string) => {
+    setExpandedId((prev) => (prev === questionId ? null : questionId));
+  }, []);
 
   const { isMobile } = useBreakpoint();
 
-  const fetchBookmarksData = useCallback(async (signal?: AbortSignal, forceRefresh = false) => {
-    try {
-      setLoading(true);
-      setErrorMessage(null);
-      const res = await listBookmarks({ forceRefresh, signal });
-      if (!signal?.aborted) {
-        setBookmarks(res);
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError' || signal?.aborted) return;
-      console.error('Failed to load bookmarks:', err);
-      setErrorMessage('Failed to load bookmarks. Please try again.');
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
-  }, []);
+  // Search runs on the server, so wait for the student to stop typing.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // A new search or filter starts again from the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, difficultyFilter]);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchBookmarksData(controller.signal);
+    (async () => {
+      try {
+        setLoading(true);
+        setErrorMessage(null);
+        const res = await listBookmarks({
+          skip: (page - 1) * PAGE_SIZE,
+          limit: PAGE_SIZE,
+          q: debouncedQuery,
+          difficulty: difficultyFilter === 'ALL' ? undefined : difficultyFilter,
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        // The last bookmark on a later page was removed elsewhere: step back to a page that has some.
+        if (res.items.length === 0 && res.total > 0 && page > 1) {
+          setPage(Math.ceil(res.total / PAGE_SIZE));
+          return;
+        }
+        setBookmarks(res.items);
+        setTotal(res.total);
+      } catch (err: any) {
+        if (err?.name === 'AbortError' || controller.signal.aborted) return;
+        console.error('Failed to load bookmarks:', err);
+        setErrorMessage('Failed to load bookmarks. Please try again.');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+    return () => controller.abort();
+  }, [page, debouncedQuery, difficultyFilter, reloadKey]);
 
-    return () => {
-      controller.abort();
-    };
-  }, [fetchBookmarksData]);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
-  // Optimistic removal with rollback
+  const goToPage = useCallback((next: number) => {
+    setExpandedId(null);
+    setPage(next);
+    listTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  // Optimistic removal with rollback; the page is then re-fetched so the next bookmark moves up into it.
   const handleRemove = useCallback(
     async (questionId: string) => {
       setRemovingId(questionId);
-      const previousBookmarks = [...bookmarks];
-
-      // Optimistic update
+      const previousBookmarks = bookmarks;
       setBookmarks((prev) => prev.filter((b) => b.question_id !== questionId));
+      setTotal((t) => Math.max(0, t - 1));
 
       try {
         await removeBookmark(questionId);
+        if (previousBookmarks.length === 1 && page > 1) setPage(page - 1);
+        else reload();
       } catch (err) {
         console.error('Failed to remove bookmark:', err);
-        // Rollback state on error
         setBookmarks(previousBookmarks);
+        setTotal((t) => t + 1);
         alert('Failed to remove bookmark. Please try again.');
       } finally {
         setRemovingId(null);
       }
     },
-    [bookmarks],
+    [bookmarks, page, reload],
   );
 
-  // Memoized filtered bookmarks
-  const filteredBookmarks = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    return bookmarks.filter((b) => {
-      const matchesDifficulty =
-        difficultyFilter === 'ALL' || b.difficulty?.toUpperCase() === difficultyFilter;
-      const matchesQuery =
-        !query ||
-        b.question_text?.toLowerCase().includes(query) ||
-        b.difficulty?.toLowerCase().includes(query);
-      return matchesDifficulty && matchesQuery;
-    });
-  }, [bookmarks, searchQuery, difficultyFilter]);
+  const hasFilters = debouncedQuery !== '' || difficultyFilter !== 'ALL';
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const firstShown = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const lastShown = Math.min(page * PAGE_SIZE, total);
 
   const pageContainerStyle: React.CSSProperties = {
     padding: isMobile ? '16px 0' : '24px 0', // the student layout already provides the side padding
@@ -378,7 +566,7 @@ export function BookmarksPage(): React.ReactElement {
           </div>
           <button
             type="button"
-            onClick={() => fetchBookmarksData(undefined, true)}
+            onClick={reload}
             disabled={loading}
             style={refreshBtnStyle}
           >
@@ -388,8 +576,8 @@ export function BookmarksPage(): React.ReactElement {
         </section>
 
         {/* Search and Filters */}
-        {bookmarks.length > 0 && (
-          <div style={filterRowStyle}>
+        {(total > 0 || hasFilters || searchQuery !== '') && (
+          <div ref={listTopRef} style={{ ...filterRowStyle, scrollMarginTop: 80 }}>
             <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Search
                 size={16}
@@ -430,13 +618,13 @@ export function BookmarksPage(): React.ReactElement {
         )}
 
         {/* Content Section */}
-        {loading ? (
+        {loading && bookmarks.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <BookmarkSkeleton />
             <BookmarkSkeleton />
             <BookmarkSkeleton />
           </div>
-        ) : bookmarks.length === 0 ? (
+        ) : total === 0 && !hasFilters ? (
           <div style={EMPTY_CONTAINER_STYLE}>
             <Bookmark size={40} color="var(--text-disabled)" style={{ marginBottom: 12, opacity: 0.7 }} />
             <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1E293B', margin: '0 0 6px 0' }}>
@@ -446,22 +634,76 @@ export function BookmarksPage(): React.ReactElement {
               Start practicing exam questions and bookmark tricky questions to review them here!
             </p>
           </div>
-        ) : filteredBookmarks.length === 0 ? (
+        ) : total === 0 ? (
           <div style={NO_MATCH_CONTAINER_STYLE}>
             No bookmarks match your search or filter criteria.
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {filteredBookmarks.map((b) => (
-              <BookmarkCard
-                key={b.bookmark_id}
-                bookmark={b}
-                onRemove={handleRemove}
-                isRemoving={removingId === b.question_id}
-                isMobile={isMobile}
-              />
-            ))}
-          </div>
+          <>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                opacity: loading ? 0.6 : 1,
+                transition: 'opacity 0.15s ease',
+              }}
+              aria-busy={loading}
+            >
+              {bookmarks.map((b) => (
+                <BookmarkCard
+                  key={b.bookmark_id}
+                  bookmark={b}
+                  onRemove={handleRemove}
+                  isRemoving={removingId === b.question_id}
+                  isMobile={isMobile}
+                  isExpanded={expandedId === b.question_id}
+                  onToggle={handleToggle}
+                />
+              ))}
+            </div>
+
+            <nav
+              aria-label="Bookmarks pages"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 10,
+                marginTop: 16,
+                fontSize: 13,
+                color: 'var(--text-muted)',
+              }}
+            >
+              <span>
+                Showing <strong>{firstShown}–{lastShown}</strong> of <strong>{total}</strong>
+              </span>
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    disabled={page <= 1 || loading}
+                    onClick={() => goToPage(page - 1)}
+                    style={pageBtnStyle(page <= 1 || loading)}
+                  >
+                    <ChevronLeft size={14} /> Previous
+                  </button>
+                  <span style={{ fontWeight: 700, color: 'var(--text-primary)', padding: '0 4px' }}>
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={page >= totalPages || loading}
+                    onClick={() => goToPage(page + 1)}
+                    style={pageBtnStyle(page >= totalPages || loading)}
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+            </nav>
+          </>
         )}
       </div>
     </StudentLayout>

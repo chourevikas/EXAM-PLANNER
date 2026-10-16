@@ -1,4 +1,5 @@
 import { guardedFetch } from '../utils/apiGuard';
+import type { QuestionSolutionData } from '../components/exam/QuestionSolutionMarkdownCard';
 
 export interface BookmarkItem {
   bookmark_id: string;
@@ -8,35 +9,24 @@ export interface BookmarkItem {
   created_at: string | null;
 }
 
-interface CacheEntry {
-  data: BookmarkItem[];
-  timestamp: number;
-}
-
-let bookmarksCache: CacheEntry | null = null;
-const CACHE_TTL_MS = 60 * 1000; // 1 minute in-memory client cache
-
-export function invalidateBookmarksClientCache(): void {
-  bookmarksCache = null;
+export interface BookmarkPage {
+  items: BookmarkItem[];
+  total: number;
 }
 
 export async function listBookmarks(options?: {
-  forceRefresh?: boolean;
-  limit?: number;
   skip?: number;
+  limit?: number;
+  q?: string;
+  difficulty?: string;
   signal?: AbortSignal;
-}): Promise<BookmarkItem[]> {
-  const now = Date.now();
-  const isDefaultQuery = !options?.limit && !options?.skip;
-
-  if (!options?.forceRefresh && isDefaultQuery && bookmarksCache && now - bookmarksCache.timestamp < CACHE_TTL_MS) {
-    return bookmarksCache.data;
-  }
-
+}): Promise<BookmarkPage> {
   const token = localStorage.getItem('access_token');
   const queryParams = new URLSearchParams();
   if (options?.limit) queryParams.set('limit', String(options.limit));
   if (options?.skip) queryParams.set('skip', String(options.skip));
+  if (options?.q?.trim()) queryParams.set('q', options.q.trim());
+  if (options?.difficulty) queryParams.set('difficulty', options.difficulty);
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
 
   const res = await guardedFetch(`/api/v1/users/me/bookmarks${queryString}`, {
@@ -44,16 +34,10 @@ export async function listBookmarks(options?: {
     signal: options?.signal,
   });
   if (!res.ok) throw new Error('Failed to fetch bookmarks');
-  const data: BookmarkItem[] = await res.json();
-
-  if (isDefaultQuery) {
-    bookmarksCache = { data, timestamp: now };
-  }
-  return data;
+  return res.json();
 }
 
 export async function addBookmark(questionId: number | string): Promise<void> {
-  invalidateBookmarksClientCache();
   const token = localStorage.getItem('access_token');
   const res = await guardedFetch(`/api/v1/users/me/bookmarks/${questionId}`, {
     method: 'POST',
@@ -63,11 +47,26 @@ export async function addBookmark(questionId: number | string): Promise<void> {
 }
 
 export async function removeBookmark(questionId: number | string): Promise<void> {
-  invalidateBookmarksClientCache();
   const token = localStorage.getItem('access_token');
   const res = await guardedFetch(`/api/v1/users/me/bookmarks/${questionId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to remove bookmark');
+}
+
+// Solutions don't change while the page is open, so keep each one after its first load.
+const solutionCache = new Map<string, QuestionSolutionData>();
+
+export async function getBookmarkSolution(questionId: string): Promise<QuestionSolutionData> {
+  const cached = solutionCache.get(questionId);
+  if (cached) return cached;
+  const token = localStorage.getItem('access_token');
+  const res = await guardedFetch(`/api/v1/questions/${questionId}/solution`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!res.ok) throw new Error('Failed to fetch question details');
+  const data: QuestionSolutionData = await res.json();
+  solutionCache.set(questionId, data);
+  return data;
 }
