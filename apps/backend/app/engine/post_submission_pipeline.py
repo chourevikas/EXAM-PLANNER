@@ -1233,18 +1233,28 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
     logger.info(f"⚡ [PHASE_1_DONE] Math results persisted for attempt '{attempt.id}'. Starting LLM synthesis...")
 
     # ─── Phase 2: AI synthesis (with rule-based fallback) ────────────────────
-    try:
-        mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
-            candidate_info=candidate_dict,
-            exam_info=exam_dict,
-            precalculated_metrics=precalc_payload,
-        )
-    except Exception as llm_err:
-        logger.warning(f"LLM diagnostic insight generation failed for attempt '{attempt.id}': {llm_err}. Using rule-based insight fallback.")
+    # The free plan has no AI analysis: skip the LLM call and keep the rule-based insight, so the
+    # report is complete if the student upgrades later.
+    from app.services.free_plan import is_limited
+    if user is not None and await is_limited(session, user):
+        logger.info(f"[PHASE_2] Free plan: rule-based insight only for attempt '{attempt.id}' (no LLM call).")
         mentorship_insight = _generate_rule_based_insight(
             part_3=report.get("part_3_aggregated_user_report", {}),
             taxonomy=report.get("part_2_taxonomy_analysis", {}),
         )
+    else:
+        try:
+            mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
+                candidate_info=candidate_dict,
+                exam_info=exam_dict,
+                precalculated_metrics=precalc_payload,
+            )
+        except Exception as llm_err:
+            logger.warning(f"LLM diagnostic insight generation failed for attempt '{attempt.id}': {llm_err}. Using rule-based insight fallback.")
+            mentorship_insight = _generate_rule_based_insight(
+                part_3=report.get("part_3_aggregated_user_report", {}),
+                taxonomy=report.get("part_2_taxonomy_analysis", {}),
+            )
 
     # Sync AI insights into report
     ai_tasks = mentorship_insight.get("study_plan_tasks", [])

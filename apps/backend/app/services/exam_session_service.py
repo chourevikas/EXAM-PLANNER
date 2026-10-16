@@ -700,6 +700,13 @@ class ExamSessionService:
             "questions": [],
         }
 
+    async def _answer_quota(self, user_id: int) -> Optional[int]:
+        """Answers the user may still give today under the free plan; None when unlimited."""
+        from app.services.free_plan import remaining_today
+
+        user = await self.session.get(User, user_id)
+        return await remaining_today(self.session, user) if user else None
+
     async def save_response(
         self, attempt_id: int | str, user_id: int, req: SaveResponseRequest
     ) -> SaveResponseResponse:
@@ -766,6 +773,15 @@ class ExamSessionService:
 
         prev_opt_id = resp.selected_option_id
 
+        # A question counts toward the free plan's daily limit the first time it's answered;
+        # changing or re-giving an answer later is free.
+        is_new_answer = req.selected_option_id is not None and resp.selected_option_id is None and resp.answered_at is None
+        if is_new_answer:
+            remaining = await self._answer_quota(user_id)
+            if remaining is not None and remaining <= 0:
+                from app.services.free_plan import daily_limit_error
+                raise daily_limit_error()
+
         # Update options and tracking
         if req.selected_option_id is not None:
             if resp.selected_option_id is None:
@@ -777,6 +793,9 @@ class ExamSessionService:
                 resp.option_switch_count += 1
         else:
             resp.selected_option_id = None
+
+        if is_new_answer and resp.selected_option_id is not None:
+            resp.answered_at = datetime.now(timezone.utc)
 
         resp.is_marked_for_review = req.is_marked_for_review
         resp.time_taken_seconds = max(0.0, req.time_spent_seconds)
@@ -964,6 +983,10 @@ class ExamSessionService:
                         opt_label_map[(opt.question_id, opt.option_label.strip().upper())] = opt.id
 
             switch_logs_to_add: List[QuestionSwitchLog] = []
+            # Free plan: answers beyond today's limit are dropped (the exam screen blocks them first)
+            quota_loaded = False
+            quota: Optional[int] = None
+            limit_skipped = 0
 
             for idx, item in enumerate(req.responses):
                 q_id = None
@@ -995,6 +1018,16 @@ class ExamSessionService:
 
                 prev_opt_id = resp.selected_option_id
 
+                is_new_answer = item.selected_option_id is not None and resp.selected_option_id is None and resp.answered_at is None
+                if is_new_answer:
+                    if not quota_loaded:
+                        quota, quota_loaded = await self._answer_quota(user_id), True
+                    if quota is not None:
+                        if quota <= 0:
+                            limit_skipped += 1
+                            continue
+                        quota -= 1
+
                 if item.selected_option_id is not None:
                     if resp.selected_option_id is None:
                         resp.initial_option_id = opt_id
@@ -1005,6 +1038,8 @@ class ExamSessionService:
                         resp.option_switch_count += 1
                 else:
                     resp.selected_option_id = None
+                if is_new_answer and resp.selected_option_id is not None:
+                    resp.answered_at = datetime.now(timezone.utc)
 
                 resp.is_marked_for_review = item.is_marked_for_review
                 resp.time_taken_seconds = max(resp.time_taken_seconds, float(item.time_spent_seconds or 0.0))
@@ -1115,6 +1150,7 @@ class ExamSessionService:
                 status="PROCESSED",
                 received_count=len(req.responses),
                 response_summary=summary,
+                daily_limit_skipped=limit_skipped,
             )
         except Exception as e:
             logger.error(f"[BATCH:INGEST_ERROR] Failed to persist batch '{batch_key}': {e}", exc_info=True)
@@ -1630,6 +1666,8 @@ class ExamSessionService:
                     if opt.option_label and opt.id is not None and opt.question_id is not None:
                         submit_opt_label_map[(opt.question_id, opt.option_label.strip().upper())] = opt.id
 
+            submit_quota_loaded = False
+            submit_quota: Optional[int] = None
             for item in req.responses:
                 try:
                     q_id = int(item.question_id) if item.question_id and str(item.question_id).isdigit() else None
@@ -1651,6 +1689,17 @@ class ExamSessionService:
                         )
                         responses.append(resp)
                         resp_by_qid[q_id] = resp
+                    if opt_id and resp.selected_option_id is None and resp.answered_at is None:
+                        # A new answer at submit time still counts toward the free plan's daily limit
+                        if not submit_quota_loaded:
+                            submit_quota, submit_quota_loaded = await self._answer_quota(user_id), True
+                        if submit_quota is not None:
+                            if submit_quota <= 0:
+                                opt_id = None
+                            else:
+                                submit_quota -= 1
+                        if opt_id:
+                            resp.answered_at = datetime.now(timezone.utc)
                     if opt_id:
                         resp.selected_option_id = opt_id
                         resp.question_status = QuestionResponseStatus.ANSWERED_AND_MARKED if item.is_marked_for_review else QuestionResponseStatus.ANSWERED

@@ -625,6 +625,11 @@ export async function getUserCumulativeAggregateReport(userId?: number | string)
       method: 'GET',
       headers: getAuthHeaders(),
     });
+    if (response.status === 403) {
+      // Free plan: the all-tests analysis is part of Pro
+      const body = await response.json().catch(() => null);
+      if (body?.detail?.code === 'FREE_PLAN_ANALYSIS_LOCKED') return { analysis_locked: true };
+    }
     if (!response.ok) return null;
     return await response.json();
   } catch (err) {

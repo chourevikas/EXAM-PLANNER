@@ -74,15 +74,35 @@ Replace each with a real query, or hide the widget until real data exists:
 
 ---
 
-## Phase 2: free plan (20 questions a day, no summary or analysis)
-Builds on Phase 0.1's `EntitlementService` / `require_feature` / `FeatureUsageEvent`.
+## Phase 2: free plan (20 questions a day, no summary or analysis) ✅ built
+Payments are on hold, so this uses the existing `StudentProfile.subscription_tier`; admins can grant Premium from the admin panel. It does **not** depend on the payments branch's `EntitlementService`. When payments land, the limit can move into plan features.
 
-- **Plan features:** add `QUESTIONS_PER_DAY` (FREE = 20, PREMIUM = unlimited) and `ATTEMPT_ANALYSIS` (FREE = off) to plan features (admin-editable in `PremiumAdmin`).
-- **Counting:** count answered questions per user per IST day from `ExamQuestionResponse`. Enforce when a question is answered or revealed, and cap the question count at `POST /attempts/start` to what's left today.
-- **Server-side only.** The client-only practice page (`StudentPracticeExamPage`, synced to the server only at the next login) must record answers on the server, or it bypasses the limit.
-- **Analysis:** for FREE users, skip the Gemini step in `post_submission_pipeline`, which also saves LLM cost. Gate the report endpoints (`/analytics/reports/attempts/{id}/*`, aggregate report) with `ATTEMPT_ANALYSIS`. Free users **still see their score, the correct answers and the explanations**; only the summary and analysis pages are replaced by an upgrade card. The cheap maths still runs, so upgrading unlocks past reports.
-- **UX:** show "X of 20 questions left today" in the exam header; when the limit is hit, show an upgrade modal (402/403 → paywall). After a test, free users get the score and answer review as today, with an "Unlock your full analysis" card where the report would be. The limit resets at midnight IST.
-- **Guests:** keep the existing guest rate limit; the limit applies to signed-in FREE users.
+**Client decisions (17 Oct):**
+- Answers on the practice page count, as well as answers in tests.
+- A free student can start any paper (including a full one); once they've answered 20 questions that day, further answers are blocked.
+
+- **Counting** (`app/services/free_plan.py`):
+  - Test answers are counted via `exam_question_responses.answered_at`, set the first time a question is answered.
+  - Practice answers are counted via `practice_answers`, one per question per day.
+  - The day is the IST calendar day.
+  - Changing an answer that was already counted is free.
+  - Premium students and staff are unlimited.
+- **Enforcement:**
+  - Single answer save: a new answer over the limit returns 403 `FREE_DAILY_LIMIT_REACHED`.
+  - Batch save and submit: new answers beyond the limit are dropped, and the batch acknowledgement reports `daily_limit_skipped`.
+  - Practice (`POST /practice/answers`): returns 403 at the limit.
+  - Usage for the UI: `GET /users/me/daily-usage`.
+- **Analysis:**
+  - A free student's own attempt JSON is reduced to the score and per-question review (`analysis_locked: true`).
+  - The exam matrices, progression, cumulative and skill-profile reports return 403 `FREE_PLAN_ANALYSIS_LOCKED`.
+  - No LLM call is made for free students, neither per attempt nor for the all-exams summary; they get the rule-based insight instead.
+  - Staff still see the full report.
+- **UX:**
+  - "Free plan: X of 20 questions left today" appears on the exam and practice screens, with an upgrade modal at the limit.
+  - A locked report shows the score, an upgrade card and the Questions tab.
+  - The all-tests view shows an upgrade card.
+- **Migration** `062_free_plan_daily_usage` follows `059`. The payments branch also follows `059` (its `060`/`061`), so merging it needs an Alembic merge revision joining the two heads.
+- **Not counted:** guest sessions synced at login, and "similar questions" answered inside a report.
 
 ---
 

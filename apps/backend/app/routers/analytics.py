@@ -17,6 +17,28 @@ from app.db.models.study_plan import StudyActivity
 router = APIRouter(prefix="/analytics", tags=["Psychometric & Cognitive Analytics"])
 
 
+async def _deny_analysis_on_free_plan(session: AsyncSession, current_user: User) -> None:
+    """Free-plan students get their score, answers and explanations, but not the analysis reports."""
+    from app.services import free_plan
+
+    if await free_plan.is_limited(session, current_user):
+        raise free_plan.analysis_locked_error()
+
+
+def _score_only_report(report_response: Response) -> JSONResponse:
+    """The parts of an attempt report the free plan includes: per-question answers/explanations and the score."""
+    import json
+
+    report = json.loads(report_response.body or b"{}")
+    p2 = report.get("part_2_exam_macro_scorecard") or report.get("part_3_aggregated_user_report") or {}
+    return JSONResponse(content={
+        "analysis_locked": True,
+        "metadata": report.get("metadata", {}),
+        "part_1_per_question_analysis": report.get("part_1_per_question_analysis", []),
+        "part_2_exam_macro_scorecard": {"score_summary": p2.get("score_summary", {})},
+    })
+
+
 async def _owned_attempt_id(session: AsyncSession, current_user: User, attempt_id: int | str) -> int:
     """Resolves an attempt id the caller may access: their own attempt, or any attempt for admins.
 
@@ -99,6 +121,7 @@ async def get_attempt_exam_report(
     Report 2: Comprehensive 12-matrix aggregated exam diagnostic summary, taxonomy mastery grid, and AI insights.
     """
     aid_int = await _owned_attempt_id(session, current_user, attempt_id)
+    await _deny_analysis_on_free_plan(session, current_user)
     service = AnalyticsService(session)
     res = await service.get_attempt_exam_report(attempt_id=aid_int)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
@@ -115,6 +138,7 @@ async def get_attempt_user_progression_report(
     taxonomy promotions, and spaced repetition review schedules.
     """
     aid_int = await _owned_attempt_id(session, current_user, attempt_id)
+    await _deny_analysis_on_free_plan(session, current_user)
     service = AnalyticsService(session)
     res = await service.get_attempt_user_progression_report(attempt_id=aid_int)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
@@ -135,6 +159,7 @@ async def get_user_cumulative_skill_profile(
         raise HTTPException(status_code=404, detail="User not found")
     if current_user.id != uid_int and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's skill profile.")
+    await _deny_analysis_on_free_plan(session, current_user)
     service = AnalyticsService(session)
     res = await service.get_user_skill_profile(user_id=uid_int)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
@@ -160,6 +185,7 @@ async def get_user_cumulative_aggregate_report(
             raise HTTPException(status_code=404, detail="User not found")
     if current_user.id != target_id and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's cumulative report.")
+    await _deny_analysis_on_free_plan(session, current_user)
     service = AnalyticsService(session)
     res = await service.get_user_cumulative_aggregate_report(user_id=target_id, force_recompute=force_recompute)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
@@ -183,6 +209,7 @@ async def get_user_cumulative_aggregate_markdown(
             raise HTTPException(status_code=404, detail="User not found")
     if current_user.id != target_id and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's cumulative audit.")
+    await _deny_analysis_on_free_plan(session, current_user)
     service = AnalyticsService(session)
     return await service.get_user_cumulative_aggregate_markdown(user_id=target_id)
 
@@ -193,10 +220,17 @@ async def get_attempt_report_json(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Generates/fetches full psychometric report in JSON format directly by attempt_id."""
+    """Generates/fetches full psychometric report in JSON format directly by attempt_id.
+
+    Free-plan students get the score and per-question review only (analysis_locked: true).
+    """
     aid_int = await _owned_attempt_id(session, current_user, attempt_id)
     service = AnalyticsService(session)
-    return await service.get_psychometric_report_json(attempt_id=aid_int)
+    report = await service.get_psychometric_report_json(attempt_id=aid_int)
+    from app.services import free_plan
+    if await free_plan.is_limited(session, current_user) and isinstance(report, Response):
+        return _score_only_report(report)
+    return report
 
 
 @router.get("/reports/attempts/{attempt_id}/yaml")
@@ -207,6 +241,7 @@ async def get_attempt_report_yaml(
 ):
     """Generates/fetches full psychometric report in YAML format directly by attempt_id."""
     aid_int = await _owned_attempt_id(session, current_user, attempt_id)
+    await _deny_analysis_on_free_plan(session, current_user)
     service = AnalyticsService(session)
     return await service.get_psychometric_report_yaml(attempt_id=aid_int)
 
@@ -219,6 +254,7 @@ async def get_attempt_report_markdown(
 ):
     """Generates/fetches full psychometric report in Markdown format directly by attempt_id."""
     aid_int = await _owned_attempt_id(session, current_user, attempt_id)
+    await _deny_analysis_on_free_plan(session, current_user)
     service = AnalyticsService(session)
     return await service.get_psychometric_report_markdown(attempt_id=aid_int)
 
@@ -338,6 +374,7 @@ async def get_exam_psychometric_report_json(
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="User or exam not found")
     _validate_user_ownership(current_user, uid_int)
+    await _deny_analysis_on_free_plan(session, current_user)
     service = AnalyticsService(session)
     return await service.get_psychometric_report_json(user_id=uid_int, exam_id=eid_int)
 
@@ -356,6 +393,7 @@ async def get_exam_psychometric_report_yaml(
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="User or exam not found")
     _validate_user_ownership(current_user, uid_int)
+    await _deny_analysis_on_free_plan(session, current_user)
     service = AnalyticsService(session)
     return await service.get_psychometric_report_yaml(user_id=uid_int, exam_id=eid_int)
 
@@ -374,6 +412,7 @@ async def get_exam_psychometric_report_markdown(
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="User or exam not found")
     _validate_user_ownership(current_user, uid_int)
+    await _deny_analysis_on_free_plan(session, current_user)
     service = AnalyticsService(session)
     return await service.get_psychometric_report_markdown(user_id=uid_int, exam_id=eid_int)
 

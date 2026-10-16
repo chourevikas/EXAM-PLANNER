@@ -55,6 +55,7 @@ from app.db.models.analytics import (
     ExamQuestionReport,
     ExamAttemptReport,
     UserSkillProgressionReport,
+    PracticeAnswer,
 )
 from app.db.models.review import HumanReviewTask
 from app.db.models.subscription import (
@@ -143,6 +144,7 @@ __all__ = [
     "ExamQuestionReport",
     "ExamAttemptReport",
     "UserSkillProgressionReport",
+    "PracticeAnswer",
     "HumanReviewTask",
     "BillingInterval",
     "SubscriptionStatus",

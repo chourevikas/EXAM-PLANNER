@@ -800,11 +800,20 @@ class CumulativeAnalyticsAggregator:
         candidate_dict = {"user_id": str(user.id), "full_name": user.full_name, "email": user.email}
         exam_dict = {"attempt_id": "CUMULATIVE_ALL", "exam_id": "ALL_EXAMS", "exam_name": f"All {n_att} Completed Exams", "exam_code": "CUMULATIVE", "mode": "FULL_MOCK"}
 
-        cum_insight = await ReportAISynthesizer.generate_diagnostic_insight(
-            candidate_info=candidate_dict,
-            exam_info=exam_dict,
-            precalculated_metrics=precalc_payload,
-        )
+        # Free plan: no AI analysis, so no LLM call for the all-exams summary either
+        from app.services.free_plan import is_limited
+        if await is_limited(session, user):
+            cum_insight = ReportAISynthesizer.rule_based_insight(
+                candidate_info=candidate_dict,
+                exam_info=exam_dict,
+                precalculated_metrics=precalc_payload,
+            )
+        else:
+            cum_insight = await ReportAISynthesizer.generate_diagnostic_insight(
+                candidate_info=candidate_dict,
+                exam_info=exam_dict,
+                precalculated_metrics=precalc_payload,
+            )
 
         part_2_exam_macro_scorecard = {
             "score_summary": {

@@ -21,6 +21,8 @@ import { fetchMasterSyllabus, verifySyllabusNode, listExams, fetchExamsByYear } 
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
+import { recordPracticeAnswer, DailyLimitReachedError, fetchDailyUsage, DailyUsage } from '../services/freePlanService';
+import { FreePlanLimitModal } from '../components/common/FreePlanLimitModal';
 import { formatEnum, extractCanonicalExamName, cleanExamTitle, sortExamLabels, defaultExamLabel } from '../utils/formatEnum';
 import { fetchActiveExamTypes } from '../services/examTypeService';
 import { availableQuestionYears } from '../utils/examYears';
@@ -380,6 +382,28 @@ export function StudentPracticeExamPage() {
     Record<string | number, { optionId: number | string; optionLabel: string }>
   >({});
   const [revealedMap, setRevealedMap] = useState<Record<string, RevealAnswerResponse>>({});
+  // Free plan: practice answers count toward the daily question limit (signed-in students only)
+  const [dailyUsage, setDailyUsage] = useState<DailyUsage | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem('access_token')) fetchDailyUsage().then(setDailyUsage);
+  }, []);
+
+  /** Records an answer on the server; false when the free daily limit stops it (the modal is shown). */
+  const countPracticeAnswer = async (questionId: number | string, optionId?: number | string | null): Promise<boolean> => {
+    if (!localStorage.getItem('access_token')) return true;
+    try {
+      const usage = await recordPracticeAnswer(questionId, optionId);
+      if (usage) setDailyUsage(usage);
+      return true;
+    } catch (err) {
+      if (err instanceof DailyLimitReachedError) {
+        setShowLimitModal(true);
+        return false;
+      }
+      return true; // a network hiccup shouldn't block practice
+    }
+  };
   const [confidenceMap, setConfidenceMap] = useState<Record<string | number, ConfidenceLevel>>({});
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
@@ -808,7 +832,8 @@ export function StudentPracticeExamPage() {
   };
 
   // Records the user's answer for a recommended question and kicks off its solution fetch
-  const handleSelectRecommendationOption = (rec: QuestionOut, optionId: number | string) => {
+  const handleSelectRecommendationOption = async (rec: QuestionOut, optionId: number | string) => {
+    if (!(await countPracticeAnswer(rec.question_id, optionId))) return;
     setRecUserResponses((prev) => ({ ...prev, [rec.question_id]: optionId }));
     fetchRecommendationSolution(rec.question_id);
   };
@@ -1365,6 +1390,7 @@ export function StudentPracticeExamPage() {
       ? { optionId: overrideOptId, optionLabel: overrideOptLbl || '' }
       : userResponses[targetId];
     if (!userResp) return;
+    if (!(revealedMap[targetId] || revealedMap[String(targetId)]) && !(await countPracticeAnswer(targetId, userResp.optionId))) return;
 
     const correctOpt = targetQuestion.options?.find((o) => o.is_correct);
 
@@ -1753,6 +1779,23 @@ export function StudentPracticeExamPage() {
         backgroundColor: 'var(--bg-subtle)',
       }}
     >
+      <FreePlanLimitModal open={showLimitModal} onClose={() => setShowLimitModal(false)} limit={dailyUsage?.limit} />
+      {dailyUsage?.limited && (
+        <div
+          role="status"
+          style={{
+            padding: '6px 16px',
+            fontSize: 12.5,
+            fontWeight: 700,
+            textAlign: 'center',
+            backgroundColor: (dailyUsage.remaining ?? 0) > 0 ? '#FFFBEB' : '#FEF2F2',
+            color: (dailyUsage.remaining ?? 0) > 0 ? '#B45309' : '#B91C1C',
+            borderBottom: `1px solid ${(dailyUsage.remaining ?? 0) > 0 ? '#FDE68A' : '#FECACA'}`,
+          }}
+        >
+          Free plan: {dailyUsage.remaining} of {dailyUsage.limit} questions left today
+        </div>
+      )}
       {/* Top Header Bar */}
       <ExamHeader
         examTitle={cleanExamTitle(gExam)}

@@ -388,6 +388,8 @@ export interface SegregatedAggregates {
 }
 
 export interface PsychometricReport {
+  /** Free plan: only the score and per-question review were sent; the analysis is part of Pro. */
+  analysis_locked?: boolean;
   is_cumulative?: boolean;
   exam_timeline?: ExamTimelineItem[];
   segregated_aggregates?: SegregatedAggregates;

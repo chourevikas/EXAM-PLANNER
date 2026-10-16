@@ -130,6 +130,9 @@ class ExamQuestionResponse(SQLModel, table=True):
     confidence_level: Optional[str] = Field(default=None, max_length=16)
     # Exam-simulation pass the answer was given in: 1 = first visit, 2 = came back to it; None when unanswered/untracked
     answer_round: Optional[int] = Field(default=None)
+    # When the question was first answered (kept if the answer is later cleared). Drives the free plan's
+    # daily question count; NULL for unanswered rows and for answers synced from guest sessions.
+    answered_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ, index=True)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
@@ -355,3 +358,21 @@ class UserSkillProgressionReport(SQLModel, table=True):
 
     attempt: Optional[ExamAttempt] = Relationship(back_populates="progression_reports")
     user: Optional["User"] = Relationship()
+
+
+class PracticeAnswer(SQLModel, table=True):
+    """A question a signed-in student answered on the practice page (one row per question per day).
+
+    Practice is checked in the browser; this row is what counts it toward the free plan's daily limit.
+    """
+
+    __tablename__ = "practice_answers"
+    __table_args__ = (Index("ix_practice_answers_user_answered", "user_id", "answered_at"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
+    user_id: int = Field(foreign_key="users.id", ondelete="CASCADE")
+    question_id: int = Field(foreign_key="questions.id", ondelete="CASCADE")
+    selected_option_id: Optional[int] = Field(default=None, foreign_key="question_options.id", ondelete="SET NULL")
+    is_correct: bool = Field(default=False)
+    answered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), sa_type=DateTimeTZ)
+

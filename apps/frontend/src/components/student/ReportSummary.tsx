@@ -419,6 +419,52 @@ function CumulativeSummary({ report }: { report: AnyRecord }) {
   );
 }
 
+/**
+ * Free plan: the score and the answer review stay free; the analysis is part of Pro.
+ * Shown instead of the full summary when the API returns a report with analysis_locked.
+ */
+export function LockedSummary({ report }: { report: AnyRecord }) {
+  const score: AnyRecord = report.part_2_exam_macro_scorecard?.score_summary || {};
+  const total = num(score.total_score);
+  const max = num(score.max_score, 200);
+  const attempted = num(score.attempted_count);
+  const totalQ = attempted + num(score.unattempted_count);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <section style={card}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 20 }}>
+          <Stat label="Score" value={`${total.toFixed(1)} / ${max}`} />
+          <Stat label="Accuracy" value={`${Math.round(num(score.accuracy_percentage))}%`} sub={`${num(score.correct_count)} right, ${num(score.incorrect_count)} wrong`} />
+          <Stat label="Attempted" value={`${attempted} / ${totalQ}`} sub={`${Math.round(totalQ ? (attempted / totalQ) * 100 : 0)}% of the paper`} />
+        </div>
+      </section>
+      <section style={{ ...card, borderColor: '#FDE68A', backgroundColor: '#FFFBEB' }}>
+        <h3 style={{ ...sectionTitle, color: '#B45309' }}>Full analysis is part of Pro</h3>
+        <p style={{ margin: '0 0 14px', fontSize: 14, lineHeight: 1.55, color: 'var(--text-secondary)' }}>
+          Your score, answers and explanations are free. Upgrade to see where you lost marks: subject and topic
+          accuracy, difficulty and time analysis, answer-change and guessing patterns, and a written summary with a
+          study plan after every test.
+        </p>
+        <a
+          href="/billing"
+          style={{
+            display: 'inline-block',
+            padding: '10px 18px',
+            borderRadius: 'var(--radius)',
+            backgroundColor: 'var(--primary-red)',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: 14,
+            textDecoration: 'none',
+          }}
+        >
+          Upgrade to Pro
+        </a>
+      </section>
+    </div>
+  );
+}
+
 export function ReportSummary({ report, isCumulative }: ReportSummaryProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

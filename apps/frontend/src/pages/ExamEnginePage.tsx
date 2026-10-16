@@ -13,6 +13,8 @@ import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { syncGuestSessionsOnAuth } from '../services/authService';
 import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, RefreshCw } from 'lucide-react';
+import { fetchDailyUsage, DailyUsage } from '../services/freePlanService';
+import { FreePlanLimitModal } from '../components/common/FreePlanLimitModal';
 import {
   startExamAttempt,
   getExamAttemptStatus,
@@ -64,6 +66,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   // ─── Session State ───────────────────────────────────────────────────────────
   const [attemptId, setAttemptId] = useState<number | string | null>(paramAttemptId || null);
   const [attemptMode, setAttemptMode] = useState<AttemptMode>('EXAM');
+  // Free plan: questions left today; null = not loaded or unlimited (nothing is blocked client-side then)
+  const [dailyUsage, setDailyUsage] = useState<DailyUsage | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  // Questions answered at some point in this attempt; answering them again doesn't use another free question
+  const everAnsweredRef = useRef<Set<string>>(new Set());
   const [currentQIndex, setCurrentQIndex] = useState(0); // 0-indexed for UI
   const [totalQuestions, setTotalQuestions] = useState(100);
   const [timeLeft, setTimeLeft] = useState(7200);
@@ -209,6 +216,20 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     }
   };
 
+  useEffect(() => {
+    if (!attemptId) return;
+    fetchDailyUsage().then(setDailyUsage);
+  }, [attemptId]);
+
+  // Seed answered questions from the palette (resume) so re-answering them isn't treated as new
+  useEffect(() => {
+    palette.forEach((p: any) => {
+      if (String(p?.status || '').startsWith('ANSWERED') && p?.question_id != null) {
+        everAnsweredRef.current.add(String(p.question_id));
+      }
+    });
+  }, [palette]);
+
   // Flush pending batches asynchronously in the background
   const flushPendingBatches = async () => {
     if (!attemptId || pendingBatchQueueRef.current.size === 0 || isSyncingBatchRef.current) {
@@ -241,6 +262,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
         if (ack.response_summary) {
           setResponseSummary(ack.response_summary);
+        }
+        // The server dropped answers beyond the free plan's daily limit
+        if (ack.daily_limit_skipped > 0) {
+          setShowLimitModal(true);
+          fetchDailyUsage().then(setDailyUsage);
         }
       }
     } catch (err) {
@@ -915,6 +941,16 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const handleSelectOption = (optionId: number | string, optionLabel: string) => {
     if (activeQuestion) {
       const qKey = String(activeQuestion.question_id);
+      const prevAnswer = selectedOptionId || lastSyncedSnapshotRef.current.get(qKey)?.selected_option_id;
+      const isNewAnswer = !prevAnswer && !everAnsweredRef.current.has(qKey);
+      if (isNewAnswer && dailyUsage?.limited) {
+        if ((dailyUsage.remaining ?? 0) <= 0) {
+          setShowLimitModal(true);
+          return;
+        }
+        setDailyUsage({ ...dailyUsage, remaining: (dailyUsage.remaining ?? 0) - 1, used: (dailyUsage.used ?? 0) + 1 });
+      }
+      everAnsweredRef.current.add(qKey);
       if (!answerRoundByQRef.current.has(qKey)) {
         answerRoundByQRef.current.set(qKey, leftUnansweredRef.current.has(qKey) ? 2 : 1);
       }
@@ -1352,6 +1388,28 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         onLanguageChange={handleLanguageChange}
         onSubmitClick={handleOpenSubmitModal}
       />
+
+      {dailyUsage?.limited && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            top: isTabletOrBelow ? 108 : 68,
+            left: 16,
+            zIndex: 100,
+            padding: '5px 10px',
+            borderRadius: 'var(--radius)',
+            fontSize: 12,
+            fontWeight: 700,
+            backgroundColor: (dailyUsage.remaining ?? 0) > 0 ? '#FFFBEB' : '#FEF2F2',
+            color: (dailyUsage.remaining ?? 0) > 0 ? '#B45309' : '#B91C1C',
+            border: `1px solid ${(dailyUsage.remaining ?? 0) > 0 ? '#FDE68A' : '#FECACA'}`,
+          }}
+        >
+          Free plan: {dailyUsage.remaining} of {dailyUsage.limit} questions left today
+        </div>
+      )}
+      <FreePlanLimitModal open={showLimitModal} onClose={() => setShowLimitModal(false)} limit={dailyUsage?.limit} />
 
       {/* In-Page Show Report Pill Banner for Practice & Guest Exams */}
       {guestScoreData && (

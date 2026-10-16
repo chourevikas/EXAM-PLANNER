@@ -122,6 +122,20 @@ YOUR MANDATE:
         return cls._generate_deterministic_fallback(payload)
 
     @classmethod
+    def rule_based_insight(
+        cls,
+        candidate_info: Dict[str, Any],
+        exam_info: Dict[str, Any],
+        precalculated_metrics: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """The same insight shape without calling the LLM (free plan: no AI analysis)."""
+        return cls._generate_deterministic_fallback({
+            "candidate": candidate_info,
+            "exam_metadata": exam_info,
+            "precalculated_metrics": precalculated_metrics,
+        })
+
+    @classmethod
     def _generate_deterministic_fallback(cls, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Generates schema-compliant, data-grounded diagnostic insight deterministically without jargon."""
         metrics = payload.get("precalculated_metrics", {})

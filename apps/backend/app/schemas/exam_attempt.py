@@ -73,6 +73,8 @@ class BatchSaveResponseAck(BaseModel):
     status: str = "ACCEPTED"
     received_count: int
     response_summary: Optional[ResponseSummary] = None
+    # New answers dropped because the free plan's daily question limit was reached
+    daily_limit_skipped: int = 0
 
 
 class BatchStatusResponse(BaseModel):

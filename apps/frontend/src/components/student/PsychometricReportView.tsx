@@ -62,7 +62,7 @@ import {
 } from 'recharts';
 import { formatEnum } from '../../utils/formatEnum';
 import { SimilarQuestionsSection } from '../exam/SimilarQuestionsSection';
-import { ReportSummary } from './ReportSummary';
+import { ReportSummary, LockedSummary } from './ReportSummary';
 
 interface PsychometricReportViewProps {
   report: PsychometricReport;
@@ -101,6 +101,8 @@ export function PsychometricReportView({
 
   const [activeTab, setActiveTab] = useState<'summary' | 'questions' | 'ai-insights' | 'topics'>('summary');
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
+  // Free plan: the API sends only the score and per-question review
+  const analysisLocked = Boolean((report as any)?.analysis_locked);
 
   useEffect(() => {
     if (isCumulative && activeTab === 'questions') {
@@ -1066,7 +1068,12 @@ export function PsychometricReportView({
           overflowX: 'auto',
         }}
       >
-        {(isCumulative
+        {(analysisLocked
+          ? [
+              { id: 'summary', label: 'Summary', icon: Zap },
+              { id: 'questions', label: 'Questions', icon: Target },
+            ]
+          : isCumulative
           ? [
               { id: 'summary', label: 'Summary', icon: TrendingUp },
               { id: 'topics', label: 'Topics', icon: BookOpen },
@@ -1103,7 +1110,7 @@ export function PsychometricReportView({
             >
               <IconComp size={16} />
               <span>{tab.label}</span>
-              {tab.id === 'ai-insights' && !hasAiInsight && (
+              {tab.id === 'ai-insights' && !hasAiInsight && !analysisLocked && (
                 <span
                   style={{
                     fontSize: 10,
@@ -1129,7 +1136,8 @@ export function PsychometricReportView({
       {/* ──────────────────────────────────────────────────────────────────────────
           PLACE 1: EXAM SCORECARD PERFORMANCE (Tab 1)
       ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'summary' && (
+      {activeTab === 'summary' && analysisLocked && <LockedSummary report={report as any} />}
+      {activeTab === 'summary' && !analysisLocked && (
         <>
           <ReportSummary report={report as any} isCumulative={Boolean(isCumulative)} />
           <button
