@@ -1,5 +1,5 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, status, HTTPException, Response, Request
+from typing import Annotated, List, Optional
+from fastapi import APIRouter, Depends, Query, status, HTTPException, Response, Request
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, col, and_, func
@@ -9,7 +9,7 @@ from app.schemas.user import StaffCreate, StaffCreateOut, UserRead, UserUpdate
 from app.services.user_service import UserService
 from app.db.models.user import User, UserRole, QuestionBookmark
 from app.db.models.question import Question, QuestionTranslation
-from app.db.models.enums import LanguageCode
+from app.db.models.enums import DifficultyLevel, LanguageCode
 from app.core.deps import get_current_user, require_roles, require_admin_section
 from app.cache import get_cache, build_cache_key, invalidate_user_cache
 from app.services import audit_service
@@ -20,20 +20,54 @@ router = APIRouter(prefix="/users", tags=["Users"])
 @router.get("/me/bookmarks")
 async def list_bookmarks(
     response: Response,
-    skip: int = 0,
-    limit: int = 100,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+    q: Annotated[Optional[str], Query(max_length=200, description="Search in the question text")] = None,
+    difficulty: Optional[DifficultyLevel] = None,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
-    response.headers["Cache-Control"] = "private, max-age=15, stale-while-revalidate=30"
+    """One page of the user's bookmarks, newest first, with the total that matches the filters."""
+    # The student edits this list (removing re-fetches the page), so the browser must not reuse a stale copy;
+    # the server-side cache below is cleared on every add/remove.
+    response.headers["Cache-Control"] = "private, no-cache"
     if not current_user.id:
-        return []
+        return {"items": [], "total": 0}
 
+    search = (q or "").strip()
     cache = get_cache()
-    cache_key = build_cache_key("users:bookmarks", str(current_user.id), skip=skip, limit=limit)
+    cache_key = build_cache_key(
+        "users:bookmarks",
+        str(current_user.id),
+        "page",  # keeps paged {items, total} entries apart from the old plain-list ones
+        skip=skip,
+        limit=limit,
+        q=search.lower(),
+        difficulty=difficulty.value if difficulty else None,
+    )
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
         return cached_data
+
+    filters = [col(QuestionBookmark.user_id) == current_user.id]
+    if difficulty:
+        filters.append(col(Question.difficulty) == difficulty)
+    if search:
+        escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        filters.append(col(QuestionTranslation.question_text).ilike(f"%{escaped}%", escape="\\"))
+
+    english_text = and_(
+        col(QuestionTranslation.question_id) == col(Question.id),
+        col(QuestionTranslation.language) == LanguageCode.ENGLISH,
+    )
+
+    total_stmt = (
+        select(func.count(col(QuestionBookmark.id)))
+        .join(Question, col(QuestionBookmark.question_id) == col(Question.id))
+        .join(QuestionTranslation, english_text, isouter=True)
+        .where(*filters)
+    )
+    total = (await session.exec(total_stmt)).one()
 
     # Single-pass optimized query selecting only needed scalar columns
     stmt = (
@@ -45,34 +79,28 @@ async def list_bookmarks(
             func.coalesce(col(QuestionTranslation.question_text), "").label("question_text"),
         )
         .join(Question, col(QuestionBookmark.question_id) == col(Question.id))
-        .join(
-            QuestionTranslation,
-            and_(
-                col(QuestionTranslation.question_id) == col(Question.id),
-                col(QuestionTranslation.language) == LanguageCode.ENGLISH,
-            ),
-            isouter=True,
-        )
-        .where(col(QuestionBookmark.user_id) == current_user.id)
-        .order_by(col(QuestionBookmark.created_at).desc())
+        .join(QuestionTranslation, english_text, isouter=True)
+        .where(*filters)
+        .order_by(col(QuestionBookmark.created_at).desc(), col(QuestionBookmark.id).desc())
         .offset(skip)
         .limit(limit)
     )
     result = await session.exec(stmt)
     rows = result.all()
-    
-    out = []
+
+    items = []
     for row in rows:
         difficulty_raw = getattr(row, "difficulty", None)
         diff_val = difficulty_raw.value if hasattr(difficulty_raw, "value") else (difficulty_raw or "MEDIUM")
-        out.append({
+        items.append({
             "bookmark_id": str(getattr(row, "bookmark_id", "")),
             "question_id": str(getattr(row, "question_id", "")),
             "question_text": getattr(row, "question_text", "") or "",
             "difficulty": diff_val,
             "created_at": row.created_at.isoformat() if getattr(row, "created_at", None) else None,
         })
-        
+
+    out = {"items": items, "total": int(total or 0)}
     await cache.set(cache_key, out, ttl_seconds=300)
     return out
 
