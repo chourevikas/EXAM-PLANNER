@@ -1314,7 +1314,7 @@ export function PsychometricReportView({
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--primary-red)' }}>
-                    {icrs?.icrs_score !== undefined ? icrs.icrs_score : 75} <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/ 100</span>
+                    {icrs?.icrs_score != null ? icrs.icrs_score : '—'} <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/ 100</span>
                   </div>
                   {(() => {
                     const b = getBadgeStyle(icrs?.readiness_label || icrs?.classification || 'Competitive Benchmark Ready');

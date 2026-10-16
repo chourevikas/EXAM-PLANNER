@@ -125,6 +125,7 @@ Builds on Phase 0.1's `EntitlementService` / `require_feature` / `FeatureUsageEv
   - Admin view: translation coverage per language.
 - **Exam screen labels:** add a small i18n dictionary for the exam screens only (`ExamEnginePage`, `ExamQuestionCard`, `ExamFooterBar`, palette, submit dialog, timer, solution card headings), driven by the selected exam language with English fallback. No app-wide i18n framework yet.
 - **Fallback rule:** if a question isn't translated, show English with a small "not available in <language>" note, never a blank.
+- **Explanations in every view:** Phase 1 made `GET /questions/{id}/solution` pick the explanation by language. The in-exam reveal (`ExamSessionService.reveal_answer`), `GET /exams/{id}/solution-db/{n}` and the post-test report (`post_submission_pipeline`) still take the first explanation row; pass the attempt's language through and reuse the same preference (requested → English → any).
 
 ---
 
