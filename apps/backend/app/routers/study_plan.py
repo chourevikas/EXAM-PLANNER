@@ -524,7 +524,7 @@ async def generate_weekly_study_plan(
             new_task = StudyTask(
                 user_id=current_user.id,
                 title=t_info["title"],
-                description=f"Auto-generated AI target for {t_info['subject']}",
+                description=f"Weekly plan target for {t_info['subject']}",
                 subject=t_info["subject"],
                 topic=t_info["topic"],
                 priority=t_info["priority"],
@@ -796,7 +796,7 @@ async def get_weekly_insights(
 
     total_questions = questions_from_logs + exam_questions
     total_correct = correct_from_logs + exam_correct
-    avg_accuracy = round((total_correct / total_questions * 100)) if total_questions > 0 else 78
+    avg_accuracy = round((total_correct / total_questions * 100)) if total_questions > 0 else None
 
     # 5. Top Subject Determination via SQL GROUP BY
     stmt_act_subj = select(
@@ -827,22 +827,26 @@ async def get_weekly_insights(
         s_name = subj or "General Studies"
         subject_duration_map[s_name] = subject_duration_map.get(s_name, 0) + (int(duration) if duration else 0)
 
-    top_subject = max(subject_duration_map.items(), key=lambda x: x[1])[0] if subject_duration_map else "Polity & Governance"
+    top_subject = max(subject_duration_map.items(), key=lambda x: x[1])[0] if subject_duration_map else None
 
     # 6. Build Dynamic Highlights List
     highlights = []
     if total_questions > 0:
         highlights.append(f"Completed {total_questions} practice questions with {avg_accuracy}% average accuracy.")
-    else:
-        highlights.append(f"Logged {logged_hours} hours of focused study across {len(active_days_set)} active day(s).")
+    if logged_hours > 0:
+        highlights.append(f"Logged {logged_hours} hours of focused study.")
 
-    streak_days = max(len(active_days_set), getattr(current_user, 'current_streak', 1) or 1)
-    highlights.append(f"Maintained {streak_days}-day study streak with consistent daily progress.")
+    active_days = len(active_days_set)
+    if active_days > 0:
+        highlights.append(f"Studied on {active_days} of 7 days this week.")
 
     if total_tasks > 0:
         highlights.append(f"Achieved {completion_rate}% weekly target completion rate ({completed_tasks}/{total_tasks} finished).")
-    else:
-        highlights.append(f"Dedicated major focus to {top_subject} revision.")
+    elif top_subject:
+        highlights.append(f"Most of your study time went to {top_subject}.")
+
+    if not highlights:
+        highlights.append("No study activity recorded this week yet.")
 
     # 7. Incomplete Subjects for Focus Next Week (SQL distinct)
     stmt_incomplete_subj = select(col(StudyTask.subject)).where(
@@ -855,13 +859,16 @@ async def get_weekly_insights(
     incomplete_subjects = [s for s in (await session.exec(stmt_incomplete_subj)).all() if s]
 
     focus_next_week = []
+    focus_subject = incomplete_subjects[0] if incomplete_subjects else top_subject
     if incomplete_subjects:
-        focus_next_week.append(f"Revise {incomplete_subjects[0]} (Core concepts & high-yield revision topics).")
+        focus_next_week.append(f"Finish the pending {incomplete_subjects[0]} targets from this week.")
+    if focus_subject:
+        focus_next_week.append(f"Solve 20-30 PYQs on {focus_subject} to check concept clarity.")
+    elif total_questions > 0:
+        focus_next_week.append("Review the questions you got wrong this week and their explanations.")
     else:
-        focus_next_week.append(f"Revise {top_subject} (Monetary Policy, Governance & PYQ practice).")
-
-    focus_next_week.append("Attempt 2 Full-length Mock Tests for time management & exam pacing.")
-    focus_next_week.append(f"Solve 20-30 PYQs on {top_subject} to benchmark concept clarity.")
+        focus_next_week.append("Take a practice test to find the subjects to focus on.")
+    focus_next_week.append("Attempt a full-length paper under timed conditions to practise pacing.")
 
     # Format date strings for header (e.g. "Aug 24 - Aug 30, 2026")
     date_range_str = f"{base_date.strftime('%b %d')} - {end_date.strftime('%b %d, %Y')}"

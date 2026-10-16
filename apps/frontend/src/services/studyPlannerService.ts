@@ -211,12 +211,14 @@ export interface WeeklyInsightsResponse {
   date_range_formatted: string;
   total_logged_hours: number;
   total_questions_solved: number;
-  avg_accuracy: number;
+  /** null when no questions were answered that week. */
+  avg_accuracy: number | null;
   completion_rate: number;
   completed_tasks: number;
   total_tasks: number;
   active_days_count: number;
-  top_subject: string;
+  /** null when nothing was studied or planned that week. */
+  top_subject: string | null;
   highlights: string[];
   focus_next_week: string[];
 }

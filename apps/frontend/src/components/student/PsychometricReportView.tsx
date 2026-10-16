@@ -2320,34 +2320,37 @@ export function PsychometricReportView({
             (report as any)?.part_3_aggregated_user_report?.mentorship_insight ||
             {};
 
-          const execSummary =
-            insightObj.executive_summary ||
-            'Candidate demonstrates strong foundational grasp across core subjects with disciplined pacing and strategic question selection.';
-          const benchmarkVerdict =
-            insightObj.benchmark_verdict ||
-            'COMPETITIVE QUALIFYING ZONE: Performance clears the expected prelims threshold with solid conceptual accuracy.';
-          const strengths: string[] =
-            insightObj.tactical_strengths ||
-            insightObj.strengths || [
-              'High accuracy on conceptual elimination questions.',
-              'Controlled guessing tendency on high-uncertainty items.',
-            ];
-          const weaknesses: string[] =
-            insightObj.critical_vulnerabilities ||
-            insightObj.weaknesses || [
-              'Susceptibility to extreme qualifier statement traps.',
-              'Negative switch regret on revised answers in final section.',
-            ];
-          const pacingDiag =
-            insightObj.pacing_and_unattempted_diagnosis ||
-            'Time allocation remained balanced with efficient velocity throughout the first two quartiles.';
-          const distractorCritique =
-            insightObj.distractor_trap_critique ||
-            'Moderate vulnerability to high-closeness distractors featuring inverted factual clauses.';
-          const closingAdvice =
-            insightObj.closing_mentorship_advice ||
-            insightObj.closing ||
-            'Focus on targeted topic drills for flagged weak syllabus areas while maintaining current pacing discipline.';
+          // No made-up text: missing fields say so, and with no written summary at all we show a notice instead.
+          const NOT_AVAILABLE = 'Not available for this test.';
+          const execSummary = insightObj.executive_summary || '';
+          const benchmarkVerdict = insightObj.benchmark_verdict || '';
+          const strengths: string[] = insightObj.tactical_strengths || insightObj.strengths || [];
+          const weaknesses: string[] = insightObj.critical_vulnerabilities || insightObj.weaknesses || [];
+          const pacingDiag = insightObj.pacing_and_unattempted_diagnosis || NOT_AVAILABLE;
+          const distractorCritique = insightObj.distractor_trap_critique || NOT_AVAILABLE;
+          const closingAdvice = insightObj.closing_mentorship_advice || insightObj.closing || '';
+          const hasInsight = Boolean(
+            execSummary || benchmarkVerdict || strengths.length || weaknesses.length ||
+            insightObj.pacing_and_unattempted_diagnosis || insightObj.distractor_trap_critique || closingAdvice,
+          );
+
+          if (!hasInsight) {
+            return (
+              <div
+                style={{
+                  padding: 16,
+                  borderRadius: 'var(--radius)',
+                  border: '1px dashed var(--border-color)',
+                  fontSize: 13,
+                  color: 'var(--text-muted)',
+                  lineHeight: 1.55,
+                }}
+              >
+                The written summary for this test isn&apos;t available. Your scores and the metrics in this report are
+                complete.
+              </div>
+            );
+          }
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -2383,7 +2386,7 @@ export function PsychometricReportView({
                     lineHeight: 1.45,
                   }}
                 >
-                  {benchmarkVerdict}
+                  {benchmarkVerdict || NOT_AVAILABLE}
                 </div>
                 <div
                   style={{
@@ -2435,6 +2438,7 @@ export function PsychometricReportView({
                       lineHeight: 1.55,
                     }}
                   >
+                    {strengths.length === 0 && <li style={{ margin: '4px 0' }}>{NOT_AVAILABLE}</li>}
                     {strengths.map((s: string, sIdx: number) => (
                       <li key={sIdx} style={{ margin: '4px 0' }}>
                         {s}
@@ -2474,6 +2478,7 @@ export function PsychometricReportView({
                       lineHeight: 1.55,
                     }}
                   >
+                    {weaknesses.length === 0 && <li style={{ margin: '4px 0' }}>{NOT_AVAILABLE}</li>}
                     {weaknesses.map((w: string, wIdx: number) => (
                       <li key={wIdx} style={{ margin: '4px 0' }}>
                         {w}

@@ -1989,6 +1989,26 @@ class ExamSessionService:
                 entry["total_score"] = total_score
                 entry["max_possible_score"] = max_score
 
+        # How far along each in-progress attempt is, for "x% done" on catalog cards
+        in_progress_ids = [e["in_progress_attempt_id"] for e in summary.values() if "in_progress_attempt_id" in e]
+        if in_progress_ids:
+            progress_stmt = (
+                select(
+                    ExamQuestionResponse.attempt_id,
+                    func.count(ExamQuestionResponse.id),
+                    func.count(ExamQuestionResponse.selected_option_id),
+                )
+                .where(col(ExamQuestionResponse.attempt_id).in_(in_progress_ids))
+                .group_by(ExamQuestionResponse.attempt_id)
+            )
+            progress = {aid: (total, answered) for aid, total, answered in (await self.session.exec(progress_stmt)).all()}
+            for entry in summary.values():
+                aid = entry.get("in_progress_attempt_id")
+                if aid in progress:
+                    total, answered = progress[aid]
+                    entry["in_progress_answered"] = int(answered or 0)
+                    entry["in_progress_total"] = int(total or 0)
+
         await cache.set(cache_key, summary, ttl_seconds=60)
         return summary
 
@@ -2237,6 +2257,64 @@ class ExamSessionService:
             "latest_attempt_id": str(latest_attempt.id) if latest_attempt else None,
         }
 
+    async def _dashboard_behaviour(self, user_id: int) -> Dict[str, Any]:
+        """Answering-behaviour summary across the user's answered questions in submitted tests (dashboard card).
+
+        In-progress attempts are left out: correctness is only final once a test is submitted.
+        first_try_correct_pct: correct without changing the answer.
+        near_miss_pct: wrong, and the chosen option was a near-correct distractor (closeness 0.65-0.99).
+        """
+        from sqlmodel import func, case, and_
+        from app.db.models.question import QuestionOption
+
+        answered = col(ExamQuestionResponse.selected_option_id).is_not(None)
+        stmt = (
+            select(
+                func.count(ExamQuestionResponse.id),
+                func.sum(case(
+                    (and_(col(ExamQuestionResponse.is_correct).is_(True), ExamQuestionResponse.option_switch_count == 0), 1),
+                    else_=0,
+                )),
+                func.sum(case(
+                    (and_(
+                        col(ExamQuestionResponse.is_correct).is_(False),
+                        col(QuestionOption.closeness_score) >= 0.65,
+                        col(QuestionOption.closeness_score) < 0.99,
+                    ), 1),
+                    else_=0,
+                )),
+                func.sum(case(
+                    (ExamQuestionResponse.visited_count > 1, ExamQuestionResponse.visited_count - 1),
+                    else_=0,
+                )),
+                func.sum(ExamQuestionResponse.option_switch_count),
+                func.avg(ExamQuestionResponse.time_taken_seconds),
+            )
+            .join(ExamAttempt, col(ExamQuestionResponse.attempt_id) == col(ExamAttempt.id))
+            .join(QuestionOption, col(ExamQuestionResponse.selected_option_id) == col(QuestionOption.id), isouter=True)
+            .where(
+                ExamAttempt.user_id == user_id,
+                col(ExamAttempt.status).in_([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED]),
+                answered,
+            )
+        )
+        row = (await self.session.exec(stmt)).first()
+        answered_count = int(row[0] or 0) if row else 0
+        if answered_count == 0:
+            return {"answered": 0}
+
+        def pct(n: Any) -> float:
+            return round(int(n or 0) * 100.0 / answered_count, 1)
+
+        return {
+            "answered": answered_count,
+            "first_try_correct_pct": pct(row[1]),
+            "near_miss_pct": pct(row[2]),
+            "revisits_per_10": round(int(row[3] or 0) * 10.0 / answered_count, 1),
+            "answer_changes_per_10": round(int(row[4] or 0) * 10.0 / answered_count, 1),
+            "avg_seconds_per_question": round(float(row[5] or 0), 1),
+        }
+
     async def get_student_dashboard_stats(self, user_id: int) -> Dict[str, Any]:
         """
         Retrieves aggregate statistics and recent exam attempts for the student dashboard.
@@ -2316,7 +2394,10 @@ class ExamSessionService:
                 "createdAt": a.created_at.isoformat() if a.created_at else datetime.now(timezone.utc).isoformat(),
             })
 
+        behaviour = await self._dashboard_behaviour(user_id)
+
         result = {
+            "behaviour": behaviour,
             "totalExams": total_exams,
             "totalQuestionsAttempted": total_questions_attempted,
             "totalCorrect": total_correct,

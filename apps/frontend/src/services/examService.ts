@@ -243,6 +243,7 @@ export interface ExamItem {
   paper_set_code?: string;
   total_duration_minutes?: number;
   total_marks?: number;
+  total_questions?: number;
   description?: string;
   is_active: boolean;
   status?: string;
@@ -413,6 +414,9 @@ export interface ExamAttemptStatusEntry {
   completed_attempt_id?: number | string;
   total_score?: number;
   max_possible_score?: number;
+  /** For an in-progress attempt: questions answered so far, and the attempt's question count. */
+  in_progress_answered?: number;
+  in_progress_total?: number;
 }
 
 /** Lightweight per-exam attempt status map, for catalog/listing pages (e.g. PYQ list)

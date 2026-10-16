@@ -74,14 +74,15 @@ export function PricingPage() {
     }, 1800);
   };
 
+  // Only features the app actually has today
   const features = [
-    'Unlimited Access to 25+ Years UPSC CSE PYQs',
-    'Full-Length & Sectional Smart Mock Test Series',
-    'Deep Psychometric Option Hesitation & Mistake Tracking',
-    'Dynamic Adaptive Daily Study Planner',
-    'All India Rank Projection & Percentile Matrix',
-    'Priority 24/7 Doubt Resolution & Detailed Explanations',
-    'Export Performance Reports & Revision Worksheets'
+    'Unlimited PYQ practice across every uploaded paper',
+    'Full post-test analysis: subject, topic, time and answer-change insights',
+    'AI-written performance summary after every test',
+    'Bookmarks with full solutions and explanations',
+    'Study planner with daily and weekly targets',
+    'Projected rank and percentile from your test scores',
+    'Unlimited friend challenges',
   ];
 
   return (

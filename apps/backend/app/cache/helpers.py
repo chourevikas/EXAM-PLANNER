@@ -190,6 +190,7 @@ async def invalidate_user_cache(user_id: str | int, clerk_id: Optional[str] = No
     await cache.delete_pattern(f"{prefix}:analytics:subj_perf:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:analytics:rank:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:analytics:monthly_benchmark:{u_id_str}*")
+    await cache.delete_pattern(f"{prefix}:analytics:student_dashboard_stats:{u_id_str}*")
 
 
 async def invalidate_role_cache(role_id: Optional[int | str] = None) -> None:

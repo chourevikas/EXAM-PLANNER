@@ -156,7 +156,7 @@ YOUR MANDATE:
             summary = f"Scored {net_score:.2f} net marks ({abs(margin):.2f} marks below target benchmark). Analysis indicates this deficit was primarily driven by {neg_marks:.2f} negative marks lost to distractor traps and unattempted bottleneck questions."
         else:
             verdict = f"Below Cutoff Benchmark ({margin:.2f} Marks) - Foundation & Pacing Focus Needed"
-            summary = f"Completed the test with {net_score:.2f} net marks. Performance data indicates conceptual gaps in high-yield topics alongside early time bottlenecks that constrained attempt volume."
+            summary = f"Completed the test with {net_score:.2f} net marks, {abs(margin):.2f} marks below the qualifying benchmark. Start with the weak topics listed below."
 
         # 2. Tactical Strengths
         strengths = []
@@ -184,7 +184,7 @@ YOUR MANDATE:
         if "BOTTLENECK" in pacing_status or "OVERTHINK" in pacing_status:
             vulnerabilities.append("Early-exam overthinking bottlenecks created severe time starvation in the final quarter.")
         if not vulnerabilities:
-            vulnerabilities.append("Minor accuracy drop on multi-statement analytical questions.")
+            vulnerabilities.append("No major weak spot stood out in this test.")
 
         # 4. Pacing & Unattempted Diagnosis
         time_starved = unatt.get("time_starved", 0)
@@ -193,8 +193,9 @@ YOUR MANDATE:
         wasted_sec = unatt.get("wasted_time_on_abandoned_sec", 0)
 
         pacing_diag = (
-            f"Overall Pacing Profile: {pacing_status.replace('_', ' ').title()} averaging {psy.get('avg_seconds_per_question', 60.0):.1f}s/question. "
-            f"Of the {scoring.get('unattempted_count', 0)} unattempted questions, {time_starved} were Time-Starved (ran out of time before reading), "
+            f"Overall Pacing Profile: {pacing_status.replace('_', ' ').title()}"
+            + (f" averaging {float(psy['avg_seconds_per_question']):.1f}s/question. " if psy.get("avg_seconds_per_question") is not None else ". ")
+            + f"Of the {scoring.get('unattempted_count', 0)} unattempted questions, {time_starved} were Time-Starved (ran out of time before reading), "
             f"{hesitated} were Hesitated & Abandoned ({round(wasted_sec/60.0, 1)} minutes spent reading without reaching an elimination decision), "
             f"and {strategic} were Strategic Safe Skips."
         )
@@ -213,35 +214,82 @@ YOUR MANDATE:
             f"Earned +{pos_marks:.2f} marks from accurate answers while conceding -{neg_marks:.2f} marks to negative penalty."
         )
 
-        perc = float(psy.get("percentile_rank", 50.0))
-        knowledge_insight = (
-            f"Knowledge mastery sits at the {perc:.1f}th percentile benchmark. "
-            f"Strong command demonstrated on standard questions, with room to sharpen nuanced analytical applications."
-        )
+        # Each line states the measured value and a verdict that follows from it; a metric that
+        # wasn't measured says so rather than borrowing a default number.
+        def _num(source: Dict[str, Any], key: str) -> Optional[float]:
+            val = source.get(key)
+            try:
+                return float(val) if val is not None else None
+            except (TypeError, ValueError):
+                return None
 
-        gti_pct = float(psy.get("gti_aggregate", 0.15)) * 100.0
-        guessing_insight = (
-            f"Guessing risk measured at {gti_pct:.1f}%. "
-            f"Reflects thoughtful question selection with minimal blind impulsive choices under exam pressure."
-        )
+        perc = _num(psy, "percentile_rank")
+        if perc is None:
+            knowledge_insight = "Knowledge percentile was not measured for this test."
+        else:
+            knowledge_verdict = (
+                "Strong command of standard questions; keep sharpening nuanced applications."
+                if perc >= 70 else
+                "A solid base with room to sharpen nuanced analytical questions."
+                if perc >= 40 else
+                "Core concepts need reinforcement before moving to harder questions."
+            )
+            knowledge_insight = f"Knowledge mastery sits at the {perc:.1f}th percentile benchmark. {knowledge_verdict}"
 
-        avg_sec = float(psy.get("avg_seconds_per_question", 60.0))
+        gti = _num(psy, "gti_aggregate")
+        if gti is None:
+            guessing_insight = "Guessing risk was not measured for this test."
+        else:
+            gti_pct = gti * 100.0
+            guessing_verdict = (
+                "Very little blind guessing under exam pressure."
+                if gti_pct <= 20 else
+                "Some guessing: mark uncertain questions and revisit them before answering."
+                if gti_pct <= 40 else
+                "High guessing: skip questions you can't narrow down to two options."
+            )
+            guessing_insight = f"Guessing risk measured at {gti_pct:.1f}%. {guessing_verdict}"
+
+        avg_sec = _num(psy, "avg_seconds_per_question")
+        if "BOTTLENECK" in pacing_status or "OVERTHINK" in pacing_status:
+            pacing_verdict = "Too much time went on some questions; set a per-question time cap."
+        elif "RUSH" in pacing_status or "IMPULS" in pacing_status:
+            pacing_verdict = "Some answers were rushed; slow down on statement-based questions."
+        elif pacing_status in ("BALANCED_PACING", "OPTIMAL_SUSTAINED_PACING"):
+            pacing_verdict = "Time was spread evenly across the test."
+        else:
+            pacing_verdict = ""
         pacing_insight = (
-            f"Pacing profile is {pacing_status.replace('_', ' ').title()} averaging {avg_sec:.1f}s per question. "
-            f"Balanced time distribution across rounds prevented severe end-of-test time crunches."
+            f"Pacing profile is {pacing_status.replace('_', ' ').title()}"
+            + (f" averaging {avg_sec:.1f}s per question." if avg_sec is not None else ".")
+            + (f" {pacing_verdict}" if pacing_verdict else "")
         )
 
-        oeei_val = float(psy.get("oeei_score_pct", 70.0))
-        elimination_insight = (
-            f"Option elimination efficiency reached {oeei_val:.1f}%. "
-            f"Effective tactical pruning of unlikely distractors converted 50:50 dilemmas into positive score gains."
-        )
+        oeei_val = _num(psy, "oeei_score_pct")
+        if oeei_val is None:
+            elimination_insight = "Option elimination was not measured for this test."
+        else:
+            elimination_verdict = (
+                "Unlikely options were ruled out well, turning 50:50 dilemmas into marks."
+                if oeei_val >= 65 else
+                "Elimination worked on some questions; aim to rule out two options before answering."
+                if oeei_val >= 40 else
+                "Elimination needs work: rule out at least two options before choosing."
+            )
+            elimination_insight = f"Option elimination efficiency reached {oeei_val:.1f}%. {elimination_verdict}"
 
-        satoi_val = float(psy.get("satoi_score", 85.0))
-        stamina_insight = (
-            f"Cognitive stamina rating is {satoi_val:.0f}/100. "
-            f"Maintained steady focus and decision clarity across the full duration with minimal late-stage fatigue."
-        )
+        satoi_val = _num(psy, "satoi_score")
+        if satoi_val is None:
+            stamina_insight = "Cognitive stamina was not measured for this test."
+        else:
+            stamina_verdict = (
+                "Focus and decision quality held steady to the end."
+                if satoi_val >= 75 else
+                "Some drop in decision quality later in the test."
+                if satoi_val >= 50 else
+                "Focus faded noticeably in the later part of the test."
+            )
+            stamina_insight = f"Cognitive stamina rating is {satoi_val:.0f}/100. {stamina_verdict}"
 
         pos_sw = int(psy.get("positive_switches_count", 0))
         neg_sw = int(psy.get("negative_switches_count", 0))
@@ -250,18 +298,27 @@ YOUR MANDATE:
             f"Trust calibrated initial instincts when reviewing flagged multi-statement questions."
         )
 
-        icrs_val = float(psy.get("icrs_score", 65.0))
+        icrs_val = _num(psy, "icrs_score")
         readiness_insight = (
             f"Overall exam readiness scored {icrs_val:.0f}/100. "
             f"Synthesizes attempt volume, accuracy, and tactical discipline relative to competitive qualification benchmarks."
+            if icrs_val is not None else
+            "Overall exam readiness was not measured for this test."
         )
 
-        fact_acc = float(blooms.get("fact_recall_accuracy", 70.0))
-        anal_acc = float(blooms.get("conceptual_analysis_accuracy", 60.0))
-        crit_acc = float(blooms.get("critical_evaluation_accuracy", 50.0))
+        blooms_parts = [
+            f"{label} {val:.1f}%"
+            for label, val in (
+                ("Fact Recall", _num(blooms, "fact_recall_accuracy")),
+                ("Conceptual Analysis", _num(blooms, "conceptual_analysis_accuracy")),
+                ("Critical Evaluation", _num(blooms, "critical_evaluation_accuracy")),
+            )
+            if val is not None
+        ]
         thinking_insight = (
-            f"Cognitive thinking profile: {fact_acc:.1f}% Fact Recall accuracy, {anal_acc:.1f}% Conceptual Analysis accuracy, "
-            f"and {crit_acc:.1f}% Critical Evaluation accuracy."
+            f"Cognitive thinking profile (accuracy): {', '.join(blooms_parts)}."
+            if blooms_parts else
+            "Thinking-skill breakdown was not measured for this test."
         )
 
         traps_fallen = int(dist_traps.get("high_closeness_traps_fallen", 0))
