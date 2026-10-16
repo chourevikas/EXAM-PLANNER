@@ -97,6 +97,19 @@ def exam_type_code_label(raw: Optional[str], type_codes: Optional[Set[str]]) -> 
     return None
 
 
+def exam_badge_label(raw: Optional[str], type_codes: Optional[Set[str]]) -> Optional[str]:
+    """Short exam tag for a question card ("UPSC", "MPSC", ...) from its paper name, or None without one."""
+    if not raw:
+        return None
+    type_label = exam_type_code_label(raw, type_codes)
+    if type_label:
+        return type_label
+    for known in ["MPPSC", "BPSC", "UPPCS", "MPSC", "SSC", "UPSC"]:
+        if known.lower() in raw.lower():
+            return known
+    return raw.split()[0] if raw.split() else None
+
+
 async def load_exam_type_codes(session: AsyncSession) -> Set[str]:
     """Lower-cased codes of active exam types: the same set the public /exam-types list gives the frontend."""
     rows = (await session.exec(select(ExamType.type).where(col(ExamType.is_active).is_(True)))).all()
