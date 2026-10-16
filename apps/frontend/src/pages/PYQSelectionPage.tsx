@@ -554,6 +554,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   const [selSubject, setSelSubject] = useState('all');
   const [selTopic, setSelTopic] = useState('all');
   const [selSubtopic, setSelSubtopic] = useState('all');
+  const [selDifficulty, setSelDifficulty] = useState<string[]>(['all']);
   const [qSize, setQSize] = useState('all');
   const [customCount, setCustomCount] = useState('');
   
@@ -561,7 +562,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   const [startError, setStartError] = useState<string | null>(null);
 
   // A warning about the previous filters no longer applies once they change
-  useEffect(() => { setStartError(null); }, [selExams, selYears, selSubject, selTopic, selSubtopic, qSize, customCount]);
+  useEffect(() => { setStartError(null); }, [selExams, selYears, selSubject, selTopic, selSubtopic, selDifficulty, qSize, customCount]);
 
   const dynamicFilters = useMemo<DynamicTestFilters>(() => {
     const exs = selExams.filter((x) => x !== 'all');
@@ -572,8 +573,9 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
       dynamic_subject: selSubject !== 'all' ? selSubject : undefined,
       dynamic_topic: selTopic !== 'all' ? selTopic : undefined,
       dynamic_subtopic: selSubtopic !== 'all' ? selSubtopic : undefined,
+      dynamic_difficulty: selDifficulty.includes('all') ? undefined : selDifficulty.join(','),
     };
-  }, [selExams, selYears, selSubject, selTopic, selSubtopic]);
+  }, [selExams, selYears, selSubject, selTopic, selSubtopic, selDifficulty]);
 
   // Questions the current filters match (null while counting or when the count failed)
   const [matchCount, setMatchCount] = useState<number | null>(null);
@@ -661,6 +663,13 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
     if (v === 'all') { setSelYears(['all']); return; }
     const next = selYears.filter((x) => x !== 'all');
     setSelYears(next.includes(v) ? next.filter((x) => x !== v) || ['all'] : [...next, v]);
+  };
+
+  const toggleDifficulty = (v: string) => {
+    if (v === 'all') { setSelDifficulty(['all']); return; }
+    const next = selDifficulty.filter((x) => x !== 'all');
+    const updated = next.includes(v) ? next.filter((x) => x !== v) : [...next, v];
+    setSelDifficulty(updated.length ? updated : ['all']);
   };
 
   // A test never has more questions than the filters match
@@ -808,6 +817,17 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
                     })()}
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 6 }}>Pick one or more years, or leave on "All years"</div>
+                </div>
+              </div>
+
+              {/* Difficulty */}
+              <div>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Difficulty (optional)</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <button type="button" onClick={() => toggleDifficulty('all')} style={chipStyle(selDifficulty.includes('all'))}>All levels</button>
+                  {[['EASY', 'Easy'], ['MEDIUM', 'Medium'], ['HARD', 'Hard']].map(([value, label]) => (
+                    <button type="button" key={value} onClick={() => toggleDifficulty(value)} style={chipStyle(selDifficulty.includes(value))}>{label}</button>
+                  ))}
                 </div>
               </div>
 

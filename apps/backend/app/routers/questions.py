@@ -587,6 +587,27 @@ async def get_question_markdown_file(
     return await service.get_question_markdown_file(qid_int)
 
 
+async def _explanation_in_language(session: AsyncSession, question_id: int, lang_code: "LanguageCode"):
+    """The question's explanation in lang_code, else English, else any language; None when there is none."""
+    from app.db.models import QuestionExplanation
+    from app.db.models.enums import LanguageCode
+    from sqlalchemy import case
+    from sqlmodel import select, col
+
+    preference = case(
+        (col(QuestionExplanation.language) == lang_code, 0),
+        (col(QuestionExplanation.language) == LanguageCode.ENGLISH, 1),
+        else_=2,
+    )
+    stmt = (
+        select(QuestionExplanation)
+        .where(col(QuestionExplanation.question_id) == question_id)
+        .order_by(preference, col(QuestionExplanation.id))
+        .limit(1)
+    )
+    return (await session.exec(stmt)).first()
+
+
 @router.get("/{question_id}/solution", summary="Get Full Solution & Distractor Analysis for a Question", dependencies=[Depends(require_question_visible)])
 async def get_question_solution(
     question_id: int | str,
@@ -619,7 +640,11 @@ async def get_question_solution(
     # Single optimized SQL join query: fetches Question, Explanation, Options, Translations, and Distractor Reasonings
     stmt = (
         select(Question, QuestionExplanation, QuestionOption, OptionTranslation, QuestionOptionReasoning)
-        .outerjoin(QuestionExplanation, col(QuestionExplanation.question_id) == col(Question.id))
+        # One explanation row per question: the requested language (English/other fallback below)
+        .outerjoin(
+            QuestionExplanation,
+            (col(QuestionExplanation.question_id) == col(Question.id)) & (col(QuestionExplanation.language) == lang_code),
+        )
         .join(QuestionOption, col(QuestionOption.question_id) == col(Question.id))
         .outerjoin(OptionTranslation, col(OptionTranslation.option_id) == col(QuestionOption.id))
         .outerjoin(QuestionOptionReasoning, col(QuestionOptionReasoning.question_option_id) == col(QuestionOption.id))
@@ -633,7 +658,7 @@ async def get_question_solution(
         q = await session.get(Question, qid_int)
         if not q or q.status == QuestionStatus.REJECTED:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
-        expl = (await session.exec(select(QuestionExplanation).where(col(QuestionExplanation.question_id) == q.id))).first()
+        expl = await _explanation_in_language(session, q.id, lang_code)
         sol_card = {
             "question_id": str(q.id),
             "question_number": q.question_number_in_paper,
@@ -653,7 +678,7 @@ async def get_question_solution(
         return JSONResponse(content=jsonable_encoder(sol_card))
 
     q = rows[0][0]
-    expl = rows[0][1]
+    expl = rows[0][1] or await _explanation_in_language(session, q.id, lang_code)
 
     correct_option_id = None
     correct_option_label = "A"

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
+import { DifficultyAnalysisCard, computeDifficultyBreakdown } from './DifficultyAnalysisCard';
 
 /**
  * Plain-language summary shown at the top of both the exam-wise and cumulative reports.
@@ -295,6 +296,13 @@ function ExamSummary({ report }: { report: AnyRecord }) {
       <ConfidenceCard calibration={p2.confidence_calibration} />
 
       <RoundsCard rounds={p2.answer_rounds} />
+
+      {/* Stored on new reports; computed from the per-question rows for older ones */}
+      <DifficultyAnalysisCard
+        rows={p2.difficulty_breakdown || computeDifficultyBreakdown(report.part_1_per_question_analysis || [])}
+        cardStyle={card}
+        titleStyle={sectionTitle}
+      />
 
       <section style={card}>
         <h3 style={sectionTitle}>Your skills in this exam</h3>

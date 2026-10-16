@@ -170,7 +170,7 @@ ONBOARDING = {
 # ── Onboarding ───────────────────────────────────────────────────────────────
 
 @pytest.mark.anyio
-async def test_new_student_must_onboard_and_target_is_then_locked(client):
+async def test_new_student_must_onboard_and_only_optional_subject_is_then_locked(client):
     me = (await client.get("/api/v1/auth/me", headers=_h("alice"))).json()
     assert me["onboarding_completed"] is False
 
@@ -191,11 +191,18 @@ async def test_new_student_must_onboard_and_target_is_then_locked(client):
     again = await client.post("/api/v1/auth/me/onboarding", json={**ONBOARDING, "target_year": "2028"}, headers=_h("alice"))
     assert again.status_code == 409
 
-    # primary target fields can't be edited afterwards…
-    for field, value in (("target_exam", "Other"), ("target_year", "2028"), ("optional_subject", "History")):
-        r = await client.patch("/api/v1/auth/me", json={field: value}, headers=_h("alice"))
-        assert r.status_code == 403, (field, r.text)
-    # …re-sending the stored values is harmless, and the weekly goal stays editable
+    # the optional subject can't be edited afterwards…
+    r = await client.patch("/api/v1/auth/me", json={"optional_subject": "History"}, headers=_h("alice"))
+    assert r.status_code == 403, r.text
+    # …target exam and year can, but not to empty
+    for field in ("target_exam", "target_year"):
+        r = await client.patch("/api/v1/auth/me", json={field: "  "}, headers=_h("alice"))
+        assert r.status_code == 400, (field, r.text)
+    moved = await client.patch("/api/v1/auth/me", json={"target_exam": "MPSC Rajyaseva", "target_year": "2028"}, headers=_h("alice"))
+    assert moved.status_code == 200, moved.text
+    me = (await client.get("/api/v1/auth/me", headers=_h("alice"))).json()
+    assert (me["target_exam"], me["target_year"], me["optional_subject"]) == ("MPSC Rajyaseva", "2028", "Geography")
+    # re-sending the stored optional subject is harmless, and the weekly goal stays editable
     ok = await client.patch(
         "/api/v1/auth/me",
         json={"target_exam": "UPSC CSE", "target_year": "2027", "optional_subject": "Geography", "weekly_hours": "45"},
@@ -203,7 +210,7 @@ async def test_new_student_must_onboard_and_target_is_then_locked(client):
     )
     assert ok.status_code == 200, ok.text
     me = (await client.get("/api/v1/auth/me", headers=_h("alice"))).json()
-    assert (me["target_year"], me["weekly_hours"]) == ("2027", "45")
+    assert (me["target_exam"], me["target_year"], me["weekly_hours"]) == ("UPSC CSE", "2027", "45")
 
     # admins see the answers
     detail = (await client.get(f"/api/v1/users/{_state['users']['alice'][0]}", headers=_h("admin"))).json()
@@ -258,9 +265,9 @@ async def test_ratings_are_optional_at_onboarding_and_editable_later(client):
     assert bad.status_code == 422
     assert (await client.get("/api/v1/auth/me", headers=_h("bob"))).json()["subject_proficiency"] == {"Economy": 3}
 
-    # editing ratings doesn't unlock the primary target
+    # editing ratings doesn't unlock the optional subject
     locked = await client.patch(
-        "/api/v1/auth/me", json={"subject_proficiency": {"Economy": 2}, "target_year": "2030"}, headers=_h("bob")
+        "/api/v1/auth/me", json={"subject_proficiency": {"Economy": 2}, "optional_subject": "Sociology"}, headers=_h("bob")
     )
     assert locked.status_code == 403
 

@@ -393,7 +393,9 @@ export async function updateUserProfile(updateData: UserProfileUpdate, customTok
   });
 
   if (!res.ok) {
-    throw new Error('Failed to update user profile');
+    // Surface the server's reason (e.g. "Target exam and target year can't be empty.")
+    const detail = await res.json().then((b) => b?.detail).catch(() => null);
+    throw new Error(typeof detail === 'string' ? detail : 'Failed to update user profile');
   }
 
   const data = await res.json();

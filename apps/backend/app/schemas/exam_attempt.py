@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from app.db.models.enums import AttemptMode, QuestionResponseStatus, AttemptStatus, ConfidenceLevel
 
 
@@ -18,7 +18,19 @@ class StartExamRequest(BaseModel):
     dynamic_subtopic: Optional[str] = None
     dynamic_exams: Optional[str] = None  # Comma separated
     dynamic_years: Optional[str] = None  # Comma separated
+    dynamic_difficulty: Optional[str] = None  # Comma separated EASY / MEDIUM / HARD, or "all"
     dynamic_limit: Optional[int] = None
+
+    @field_validator("dynamic_difficulty")
+    @classmethod
+    def _known_difficulties(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        levels = [v.strip().upper() for v in value.split(",") if v.strip() and v.strip().lower() != "all"]
+        unknown = [v for v in levels if v not in ("EASY", "MEDIUM", "HARD")]
+        if unknown:
+            raise ValueError(f"Unknown difficulty: {', '.join(unknown)}")
+        return ",".join(levels) or None
 
 
 class SaveResponseRequest(BaseModel):

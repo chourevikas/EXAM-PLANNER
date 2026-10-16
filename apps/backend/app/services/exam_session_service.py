@@ -28,7 +28,7 @@ from app.db.models import (
     Subtopic,
     ExamType,
 )
-from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus, ExamStatus, ConfidenceLevel
+from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus, ExamStatus, ConfidenceLevel, DifficultyLevel
 from app.schemas.exam_attempt import (
     StartExamRequest,
     StartExamResponse,
@@ -162,7 +162,12 @@ def dynamic_exam_name(req: StartExamRequest) -> str:
     subject_part = f"{subject} – {focus}" if subject and focus else (subject or "All Subjects")
     exam_part = ", ".join(_csv_filter(req.dynamic_exams)) or "All Exams"
     years = sorted(_csv_filter(req.dynamic_years))
-    name = f"{subject_part} · {exam_part}" + (f" ({', '.join(years)})" if years else "")
+    levels = [v.title() for v in _csv_filter(getattr(req, "dynamic_difficulty", None))]
+    name = (
+        f"{subject_part} · {exam_part}"
+        + (f" ({', '.join(years)})" if years else "")
+        + (f" · {'/'.join(levels)}" if levels else "")
+    )
     return name if len(name) <= 200 else name[:199] + "…"
 
 
@@ -303,6 +308,7 @@ class ExamSessionService:
                 "dynamic_subtopic": getattr(req, "dynamic_subtopic", None) or "all",
                 "dynamic_years": getattr(req, "dynamic_years", None) or "all",
                 "dynamic_exams": getattr(req, "dynamic_exams", None) or "all",
+                "dynamic_difficulty": getattr(req, "dynamic_difficulty", None) or "all",
             }
         elif is_dynamic:
             # Retake: replay the same question set and keep the original filters
@@ -1481,6 +1487,10 @@ class ExamSessionService:
         years = [int(y) for y in _csv_filter(req.dynamic_years) if y.isdigit()]
         if years:
             q_stmt = q_stmt.where(func.coalesce(Question.source_year, Exam.source_year).in_(years))
+
+        levels = [DifficultyLevel(v.upper()) for v in _csv_filter(getattr(req, "dynamic_difficulty", None))]
+        if levels:
+            q_stmt = q_stmt.where(col(Question.difficulty).in_(levels))
 
         type_codes = await load_exam_type_codes(self.session)
         exam_names = {canonical_exam_name(e, type_codes).upper() for e in _csv_filter(req.dynamic_exams)}

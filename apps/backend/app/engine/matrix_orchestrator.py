@@ -65,6 +65,39 @@ def accuracy_retention_estimate(acc_pct: float) -> float:
     return 30.0
 
 
+
+DIFFICULTY_LEVELS = ("EASY", "MEDIUM", "HARD")
+
+
+def difficulty_breakdown(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Per difficulty level: questions, attempted, correct, wrong, skipped, accuracy (of attempted) and avg time.
+
+    Levels with no questions are left out. Unknown or missing difficulty counts as MEDIUM (the question default).
+    """
+    def level_of(q: Dict[str, Any]) -> str:
+        level = str(q.get("difficulty") or "MEDIUM").upper()
+        return level if level in DIFFICULTY_LEVELS else "MEDIUM"
+
+    rows = []
+    for level in DIFFICULTY_LEVELS:
+        qs = [q for q in questions if level_of(q) == level]
+        if not qs:
+            continue
+        attempted = [q for q in qs if q.get("is_attempted")]
+        correct = sum(1 for q in attempted if q.get("is_correct"))
+        times = [float(q.get("time_taken_seconds") or 0.0) for q in attempted]
+        rows.append({
+            "difficulty": level,
+            "total": len(qs),
+            "attempted": len(attempted),
+            "correct": correct,
+            "incorrect": len(attempted) - correct,
+            "unattempted": len(qs) - len(attempted),
+            "accuracy_pct": round(correct * 100.0 / len(attempted), 1) if attempted else None,
+            "avg_time_seconds": round(sum(times) / len(times), 1) if times else None,
+        })
+    return rows
+
 class MatrixOrchestrator:
     """
     Mode-Aware Psychometric Engine Orchestrator.
@@ -845,6 +878,7 @@ class MatrixOrchestrator:
             "closeness_distribution": closeness_counts,
             "unattempted_summary": unattempted_summary,
             "unattempted_analysis": unattempted_summary,
+            "difficulty_breakdown": difficulty_breakdown(part_1_questions),
             "confidence_calibration": confidence_eval,
             "answer_rounds": answer_rounds,
             "mentorship_insight": instant_mentorship_insight,

@@ -392,6 +392,8 @@ export interface DynamicTestFilters {
   dynamic_subject?: string;
   dynamic_topic?: string;
   dynamic_subtopic?: string;
+  /** Comma separated EASY / MEDIUM / HARD; omitted for all levels. */
+  dynamic_difficulty?: string;
 }
 
 /** How many questions a Subject-wise test with these filters can draw from. */

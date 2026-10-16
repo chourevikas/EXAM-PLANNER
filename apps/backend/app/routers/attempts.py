@@ -1,5 +1,6 @@
 from typing import Optional, Any
-from fastapi import APIRouter, Depends, status, BackgroundTasks, Body, Query
+from fastapi import APIRouter, Depends, status, BackgroundTasks, Body, Query, HTTPException
+from pydantic import ValidationError
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -91,18 +92,23 @@ async def count_dynamic_questions(
     dynamic_subject: Optional[str] = None,
     dynamic_topic: Optional[str] = None,
     dynamic_subtopic: Optional[str] = None,
+    dynamic_difficulty: Optional[str] = Query(default=None, description="Comma separated EASY / MEDIUM / HARD"),
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """The pool a subject-wise test started with the same filters draws from (POST /start, exam_id 'dynamic')."""
-    req = StartExamRequest(
-        exam_id="dynamic",
-        dynamic_exams=dynamic_exams,
-        dynamic_years=dynamic_years,
-        dynamic_subject=dynamic_subject,
-        dynamic_topic=dynamic_topic,
-        dynamic_subtopic=dynamic_subtopic,
-    )
+    try:
+        req = StartExamRequest(
+            exam_id="dynamic",
+            dynamic_exams=dynamic_exams,
+            dynamic_years=dynamic_years,
+            dynamic_subject=dynamic_subject,
+            dynamic_topic=dynamic_topic,
+            dynamic_subtopic=dynamic_subtopic,
+            dynamic_difficulty=dynamic_difficulty,
+        )
+    except ValidationError as err:
+        raise HTTPException(status_code=422, detail=err.errors()[0].get("msg", "Invalid filters"))
     count = await ExamSessionService(session).count_dynamic_questions(req)
     return {"count": count}
 

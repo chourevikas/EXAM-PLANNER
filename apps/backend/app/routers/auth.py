@@ -522,8 +522,11 @@ async def read_current_user(
     return await _build_user_out_response(current_user=current_user, session=session, background_tasks=background_tasks)
 
 
-# Set during onboarding, read-only afterwards.
-LOCKED_TARGET_FIELDS = ("target_exam", "target_year", "optional_subject")
+# Set during onboarding, read-only afterwards. (Target exam and year stay editable: the client wants
+# students to be able to switch targets later.)
+LOCKED_TARGET_FIELDS = ("optional_subject",)
+# Editable after onboarding, but never back to empty: plans, leaderboards and recommendations key off them.
+REQUIRED_TARGET_FIELDS = ("target_exam", "target_year")
 
 
 @router.post("/me/onboarding", response_model=UserOut, summary="Complete First-Login Student Onboarding")
@@ -618,13 +621,18 @@ async def update_current_user(
                 continue
             new_value = value.strip()[:max_len] or None
             if locked and field in LOCKED_TARGET_FIELDS:
-                # The primary target is set once during onboarding. Re-sending the stored value is harmless.
+                # Set once during onboarding. Re-sending the stored value is harmless.
                 if new_value != getattr(profile, field):
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Your primary target exam, year and optional subject can't be changed after onboarding.",
+                        detail="Your optional subject can't be changed after onboarding.",
                     )
                 continue
+            if locked and field in REQUIRED_TARGET_FIELDS and new_value is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Target exam and target year can't be empty.",
+                )
             setattr(profile, field, new_value)
         if wants_ratings:
             # Ratings stay editable after onboarding; the client always sends the full map.
