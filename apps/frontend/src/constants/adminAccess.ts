@@ -13,6 +13,7 @@ export const VIEW_PERMISSION: Record<string, string | null> = {
   'current-affairs': 'admin.current_affairs',
   notifications: 'admin.notifications',
   milestones: 'admin.milestones',
+  translations: 'admin.translations',
   testimonials: 'admin.testimonials',
   analytics: 'admin.analytics',
   theme: 'admin.theme',

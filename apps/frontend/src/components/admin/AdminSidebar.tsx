@@ -16,6 +16,7 @@ import {
   Bell,
   Palette,
   Medal,
+  Languages,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { canAccessView } from '../../constants/adminAccess';
@@ -83,6 +84,7 @@ export function AdminSidebar({
     { icon: Globe, label: 'Current Affairs', id: 'current-affairs' },
     { icon: Bell, label: 'Notifications', id: 'notifications' },
     { icon: Medal, label: 'Milestones', id: 'milestones' },
+    { icon: Languages, label: 'Translations', id: 'translations' },
     { icon: MessageSquareQuote, label: 'Testimonial Approvals', id: 'testimonials' },
     { icon: BarChart2, label: 'Reports & Analytics', id: 'analytics' },
     { icon: Palette, label: 'Theme', id: 'theme' },
@@ -123,6 +125,9 @@ function prefetchAdminView(viewId: string) {
       break;
     case 'milestones':
       import('./views/MilestonesView');
+      break;
+    case 'translations':
+      import('./views/TranslationsView');
       break;
     case 'analytics':
       import('./views/AnalyticsView');

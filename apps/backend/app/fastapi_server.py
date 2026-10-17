@@ -18,6 +18,7 @@ from app.routers.users import router as users_router
 from app.routers.practice import router as practice_router
 from app.routers.leaderboard import router as leaderboard_router
 from app.routers.milestones import router as milestones_router
+from app.routers.translations import router as translations_router
 from app.routers.admin import router as admin_router
 from app.routers.exams import router as exams_router
 from app.routers.questions import router as questions_router
@@ -210,6 +211,7 @@ app.include_router(leaderboard_router, prefix=settings.API_V1_STR)
 app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(practice_router, prefix=settings.API_V1_STR)
 app.include_router(milestones_router, prefix=settings.API_V1_STR)
+app.include_router(translations_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(exams_router, prefix=settings.API_V1_STR)
 app.include_router(questions_router, prefix=settings.API_V1_STR)

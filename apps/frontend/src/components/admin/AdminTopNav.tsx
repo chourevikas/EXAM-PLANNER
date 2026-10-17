@@ -36,6 +36,7 @@ const breadcrumbMap: Record<string, string> = {
   'teacher-rewards': 'Teacher Rewards',
   analytics: 'Reports & Analytics',
   milestones: 'Milestones',
+  translations: 'Translations',
   subscriptions: 'Subscriptions & Billing',
 };
 

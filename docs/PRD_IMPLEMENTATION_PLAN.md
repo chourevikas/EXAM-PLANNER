@@ -192,8 +192,15 @@ Client decision (17 Oct): English is the default for practice and exam simulatio
 - **Bug fixed:** `/questions/{id}/solution` used one option row for both text and analysis. A Hindi request lost the analysis whenever the Hindi option row had none; text and analysis are now chosen separately.
 - **Production needs:** working Google Cloud Translation (or Vertex/Gemini) credentials. The dev credentials fail (`invalid_grant`), so dev was tested with a stand-in translator.
 
-### 5.3 Remaining (not started)
-- Admin view: translation coverage per language.
+### 5.3 Admin view: translation coverage ✅ built
+- New admin section **Translations** (permission `admin.translations`):
+  - Hindi and Marathi progress bars for questions, options, explanations and option analyses. Explanations and analyses are measured against what exists in English.
+  - A table of papers, most missing first, with each paper's last translation run (running %, complete, last run failed).
+  - **Translate missing** for one paper, and **Translate all missing**, which runs the same backfill as the nightly job. Starting a second run while one is running is refused.
+- An untranslated copy (Hindi/Marathi text still in English words) counts as missing. Numbers, sequences and formulas that legitimately stay the same count as translated.
+- Migration 066 adds the `admin.translations` permission row, and the `admin.milestones` row that Phase 4 missed, so custom roles can be granted both.
+
+### 5.4 Remaining (not started)
 - **Exam screen labels:** add a small i18n dictionary for the exam screens only (`ExamEnginePage`, `ExamQuestionCard`, `ExamFooterBar`, palette, submit dialog, timer, solution card headings), driven by the session language, with English fallback. No app-wide i18n framework yet.
 - **Fallback rule:** if a question isn't translated, show English with a small "not available in <language>" note, never a blank.
 

@@ -571,6 +571,7 @@ ADMIN_SECTION_PERMISSIONS = {
     "admin.current_affairs": "Current Affairs",
     "admin.notifications": "Notifications",
     "admin.milestones": "Milestones",
+    "admin.translations": "Translations",
     "admin.testimonials": "Testimonial Approvals",
     "admin.analytics": "Reports & Analytics",
     "admin.theme": "Theme",
