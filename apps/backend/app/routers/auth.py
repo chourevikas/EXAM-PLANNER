@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, Response, Request, status, HTTPException, BackgroundTasks
@@ -123,8 +124,6 @@ async def _get_user_question_stats(session: AsyncSession, user_id: int | str) ->
             current_streak += 1
             curr_check -= timedelta(days=1)
 
-    calculated_xp = total_q * 10
-    calculated_level = (calculated_xp // 500) + 1
 
     # Read StudentProfile from the original session (1 read, not a write)
     prof = (await session.exec(select(StudentProfile).where(StudentProfile.user_id == u_id))).first()
@@ -134,11 +133,11 @@ async def _get_user_question_stats(session: AsyncSession, user_id: int | str) ->
         "total_questions_attempted": total_q,
         "today_questions_attempted": today_q,
         "current_streak": max(current_streak, prof.current_streak if prof else 0),
-        "total_xp": max(calculated_xp, prof.total_xp if prof else 0),
-        "level": max(calculated_level, prof.level if prof else 1),
+        # XP is the xp_logs ledger (mirrored on the profile), not derived from questions attempted
+        "total_xp": prof.total_xp if prof else 0,
+        "level": prof.level if prof else 1,
         # Pass through for background sync
-        "_sync": {"u_id": u_id, "streak": current_streak, "xp": calculated_xp,
-                  "level": calculated_level, "q": total_q, "has_prof": prof is not None},
+        "_sync": {"u_id": u_id, "streak": current_streak, "q": total_q, "has_prof": prof is not None},
     }
     await cache.set(cache_key, result, ttl_seconds=300)
     return result
@@ -162,12 +161,6 @@ async def _sync_student_profile_bg(sync_data: dict):
                     if sync_data["streak"] > prof.highest_streak:
                         prof.highest_streak = sync_data["streak"]
                     updated = True
-                if sync_data["xp"] > prof.total_xp:
-                    prof.total_xp = sync_data["xp"]
-                    updated = True
-                if sync_data["level"] > prof.level:
-                    prof.level = sync_data["level"]
-                    updated = True
                 if sync_data["q"] > prof.free_questions_attempted:
                     prof.free_questions_attempted = sync_data["q"]
                     updated = True
@@ -177,8 +170,7 @@ async def _sync_student_profile_bg(sync_data: dict):
             elif not sync_data["has_prof"]:
                 s.add(StudentProfile(
                     user_id=u_id, current_streak=sync_data["streak"],
-                    highest_streak=sync_data["streak"], total_xp=sync_data["xp"],
-                    level=sync_data["level"], free_questions_attempted=sync_data["q"],
+                    highest_streak=sync_data["streak"], free_questions_attempted=sync_data["q"],
                 ))
                 await s.commit()
     except Exception as e:
@@ -497,6 +489,9 @@ async def _build_user_out_response(
         optional_subject=prep.get("optional_subject"),
         weekly_hours=prep.get("weekly_hours"),
         subject_proficiency=prep.get("subject_proficiency"),
+        state=prep.get("state"),
+        username=prep.get("username"),
+        leaderboard_display=prep.get("leaderboard_display"),
         # Only students onboard; a student with no profile row hasn't yet.
         onboarding_completed=(current_user.role != UserRole.STUDENT) or bool(prep.get("onboarding_completed", False)),
         must_change_password=bool(getattr(current_user, "must_change_password", False)),
@@ -520,6 +515,42 @@ async def read_current_user(
     session: AsyncSession = Depends(get_async_session)
 ):
     return await _build_user_out_response(current_user=current_user, session=session, background_tasks=background_tasks)
+
+
+USERNAME_PATTERN = re.compile(r"^[a-z0-9_]{3,20}$")
+
+
+async def username_taken(session: AsyncSession, username: str, exclude_user_id: Optional[int] = None) -> bool:
+    stmt = select(StudentProfile.user_id).where(func.lower(StudentProfile.username) == username.lower())
+    if exclude_user_id is not None:
+        stmt = stmt.where(StudentProfile.user_id != exclude_user_id)
+    return (await session.exec(stmt)).first() is not None
+
+
+async def _apply_leaderboard_fields(session: AsyncSession, profile: StudentProfile, update: UserUpdate) -> None:
+    """State, username and display choice for the leaderboards; usernames can change when the new one is free."""
+    from app.core.indian_states import INDIAN_STATES
+
+    if update.state is not None:
+        state = update.state.strip()
+        if state and state not in INDIAN_STATES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown state.")
+        profile.state = state or None
+    if update.username is not None:
+        username = update.username.strip().lower()
+        if not USERNAME_PATTERN.match(username):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username must be 3-20 characters: lowercase letters, numbers or underscores.",
+            )
+        if username != (profile.username or "") and await username_taken(session, username, profile.user_id):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That username is taken.")
+        profile.username = username
+    if update.leaderboard_display is not None:
+        choice = update.leaderboard_display.strip().upper()
+        if choice not in ("USERNAME", "NAME"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="leaderboard_display must be USERNAME or NAME.")
+        profile.leaderboard_display = choice
 
 
 # Set during onboarding, read-only afterwards. (Target exam and year stay editable: the client wants
@@ -611,7 +642,10 @@ async def update_current_user(
     }
     wants_prep = any(v is not None for v, _ in prep.values())
     wants_ratings = user_update.subject_proficiency is not None
-    if db_user.role == UserRole.STUDENT and (wants_prep or wants_ratings):
+    wants_leaderboard = any(
+        v is not None for v in (user_update.state, user_update.username, user_update.leaderboard_display)
+    )
+    if db_user.role == UserRole.STUDENT and (wants_prep or wants_ratings or wants_leaderboard):
         profile = (await session.exec(select(StudentProfile).where(StudentProfile.user_id == db_user.id))).first()
         if profile is None:
             profile = StudentProfile(user_id=db_user.id)
@@ -634,6 +668,8 @@ async def update_current_user(
                     detail="Target exam and target year can't be empty.",
                 )
             setattr(profile, field, new_value)
+        if wants_leaderboard:
+            await _apply_leaderboard_fields(session, profile, user_update)
         if wants_ratings:
             # Ratings stay editable after onboarding; the client always sends the full map.
             from app.services.subject_names import canonicalize_proficiency

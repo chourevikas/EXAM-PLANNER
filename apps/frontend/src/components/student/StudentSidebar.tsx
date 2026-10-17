@@ -7,6 +7,7 @@ import {
   Brain,
   BarChart2,
   Trophy,
+  Medal,
   Crown,
   X,
   Bookmark,
@@ -74,6 +75,7 @@ export function StudentSidebar({
 
   const reportItems = [
     { icon: BarChart2, label: 'Weekly Insights', to: '/reports/weekly' },
+    { icon: Medal, label: 'Leaderboard', to: '/leaderboard' },
     { icon: Trophy, label: 'Performance Rank', to: '/reports/monthly' },
   ];
 

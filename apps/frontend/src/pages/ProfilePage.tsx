@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { AdminTopNav } from '../components/admin/AdminTopNav';
@@ -27,6 +27,8 @@ import { UserAvatar } from '../components/common/UserAvatar';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import { WEEKLY_HOURS_OPTIONS, PROFICIENCY_LABELS, TARGET_YEAR_OPTIONS } from '../constants/onboarding';
 import { fetchActiveExamTypes } from '../services/examTypeService';
+import { INDIAN_STATES } from '../constants/indianStates';
+import { checkUsername } from '../services/leaderboardService';
 import { SubjectRatingEditor } from '../components/student/SubjectRatingEditor';
 
 const editableSelectStyle: React.CSSProperties = {
@@ -63,7 +65,11 @@ export function ProfilePage() {
     return JSON.parse(localStorage.getItem('user') || '{}');
   });
 
-  const [activeTab, setActiveTab] = useState<'personal' | 'exam' | 'billing' | 'security'>('personal');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'personal' | 'exam' | 'billing' | 'security'>(() => {
+    const t = searchParams.get('tab');
+    return t === 'exam' || t === 'billing' || t === 'security' ? t : 'personal';
+  });
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -184,6 +190,28 @@ export function ProfilePage() {
     if (user.target_year) setTargetYear(user.target_year);
   }, [user.target_exam, user.target_year]);
   const optionalSubject: string = user.optional_subject || '';
+  // Leaderboard: state, public username (changeable if free) and which name to show
+  const [stateName, setStateName] = useState<string>(user.state || '');
+  const [username, setUsername] = useState<string>(user.username || '');
+  const [leaderboardDisplay, setLeaderboardDisplay] = useState<'USERNAME' | 'NAME'>(user.leaderboard_display === 'NAME' ? 'NAME' : 'USERNAME');
+  const [usernameStatus, setUsernameStatus] = useState<{ checking: boolean; available: boolean | null; reason: string | null }>({ checking: false, available: null, reason: null });
+  useEffect(() => {
+    if (user.state) setStateName(user.state);
+    if (user.username) setUsername(user.username);
+    if (user.leaderboard_display) setLeaderboardDisplay(user.leaderboard_display === 'NAME' ? 'NAME' : 'USERNAME');
+  }, [user.state, user.username, user.leaderboard_display]);
+  useEffect(() => {
+    const value = username.trim().toLowerCase();
+    if (!value || value === (user.username || '')) {
+      setUsernameStatus({ checking: false, available: null, reason: null });
+      return;
+    }
+    setUsernameStatus({ checking: true, available: null, reason: null });
+    const timer = setTimeout(() => {
+      checkUsername(value).then((r) => setUsernameStatus({ checking: false, available: r.available, reason: r.reason }));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [username, user.username]);
   const [examOptions, setExamOptions] = useState<string[]>([]);
   useEffect(() => {
     fetchActiveExamTypes()
@@ -233,6 +261,8 @@ export function ProfilePage() {
         // Target exam and year are editable; the optional subject is locked server-side after onboarding.
         ...(isStudent && targetExam ? { target_exam: targetExam } : {}),
         ...(isStudent && targetYear ? { target_year: targetYear } : {}),
+        ...(isStudent ? { state: stateName, leaderboard_display: leaderboardDisplay } : {}),
+        ...(isStudent && username.trim() && username.trim().toLowerCase() !== (user.username || '') ? { username: username.trim().toLowerCase() } : {}),
       });
       const updatedUser = { ...user, ...saved, bio };
       localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -805,6 +835,59 @@ export function ProfilePage() {
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Leaderboard identity */}
+            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: 16, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 16 : 20 }}>
+              <div style={{ gridColumn: '1 / -1', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                Leaderboard
+                <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-muted)', marginTop: 2 }}>
+                  Your state places you in the state ranking. Others see your username or your real name, as you choose.
+                </div>
+              </div>
+              <div>
+                <label htmlFor="profile-state" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>State</label>
+                <select id="profile-state" value={stateName} onChange={(e) => setStateName(e.target.value)} style={editableSelectStyle}>
+                  <option value="">Select state…</option>
+                  {INDIAN_STATES.map((st) => <option key={st} value={st}>{st}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="profile-username" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>Username</label>
+                <input
+                  id="profile-username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g. aspirant_2027"
+                  maxLength={20}
+                  autoComplete="off"
+                  aria-describedby="profile-username-help"
+                  style={{ ...editableSelectStyle }}
+                />
+                <div id="profile-username-help" style={{ fontSize: 12, marginTop: 5, color: usernameStatus.available === false ? 'var(--primary-red)' : usernameStatus.available ? '#059669' : 'var(--text-muted)' }}>
+                  {usernameStatus.checking
+                    ? 'Checking…'
+                    : usernameStatus.available === true
+                    ? 'Available'
+                    : usernameStatus.available === false
+                    ? (usernameStatus.reason || 'Not available')
+                    : '3-20 characters: lowercase letters, numbers or underscores'}
+                </div>
+              </div>
+              <fieldset style={{ gridColumn: '1 / -1', border: 'none', padding: 0, margin: 0 }}>
+                <legend style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Show on the leaderboard</legend>
+                <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 14 }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="radio" name="leaderboard-display" checked={leaderboardDisplay === 'USERNAME'} onChange={() => setLeaderboardDisplay('USERNAME')} />
+                    My username{username.trim() ? ` (${username.trim().toLowerCase()})` : ''}
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="radio" name="leaderboard-display" checked={leaderboardDisplay === 'NAME'} onChange={() => setLeaderboardDisplay('NAME')} />
+                    My real name ({fullName || 'your name'})
+                  </label>
+                </div>
+              </fieldset>
             </div>
 
             {/* Self-rated proficiency: editable here, also prompted for before the first study plan */}

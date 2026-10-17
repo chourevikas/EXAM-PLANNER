@@ -61,6 +61,9 @@ class UserOut(BaseModel):
     optional_subject: Optional[str] = None
     weekly_hours: Optional[str] = None
     subject_proficiency: Optional[dict[str, int]] = None
+    state: Optional[str] = None
+    username: Optional[str] = None
+    leaderboard_display: Optional[str] = None
     # False until a student finishes first-login onboarding; always True for staff.
     onboarding_completed: bool = True
     # True while the account still uses an emailed temporary password.
@@ -106,6 +109,10 @@ class UserUpdate(BaseModel):
     optional_subject: Optional[str] = None
     weekly_hours: Optional[str] = None
     preferred_language: Optional[str] = None
+    # Leaderboards: state, public username (3-20 of a-z, 0-9, _), and USERNAME | NAME to display
+    state: Optional[str] = None
+    username: Optional[str] = None
+    leaderboard_display: Optional[str] = None
     # Full replacement of the student's subject ratings; {} clears them.
     subject_proficiency: Optional[dict[str, int]] = None
 

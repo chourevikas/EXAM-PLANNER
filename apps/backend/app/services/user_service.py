@@ -23,7 +23,10 @@ def generate_temporary_password(length: int = 12) -> str:
     return "".join(secrets.choice(_TEMP_PASSWORD_ALPHABET) for _ in range(length))
 
 
-PROFILE_EXTRA_FIELDS = ("target_exam", "target_year", "optional_subject", "weekly_hours", "subject_proficiency")
+PROFILE_EXTRA_FIELDS = (
+    "target_exam", "target_year", "optional_subject", "weekly_hours", "subject_proficiency",
+    "state", "username", "leaderboard_display",
+)
 
 
 async def get_profile_extras(session: AsyncSession, user_ids: List[int]) -> dict:

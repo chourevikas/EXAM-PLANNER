@@ -375,6 +375,9 @@ export interface UserProfileUpdate {
   target_year?: string;
   optional_subject?: string;
   weekly_hours?: string;
+  state?: string;
+  username?: string;
+  leaderboard_display?: 'USERNAME' | 'NAME';
   // Replaces all subject ratings; {} clears them.
   subject_proficiency?: Record<string, number>;
 }

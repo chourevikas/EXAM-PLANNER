@@ -62,13 +62,25 @@ async def record_practice_answer(
             remaining = await free_plan.remaining_today(session, current_user)
             if remaining is not None and remaining <= 0:
                 raise free_plan.daily_limit_error()
-            session.add(PracticeAnswer(
+            is_correct = bool(option and option.is_correct)
+            practice = PracticeAnswer(
                 user_id=current_user.id,
                 question_id=question.id,
                 selected_option_id=option.id if option else None,
-                is_correct=bool(option and option.is_correct),
-            ))
+                is_correct=is_correct,
+            )
+            session.add(practice)
             await session.commit()
+            await session.refresh(practice)
             counted = True
+
+            from app.services import xp_service
+            if is_correct:
+                await xp_service.award(
+                    session, current_user.id, xp_service.XP_CORRECT_ANSWER, "CORRECT_ANSWERS",
+                    f"practice:{practice.id}", "Correct practice answer", commit=False,
+                )
+            await xp_service.award_active_day(session, current_user.id, commit=False)
+            await session.commit()
 
     return {"counted": counted, "usage": await free_plan.daily_usage(session, current_user)}

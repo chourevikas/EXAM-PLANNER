@@ -404,6 +404,16 @@ async def _daily_midnight_scheduler_loop():
 
             await run_daily_midnight_dispatch(force=False)
 
+            # Recalculate today's leaderboards (idempotent: replaces the day's rows)
+            try:
+                from app.db.session import async_session_factory
+                from app.services import leaderboard_service
+                async with async_session_factory() as lb_session:
+                    ranked = await leaderboard_service.refresh(lb_session)
+                logger.info(f"🏆 Leaderboards recalculated: {ranked} students ranked.")
+            except Exception as lb_err:
+                logger.error(f"⚠️ Leaderboard refresh error (non-fatal): {lb_err}", exc_info=True)
+
             # Run proactive translation for Hindi + Marathi (non-blocking — errors don't stop the loop)
             try:
                 await run_midnight_translation_job()

@@ -86,7 +86,7 @@ from app.db.models.answer_key import (
     AnswerKeyBatch,
     AnswerKeyMapping,
 )
-from app.db.models.gamification import Badge, UserBadge, XPLog
+from app.db.models.gamification import Badge, UserBadge, XPLog, LeaderboardSnapshot
 from app.db.models.study_plan import StudyTask, StudyActivity
 from app.db.models.notification import Notification
 from app.db.models.roles import Permission, Role, RolePermission, RoleAssignmentLog
@@ -166,6 +166,7 @@ __all__ = [
     "Badge",
     "UserBadge",
     "XPLog",
+    "LeaderboardSnapshot",
     "StudyTask",
     "StudyActivity",
     "ExamStatus",

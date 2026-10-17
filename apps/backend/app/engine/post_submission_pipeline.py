@@ -1079,6 +1079,18 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
         except Exception as badge_err:
             logger.warning(f"Gamification processing warning: {badge_err}")
 
+        # 7d. XP for this test (+50, +10 per correct, +20 for the day); keyed by attempt, so never paid twice
+        try:
+            from app.services import xp_service
+            async with session.begin_nested():
+                if user.id is not None:
+                    correct = sum(1 for r in responses_db if r.selected_option_id is not None and r.is_correct)
+                    await xp_service.award_test_completion(
+                        session, int(user.id), int(attempt.id), correct, attempt.submitted_at, commit=False
+                    )
+        except Exception as xp_err:
+            logger.warning(f"XP award warning for attempt '{attempt.id}': {xp_err}")
+
     elif profile is None:
         profile = UserSkillProfile(user_id=user.id, **profile_dict)
 

@@ -106,17 +106,34 @@ Payments are on hold, so this uses the existing `StudentProfile.subscription_tie
 
 ---
 
-## Phase 3: state and national leaderboards
-- **Profile fields** (migration on `StudentProfile`):
-  - `state` (a list of Indian states and UTs);
-  - `username` (unique, 3–20 characters, `[a-z0-9_]`). It **can be changed later if the new one is available**: add a live check `GET /users/username-available?u=` and return 409 on a clash at save time;
-  - `leaderboard_display` (`USERNAME` | `NAME`, default `USERNAME`).
-- **Onboarding** asks for state. **Profile** edits state, username and the display choice. Existing users are prompted once.
-- **API:** `GET /leaderboard?exam=<type code>&scope=national|state&state=<code>&page=…` (per the user's target exam by default). Rows show rank, the display name (by preference), score metric and attempts. Also return the caller's own rank, even when it's outside the page.
-- **Ranking (client-confirmed):** points = **correct answers solved + XP collected**. Ties are broken by accuracy, then by whoever reached the score first. To appear, a user needs at least 1 correct answer.
-- **Recalculated daily:** a nightly job in `services/daily_scheduler_service.py` writes a `LeaderboardSnapshot` (date, exam, state, user, points, rank). `GET /leaderboard` reads the latest snapshot, so ranks are fast and stable during the day. Show "updated daily" and the change in rank since yesterday (▲/▼). Reuse the pagination and caching patterns from the challenge leaderboard (`routers/challenges.py` `get_leaderboard`, `build_cache_key`).
-- **Prerequisite: real XP.** Today `XPLog` is written only for the daily goal, and the XP shown is `max(questions × 10, stored)`. Add XP awards in `services/gamification_service.py` for completed tests, streak days and milestones, and stop showing the derived value. Otherwise "correct + XP" would count correct answers twice. The XP values need client sign-off (see open questions).
-- **Frontend:** a `/leaderboard` page with National/State tabs and an exam selector, linked from the sidebar. Show "Your rank: #N of M" on the dashboard and in reports, replacing the simulated `predicted-rank`.
+## Phase 3: state and national leaderboards ✅ built
+**XP values (client-approved, 17 Oct):**
+
+| Action | XP |
+|---|---|
+| Correct answer (tests and practice) | +10 |
+| Test completed | +50 |
+| Active day | +20 |
+| Milestone (Phase 4) | +100 |
+
+- **Real XP ledger:** `xp_logs` is the source of truth, and each award has a `ref_key` unique per user, so retries or re-evaluations never pay twice. `StudentProfile.total_xp` mirrors the ledger. `/auth/me` no longer reports or writes back "questions attempted × 10".
+- **Backfill:** migration `063` gives existing students the XP their history earns under these values, using the same keys as live awards, so nothing is paid twice. Some totals change as a result: a student whose old number came from questions × 10 can go down.
+- **Ranking:** XP first (it already includes 10 per correct answer, so correct answers aren't counted twice), then correct answers, then whoever reached their XP first.
+  - A student is ranked once they have one correct answer and a target exam.
+  - Rankings are per target exam.
+- **Daily snapshot:** `leaderboard_snapshots`, rebuilt by the 23:55 IST job (idempotent). The first request after deploy builds today's snapshot.
+  - The order is fixed for the day.
+  - State membership uses the student's current profile state, so setting a state takes effect at once, in the day's order.
+  - The change shown is against the previous snapshot.
+- **Profile fields:**
+  - `state` (list of states and UTs);
+  - `username`: unique, 3–20 characters of `[a-z0-9_]`, changeable if free; 409 when taken; `GET /users/username-available`;
+  - `leaderboard_display`: USERNAME or NAME. Without a username, the name shows as "First L.".
+- **UI:**
+  - `/leaderboard` page with National and state tabs, an exam selector, "Your rank", ▲/▼ since yesterday, pagination, and a prompt to set state and username;
+  - leaderboard fields on the profile's Exam Targets tab (`/profile?tab=exam`);
+  - "Rank #N of M" on the dashboard XP card.
+- **Migration** `063_leaderboards_and_xp_ledger` follows `062`.
 
 ---
 

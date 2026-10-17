@@ -20,6 +20,9 @@ const WeeklyInsightsPage = lazy(() =>
 const MonthlyReportPage = lazy(() =>
   import('./pages/MonthlyReportPage').then((m) => ({ default: m.MonthlyReportPage })),
 );
+const LeaderboardPage = lazy(() =>
+  import('./pages/LeaderboardPage').then((m) => ({ default: m.LeaderboardPage })),
+);
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
@@ -216,6 +219,7 @@ export default function App() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/reports/weekly" element={<WeeklyInsightsPage />} />
             <Route path="/reports/monthly" element={<MonthlyReportPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/pyq" element={<PYQSelectionPage />} />
             <Route path="/mocks" element={<MockSelectionPage />} />
             <Route path="/profile" element={<ProfilePage />} />

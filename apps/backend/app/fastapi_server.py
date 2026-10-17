@@ -16,6 +16,7 @@ logger = setup_logger("FastAPIServer")
 from app.routers.auth import router as auth_router
 from app.routers.users import router as users_router
 from app.routers.practice import router as practice_router
+from app.routers.leaderboard import router as leaderboard_router
 from app.routers.admin import router as admin_router
 from app.routers.exams import router as exams_router
 from app.routers.questions import router as questions_router
@@ -192,6 +193,8 @@ app.mount("/static/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
 # Register API Routers
 app.include_router(auth_router, prefix=settings.API_V1_STR)
+# Before users_router, whose /users/{user_id} would otherwise capture /users/username-available
+app.include_router(leaderboard_router, prefix=settings.API_V1_STR)
 app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(practice_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)

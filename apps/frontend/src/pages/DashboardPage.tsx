@@ -12,6 +12,7 @@ import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
 import { LogStudyModal } from '../components/student/LogStudyModal';
 import { fetchWeeklySchedule } from '../services/studyPlannerService';
+import { fetchLeaderboard } from '../services/leaderboardService';
 import { StudentMetricCardSkeleton } from '../components/student/StudentMetricCardSkeleton';
 import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 
@@ -58,6 +59,13 @@ export function DashboardPage() {
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
 
   const [dashboardStats, setDashboardStats] = useState<any>(null);
+  // National rank from the daily leaderboard (null until ranked)
+  const [nationalRank, setNationalRank] = useState<{ rank: number; total: number } | null>(null);
+  useEffect(() => {
+    fetchLeaderboard({ scope: 'national', pageSize: 1 })
+      .then((lb) => setNationalRank(lb.me ? { rank: lb.me.rank, total: lb.total } : null))
+      .catch(() => setNationalRank(null));
+  }, []);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [studyHoursData, setStudyHoursData] = useState<Array<{ day: string; hours: number; date?: string; logged_minutes?: number }>>([
     { day: 'Mon', hours: 0 },
@@ -294,6 +302,16 @@ export function DashboardPage() {
                 </span>
               }
               supportingText={
+                <span style={{ display: 'inline-flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                {nationalRank && (
+                  <Link
+                    to="/leaderboard"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ color: 'var(--text-primary)', fontWeight: 700, textDecoration: 'none' }}
+                  >
+                    Rank #{nationalRank.rank.toLocaleString()} of {nationalRank.total.toLocaleString()}
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -307,6 +325,7 @@ export function DashboardPage() {
                 >
                   View Achievements <Ico.ArrowRight size={13} />
                 </button>
+                </span>
               }
               icon={<Ico.Star filled />}
               onClick={() => navigate('/reports/monthly')}
