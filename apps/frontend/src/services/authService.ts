@@ -378,6 +378,9 @@ export interface UserProfileUpdate {
   state?: string;
   username?: string;
   leaderboard_display?: 'USERNAME' | 'NAME';
+  weekly_email_enabled?: boolean;
+  weekly_email_day?: number;
+  weekly_email_hour?: number;
   // Replaces all subject ratings; {} clears them.
   subject_proficiency?: Record<string, number>;
 }

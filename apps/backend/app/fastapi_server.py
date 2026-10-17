@@ -17,6 +17,7 @@ from app.routers.auth import router as auth_router
 from app.routers.users import router as users_router
 from app.routers.practice import router as practice_router
 from app.routers.leaderboard import router as leaderboard_router
+from app.routers.milestones import router as milestones_router
 from app.routers.admin import router as admin_router
 from app.routers.exams import router as exams_router
 from app.routers.questions import router as questions_router
@@ -80,6 +81,12 @@ async def lifespan(app: FastAPI):
     except Exception as err:
         logger.warning(f"Could not start daily midnight scheduler: {err}")
 
+    try:
+        from app.services.weekly_email_service import start_weekly_email_scheduler
+        start_weekly_email_scheduler()
+    except Exception as err:
+        logger.warning(f"Could not start weekly email scheduler: {err}")
+
     logger.info("Application startup complete. Uvicorn server is ready to accept connections.")
     try:
         yield
@@ -87,6 +94,11 @@ async def lifespan(app: FastAPI):
         try:
             from app.services.daily_scheduler_service import stop_daily_midnight_scheduler
             stop_daily_midnight_scheduler()
+        except Exception:
+            pass
+        try:
+            from app.services.weekly_email_service import stop_weekly_email_scheduler
+            stop_weekly_email_scheduler()
         except Exception:
             pass
 
@@ -197,6 +209,7 @@ app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(leaderboard_router, prefix=settings.API_V1_STR)
 app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(practice_router, prefix=settings.API_V1_STR)
+app.include_router(milestones_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(exams_router, prefix=settings.API_V1_STR)
 app.include_router(questions_router, prefix=settings.API_V1_STR)

@@ -570,6 +570,7 @@ ADMIN_SECTION_PERMISSIONS = {
     "admin.teacher_rewards": "Teacher Rewards",
     "admin.current_affairs": "Current Affairs",
     "admin.notifications": "Notifications",
+    "admin.milestones": "Milestones",
     "admin.testimonials": "Testimonial Approvals",
     "admin.analytics": "Reports & Analytics",
     "admin.theme": "Theme",

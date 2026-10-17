@@ -137,19 +137,24 @@ Payments are on hold, so this uses the existing `StudentProfile.subscription_tie
 
 ---
 
-## Phase 4: milestones and weekly notifications
+## Phase 4: milestones and weekly notifications ✅ built
 
-### 4.1 Milestone badges
-- Extend `Badge` (`db/models/gamification.py`) with `criteria_type` (`QUESTIONS_SOLVED`, `STREAK_DAYS`, `TESTS_COMPLETED`, `ACCURACY_AT_LEAST`) and `threshold`.
-- Seed the rows in a migration instead of the hand-run `scripts/seed_badges.py`. **Client examples, the first set: 500 questions completed, 30-day streak.** Suggested additions for the client to confirm: 100 / 1000 questions, 7-day streak, first test.
-- Each milestone also awards XP, which feeds the leaderboard.
-- `services/gamification_service.py`: add `check_milestones(user)`. Call it after each submission (`post_submission_pipeline`) and on daily activity.
-- On award: create a `UserBadge` and an in-app notification, and show it on the dashboard/profile with a short celebration. Backfill existing users once.
+### 4.1 Milestones: dynamic, admin-managed (client request, 17 Oct)
+- **Model:** `badges` rows with `criteria_type`, `threshold`, `xp_reward` (default 100) and `is_active`. Criteria: questions solved, correct answers, tests completed, days in a row, XP earned.
+- **Admin:** a new **Milestones** section (permission `admin.milestones`) to create, edit and switch milestones on or off.
+  - Saving an active milestone awards it in the background to students who already qualify.
+  - A milestone someone has earned can't be deleted, only switched off.
+- **Seeded by migration `064`:**
+  - the client's two, active: **500 questions**, **30-day streak**;
+  - suggested ones, **inactive**: first test, 100 and 1,000 questions, 7-day streak.
+- **Awarding** (`milestone_service.check`): runs after each evaluated test and practice answer. The student gets the badge once, the XP (keyed `milestone:<id>`) and an in-app notification.
+- **Student view:** the achievements dialog shows progress toward each active milestone, e.g. "Questions solved: 20 / 500 · +100 XP". Switched-off ones are hidden unless already earned.
 
-### 4.2 User-scheduled weekly notification
-- **Channel: email only** (client-confirmed). Preference: weekly on/off, day of week and time, stored per user (new `NotificationPreference` table) using `User.timezone`. Add a settings section on the profile.
-- Scheduler: extend `services/daily_scheduler_service.py` from one daily run to an hourly check that sends to users whose slot falls in that hour. Keep the cache de-duplication so multiple workers don't double-send.
-- Content: the weekly summary (questions solved, accuracy, streak, pending tasks, new badges), built from `/study-plan/weekly-insights` once Phase 0.2 has fixed it. Add an unsubscribe link in the email.
+### 4.2 Weekly summary email (client: email only)
+- **Preferences:** on the profile's Exam Targets tab: on/off (**off by default**), day and time, in the student's timezone.
+- **Sending:** an hourly job sends to students whose slot is now. Each student is claimed with one atomic database update, so it never sends twice, even with several workers.
+- **Content:** the last 7 days: questions, accuracy, tests, XP, streak, new milestones and national rank.
+- **Unsubscribe:** a signed one-click link (`GET /notifications/weekly-email/unsubscribe`) that works without signing in.
 
 ---
 

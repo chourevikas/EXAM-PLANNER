@@ -492,6 +492,9 @@ async def _build_user_out_response(
         state=prep.get("state"),
         username=prep.get("username"),
         leaderboard_display=prep.get("leaderboard_display"),
+        weekly_email_enabled=prep.get("weekly_email_enabled"),
+        weekly_email_day=prep.get("weekly_email_day"),
+        weekly_email_hour=prep.get("weekly_email_hour"),
         # Only students onboard; a student with no profile row hasn't yet.
         onboarding_completed=(current_user.role != UserRole.STUDENT) or bool(prep.get("onboarding_completed", False)),
         must_change_password=bool(getattr(current_user, "must_change_password", False)),
@@ -645,7 +648,13 @@ async def update_current_user(
     wants_leaderboard = any(
         v is not None for v in (user_update.state, user_update.username, user_update.leaderboard_display)
     )
-    if db_user.role == UserRole.STUDENT and (wants_prep or wants_ratings or wants_leaderboard):
+    weekly = {
+        "weekly_email_enabled": user_update.weekly_email_enabled,
+        "weekly_email_day": user_update.weekly_email_day,
+        "weekly_email_hour": user_update.weekly_email_hour,
+    }
+    wants_weekly = any(v is not None for v in weekly.values())
+    if db_user.role == UserRole.STUDENT and (wants_prep or wants_ratings or wants_leaderboard or wants_weekly):
         profile = (await session.exec(select(StudentProfile).where(StudentProfile.user_id == db_user.id))).first()
         if profile is None:
             profile = StudentProfile(user_id=db_user.id)
@@ -670,6 +679,9 @@ async def update_current_user(
             setattr(profile, field, new_value)
         if wants_leaderboard:
             await _apply_leaderboard_fields(session, profile, user_update)
+        for field, value in weekly.items():
+            if value is not None:
+                setattr(profile, field, value)
         if wants_ratings:
             # Ratings stay editable after onboarding; the client always sends the full map.
             from app.services.subject_names import canonicalize_proficiency

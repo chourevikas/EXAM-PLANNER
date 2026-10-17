@@ -194,6 +194,21 @@ export function ProfilePage() {
   const [stateName, setStateName] = useState<string>(user.state || '');
   const [username, setUsername] = useState<string>(user.username || '');
   const [leaderboardDisplay, setLeaderboardDisplay] = useState<'USERNAME' | 'NAME'>(user.leaderboard_display === 'NAME' ? 'NAME' : 'USERNAME');
+  // Weekly summary email: off by default; day 0 = Monday, hour in the student's local time
+  const [weeklyEmail, setWeeklyEmail] = useState({
+    enabled: Boolean(user.weekly_email_enabled),
+    day: typeof user.weekly_email_day === 'number' ? user.weekly_email_day : 6,
+    hour: typeof user.weekly_email_hour === 'number' ? user.weekly_email_hour : 18,
+  });
+  useEffect(() => {
+    if (typeof user.weekly_email_enabled === 'boolean') {
+      setWeeklyEmail({
+        enabled: user.weekly_email_enabled,
+        day: typeof user.weekly_email_day === 'number' ? user.weekly_email_day : 6,
+        hour: typeof user.weekly_email_hour === 'number' ? user.weekly_email_hour : 18,
+      });
+    }
+  }, [user.weekly_email_enabled, user.weekly_email_day, user.weekly_email_hour]);
   const [usernameStatus, setUsernameStatus] = useState<{ checking: boolean; available: boolean | null; reason: string | null }>({ checking: false, available: null, reason: null });
   useEffect(() => {
     if (user.state) setStateName(user.state);
@@ -262,6 +277,9 @@ export function ProfilePage() {
         ...(isStudent && targetExam ? { target_exam: targetExam } : {}),
         ...(isStudent && targetYear ? { target_year: targetYear } : {}),
         ...(isStudent ? { state: stateName, leaderboard_display: leaderboardDisplay } : {}),
+        ...(isStudent
+          ? { weekly_email_enabled: weeklyEmail.enabled, weekly_email_day: weeklyEmail.day, weekly_email_hour: weeklyEmail.hour }
+          : {}),
         ...(isStudent && username.trim() && username.trim().toLowerCase() !== (user.username || '') ? { username: username.trim().toLowerCase() } : {}),
       });
       const updatedUser = { ...user, ...saved, bio };
@@ -888,6 +906,53 @@ export function ProfilePage() {
                   </label>
                 </div>
               </fieldset>
+            </div>
+
+            {/* Weekly summary email, scheduled by the student */}
+            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: 16 }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={weeklyEmail.enabled}
+                  onChange={(e) => setWeeklyEmail({ ...weeklyEmail, enabled: e.target.checked })}
+                />
+                Email me a weekly summary
+              </label>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '2px 0 10px 26px' }}>
+                Questions, accuracy, tests, XP, streak, milestones and your rank for the past 7 days. Every email has an unsubscribe link.
+              </div>
+              {weeklyEmail.enabled && (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
+                  <div>
+                    <label htmlFor="profile-weekly-day" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>Day</label>
+                    <select
+                      id="profile-weekly-day"
+                      value={weeklyEmail.day}
+                      onChange={(e) => setWeeklyEmail({ ...weeklyEmail, day: Number(e.target.value) })}
+                      style={editableSelectStyle}
+                    >
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((d, i) => (
+                        <option key={d} value={i}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="profile-weekly-hour" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>Time</label>
+                    <select
+                      id="profile-weekly-hour"
+                      value={weeklyEmail.hour}
+                      onChange={(e) => setWeeklyEmail({ ...weeklyEmail, hour: Number(e.target.value) })}
+                      style={editableSelectStyle}
+                    >
+                      {Array.from({ length: 24 }, (_, h) => (
+                        <option key={h} value={h}>
+                          {`${((h + 11) % 12) + 1}:00 ${h < 12 ? 'AM' : 'PM'}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Self-rated proficiency: editable here, also prompted for before the first study plan */}

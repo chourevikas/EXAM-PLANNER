@@ -1069,20 +1069,36 @@ async def get_user_badges(
     
     stmt_user = select(UserBadge).where(UserBadge.user_id == current_user.id)
     user_badges = (await session.exec(stmt_user)).all()
-    unlocked_badge_ids = {ub.badge_id for ub in user_badges}
-    
+    unlocked_at = {ub.badge_id: ub.unlocked_at for ub in user_badges}
+
+    # Milestones carry the student's progress toward them; switched-off ones show only if already earned
+    from app.services import milestone_service
+    counts = await milestone_service.progress(session, current_user.id) if any(b.criteria_type for b in badges) else {}
+
     unlocked = []
     locked = []
     
     for badge in badges:
+        is_unlocked = badge.id in unlocked_at
+        if badge.criteria_type and not badge.is_active and not is_unlocked:
+            continue
         badge_data = {
             "id": str(badge.id),
             "name": badge.name,
             "description": badge.description,
             "icon_url": badge.icon_url,
-            "required_xp": badge.required_xp
+            "required_xp": badge.required_xp,
         }
-        if badge.id in unlocked_badge_ids:
+        if badge.criteria_type:
+            badge_data["milestone"] = {
+                "criteria_type": badge.criteria_type,
+                "criteria_label": milestone_service.CRITERIA.get(badge.criteria_type, badge.criteria_type),
+                "threshold": badge.threshold,
+                "progress": min(counts.get(badge.criteria_type, 0), badge.threshold or 0),
+                "xp_reward": badge.xp_reward,
+            }
+        if is_unlocked:
+            badge_data["unlocked_at"] = unlocked_at[badge.id]
             unlocked.append(badge_data)
         else:
             locked.append(badge_data)

@@ -82,5 +82,9 @@ async def record_practice_answer(
                 )
             await xp_service.award_active_day(session, current_user.id, commit=False)
             await session.commit()
+            await xp_service.forget_cached_stats(current_user.id)
+
+            from app.services import milestone_service
+            await milestone_service.check(session, current_user.id)
 
     return {"counted": counted, "usage": await free_plan.daily_usage(session, current_user)}

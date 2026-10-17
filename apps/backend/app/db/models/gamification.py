@@ -14,6 +14,12 @@ class Badge(SQLModel, table=True):
     description: str
     icon_url: Optional[str] = Field(default=None)
     required_xp: Optional[int] = Field(default=None)
+    # Milestones (admin-managed): unlocked when the student's criteria_type count reaches threshold.
+    # Badges without criteria_type are the older name-based badges.
+    criteria_type: Optional[str] = Field(default=None, max_length=30)
+    threshold: Optional[int] = Field(default=None)
+    xp_reward: int = Field(default=100)
+    is_active: bool = Field(default=True)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,

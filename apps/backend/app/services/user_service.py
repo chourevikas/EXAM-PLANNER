@@ -26,6 +26,7 @@ def generate_temporary_password(length: int = 12) -> str:
 PROFILE_EXTRA_FIELDS = (
     "target_exam", "target_year", "optional_subject", "weekly_hours", "subject_proficiency",
     "state", "username", "leaderboard_display",
+    "weekly_email_enabled", "weekly_email_day", "weekly_email_hour",
 )
 
 

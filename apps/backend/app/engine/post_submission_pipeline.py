@@ -1091,6 +1091,15 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
         except Exception as xp_err:
             logger.warning(f"XP award warning for attempt '{attempt.id}': {xp_err}")
 
+        # 7e. Milestones reached with this test (badge, XP, notification)
+        try:
+            from app.services import milestone_service
+            async with session.begin_nested():
+                if user.id is not None:
+                    await milestone_service.check(session, int(user.id), commit=False)
+        except Exception as ms_err:
+            logger.warning(f"Milestone check warning for attempt '{attempt.id}': {ms_err}")
+
     elif profile is None:
         profile = UserSkillProfile(user_id=user.id, **profile_dict)
 

@@ -19,6 +19,16 @@ XP_MILESTONE = 100
 XP_PER_LEVEL = 500
 
 
+async def forget_cached_stats(user_id: int) -> None:
+    """/auth/me caches XP and level for a few minutes; drop it after XP changes so the UI is current."""
+    from app.cache import get_cache, build_cache_key
+
+    cache = get_cache()
+    # Two layers: the raw stats and the /auth/me payload built from them
+    await cache.delete(build_cache_key("auth:user_stats", str(user_id)))
+    await cache.delete(build_cache_key("auth:me:stats", str(user_id)))
+
+
 async def award(
     session: AsyncSession,
     user_id: int,
@@ -49,6 +59,7 @@ async def award(
     session.add(profile)
     if commit:
         await session.commit()
+        await forget_cached_stats(user_id)
     return True
 
 

@@ -182,6 +182,7 @@ async def invalidate_user_cache(user_id: str | int, clerk_id: Optional[str] = No
         await cache.delete_pattern(f"{prefix}:user:clerk:*")
 
     await cache.delete_pattern(f"{prefix}:users:bookmarks:{u_id_str}*")
+    await cache.delete_pattern(f"{prefix}:users:badges:{u_id_str}*")  # milestone progress
     await cache.delete_pattern(f"{prefix}:users:list*")
     await cache.delete_pattern(f"{prefix}:attempts:user:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:analytics:skill_profile:{u_id_str}*")

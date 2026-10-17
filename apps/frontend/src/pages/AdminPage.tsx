@@ -19,6 +19,7 @@ const TeacherRewardsView = lazy(() => import('../components/admin/views/TeacherR
 const CurrentAffairsManager = lazy(() => import('../components/admin/views/CurrentAffairsManager').then(m => ({ default: m.CurrentAffairsManager })));
 const ExamTypesManager = lazy(() => import('../components/admin/views/ExamTypesManager').then(m => ({ default: m.ExamTypesManager })));
 const NotificationsView = lazy(() => import('../components/admin/views/NotificationsView').then(m => ({ default: m.NotificationsView })));
+const MilestonesView = lazy(() => import('../components/admin/views/MilestonesView').then(m => ({ default: m.MilestonesView })));
 const ReportedQuestionsView = lazy(() => import('../components/admin/views/ReportedQuestionsView').then(m => ({ default: m.ReportedQuestionsView })));
 const TestimonialsView = lazy(() => import('../components/admin/views/TestimonialsView').then(m => ({ default: m.TestimonialsView })));
 const ThemeSettingsView = lazy(() => import('../components/admin/views/ThemeSettingsView').then(m => ({ default: m.ThemeSettingsView })));
@@ -150,6 +151,8 @@ export function AdminPage() {
         return <AnalyticsView />;
       case 'current-affairs':
         return <CurrentAffairsManager />;
+      case 'milestones':
+        return <MilestonesView />;
       case 'notifications':
         return <NotificationsView />;
       case 'testimonials':

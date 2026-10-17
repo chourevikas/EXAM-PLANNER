@@ -999,9 +999,9 @@ export function DashboardPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
               {/* Earned Badges */}
-              {badges?.unlocked?.map(badge => (
+              {badges?.unlocked?.map((badge: any) => (
                 <div key={badge.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--success-bg, rgba(16, 185, 129, 0.1))', borderRadius: 'var(--radius)', border: '1px solid var(--success-primary)' }}>
-                  <div style={{ fontSize: 32 }}>{badge.icon_url}</div>
+                  <div style={{ fontSize: 32 }}>{badge.icon_url || (badge.milestone ? '🏅' : '')}</div>
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{badge.name}</div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{badge.description}</div>
@@ -1010,15 +1010,27 @@ export function DashboardPage() {
               ))}
 
               {/* Locked Badges */}
-              {badges?.locked?.map(badge => (
-                <div key={badge.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', border: '1px dashed var(--border-disabled)', opacity: 0.6 }}>
-                  <div style={{ fontSize: 32, filter: 'grayscale(1)' }}>{badge.icon_url}</div>
-                  <div>
+              {badges?.locked?.map((badge: any) => (
+                <div key={badge.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', border: '1px dashed var(--border-disabled)', opacity: badge.milestone ? 0.9 : 0.6 }}>
+                  <div style={{ fontSize: 32, filter: 'grayscale(1)' }}>{badge.icon_url || (badge.milestone ? '🏅' : '')}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                       {badge.name}
                       {badge.required_xp && <span style={{ fontSize: 11, backgroundColor: 'var(--bg-card)', padding: '2px 6px', borderRadius: 'var(--radius)', marginLeft: 8 }}>Requires {badge.required_xp} XP</span>}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{badge.description}</div>
+                    {/* Milestones show how close the student is */}
+                    {badge.milestone && (
+                      <div style={{ marginTop: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
+                          <span>{badge.milestone.criteria_label}: {badge.milestone.progress.toLocaleString()} / {badge.milestone.threshold.toLocaleString()}</span>
+                          {badge.milestone.xp_reward > 0 && <span>+{badge.milestone.xp_reward} XP</span>}
+                        </div>
+                        <div style={{ height: 6, backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min((badge.milestone.progress / Math.max(badge.milestone.threshold, 1)) * 100, 100)}%`, height: '100%', backgroundColor: 'var(--accent-primary)' }} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
