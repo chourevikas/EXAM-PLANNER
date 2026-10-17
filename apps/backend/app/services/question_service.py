@@ -2,7 +2,7 @@ import math
 import asyncio
 from typing import Optional, List, Dict, Any, Tuple, Union
 from fastapi import HTTPException
-from sqlalchemy import func, update
+from sqlalchemy import case, func, update
 from sqlmodel import select, or_, col
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.question_assets import serialize_question_asset
@@ -1481,7 +1481,12 @@ class QuestionService:
             expl_res = await self.session.exec(expl_stmt)
             expl_obj = expl_res.first()
             if not expl_obj:
-                expl_stmt_all = select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
+                # Not in the requested language yet: English, else any
+                expl_stmt_all = (
+                    select(QuestionExplanation)
+                    .where(QuestionExplanation.question_id == q.id)
+                    .order_by(case((col(QuestionExplanation.language) == LanguageCode.ENGLISH, 0), else_=1), col(QuestionExplanation.id))
+                )
                 expl_obj = (await self.session.exec(expl_stmt_all)).first()
 
             if expl_obj:
@@ -2110,7 +2115,12 @@ class QuestionService:
             explanation_detail = None
             if include_solutions:
                 expl_dict = expl_map.get(q.id, {})
-                expl_obj = expl_dict.get(target_lang) or (next(iter(expl_dict.values())) if expl_dict else None)
+                # The requested language, else English, else any
+                expl_obj = (
+                    expl_dict.get(target_lang)
+                    or expl_dict.get(LanguageCode.ENGLISH)
+                    or (next(iter(expl_dict.values())) if expl_dict else None)
+                )
                 if expl_obj:
                     expl_translations = {
                         (k.value if hasattr(k, "value") else str(k)): {

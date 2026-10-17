@@ -4,7 +4,7 @@ from typing import Optional, List, Union
 from fastapi import APIRouter, UploadFile, File, Form, Depends, BackgroundTasks, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.encoders import jsonable_encoder
-from sqlmodel import select, col
+from sqlmodel import select, col, case
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.db.models import Exam, LanguageCode, QuestionStatus
@@ -485,8 +485,11 @@ async def get_solution_from_db_fallback(
         for qr in (await session.exec(select(QuestionOptionReasoning).where(QuestionOptionReasoning.question_option_id.in_(opt_ids)))).all():
             qr_map[qr.question_option_id] = qr
 
+    # English explanation (this fallback endpoint is English-only), else any language
     expl_res = await session.exec(
-        select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
+        select(QuestionExplanation)
+        .where(QuestionExplanation.question_id == q.id)
+        .order_by(case((col(QuestionExplanation.language) == LanguageCode.ENGLISH, 0), else_=1), col(QuestionExplanation.id))
     )
     expl_model = expl_res.first()
 

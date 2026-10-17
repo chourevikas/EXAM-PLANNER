@@ -282,6 +282,10 @@ class GoogleTranslationService:
             results[original_idx] = final
 
             orig_text = miss_texts[idx_in_miss]
+            # Text that comes back unchanged is usually a failed translation (the translator returns
+            # the original then); don't remember it, so the next run tries again
+            if not final or final.strip() == (orig_text or "").strip():
+                continue
             h = hashlib.sha256(orig_text.strip().encode("utf-8")).hexdigest()[:16]
             ckey = f"{prefix}:trans:{target_iso}:{h}"
             try:

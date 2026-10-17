@@ -625,7 +625,7 @@ async def get_question_solution(
 
     lang_code = parse_language(language)
     from app.cache import get_cache, build_cache_key
-    from app.db.models import Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionOptionReasoning
+    from app.db.models import Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionOptionReasoning, LanguageCode
     from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
     from sqlalchemy import select
     from sqlmodel import col
@@ -684,33 +684,30 @@ async def get_question_solution(
     correct_option_label = "A"
     distractor_scores = {}
 
+    def _lang_rank(row) -> int:
+        return 0 if row.language == lang_code else (1 if row.language == LanguageCode.ENGLISH else 2)
+
     opt_data = {}
     for _, _, opt, ot, qr in rows:
         if opt.id not in opt_data:
-            opt_data[opt.id] = {
-                "opt": opt,
-                "ot": None,
-                "qr": qr,
-            }
-        cur_ot = opt_data[opt.id]["ot"]
-        if ot:
-            if not cur_ot:
-                opt_data[opt.id]["ot"] = ot
-            elif ot.language == language or (hasattr(ot.language, "value") and ot.language.value == lang_str):
-                opt_data[opt.id]["ot"] = ot
-            elif ot.distractor_analysis and not cur_ot.distractor_analysis:
-                opt_data[opt.id]["ot"] = ot
+            opt_data[opt.id] = {"opt": opt, "ots": [], "qr": qr}
+        if ot and all(o.id != ot.id for o in opt_data[opt.id]["ots"]):
+            opt_data[opt.id]["ots"].append(ot)
         if qr and not opt_data[opt.id]["qr"]:
             opt_data[opt.id]["qr"] = qr
 
     for opt_id, entry in opt_data.items():
         opt = entry["opt"]
-        ot = entry["ot"]
         qr = entry["qr"]
+        # Option text and its analysis are chosen separately, each in the requested language, else
+        # English, else any: an option translated into Hindi before its analysis still shows one
+        ot = min(entry["ots"], key=_lang_rank, default=None)
+        analysed = [o for o in entry["ots"] if o.distractor_analysis and o.distractor_analysis.strip()]
+        analysis_row = min(analysed, key=_lang_rank, default=None)
 
         analysis_text = None
-        if ot and ot.distractor_analysis:
-            analysis_text = ot.distractor_analysis
+        if analysis_row:
+            analysis_text = analysis_row.distractor_analysis
         elif qr:
             why_t = (qr.why_tempting or "").strip()
             whats_t = (qr.whats_actually_true or "").strip()

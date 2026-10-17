@@ -174,17 +174,28 @@ Client decision (17 Oct): English is the default for practice and exam simulatio
 - **Explanations:**
   - The in-exam reveal now uses the attempt's language: Hindi or Marathi, else English. Previously it took whichever explanation row came first.
   - Solutions in practice and the exam screen request the session language.
-  - Today all explanations are English-only, so they show in English until the translation backfill below runs.
-- **Not covered yet:** the post-test report (the pipeline's question review and analysis text) is English-only.
+  - Hindi and Marathi explanations come from the translation added in 5.2; until a question has one, English shows.
+- **Post-test report:** stays in English (client decision, 17 Oct).
 
-### 5.2 Remaining content work
-- **Content:**
-  - Extend the existing translation job (`tasks/translation_tasks.py`, `reconcile_missing_translations_task`) to translate explanations (`QuestionExplanation`) and option distractor analysis, as well as questions.
-  - Backfill Hindi and Marathi explanations and option analysis for all published questions.
-  - Admin view: translation coverage per language.
-- **Exam screen labels:** add a small i18n dictionary for the exam screens only (`ExamEnginePage`, `ExamQuestionCard`, `ExamFooterBar`, palette, submit dialog, timer, solution card headings), driven by the selected exam language with English fallback. No app-wide i18n framework yet.
+### 5.2 Explanations translated into Hindi and Marathi ✅ built
+- **Before:** explanations and option analyses existed in English only. The translation jobs covered question text, option text and passages; the only other source was a reviewer entering one by hand.
+- **Now:** `services/explanation_translation_service.py` translates each English explanation (solution, core concept, common mistake, option-by-option reasoning, traps, takeaways) and each option's analysis into Hindi and Marathi. It runs:
+  - after a paper's questions are translated (`QuestionTranslationService.translate_exam`, triggered automatically after import);
+  - in the nightly translation job, which backfills everything still missing. The first night after deploy translates all existing explanations.
+- **Safe by design:**
+  - only missing rows are added; a reviewer's or admin's translation is never overwritten;
+  - a failed translation saves nothing, so English shows and the next run retries;
+  - the translator no longer caches a failed result as the translation for 30 days.
+- **Readers fixed** so a new Hindi row never leaks into English views:
+  - `solution-db`, the reviewer's question view and the question API fallback prefer English;
+  - the post-test report stays English (client decision, 17 Oct).
+- **Bug fixed:** `/questions/{id}/solution` used one option row for both text and analysis. A Hindi request lost the analysis whenever the Hindi option row had none; text and analysis are now chosen separately.
+- **Production needs:** working Google Cloud Translation (or Vertex/Gemini) credentials. The dev credentials fail (`invalid_grant`), so dev was tested with a stand-in translator.
+
+### 5.3 Remaining (not started)
+- Admin view: translation coverage per language.
+- **Exam screen labels:** add a small i18n dictionary for the exam screens only (`ExamEnginePage`, `ExamQuestionCard`, `ExamFooterBar`, palette, submit dialog, timer, solution card headings), driven by the session language, with English fallback. No app-wide i18n framework yet.
 - **Fallback rule:** if a question isn't translated, show English with a small "not available in <language>" note, never a blank.
-- **Explanations in every view:** Phase 1 made `GET /questions/{id}/solution` pick the explanation by language. Phase 5.1 did the same for the in-exam reveal (`ExamSessionService.reveal_answer`). `GET /exams/{id}/solution-db/{n}` and the post-test report (`post_submission_pipeline`) still take the first explanation row; pass the attempt's language through and reuse the same preference (requested → English → any).
 
 ---
 

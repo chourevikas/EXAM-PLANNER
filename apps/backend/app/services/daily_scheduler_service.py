@@ -368,11 +368,25 @@ async def run_midnight_translation_job() -> Dict[str, Any]:
         logger.error(f"❌ Midnight translation job failed: {err}", exc_info=True)
         return {"status": "ERROR", "error": str(err)}
 
+    # Explanations and option analyses: backfills whatever is still missing in Hindi/Marathi
+    # (only missing rows are added, so a finished backfill costs one query a night)
+    explanation_counts: Dict[str, int] = {}
+    try:
+        from app.services.explanation_translation_service import translate_explanations
+        async with async_session_factory() as session:
+            explanation_counts = await translate_explanations(
+                session, translator, target_languages=[iso for iso, _ in _MIDNIGHT_TRANSLATE_LANGUAGES],
+            )
+    except Exception as expl_err:
+        logger.error(f"⚠️ Midnight explanation translation failed (retried tomorrow): {expl_err}", exc_info=True)
+
     logger.info(f"🌙✅ Midnight translation job complete: {total_q_translated} Q + {total_opt_translated} opt translated.")
     return {
         "status": "SUCCESS",
         "q_translated": total_q_translated,
         "opt_translated": total_opt_translated,
+        "explanations_translated": explanation_counts.get("explanations_added", 0),
+        "analyses_translated": explanation_counts.get("analyses_added", 0),
     }
 
 
