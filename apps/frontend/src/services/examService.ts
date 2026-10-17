@@ -775,3 +775,18 @@ export async function getAttemptScheduledTasksStatus(attemptId: string): Promise
 }
 
 
+
+/** The in-progress attempt that opening this exam would resume (and its language), if any. */
+export async function getInProgressAttempt(
+  examId: string | number
+): Promise<{ attempt_id: string | null; language: string | null }> {
+  const response = await guardedFetch(
+    `${API_BASE_URL}/attempts/in-progress?exam_id=${encodeURIComponent(String(examId))}`,
+    { method: 'GET', headers: getAuthHeaders() }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to check for an in-progress attempt.');
+  }
+  return data;
+}

@@ -23,6 +23,8 @@ import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmark
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { recordPracticeAnswer, DailyLimitReachedError, fetchDailyUsage, DailyUsage } from '../services/freePlanService';
 import { FreePlanLimitModal } from '../components/common/FreePlanLimitModal';
+import { ExamLanguagePicker } from '../components/common/ExamLanguagePicker';
+import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import { formatEnum, extractCanonicalExamName, cleanExamTitle, sortExamLabels, defaultExamLabel } from '../utils/formatEnum';
 import { fetchActiveExamTypes } from '../services/examTypeService';
 import { availableQuestionYears } from '../utils/examYears';
@@ -352,16 +354,11 @@ export function StudentPracticeExamPage() {
   // Exactly 10 mins (600s). Not shown on screen, so it lives in a ref: ticking it as state
   // re-rendered the whole page (and re-wrote sessionStorage) every second, making scrolling stutter.
   const timeLeftRef = useRef(600);
-  const [language, setLanguage] = useState<string>(() => {
-    try {
-      const userRaw = localStorage.getItem('user');
-      if (userRaw) {
-        const u = JSON.parse(userRaw);
-        if (u.preferred_language) return u.preferred_language;
-      }
-    } catch (_) {}
-    return localStorage.getItem('preferred_language') || 'en';
-  });
+  // The session's language lives in ?lang= (en / hi / mr): chosen in the picker before practice starts,
+  // kept by every filter change (they copy the URL) and by a reload, so it stays fixed for the session
+  const urlLang = searchParams.get('lang');
+  const hasSessionLanguage = SUPPORTED_LANGUAGES.some((l) => l.code === urlLang);
+  const language = hasSessionLanguage ? (urlLang as string) : 'en';
 
 
 
@@ -525,31 +522,10 @@ export function StudentPracticeExamPage() {
     [],
   );
 
-  const handleLanguageChange = (newLang: string) => {
-    setLanguage(newLang);
-    localStorage.setItem('preferred_language', newLang);
-    try {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        fetch('/api/v1/auth/me', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ preferred_language: newLang }),
-        }).catch(() => {});
-      }
-    } catch (_) {}
-
-    // Priority translate active question if missing in newLang
-    if (activeQuestion) {
-      ensureQuestionTranslation(activeQuestion, newLang);
-    }
-    // Background prefetch next question if present
-    if (allQuestions[currentQIndex + 1]) {
-      ensureQuestionTranslation(allQuestions[currentQIndex + 1], newLang);
-    }
+  const handlePracticeLanguagePicked = (chosenLang: string) => {
+    const current = new URLSearchParams(searchParams);
+    current.set('lang', chosenLang);
+    navigate(`/practice-exam?${current.toString()}`, { replace: true });
   };
 
   // Modal & Popup States
@@ -847,7 +823,7 @@ export function StudentPracticeExamPage() {
       setIsSolutionLoading(true);
     }
     try {
-      const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
+      const solRes = await fetch(`/api/v1/questions/${targetId}/solution?language=${encodeURIComponent(language)}`);
       if (solRes.ok) {
         const solPayload: QuestionSolutionData = await solRes.json();
         setPracticeSolutions((prev) => ({
@@ -949,6 +925,8 @@ export function StudentPracticeExamPage() {
 
   // Load Real Practice Questions from Database using Live Syllabus APIs
   useEffect(() => {
+    // Questions and their solutions load once the session's language is chosen
+    if (!hasSessionLanguage) return;
     async function loadPracticeQuestions() {
       if (isInitialLoadRef.current) {
         setIsLoading(true);
@@ -1274,7 +1252,7 @@ export function StudentPracticeExamPage() {
     }
 
     loadPracticeQuestions();
-  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, hasSessionLanguage]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -1301,6 +1279,14 @@ export function StudentPracticeExamPage() {
     isLoading,
     allQuestions,
   ]);
+
+  // The opening question (and the next) in the session's language, fetched if it isn't stored yet
+  useEffect(() => {
+    if (language === 'en' || !activeQuestion) return;
+    ensureQuestionTranslation(activeQuestion, language);
+    if (allQuestions[currentQIndex + 1]) ensureQuestionTranslation(allQuestions[currentQIndex + 1], language);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, activeQuestion?.question_id]);
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -1683,6 +1669,20 @@ export function StudentPracticeExamPage() {
   const isCurrentAnswered = !!currentResponse;
   const isCurrentMarked = activeQuestion ? !!markedForReview[activeQuestion.question_id] : false;
 
+  // Nothing loads until the student picks the session's language
+  if (!hasSessionLanguage) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-subtle)' }}>
+        <ExamLanguagePicker
+          open
+          kind="practice"
+          onStart={handlePracticeLanguagePicked}
+          onCancel={() => (window.history.length > 1 ? navigate(-1) : navigate('/dashboard'))}
+        />
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <ExamLoaderOverlay
@@ -1808,7 +1808,6 @@ export function StudentPracticeExamPage() {
         subtopicName={''}
         parentBreadcrumb="Student Dashboard"
         onBack={() => setShowLeaveModal(true)}
-        onLanguageChange={handleLanguageChange}
         onSubmitClick={() => handleFinishPracticeExam()}
         focusMode={isFocusMode}
         onToggleFocusMode={toggleFocusMode}

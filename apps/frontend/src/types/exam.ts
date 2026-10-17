@@ -214,6 +214,8 @@ export interface StartExamResponse {
   /** Set when an IN_PROGRESS attempt is resumed: time left and the 1-based question the student was on. */
   remaining_seconds?: number | null;
   current_question_index?: number;
+  /** The language chosen before starting (en / hi / mr), fixed for the whole attempt. */
+  language?: string;
 }
 
 export interface SaveResponseResponse {
@@ -269,6 +271,7 @@ export interface ExamStatusResponse {
   palette: QuestionPaletteItem[];
   questions_presigned_url?: string | null;
   questions_folder_url?: string | null;
+  language?: string;
 }
 
 export interface HeartbeatResponse {

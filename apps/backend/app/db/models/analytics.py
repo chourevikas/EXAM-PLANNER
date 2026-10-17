@@ -30,6 +30,8 @@ class ExamAttempt(SQLModel, table=True):
 
     status: AttemptStatus = Field(default=AttemptStatus.IN_PROGRESS, index=True)
     mode: AttemptMode = Field(default=AttemptMode.EXAM, index=True)
+    # Chosen before starting (en / hi / mr) and fixed for the whole attempt
+    language: str = Field(default="en", max_length=5, sa_column_kwargs={"server_default": "en"})
 
     total_score: float = Field(default=0.0)
     max_possible_score: float = Field(default=200.0)

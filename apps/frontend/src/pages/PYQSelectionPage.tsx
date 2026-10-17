@@ -18,6 +18,7 @@ import { StatusBadge } from '../components/common/StatusBadge';
 import { extractCanonicalExamName, sortExamLabels, defaultExamLabel } from '../utils/formatEnum';
 import { fetchActiveExamTypes } from '../services/examTypeService';
 import { formatTaxonomyParam } from '../utils/taxonomyParam';
+import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import {
   PlayCircle, BarChart2, RotateCcw, BookOpen, Target,
   ChevronDown, ArrowRight, ArrowLeft, Search, Check, X,
@@ -555,6 +556,8 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   const [selTopic, setSelTopic] = useState('all');
   const [selSubtopic, setSelSubtopic] = useState('all');
   const [selDifficulty, setSelDifficulty] = useState<string[]>(['all']);
+  // The test's language, fixed once it starts; English unless the student picks another
+  const [testLanguage, setTestLanguage] = useState('en');
   const [qSize, setQSize] = useState('all');
   const [customCount, setCustomCount] = useState('');
   
@@ -696,6 +699,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
       const payload: any = {
         exam_id: 'dynamic',
         force_new: true,
+        language: testLanguage,
         dynamic_limit: qLimit || 100,
         ...dynamicFilters,
       };
@@ -829,6 +833,17 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
                     <button type="button" key={value} onClick={() => toggleDifficulty(value)} style={chipStyle(selDifficulty.includes(value))}>{label}</button>
                   ))}
                 </div>
+              </div>
+
+              {/* Language */}
+              <div>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Test language</span>
+                <div role="radiogroup" aria-label="Test language" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <button type="button" role="radio" aria-checked={testLanguage === lang.code} key={lang.code} data-lang={lang.code} onClick={() => setTestLanguage(lang.code)} style={chipStyle(testLanguage === lang.code)}>{lang.nativeName}</button>
+                  ))}
+                </div>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>All questions are shown in this language until you submit.</span>
               </div>
 
               {/* Number of questions */}

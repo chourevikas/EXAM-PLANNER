@@ -29,6 +29,7 @@ from app.db.models import (
     ExamType,
 )
 from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus, ExamStatus, ConfidenceLevel, DifficultyLevel
+from app.core.languages import parse_language
 from app.schemas.exam_attempt import (
     StartExamRequest,
     StartExamResponse,
@@ -281,7 +282,7 @@ class ExamSessionService:
             else:
                 logger.info(f"User '{user_id}' already has IN_PROGRESS attempt '{existing_attempt.id}'. Resuming...")
                 status_res = await self.get_exam_status(existing_attempt.id, user_id)
-                q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index, language=req.language or "ENGLISH")
+                q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index)
 
                 return StartExamResponse(
                     attempt_id=str(existing_attempt.id),
@@ -297,6 +298,7 @@ class ExamSessionService:
                     questions_folder_url=None,
                     remaining_seconds=status_res.remaining_seconds,
                     current_question_index=status_res.current_question_index,
+                    language=existing_attempt.language or "en",
                 )
 
         # Save dynamic filters to report_metadata_json
@@ -353,6 +355,7 @@ class ExamSessionService:
             user_id=user_id,
             exam_id=exam.id,
             mode=req.mode,
+            language=req.language or "en",
             status=AttemptStatus.IN_PROGRESS,
             started_at=now_dt,
             max_duration_seconds=duration_sec,
@@ -418,7 +421,7 @@ class ExamSessionService:
         
         # We need to fetch the first question again correctly
         status_res = await self.get_exam_status(attempt.id, user_id)
-        q_nav = await self.get_question(attempt.id, user_id, 1, language=req.language or "ENGLISH")
+        q_nav = await self.get_question(attempt.id, user_id, 1)
 
         return StartExamResponse(
             attempt_id=str(attempt.id),
@@ -432,6 +435,7 @@ class ExamSessionService:
             palette=palette_items,
             questions_presigned_url=None,
             questions_folder_url=None,
+            language=attempt.language,
         )
 
     def _build_question_nav_response(
@@ -529,6 +533,8 @@ class ExamSessionService:
         (where questions may belong to different source exams).
         """
         attempt = await self._get_attempt_safe(attempt_id, user_id)
+        # The language is fixed for the attempt; a different ?language= can't switch it mid-test
+        language = attempt.language or "en"
         exam = await self.session.get(Exam, attempt.exam_id)
         if not exam:
             raise HTTPException(status_code=404, detail="EXAM_NOT_FOUND: Associated exam not found.")
@@ -588,6 +594,7 @@ class ExamSessionService:
         Synchronizes all question and option IDs with the database BigInt IDs.
         """
         attempt = await self._get_attempt_safe(attempt_id, user_id)
+        language = attempt.language or "en"
         exam = await self.session.get(Exam, attempt.exam_id)
         if not exam:
             raise HTTPException(
@@ -1282,26 +1289,29 @@ class ExamSessionService:
                 raise HTTPException(status_code=404, detail="Correct option not configured for this question.")
 
             opt_ids = [o.id for o in db_opts]
+            # Explanations and option analysis in the attempt's language, else English, else any
+            attempt_lang = parse_language(attempt.language or "en")
+
+            def _lang_rank(lang) -> int:
+                return 0 if lang == attempt_lang else (1 if lang == LanguageCode.ENGLISH else 2)
+
             trans_by_opt = {}
             qr_by_opt = {}
             if opt_ids:
                 t_stmt = select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
                 t_res = (await self.session.exec(t_stmt)).all()
-                for t in t_res:
-                    existing = trans_by_opt.get(t.option_id)
-                    if not existing:
-                        trans_by_opt[t.option_id] = t
-                    elif t.language == LanguageCode.ENGLISH or (t.distractor_analysis and not existing.distractor_analysis):
-                        trans_by_opt[t.option_id] = t
+                # Per option: a row that has an analysis, in the best language available
+                for t in sorted(t_res, key=lambda t: (not t.distractor_analysis, _lang_rank(t.language))):
+                    trans_by_opt.setdefault(t.option_id, t)
 
                 qr_stmt = select(QuestionOptionReasoning).where(QuestionOptionReasoning.question_option_id.in_(opt_ids))
                 qr_res = (await self.session.exec(qr_stmt)).all()
                 qr_by_opt = {qr.question_option_id: qr for qr in qr_res}
 
-            expl_res = await self.session.exec(
+            expl_rows = (await self.session.exec(
                 select(QuestionExplanation).where(QuestionExplanation.question_id == q_model.id)
-            )
-            db_expl = expl_res.first()
+            )).all()
+            db_expl = min(expl_rows, key=lambda e: (_lang_rank(e.language), e.id or 0), default=None)
             detailed_sol = (
                 db_expl.detailed_solution
                 if (db_expl and db_expl.detailed_solution)
@@ -1590,6 +1600,7 @@ class ExamSessionService:
             palette=palette,
             questions_presigned_url=None,
             questions_folder_url=None,
+            language=attempt.language or "en",
         )
 
     async def submit_exam(

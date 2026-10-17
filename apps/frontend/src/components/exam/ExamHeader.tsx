@@ -1,7 +1,7 @@
 import React from 'react';
 import { Clock, ChevronRight, Focus, Minimize2, SlidersHorizontal, Lightbulb, Globe } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { SUPPORTED_LANGUAGES } from '../../constants/languages';
+import { getLanguageOption } from '../../constants/languages';
 
 interface ExamHeaderProps {
   examTitle: string;
@@ -15,7 +15,6 @@ interface ExamHeaderProps {
   subtopicName?: string;
   parentBreadcrumb?: string;
   onBack?: () => void;
-  onLanguageChange: (lang: string) => void;
   onSubmitClick?: () => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
@@ -36,7 +35,6 @@ export function ExamHeader({
   subtopicName,
   parentBreadcrumb,
   onBack,
-  onLanguageChange,
   onSubmitClick,
   focusMode = false,
   onToggleFocusMode,
@@ -235,8 +233,9 @@ export function ExamHeader({
           minWidth: 0,
         }}
       >
-        {/* Language Selector Dropdown */}
+        {/* The session's language: chosen before starting, fixed until it ends */}
         <div
+          data-testid="exam-language"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -248,38 +247,15 @@ export function ExamHeader({
             ...controlBox,
             color: 'var(--bg-card)',
             flexShrink: 0,
-            transition: 'border-color 0.2s ease',
+            fontSize: 'clamp(11px, 2vw, 12.5px)',
+            fontWeight: 600,
+            fontFamily: "'IBM Plex Sans', sans-serif",
           }}
-          title="Select Exam Language"
+          title="Language for this session. It was chosen before starting and can't be changed now."
         >
           {!isMobile && <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)', flexShrink: 0 }} />}
-          <select
-            value={language}
-            onChange={(e) => onLanguageChange(e.target.value)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--bg-card)',
-              fontSize: 'clamp(11px, 2vw, 12.5px)',
-              fontWeight: 600,
-              outline: 'none',
-              cursor: 'pointer',
-              fontFamily: "'IBM Plex Sans', sans-serif",
-              maxWidth: isMobile ? 84 : 130,
-            }}
-            aria-label="Select exam language"
-          >
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <option
-                key={lang.code}
-                value={lang.code}
-                style={{ background: 'var(--deep-navy)', color: '#FFFFFF' }}
-              >
-                {/* Phones only have room for the short native name */}
-                {isMobile ? lang.nativeName : `${lang.nativeName} (${lang.name})`}
-              </option>
-            ))}
-          </select>
+          {/* Phones only have room for the short native name */}
+          <span>{isMobile ? getLanguageOption(language).nativeName : `${getLanguageOption(language).nativeName} (${getLanguageOption(language).name})`}</span>
         </div>
         {isTabletOrBelow && onFilterClick && (
           <button

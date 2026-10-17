@@ -10,8 +10,9 @@ class StartExamRequest(BaseModel):
     exam_id: int | str
     mode: AttemptMode = AttemptMode.EXAM
     force_new: bool = False
+    # The language for the whole attempt: en (default), hi or mr. Ignored when resuming an attempt.
     language: Optional[str] = None
-    
+
     # Dynamic Subject-wise simulation parameters
     dynamic_subject: Optional[str] = None
     dynamic_topic: Optional[str] = None
@@ -20,6 +21,17 @@ class StartExamRequest(BaseModel):
     dynamic_years: Optional[str] = None  # Comma separated
     dynamic_difficulty: Optional[str] = None  # Comma separated EASY / MEDIUM / HARD, or "all"
     dynamic_limit: Optional[int] = None
+
+    @field_validator("language")
+    @classmethod
+    def _exam_language(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or not str(value).strip():
+            return None
+        from app.core.languages import exam_language_code
+        code = exam_language_code(value)
+        if code is None:
+            raise ValueError("Exams are available in English, Hindi and Marathi only")
+        return code
 
     @field_validator("dynamic_difficulty")
     @classmethod
@@ -175,6 +187,7 @@ class StartExamResponse(BaseModel):
     # Set on a resumed attempt: time left on the clock and the 1-based question the student was on
     remaining_seconds: Optional[int] = None
     current_question_index: int = 1
+    language: str = "en"
 
 
 class SaveResponseResponse(BaseModel):
@@ -233,6 +246,7 @@ class ExamStatusResponse(BaseModel):
     palette: List[QuestionPaletteItem]
     questions_presigned_url: Optional[str] = None
     questions_folder_url: Optional[str] = None
+    language: str = "en"
 
 
 class HeartbeatResponse(BaseModel):

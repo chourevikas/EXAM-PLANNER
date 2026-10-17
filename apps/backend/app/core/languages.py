@@ -180,3 +180,14 @@ def parse_language(lang_input: Any) -> LanguageCode:
         return LanguageCode.ENGLISH
 
 
+
+
+def exam_language_code(lang_input: Any) -> str | None:
+    """The exam language ('en', 'hi' or 'mr') for any spelling of it; None for any other language."""
+    if lang_input is None:
+        return None
+    clean = str(getattr(lang_input, "value", lang_input)).strip().lower()
+    if not is_supported_language(clean) and not isinstance(lang_input, LanguageCode):
+        return None
+    code, _ = normalize_language(lang_input)
+    return code if code in ACTIVE_TRANSLATION_LANGUAGE_CODES else None

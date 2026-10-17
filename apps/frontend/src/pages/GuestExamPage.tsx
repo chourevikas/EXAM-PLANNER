@@ -23,7 +23,8 @@ import {
   Minimize2,
   Globe,
 } from 'lucide-react';
-import { SUPPORTED_LANGUAGES } from '../constants/languages';
+import { SUPPORTED_LANGUAGES, getLanguageOption } from '../constants/languages';
+import { ExamLanguagePicker } from '../components/common/ExamLanguagePicker';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode, listExams } from '../services/examService';
@@ -531,9 +532,11 @@ export function GuestExamPage() {
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(gCount);
   const [timeLeft, setTimeLeft] = useState(gCount * 120);
-  const [language, setLanguage] = useState<string>(() => {
-    return localStorage.getItem('preferred_language') || 'en';
-  });
+  // The session's language lives in ?lang= (en / hi / mr): chosen before practice starts, kept by
+  // filter changes (they copy the URL) and reloads, so it stays fixed for the session
+  const urlLang = searchParams.get('lang');
+  const hasSessionLanguage = SUPPORTED_LANGUAGES.some((l) => l.code === urlLang);
+  const language = hasSessionLanguage ? (urlLang as string) : 'en';
 
   const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'marked' | 'unanswered'>(
     'all',
@@ -678,19 +681,19 @@ export function GuestExamPage() {
     [],
   );
 
-  const handleLanguageChange = (newLang: string) => {
-    setLanguage(newLang);
-    localStorage.setItem('preferred_language', newLang);
-
-    // Priority translate active question if missing in newLang
-    if (activeQuestion) {
-      ensureQuestionTranslation(activeQuestion, newLang);
-    }
-    // Background prefetch next question if present
-    if (allQuestions[currentQIndex + 1]) {
-      ensureQuestionTranslation(allQuestions[currentQIndex + 1], newLang);
-    }
+  const handleSessionLanguagePicked = (chosenLang: string) => {
+    const current = new URLSearchParams(searchParams);
+    current.set('lang', chosenLang);
+    navigate(`/guest-exam?${current.toString()}`, { replace: true });
   };
+
+  // The opening question (and the next) in the session's language, fetched if it isn't stored yet
+  useEffect(() => {
+    if (language === 'en' || !activeQuestion) return;
+    ensureQuestionTranslation(activeQuestion, language);
+    if (allQuestions[currentQIndex + 1]) ensureQuestionTranslation(allQuestions[currentQIndex + 1], language);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, activeQuestion?.question_id]);
 
   // Dynamic Recommended Questions Pool
   const [recommendedPool, setRecommendedPool] = useState<QuestionOut[]>([]);
@@ -943,6 +946,8 @@ export function GuestExamPage() {
 
   // Fetch Guest Questions strictly from DB
   useEffect(() => {
+    // Questions and their solutions load once the session's language is chosen
+    if (!hasSessionLanguage) return;
     async function loadGuestQuestions() {
       if (isInitialLoadRef.current) {
         setIsLoading(true);
@@ -1234,7 +1239,7 @@ export function GuestExamPage() {
     }
 
     loadGuestQuestions();
-  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, hasSessionLanguage]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -1302,7 +1307,7 @@ export function GuestExamPage() {
     if (recSolutions[qId] || recSolutionLoading[qId]) return;
     setRecSolutionLoading((prev) => ({ ...prev, [qId]: true }));
     try {
-      const res = await fetch(`/api/v1/questions/${qId}/solution`);
+      const res = await fetch(`/api/v1/questions/${qId}/solution?language=${encodeURIComponent(language)}`);
       if (res.ok) {
         const data = await res.json();
         setRecSolutions((prev) => ({ ...prev, [qId]: data }));
@@ -1323,7 +1328,7 @@ export function GuestExamPage() {
       setIsSolutionLoading(true);
     }
     try {
-      const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
+      const solRes = await fetch(`/api/v1/questions/${targetId}/solution?language=${encodeURIComponent(language)}`);
       if (solRes.ok) {
         const solPayload: QuestionSolutionData = await solRes.json();
         setPracticeSolutions((prev) => ({
@@ -1696,6 +1701,20 @@ export function GuestExamPage() {
     );
   };
 
+  // Nothing loads until the guest picks the session's language
+  if (!hasSessionLanguage) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-subtle)' }}>
+        <ExamLanguagePicker
+          open
+          kind="practice"
+          onStart={handleSessionLanguagePicked}
+          onCancel={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+        />
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <ExamLoaderOverlay
@@ -1997,34 +2016,15 @@ export function GuestExamPage() {
               {!!displayRecs.length && <span>{displayRecs.length}</span>}
             </button>
           )}
-          {/* Language Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          {/* The session's language: chosen before starting, fixed until it ends */}
+          <div
+            data-testid="exam-language"
+            title="Language for this session. It was chosen before starting and can't be changed now."
+            style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, color: '#FFFFFF', fontSize: 12.5, fontWeight: 600 }}
+          >
             {!isTabletOrBelow && <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)' }} />}
-            <select
-              value={language}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-              aria-label="Select Language"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#FFFFFF',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                borderRadius: 'var(--radius)',
-                padding: '0 8px',
-                height: 36,
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: 'pointer',
-                outline: 'none',
-                maxWidth: isTabletOrBelow ? 96 : undefined,
-              }}
-            >
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code} style={{ backgroundColor: '#1E293B', color: '#FFFFFF' }}>
-                  {/* Phones only have room for the short native name */}
-                  {isTabletOrBelow ? lang.nativeName : `${lang.nativeName} (${lang.name})`}
-                </option>
-              ))}
-            </select>
+            {/* Phones only have room for the short native name */}
+            <span>{isTabletOrBelow ? getLanguageOption(language).nativeName : `${getLanguageOption(language).nativeName} (${getLanguageOption(language).name})`}</span>
           </div>
 
           <button

@@ -85,6 +85,33 @@ async def get_attempt_status_by_exam(
     return JSONResponse(content=summary)
 
 
+@router.get("/in-progress", summary="The student's in-progress attempt for an exam, if any")
+async def get_in_progress_attempt(
+    exam_id: str = Query(..., description="Exam id or code"),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """{attempt_id, language} when opening this exam resumes an attempt, else {attempt_id: null}.
+    The exam screen asks for a language only when a new attempt will start."""
+    from sqlmodel import col, select
+    from app.db.models.analytics import ExamAttempt
+    from app.db.models.enums import AttemptStatus
+    from app.db.models.hierarchy import Exam
+
+    exam_filter = col(Exam.code) == exam_id
+    if exam_id.isdigit():
+        exam_filter = exam_filter | (col(Exam.id) == int(exam_id))
+    attempt = (await session.exec(
+        select(ExamAttempt)
+        .join(Exam, col(Exam.id) == col(ExamAttempt.exam_id))
+        .where(exam_filter, ExamAttempt.user_id == current_user.id, ExamAttempt.status == AttemptStatus.IN_PROGRESS)
+        .order_by(col(ExamAttempt.created_at).desc())
+    )).first()
+    if not attempt:
+        return {"attempt_id": None, "language": None}
+    return {"attempt_id": str(attempt.id), "language": attempt.language or "en"}
+
+
 @router.get("/dynamic-question-count", summary="Count questions matching subject-wise test filters")
 async def count_dynamic_questions(
     dynamic_exams: Optional[str] = Query(default=None, description="Comma separated exam labels"),
@@ -122,10 +149,10 @@ async def start_exam_attempt(
     """
     Creates an active exam session, pre-seeds all question response rows,
     and returns the first question with the full question palette.
+    `language` (en / hi / mr) is chosen by the student before starting and is fixed for the attempt;
+    it defaults to English. A resumed attempt keeps the language it started with.
     """
     service = ExamSessionService(session)
-    if not req.language:
-        req.language = getattr(current_user, "preferred_language", "en") or "en"
     response = await service.start_exam(user_id=current_user.id, req=req)
 
     # A new (or abandoned-and-restarted) attempt changes the user's attempt history list
@@ -145,14 +172,12 @@ async def get_all_attempt_questions_bulk(
 ):
     """
     Retrieves exam questions in bulk (supports pagination via offset & limit) for seamless zero-lag client-side preloading.
-    Defaults to candidate's preferred_language if unspecified.
+    Always in the attempt's language; `language` is accepted for older clients and ignored.
     """
-    effective_lang = language or getattr(current_user, "preferred_language", "en") or "en"
     service = ExamSessionService(session)
     return await service.get_all_questions_bulk(
         attempt_id=attempt_id,
         user_id=current_user.id,
-        language=effective_lang,
         offset=offset,
         limit=limit,
     )
@@ -168,16 +193,13 @@ async def get_question_by_number(
 ):
     """
     Fetches a specific question by its 1-indexed number within the exam paper.
-    Supports optional `?language=` parameter (e.g., ENGLISH, HINDI).
-    Defaults to candidate's preferred_language if unspecified.
+    Always in the attempt's language; `language` is accepted for older clients and ignored.
     """
-    effective_lang = language or getattr(current_user, "preferred_language", "en") or "en"
     service = ExamSessionService(session)
     return await service.get_question(
         attempt_id=attempt_id,
         user_id=current_user.id,
         question_number=question_number,
-        language=effective_lang,
     )
 
 

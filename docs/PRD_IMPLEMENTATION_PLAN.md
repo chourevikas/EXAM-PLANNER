@@ -161,13 +161,30 @@ Payments are on hold, so this uses the existing `StudentProfile.subscription_tie
 ## Phase 5: full language support in the exam
 **Launch languages: English, Hindi, Marathi** (client-confirmed). Questions are already fully translated into all three. The remaining work is explanations, option analysis and exam screen labels. Other languages stay best-effort, falling back to English.
 
+### 5.1 Language chosen before the session, fixed for the whole session ✅ built
+Client decision (17 Oct): English is the default for practice and exam simulation. A student who wants another language chooses it **before** starting, and every question in that session is in that language. Only English, Hindi and Marathi are offered.
+- **Exam simulation (PYQ, mock, subject-wise):**
+  - A new attempt opens a language picker first, with English preselected. A retake asks again.
+  - The subject-wise builder has a "Test language" choice in its form.
+  - The language is stored on the attempt (`exam_attempts.language`, migration 065), and questions are always served in it.
+  - Opening an in-progress attempt resumes in its language without asking.
+  - The header shows the language as a fixed label; the mid-test dropdown is gone.
+- **Practice (signed-in and guest):** the picker shows before any questions load. The choice is kept in the URL (`?lang=`), so filter changes and reloads keep it.
+- **Not tied to the profile any more:** the profile's preferred language no longer decides the exam language. The API rejects any language other than en/hi/mr (422).
+- **Explanations:**
+  - The in-exam reveal now uses the attempt's language: Hindi or Marathi, else English. Previously it took whichever explanation row came first.
+  - Solutions in practice and the exam screen request the session language.
+  - Today all explanations are English-only, so they show in English until the translation backfill below runs.
+- **Not covered yet:** the post-test report (the pipeline's question review and analysis text) is English-only.
+
+### 5.2 Remaining content work
 - **Content:**
   - Extend the existing translation job (`tasks/translation_tasks.py`, `reconcile_missing_translations_task`) to translate explanations (`QuestionExplanation`) and option distractor analysis, as well as questions.
   - Backfill Hindi and Marathi explanations and option analysis for all published questions.
   - Admin view: translation coverage per language.
 - **Exam screen labels:** add a small i18n dictionary for the exam screens only (`ExamEnginePage`, `ExamQuestionCard`, `ExamFooterBar`, palette, submit dialog, timer, solution card headings), driven by the selected exam language with English fallback. No app-wide i18n framework yet.
 - **Fallback rule:** if a question isn't translated, show English with a small "not available in <language>" note, never a blank.
-- **Explanations in every view:** Phase 1 made `GET /questions/{id}/solution` pick the explanation by language. The in-exam reveal (`ExamSessionService.reveal_answer`), `GET /exams/{id}/solution-db/{n}` and the post-test report (`post_submission_pipeline`) still take the first explanation row; pass the attempt's language through and reuse the same preference (requested → English → any).
+- **Explanations in every view:** Phase 1 made `GET /questions/{id}/solution` pick the explanation by language. Phase 5.1 did the same for the in-exam reveal (`ExamSessionService.reveal_answer`). `GET /exams/{id}/solution-db/{n}` and the post-test report (`post_submission_pipeline`) still take the first explanation row; pass the attempt's language through and reuse the same preference (requested → English → any).
 
 ---
 
