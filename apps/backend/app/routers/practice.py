@@ -81,6 +81,9 @@ async def record_practice_answer(
                     f"practice:{practice.id}", "Correct practice answer", commit=False,
                 )
             await xp_service.award_active_day(session, current_user.id, commit=False)
+            # Reschedule the question for spaced revision (right: later, wrong: sooner)
+            from app.services import revision_service
+            await revision_service.record_answer(session, current_user.id, question, is_correct)
             await session.commit()
             await xp_service.forget_cached_stats(current_user.id)
 

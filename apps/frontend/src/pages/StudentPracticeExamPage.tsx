@@ -358,8 +358,11 @@ export function StudentPracticeExamPage() {
   // The session's language lives in ?lang= (en / hi / mr): chosen in the picker before practice starts,
   // kept by every filter change (they copy the URL) and by a reload, so it stays fixed for the session
   const urlLang = searchParams.get('lang');
-  // ?source=bookmarks: practise the student's bookmarked questions instead of a filtered set
-  const isBookmarkSession = searchParams.get('source') === 'bookmarks';
+  // ?source=bookmarks | revision: practise the student's bookmarked questions, or the ones due for
+  // spaced revision today, instead of a filtered set
+  const practiceSource = searchParams.get('source');
+  const isRevisionSession = practiceSource === 'revision';
+  const isBookmarkSession = practiceSource === 'bookmarks' || isRevisionSession;
   const hasSessionLanguage = SUPPORTED_LANGUAGES.some((l) => l.code === urlLang);
   const language = hasSessionLanguage ? (urlLang as string) : 'en';
 
@@ -880,7 +883,7 @@ export function StudentPracticeExamPage() {
   const [showMobileFilterPanel, setShowMobileFilterPanel] = useState(false);
 
   const SESSION_KEY = isBookmarkSession
-    ? 'student_practice_session_bookmarks'
+    ? `student_practice_session_${practiceSource}`
     : `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
   const sessionKeyRef = useRef(SESSION_KEY);
   sessionKeyRef.current = SESSION_KEY;
@@ -1091,7 +1094,9 @@ export function StudentPracticeExamPage() {
         if (isBookmarkSession) {
           const token = localStorage.getItem('access_token');
           const bmParams = new URLSearchParams({ language, limit: '200' });
-          const res = await guardedFetch(`/api/v1/users/me/bookmarks/practice?${bmParams.toString()}`, {
+          const sourceUrl = isRevisionSession ? '/api/v1/users/me/revision/practice' : '/api/v1/users/me/bookmarks/practice';
+          if (isRevisionSession) bmParams.set('limit', '50');
+          const res = await guardedFetch(`${sourceUrl}?${bmParams.toString()}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
           if (res.ok) mergeItems((await res.json()).items || []);
@@ -1732,10 +1737,12 @@ export function StudentPracticeExamPage() {
           }}
         >
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--deep-navy)', marginBottom: 8 }}>
-            {isBookmarkSession ? 'No bookmarked questions yet' : 'No Questions Available'}
+            {isRevisionSession ? 'Nothing due for revision today' : isBookmarkSession ? 'No bookmarked questions yet' : 'No Questions Available'}
           </h2>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
-            {isBookmarkSession ? (
+            {isRevisionSession ? (
+              <>Questions come back here when it's time to revise them, based on how you answered them in tests and practice.</>
+            ) : isBookmarkSession ? (
               <>Bookmark questions while you practise or review a test, then practise them here.</>
             ) : (
               <>
@@ -1848,15 +1855,22 @@ export function StudentPracticeExamPage() {
               border: '1px solid var(--border-color)', fontSize: 13.5, color: 'var(--text-secondary)',
             }}
           >
-            <span>
-              Practising your <strong>{totalQuestions}</strong> bookmarked {totalQuestions === 1 ? 'question' : 'questions'}
-            </span>
+            {isRevisionSession ? (
+              <span>
+                Revising <strong>{totalQuestions}</strong> {totalQuestions === 1 ? 'question' : 'questions'} due today. Each answer schedules
+                its next revision: sooner if wrong, later if right.
+              </span>
+            ) : (
+              <span>
+                Practising your <strong>{totalQuestions}</strong> bookmarked {totalQuestions === 1 ? 'question' : 'questions'}
+              </span>
+            )}
             <button
               type="button"
-              onClick={() => navigate('/bookmarks')}
+              onClick={() => navigate(isRevisionSession ? '/dashboard' : '/bookmarks')}
               style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontWeight: 700, cursor: 'pointer', fontSize: 13.5 }}
             >
-              Back to bookmarks
+              {isRevisionSession ? 'Back to dashboard' : 'Back to bookmarks'}
             </button>
           </div>
         </div>

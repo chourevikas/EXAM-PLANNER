@@ -66,6 +66,15 @@ export function DashboardPage() {
       .then((lb) => setNationalRank(lb.me ? { rank: lb.me.rank, total: lb.total } : null))
       .catch(() => setNationalRank(null));
   }, []);
+  // Questions due for spaced revision today (null until loaded)
+  const [revisionDue, setRevisionDue] = useState<{ due_today: number; topics: { subtopic: string; questions: number }[] } | null>(null);
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    guardedFetch('/api/v1/users/me/revision', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setRevisionDue)
+      .catch(() => setRevisionDue(null));
+  }, []);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [studyHoursData, setStudyHoursData] = useState<Array<{ day: string; hours: number; date?: string; logged_minutes?: number }>>([
     { day: 'Mon', hours: 0 },
@@ -239,6 +248,39 @@ export function DashboardPage() {
           <Ico.Pen /> Log Today's Study
         </button>
       </section>
+
+      {/* Due for revision today (spaced repetition) */}
+      {revisionDue && revisionDue.due_today > 0 && (
+        <section
+          data-testid="revision-due"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+            padding: '14px 18px', marginBottom: 20, borderRadius: 'var(--radius)',
+            backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-primary)' }}>
+              {revisionDue.due_today} {revisionDue.due_today === 1 ? 'question is' : 'questions are'} due for revision today
+            </div>
+            {revisionDue.topics.length > 0 && (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                Mostly {revisionDue.topics.slice(0, 3).map((t) => t.subtopic).join(', ')}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/practice-exam?source=revision')}
+            style={{
+              padding: '10px 16px', borderRadius: 'var(--radius)', border: 'none', backgroundColor: 'var(--primary-red)',
+              color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+            }}
+          >
+            Revise now
+          </button>
+        </section>
+      )}
 
       {/* 2. Key Metrics Grid (Admin Dashboard Design Language) */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 18, marginBottom: 32 }}>

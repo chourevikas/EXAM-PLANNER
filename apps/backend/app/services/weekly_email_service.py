@@ -166,6 +166,9 @@ async def _hourly_loop() -> None:
             next_hour = (now + timedelta(hours=1)).replace(minute=1, second=0, microsecond=0)
             await asyncio.sleep(max(5.0, (next_hour - now).total_seconds()))
             await run_weekly_email_dispatch()
+            # Morning revision reminders share this hourly tick (they send only in the 7 AM IST hour)
+            from app.services.revision_service import run_daily_reminders
+            await run_daily_reminders()
         except asyncio.CancelledError:
             break
         except Exception as err:
