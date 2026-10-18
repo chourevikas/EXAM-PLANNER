@@ -63,8 +63,11 @@ class ExamService:
         conflict_resolution: Optional[str] = "CHECK",
         background_tasks: Optional[BackgroundTasks] = None,
         paper_mode: Optional[str] = "EXAM_WISE",
+        marks_per_question: Optional[float] = None,
+        negative_marks_per_question: Optional[float] = None,
     ) -> Dict[str, Any]:
         from app.tasks.exam_tasks import process_exam_pdf_task, async_process_exam_pdf
+        from app.services.scoring import validate_marking_scheme
 
         settings = get_settings()
         is_mixed = (paper_mode or "EXAM_WISE").strip().upper() == "MIXED"
@@ -114,6 +117,17 @@ class ExamService:
         tot_q = None if is_mixed else (resolved_et.number_of_questions if resolved_et else 100)
         dur_mins = resolved_et.total_duration if resolved_et else 120
         tot_marks = resolved_et.total_marks if resolved_et else 200.0
+
+        # Marking scheme: asked on upload, defaulting to the exam type's for callers that don't send it
+        if marks_per_question is None:
+            marks_per_question = float(resolved_et.positive_marks) if resolved_et else 2.0
+        if negative_marks_per_question is None:
+            negative_marks_per_question = float(resolved_et.negative_marks) if resolved_et else 0.67
+        scheme_error = validate_marking_scheme(marks_per_question, negative_marks_per_question)
+        if scheme_error:
+            raise HTTPException(status_code=422, detail=scheme_error)
+        if tot_q:
+            tot_marks = round(tot_q * float(marks_per_question), 2)
 
         # 2. Check if matching canonical exam already exists
         if is_mixed:
@@ -192,6 +206,8 @@ class ExamService:
             total_questions=tot_q,
             total_duration_minutes=dur_mins,
             total_marks=tot_marks,
+            marks_per_question=float(marks_per_question),
+            negative_marks_per_question=float(negative_marks_per_question),
             is_mixed_bank=is_mixed,
         )
         exam = await self.repo.save(exam)

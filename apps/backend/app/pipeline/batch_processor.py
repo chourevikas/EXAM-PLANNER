@@ -331,16 +331,9 @@ class BatchQuestionRegistrar:
                             et_obj = None
                             if exam and getattr(exam, "exam_type_id", None):
                                 et_obj = await session.get(ExamType, exam.exam_type_id)
-                            if et_obj:
-                                marks = float(et_obj.positive_marks)
-                                neg_marks = float(et_obj.negative_marks)
-                            else:
-                                marks = 2.0
-                                neg_rate = getattr(exam, "negative_marking_rate", None) if exam else None
-                                if neg_rate is not None and isinstance(neg_rate, (int, float)):
-                                    neg_marks = round(marks * float(neg_rate), 2)
-                                else:
-                                    neg_marks = round(marks / 3.0, 2)
+                            # The exam's own marking scheme (asked on upload), else its type's, else UPSC's
+                            from app.services.scoring import exam_marking_scheme
+                            marks, neg_marks = exam_marking_scheme(exam, et_obj)
 
                             expected_time = calculate_question_expected_time(
                                 q_data["question_type"],
@@ -564,7 +557,6 @@ class BatchQuestionRegistrar:
                 # A mixed bank's year is a placeholder: untagged questions get no year rather than a wrong one
                 source_year = exam.source_year if exam and not getattr(exam, "is_mixed_bank", False) else None
                 paper_set_code = exam.paper_set_code if exam else "SET_A"
-                neg_rate = getattr(exam, "negative_marking_rate", None) if exam else None
 
                 s_ver_res = await session.exec(
                     select(SyllabusVersion).where(
@@ -607,15 +599,9 @@ class BatchQuestionRegistrar:
             if exam and getattr(exam, "exam_type_id", None):
                 async with _get_session() as s_et:
                     et_obj = await s_et.get(ExamType, exam.exam_type_id)
-            if et_obj:
-                marks = float(et_obj.positive_marks)
-                neg_marks = float(et_obj.negative_marks)
-            else:
-                marks = 2.0
-                if neg_rate is not None and isinstance(neg_rate, (int, float)):
-                    neg_marks = round(marks * float(neg_rate), 2)
-                else:
-                    neg_marks = round(marks / 3.0, 2)
+            # The exam's own marking scheme (asked on upload), else its type's, else UPSC's
+            from app.services.scoring import exam_marking_scheme
+            marks, neg_marks = exam_marking_scheme(exam, et_obj)
 
             for i in range(0, len(records), self.batch_size):
                 batch = records[i : i + self.batch_size]

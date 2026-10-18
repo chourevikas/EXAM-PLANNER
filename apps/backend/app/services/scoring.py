@@ -30,3 +30,25 @@ def awarded(is_correct: bool, attempted: bool, pos: float, neg: float) -> float:
     if not attempted:
         return 0.0
     return pos if is_correct else -neg
+
+
+def exam_marking_scheme(exam, exam_type=None) -> Tuple[float, float]:
+    """The marks an exam's questions get: the exam's own scheme, else its exam type's, else UPSC's."""
+    marks = getattr(exam, "marks_per_question", None) if exam is not None else None
+    if marks:
+        neg = getattr(exam, "negative_marks_per_question", None)
+        return float(marks), float(neg if neg is not None else 0.0)
+    if exam_type is not None and getattr(exam_type, "positive_marks", None):
+        return float(exam_type.positive_marks), float(exam_type.negative_marks or 0.0)
+    return UPSC_MARKS, round(UPSC_MARKS / 3.0, 2)
+
+
+def validate_marking_scheme(marks: float, negative: float) -> Optional[str]:
+    """An error message, or None when the scheme makes sense."""
+    if marks is None or marks <= 0 or marks > 100:
+        return "Marks for a correct answer must be more than 0 (and at most 100)."
+    if negative is None or negative < 0:
+        return "Marks deducted for a wrong answer can't be negative (use 0 for no negative marking)."
+    if negative > marks:
+        return "Marks deducted for a wrong answer can't be more than the marks for a correct one."
+    return None

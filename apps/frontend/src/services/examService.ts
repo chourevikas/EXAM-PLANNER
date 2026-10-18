@@ -39,6 +39,8 @@ export async function uploadExamPaper({
   exam_type_id,
   conflict_resolution,
   paper_mode = 'EXAM_WISE',
+  marks_per_question,
+  negative_marks_per_question,
   file,
 }: UploadExamPayload & { set_code?: string }): Promise<UploadExamResponse> {
   const token = localStorage.getItem('access_token');
@@ -59,6 +61,8 @@ export async function uploadExamPaper({
     if (exam_type_id) formData.append('exam_type_id', String(exam_type_id));
   }
   if (conflict_resolution) formData.append('conflict_resolution', conflict_resolution);
+  if (marks_per_question !== undefined) formData.append('marks_per_question', String(marks_per_question));
+  if (negative_marks_per_question !== undefined) formData.append('negative_marks_per_question', String(negative_marks_per_question));
   formData.append('file', file);
 
   const response = await guardedFetch(`${API_BASE_URL}/exams/upload`, {

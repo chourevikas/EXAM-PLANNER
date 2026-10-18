@@ -67,6 +67,10 @@ async def upload_exam_pdf(
         description="'EXAM_WISE' (one exam and year; the fields above apply) or 'MIXED' (question bank whose "
         "questions carry their own '[MPSC Mains 2017]' source; exam, year and set are not used)",
     ),
+    marks_per_question: Optional[float] = Form(default=None, description="Marks for a correct answer, e.g. 2"),
+    negative_marks_per_question: Optional[float] = Form(
+        default=None, description="Marks deducted for a wrong answer, e.g. 0.67 (0 = no negative marking)"
+    ),
     session: AsyncSession = Depends(get_async_session),
     _admin: User = Depends(require_admin_section("admin.upload")),
 ):
@@ -88,6 +92,8 @@ async def upload_exam_pdf(
         conflict_resolution=conflict_resolution,
         background_tasks=background_tasks,
         paper_mode=paper_mode,
+        marks_per_question=marks_per_question,
+        negative_marks_per_question=negative_marks_per_question,
     )
 
 

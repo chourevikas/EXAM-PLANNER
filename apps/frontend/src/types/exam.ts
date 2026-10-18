@@ -17,6 +17,9 @@ export interface UploadExamPayload {
   exam_type_id?: number;
   conflict_resolution?: string;
   paper_mode?: PaperMode;
+  /** The paper's marking scheme: marks for a correct answer and marks deducted for a wrong one */
+  marks_per_question?: number;
+  negative_marks_per_question?: number;
 }
 
 export interface UploadExamResponse {
