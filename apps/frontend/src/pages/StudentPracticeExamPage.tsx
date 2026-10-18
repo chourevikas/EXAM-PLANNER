@@ -358,6 +358,8 @@ export function StudentPracticeExamPage() {
   // The session's language lives in ?lang= (en / hi / mr): chosen in the picker before practice starts,
   // kept by every filter change (they copy the URL) and by a reload, so it stays fixed for the session
   const urlLang = searchParams.get('lang');
+  // ?source=bookmarks: practise the student's bookmarked questions instead of a filtered set
+  const isBookmarkSession = searchParams.get('source') === 'bookmarks';
   const hasSessionLanguage = SUPPORTED_LANGUAGES.some((l) => l.code === urlLang);
   const language = hasSessionLanguage ? (urlLang as string) : 'en';
 
@@ -877,7 +879,9 @@ export function StudentPracticeExamPage() {
   const [showMobileRecs, setShowMobileRecs] = useState(false);
   const [showMobileFilterPanel, setShowMobileFilterPanel] = useState(false);
 
-  const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
+  const SESSION_KEY = isBookmarkSession
+    ? 'student_practice_session_bookmarks'
+    : `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
   const sessionKeyRef = useRef(SESSION_KEY);
   sessionKeyRef.current = SESSION_KEY;
 
@@ -1084,6 +1088,14 @@ export function StudentPracticeExamPage() {
       };
 
       try {
+        if (isBookmarkSession) {
+          const token = localStorage.getItem('access_token');
+          const bmParams = new URLSearchParams({ language, limit: '200' });
+          const res = await guardedFetch(`/api/v1/users/me/bookmarks/practice?${bmParams.toString()}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (res.ok) mergeItems((await res.json()).items || []);
+        } else {
         const targetExam = gExam
           ? gExam.split(',')
               .map((e) => {
@@ -1161,6 +1173,7 @@ export function StudentPracticeExamPage() {
 
           const fallbackResults = await Promise.all(fallbackTiers.map(fetchQuestions));
           mergeItems(fallbackResults.find((items) => items.length > 0) || []);
+        }
         }
       } catch (err) {
         console.warn('Practice questions fetch warning:', err);
@@ -1253,7 +1266,7 @@ export function StudentPracticeExamPage() {
     }
 
     loadPracticeQuestions();
-  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, hasSessionLanguage]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, hasSessionLanguage, isBookmarkSession]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -1719,11 +1732,17 @@ export function StudentPracticeExamPage() {
           }}
         >
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--deep-navy)', marginBottom: 8 }}>
-            No Questions Available
+            {isBookmarkSession ? 'No bookmarked questions yet' : 'No Questions Available'}
           </h2>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
-            No questions available for{' '}
-            <strong>{formatEnum(gSubject || 'this selection')}</strong>.
+            {isBookmarkSession ? (
+              <>Bookmark questions while you practise or review a test, then practise them here.</>
+            ) : (
+              <>
+                No questions available for{' '}
+                <strong>{formatEnum(gSubject || 'this selection')}</strong>.
+              </>
+            )}
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <button
@@ -1813,13 +1832,38 @@ export function StudentPracticeExamPage() {
         onSubmitClick={() => handleFinishPracticeExam()}
         focusMode={isFocusMode}
         onToggleFocusMode={toggleFocusMode}
-        onFilterClick={!isFocusMode ? () => setShowMobileFilterPanel(true) : undefined}
+        onFilterClick={!isFocusMode && !isBookmarkSession ? () => setShowMobileFilterPanel(true) : undefined}
         onRecsClick={() => setShowMobileRecs(true)}
         recsCount={displayRecs.length}
       />
 
+      {/* Bookmark session: the filters don't apply, so a banner replaces them */}
+      {isBookmarkSession && !isFocusMode && (
+        <div style={{ marginTop: 68, padding: '0 clamp(10px, 2.5vw, 24px)' }}>
+          <div
+            data-testid="bookmark-session"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
+              padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-color)', fontSize: 13.5, color: 'var(--text-secondary)',
+            }}
+          >
+            <span>
+              Practising your <strong>{totalQuestions}</strong> bookmarked {totalQuestions === 1 ? 'question' : 'questions'}
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate('/bookmarks')}
+              style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontWeight: 700, cursor: 'pointer', fontSize: 13.5 }}
+            >
+              Back to bookmarks
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Premium Floating Exam Filter Window — Desktop only; mobile/tablet uses header icon + top sheet */}
-      {!isFocusMode && !isTabletOrBelow && (
+      {!isFocusMode && !isTabletOrBelow && !isBookmarkSession && (
         <div
           style={{
             marginTop: 60,

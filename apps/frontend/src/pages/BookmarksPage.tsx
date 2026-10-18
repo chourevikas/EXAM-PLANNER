@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { StudentLayout } from '../components/student/StudentLayout';
 import { listBookmarks, removeBookmark, getBookmarkSolution, BookmarkItem } from '../services/bookmarkService';
 import { formatEnum } from '../utils/formatEnum';
-import { Search, Bookmark, Trash2, Filter, AlertCircle, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Search, Bookmark, Trash2, Filter, AlertCircle, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, CheckCircle2, PlayCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   QuestionSolutionMarkdownCard,
   QuestionSolutionData,
@@ -381,6 +382,7 @@ const pageBtnStyle = (disabled: boolean): React.CSSProperties => ({
 });
 
 export function BookmarksPage(): React.ReactElement {
+  const navigate = useNavigate();
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -573,15 +575,27 @@ export function BookmarksPage(): React.ReactElement {
             <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Bookmarked Questions</h1>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Review and practice questions you saved for later revision.</p>
           </div>
-          <button
-            type="button"
-            onClick={reload}
-            disabled={loading}
-            style={refreshBtnStyle}
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            <span>Refresh</span>
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexDirection: isMobile ? 'column' : 'row' }}>
+            {total > 0 && (
+              <button
+                type="button"
+                onClick={() => navigate('/practice-exam?source=bookmarks')}
+                style={{ ...refreshBtnStyle, background: 'var(--primary-red)', border: 'none', color: '#fff', cursor: 'pointer' }}
+              >
+                <PlayCircle size={14} />
+                <span>Practise these</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={reload}
+              disabled={loading}
+              style={refreshBtnStyle}
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              <span>Refresh</span>
+            </button>
+          </div>
         </section>
 
         {/* Search and Filters */}
