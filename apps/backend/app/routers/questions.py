@@ -342,6 +342,7 @@ async def get_similar_questions(
     include_related: bool = Query(default=True, description="Also match through relationships (e.g. Suba -> Sarkar)"),
     include_question: bool = Query(default=False, description="Embed each result's question card (text + options)"),
     language: str = Query(default="en", description="Language of embedded question cards"),
+    other_years_only: bool = Query(default=False, description="Only questions from other years (the same theme in other papers)"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -360,10 +361,41 @@ async def get_similar_questions(
         raise HTTPException(status_code=404, detail="Question not found")
         
     service = QuestionService(session)
-    
+
+    # "Same theme in other years": look wider, then drop matches from this paper or this year
+    fetch_limit = min(50, limit * 4) if other_years_only else limit
+
+    async def _from_other_years(results: list) -> list:
+        if not other_years_only or not results:
+            return results
+        from sqlmodel import select, col
+        from app.db.models.hierarchy import Exam
+
+        def year_of(q, exam_years):
+            return q.source_year or exam_years.get(q.exam_id)
+
+        ids = [int(r["question_id"]) for r in results if r.get("question_id") is not None]
+        rows = (await session.exec(select(Question).where(col(Question.id).in_(ids + [target_q.id])))).all()
+        exam_years = dict((await session.exec(
+            select(Exam.id, Exam.source_year).where(col(Exam.id).in_({q.exam_id for q in rows if q.exam_id}))
+        )).all())
+        by_id = {q.id: q for q in rows}
+        own_year = year_of(target_q, exam_years)
+        kept = []
+        for r in results:
+            q = by_id.get(int(r["question_id"])) if r.get("question_id") is not None else None
+            if q is None or q.exam_id == target_q.exam_id:
+                continue
+            year = year_of(q, exam_years)
+            if own_year is not None and year == own_year:
+                continue
+            r.setdefault("source_year", year)
+            kept.append(r)
+        return kept[:limit]
+
     if target_q.knowledge_tags_ai:
         # Use AI Jaccard Similarity; if it finds nothing, fall through to the deterministic layer
-        results = await service.get_similar_questions(qid_int, limit=limit)
+        results = await _from_other_years(await service.get_similar_questions(qid_int, limit=fetch_limit))
         if results:
             if include_question:
                 from sqlmodel import select, col
@@ -385,16 +417,16 @@ async def get_similar_questions(
     lang_code = parse_language(language)
     cache_key = build_cache_key(
         "questions:similar", str(qid_int), lim=limit, min=min_score, rel=include_related,
-        q=include_question, l=lang_code.value if include_question else None,
+        q=include_question, l=lang_code.value if include_question else None, oy=other_years_only,
     )
     cached = await cache.get(cache_key)
     if cached is not None:
         return JSONResponse(content=cached)
 
     from app.knowledge.similarity import SimilarityService
-    results = await SimilarityService(session).find_similar(
-        qid_int, limit=limit, min_score=min_score, include_related=include_related
-    )
+    results = await _from_other_years(await SimilarityService(session).find_similar(
+        qid_int, limit=fetch_limit, min_score=min_score, include_related=include_related
+    ))
     if include_question and results:
         from sqlmodel import select, col
         q_ids = [int(r["question_id"]) for r in results if r.get("question_id") is not None]

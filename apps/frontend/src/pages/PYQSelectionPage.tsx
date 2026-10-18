@@ -34,6 +34,8 @@ interface DisplayExam {
   id: number | string;
   code: string;
   year: number | string;
+  /** Paper set, e.g. SET_A */
+  paperSet: string;
   title: string;
   totalQuestions: number;
   duration: string;
@@ -79,7 +81,7 @@ function usePublishedExams() {
             if (att?.in_progress_attempt_id) status = 'IN_PROGRESS';
             else if (att?.completed_attempt_id) status = 'COMPLETED';
             return {
-              id: e.id, code: e.code, year: e.source_year || 2025,
+              id: e.id, code: e.code, year: e.source_year || 2025, paperSet: (e.paper_set_code || 'SET_A').toUpperCase(),
               title: formatCanonicalExamTitle(e),
               totalQuestions: 100, duration: `${e.total_duration_minutes || 120} mins`,
               status,
@@ -271,7 +273,10 @@ function YearWiseScreen({ onBack }: { onBack: () => void }) {
   const [hoveredExam, setHoveredExam] = useState<number | string | null>(null);
   const [yearFilter, setYearFilter] = useState('All Years');
   const [examFilter, setExamFilter] = useState('All Exams');
+  const [setFilter, setSetFilter] = useState('All Sets');
   const [searchQuery, setSearchQuery] = useState('');
+  // Paper sets present in the catalogue; the filter only shows when there is more than one
+  const archiveSetOptions = useMemo(() => ['All Sets', ...Array.from(new Set(examsList.map((e) => e.paperSet))).sort()], [examsList]);
 
   const archiveYearOptions = useMemo(() => ['All Years', ...Array.from(new Set(examsList.map((e) => String(e.year)))).sort((a, b) => Number(b) - Number(a))], [examsList]);
   const archiveExamOptions = useMemo(() => {
@@ -282,10 +287,11 @@ function YearWiseScreen({ onBack }: { onBack: () => void }) {
     return examsList.filter((e) => {
       if (yearFilter !== 'All Years' && String(e.year) !== yearFilter) return false;
       if (examFilter !== 'All Exams' && extractCanonicalExamName(e.title) !== examFilter) return false;
+      if (setFilter !== 'All Sets' && e.paperSet !== setFilter) return false;
       if (q && !e.title.toLowerCase().includes(q) && !String(e.code || '').toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [examsList, yearFilter, examFilter, searchQuery]);
+  }, [examsList, yearFilter, examFilter, setFilter, searchQuery]);
 
   return (
     <>
@@ -320,6 +326,14 @@ function YearWiseScreen({ onBack }: { onBack: () => void }) {
             {archiveYearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
+        {archiveSetOptions.length > 2 && (
+          <div style={{ minWidth: 110 }}>
+            <label htmlFor="pyq-set-filter" style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Paper set</label>
+            <select id="pyq-set-filter" value={setFilter} onChange={(e) => setSetFilter(e.target.value)} style={{ width: '100%', height: 36, padding: '0 10px', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, outline: 'none' }}>
+              {archiveSetOptions.map((o) => <option key={o} value={o}>{o === 'All Sets' ? o : o.replace('SET_', 'Set ')}</option>)}
+            </select>
+          </div>
+        )}
         <div style={{ flex: 1, minWidth: 180 }}>
           <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Search</label>
           <div style={{ position: 'relative' }}>
@@ -556,6 +570,8 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   const [selTopic, setSelTopic] = useState('all');
   const [selSubtopic, setSelSubtopic] = useState('all');
   const [selDifficulty, setSelDifficulty] = useState<string[]>(['all']);
+  const [selSets, setSelSets] = useState<string[]>(['all']);
+  const [availableSets, setAvailableSets] = useState<string[]>([]);
   // The test's language, fixed once it starts; English unless the student picks another
   const [testLanguage, setTestLanguage] = useState('en');
   const [qSize, setQSize] = useState('all');
@@ -565,7 +581,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   const [startError, setStartError] = useState<string | null>(null);
 
   // A warning about the previous filters no longer applies once they change
-  useEffect(() => { setStartError(null); }, [selExams, selYears, selSubject, selTopic, selSubtopic, selDifficulty, qSize, customCount]);
+  useEffect(() => { setStartError(null); }, [selExams, selYears, selSubject, selTopic, selSubtopic, selDifficulty, selSets, qSize, customCount]);
 
   const dynamicFilters = useMemo<DynamicTestFilters>(() => {
     const exs = selExams.filter((x) => x !== 'all');
@@ -577,8 +593,9 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
       dynamic_topic: selTopic !== 'all' ? selTopic : undefined,
       dynamic_subtopic: selSubtopic !== 'all' ? selSubtopic : undefined,
       dynamic_difficulty: selDifficulty.includes('all') ? undefined : selDifficulty.join(','),
+      dynamic_sets: selSets.includes('all') ? undefined : selSets.join(','),
     };
-  }, [selExams, selYears, selSubject, selTopic, selSubtopic, selDifficulty]);
+  }, [selExams, selYears, selSubject, selTopic, selSubtopic, selDifficulty, selSets]);
 
   // Questions the current filters match (null while counting or when the count failed)
   const [matchCount, setMatchCount] = useState<number | null>(null);
@@ -608,9 +625,11 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
         
         const names: string[] = [];
         const mapping: Record<string, Set<number>> = {};
+        const sets = new Set<string>();
         
         if (Array.isArray(publishedExams)) {
           publishedExams.forEach((e: any) => {
+            if (!e.code?.startsWith('DYN_') && !e.is_mixed_bank && e.paper_set_code) sets.add(String(e.paper_set_code).toUpperCase());
             const nameToExtract = e.name || e.title || e.exam_name || e.code || '';
             const lowerName = nameToExtract.toLowerCase();
             
@@ -636,6 +655,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
           finalMapping[ex] = Array.from(mapping[ex]).sort((a, b) => b - a);
         }
         setExamToYears(finalMapping);
+        setAvailableSets(Array.from(sets).sort());
         
         const distinct = sortExamLabels(names);
         setAvailableExams(distinct.length > 0 ? distinct : [defaultExamLabel()]);
@@ -834,6 +854,31 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
                   ))}
                 </div>
               </div>
+
+              {/* Paper set (only when papers come in more than one set) */}
+              {availableSets.length > 1 && (
+                <div>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Paper set (optional)</span>
+                  <div role="group" aria-label="Paper set" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <button type="button" onClick={() => setSelSets(['all'])} style={chipStyle(selSets.includes('all'))}>All sets</button>
+                    {availableSets.map((code) => (
+                      <button
+                        type="button"
+                        key={code}
+                        data-set={code}
+                        onClick={() => {
+                          const next = selSets.filter((x) => x !== 'all');
+                          const updated = next.includes(code) ? next.filter((x) => x !== code) : [...next, code];
+                          setSelSets(updated.length ? updated : ['all']);
+                        }}
+                        style={chipStyle(selSets.includes(code))}
+                      >
+                        {code.replace('SET_', 'Set ')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Language */}
               <div>

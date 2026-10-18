@@ -398,6 +398,8 @@ export interface DynamicTestFilters {
   dynamic_subtopic?: string;
   /** Comma separated EASY / MEDIUM / HARD; omitted for all levels. */
   dynamic_difficulty?: string;
+  /** Comma separated paper sets, e.g. SET_A,SET_B; omitted for all sets. */
+  dynamic_sets?: string;
 }
 
 /** How many questions a Subject-wise test with these filters can draw from. */

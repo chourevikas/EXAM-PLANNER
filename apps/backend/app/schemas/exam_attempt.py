@@ -20,6 +20,7 @@ class StartExamRequest(BaseModel):
     dynamic_exams: Optional[str] = None  # Comma separated
     dynamic_years: Optional[str] = None  # Comma separated
     dynamic_difficulty: Optional[str] = None  # Comma separated EASY / MEDIUM / HARD, or "all"
+    dynamic_sets: Optional[str] = None  # Comma separated paper sets e.g. SET_A,SET_B, or "all"
     dynamic_limit: Optional[int] = None
 
     @field_validator("language")
@@ -32,6 +33,18 @@ class StartExamRequest(BaseModel):
         if code is None:
             raise ValueError("Exams are available in English, Hindi and Marathi only")
         return code
+
+    @field_validator("dynamic_sets")
+    @classmethod
+    def _known_sets(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        import re
+        sets = [v.strip().upper() for v in value.split(",") if v.strip() and v.strip().lower() != "all"]
+        bad = [v for v in sets if not re.fullmatch(r"[A-Z0-9_-]{1,20}", v)]
+        if bad:
+            raise ValueError(f"Unknown paper set: {', '.join(bad)}")
+        return ",".join(sets) or None
 
     @field_validator("dynamic_difficulty")
     @classmethod

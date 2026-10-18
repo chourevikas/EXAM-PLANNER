@@ -1539,6 +1539,11 @@ class ExamSessionService:
         if levels:
             q_stmt = q_stmt.where(col(Question.difficulty).in_(levels))
 
+        paper_sets = [v.upper() for v in _csv_filter(getattr(req, "dynamic_sets", None))]
+        if paper_sets:
+            # A mixed bank's set is a placeholder (its questions come from many papers), so it never matches
+            q_stmt = q_stmt.where(func.upper(Exam.paper_set_code).in_(paper_sets), col(Exam.is_mixed_bank).is_not(True))
+
         type_codes = await load_exam_type_codes(self.session)
         exam_names = {canonical_exam_name(e, type_codes).upper() for e in _csv_filter(req.dynamic_exams)}
         if exam_names:

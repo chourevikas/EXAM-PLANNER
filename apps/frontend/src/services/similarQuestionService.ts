@@ -64,10 +64,11 @@ export function recommendationCardToQuestion(
 
 export async function fetchSimilarQuestions(
   questionId: number | string,
-  options: { limit?: number; language?: string; includeQuestion?: boolean } = {},
+  options: { limit?: number; language?: string; includeQuestion?: boolean; otherYearsOnly?: boolean } = {},
 ): Promise<SimilarQuestionResult[]> {
   const params = new URLSearchParams({ limit: String(options.limit ?? 5) });
   if (options.includeQuestion) params.append('include_question', 'true');
+  if (options.otherYearsOnly) params.append('other_years_only', 'true');
   if (options.language) params.append('language', options.language);
   const res = await guardedFetch(`/api/v1/questions/${questionId}/similar?${params.toString()}`);
   if (!res.ok) return [];
@@ -89,16 +90,18 @@ export function useSimilarQuestions(
   language: string | undefined,
   excludeIds: Set<string>,
   limit = 6,
+  /** Only questions from other years (the post-test "same theme in other years" section) */
+  otherYearsOnly = false,
 ): { similar: SimilarQuestionOut[]; isLoading: boolean } {
   const [cache, setCache] = useState<Record<string, SimilarQuestionOut[]>>({});
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
-  const key = isRealQuestionId(questionId) ? `${questionId}:${language || 'en'}` : null;
+  const key = isRealQuestionId(questionId) ? `${questionId}:${language || 'en'}${otherYearsOnly ? ':other-years' : ''}` : null;
 
   useEffect(() => {
     if (!key || cache[key]) return;
     let cancelled = false;
     setLoadingKey(key);
-    fetchSimilarQuestions(questionId as number | string, { limit, language, includeQuestion: true })
+    fetchSimilarQuestions(questionId as number | string, { limit, language, includeQuestion: true, otherYearsOnly })
       .then((results) => {
         if (cancelled) return;
         const cards = results

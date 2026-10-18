@@ -120,6 +120,7 @@ async def count_dynamic_questions(
     dynamic_topic: Optional[str] = None,
     dynamic_subtopic: Optional[str] = None,
     dynamic_difficulty: Optional[str] = Query(default=None, description="Comma separated EASY / MEDIUM / HARD"),
+    dynamic_sets: Optional[str] = Query(default=None, description="Comma separated paper sets e.g. SET_A,SET_B"),
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -133,6 +134,7 @@ async def count_dynamic_questions(
             dynamic_topic=dynamic_topic,
             dynamic_subtopic=dynamic_subtopic,
             dynamic_difficulty=dynamic_difficulty,
+            dynamic_sets=dynamic_sets,
         )
     except ValidationError as err:
         raise HTTPException(status_code=422, detail=err.errors()[0].get("msg", "Invalid filters"))
