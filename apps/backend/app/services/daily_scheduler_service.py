@@ -368,11 +368,25 @@ async def run_midnight_translation_job() -> Dict[str, Any]:
         logger.error(f"❌ Midnight translation job failed: {err}", exc_info=True)
         return {"status": "ERROR", "error": str(err)}
 
+    # Explanations and option analyses: backfills whatever is still missing in Hindi/Marathi
+    # (only missing rows are added, so a finished backfill costs one query a night)
+    explanation_counts: Dict[str, int] = {}
+    try:
+        from app.services.explanation_translation_service import translate_explanations
+        async with async_session_factory() as session:
+            explanation_counts = await translate_explanations(
+                session, translator, target_languages=[iso for iso, _ in _MIDNIGHT_TRANSLATE_LANGUAGES],
+            )
+    except Exception as expl_err:
+        logger.error(f"⚠️ Midnight explanation translation failed (retried tomorrow): {expl_err}", exc_info=True)
+
     logger.info(f"🌙✅ Midnight translation job complete: {total_q_translated} Q + {total_opt_translated} opt translated.")
     return {
         "status": "SUCCESS",
         "q_translated": total_q_translated,
         "opt_translated": total_opt_translated,
+        "explanations_translated": explanation_counts.get("explanations_added", 0),
+        "analyses_translated": explanation_counts.get("analyses_added", 0),
     }
 
 
@@ -403,6 +417,23 @@ async def _daily_midnight_scheduler_loop():
                 break
 
             await run_daily_midnight_dispatch(force=False)
+
+            # Recalculate today's leaderboards (idempotent: replaces the day's rows)
+            try:
+                from app.db.session import async_session_factory
+                from app.services import leaderboard_service
+                async with async_session_factory() as lb_session:
+                    ranked = await leaderboard_service.refresh(lb_session)
+                logger.info(f"🏆 Leaderboards recalculated: {ranked} students ranked.")
+            except Exception as lb_err:
+                logger.error(f"⚠️ Leaderboard refresh error (non-fatal): {lb_err}", exc_info=True)
+
+            # End subscriptions whose period is over (paid, admin grants, launch promo) -> back to Free
+            try:
+                from app.services.subscription_expiry_service import run_expiry_job
+                await run_expiry_job()
+            except Exception as exp_err:
+                logger.error(f"⚠️ Subscription expiry error (non-fatal): {exp_err}", exc_info=True)
 
             # Run proactive translation for Hindi + Marathi (non-blocking — errors don't stop the loop)
             try:

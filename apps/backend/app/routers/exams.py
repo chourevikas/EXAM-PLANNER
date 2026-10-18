@@ -4,7 +4,7 @@ from typing import Optional, List, Union
 from fastapi import APIRouter, UploadFile, File, Form, Depends, BackgroundTasks, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.encoders import jsonable_encoder
-from sqlmodel import select, col
+from sqlmodel import select, col, case
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.db.models import Exam, LanguageCode, QuestionStatus
@@ -67,6 +67,10 @@ async def upload_exam_pdf(
         description="'EXAM_WISE' (one exam and year; the fields above apply) or 'MIXED' (question bank whose "
         "questions carry their own '[MPSC Mains 2017]' source; exam, year and set are not used)",
     ),
+    marks_per_question: Optional[float] = Form(default=None, description="Marks for a correct answer, e.g. 2"),
+    negative_marks_per_question: Optional[float] = Form(
+        default=None, description="Marks deducted for a wrong answer, e.g. 0.67 (0 = no negative marking)"
+    ),
     session: AsyncSession = Depends(get_async_session),
     _admin: User = Depends(require_admin_section("admin.upload")),
 ):
@@ -88,6 +92,8 @@ async def upload_exam_pdf(
         conflict_resolution=conflict_resolution,
         background_tasks=background_tasks,
         paper_mode=paper_mode,
+        marks_per_question=marks_per_question,
+        negative_marks_per_question=negative_marks_per_question,
     )
 
 
@@ -485,8 +491,11 @@ async def get_solution_from_db_fallback(
         for qr in (await session.exec(select(QuestionOptionReasoning).where(QuestionOptionReasoning.question_option_id.in_(opt_ids)))).all():
             qr_map[qr.question_option_id] = qr
 
+    # English explanation (this fallback endpoint is English-only), else any language
     expl_res = await session.exec(
-        select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
+        select(QuestionExplanation)
+        .where(QuestionExplanation.question_id == q.id)
+        .order_by(case((col(QuestionExplanation.language) == LanguageCode.ENGLISH, 0), else_=1), col(QuestionExplanation.id))
     )
     expl_model = expl_res.first()
 

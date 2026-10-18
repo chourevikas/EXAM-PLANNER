@@ -35,6 +35,7 @@ from app.engine.matrices.fsrs_retention import FSRSEngine
 from app.storage.factory import get_storage_provider
 from app.db.session import managed_async_session
 from app.config.logger import setup_logger
+from app.services.scoring import question_marks
 
 logger = setup_logger("PostSubmissionPipeline")
 
@@ -638,6 +639,9 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
             "is_correct": r.is_correct,
             "closeness_score_awarded": r.closeness_score_awarded,
             "final_score": r.final_score,
+            # The paper's own marking scheme for this question
+            "marks": question_marks(getattr(q_model, "marks", None), getattr(q_model, "negative_marks", None))[0],
+            "negative_marks": question_marks(getattr(q_model, "marks", None), getattr(q_model, "negative_marks", None))[1],
             "time_taken_seconds": float(r.time_taken_seconds or 0.0),
             "expected_time_seconds": float(r.expected_time_seconds if (r.expected_time_seconds and r.expected_time_seconds > 0) else 60.0),
             "is_switched": r.is_switched,
@@ -1079,6 +1083,27 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
         except Exception as badge_err:
             logger.warning(f"Gamification processing warning: {badge_err}")
 
+        # 7d. XP for this test (+50, +10 per correct, +20 for the day); keyed by attempt, so never paid twice
+        try:
+            from app.services import xp_service
+            async with session.begin_nested():
+                if user.id is not None:
+                    correct = sum(1 for r in responses_db if r.selected_option_id is not None and r.is_correct)
+                    await xp_service.award_test_completion(
+                        session, int(user.id), int(attempt.id), correct, attempt.submitted_at, commit=False
+                    )
+        except Exception as xp_err:
+            logger.warning(f"XP award warning for attempt '{attempt.id}': {xp_err}")
+
+        # 7e. Milestones reached with this test (badge, XP, notification)
+        try:
+            from app.services import milestone_service
+            async with session.begin_nested():
+                if user.id is not None:
+                    await milestone_service.check(session, int(user.id), commit=False)
+        except Exception as ms_err:
+            logger.warning(f"Milestone check warning for attempt '{attempt.id}': {ms_err}")
+
     elif profile is None:
         profile = UserSkillProfile(user_id=user.id, **profile_dict)
 
@@ -1233,18 +1258,28 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
     logger.info(f"⚡ [PHASE_1_DONE] Math results persisted for attempt '{attempt.id}'. Starting LLM synthesis...")
 
     # ─── Phase 2: AI synthesis (with rule-based fallback) ────────────────────
-    try:
-        mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
-            candidate_info=candidate_dict,
-            exam_info=exam_dict,
-            precalculated_metrics=precalc_payload,
-        )
-    except Exception as llm_err:
-        logger.warning(f"LLM diagnostic insight generation failed for attempt '{attempt.id}': {llm_err}. Using rule-based insight fallback.")
+    # The free plan has no AI analysis: skip the LLM call and keep the rule-based insight, so the
+    # report is complete if the student upgrades later.
+    from app.services.free_plan import is_limited
+    if user is not None and await is_limited(session, user):
+        logger.info(f"[PHASE_2] Free plan: rule-based insight only for attempt '{attempt.id}' (no LLM call).")
         mentorship_insight = _generate_rule_based_insight(
             part_3=report.get("part_3_aggregated_user_report", {}),
             taxonomy=report.get("part_2_taxonomy_analysis", {}),
         )
+    else:
+        try:
+            mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
+                candidate_info=candidate_dict,
+                exam_info=exam_dict,
+                precalculated_metrics=precalc_payload,
+            )
+        except Exception as llm_err:
+            logger.warning(f"LLM diagnostic insight generation failed for attempt '{attempt.id}': {llm_err}. Using rule-based insight fallback.")
+            mentorship_insight = _generate_rule_based_insight(
+                part_3=report.get("part_3_aggregated_user_report", {}),
+                taxonomy=report.get("part_2_taxonomy_analysis", {}),
+            )
 
     # Sync AI insights into report
     ai_tasks = mentorship_insight.get("study_plan_tasks", [])

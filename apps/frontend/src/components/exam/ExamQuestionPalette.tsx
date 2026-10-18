@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { QuestionPaletteItem } from '../../types/exam';
 import { X } from 'lucide-react';
+import { useExamText } from '../../i18n/examText';
 
 interface ExamQuestionPaletteProps {
   questions?: any[];
@@ -33,6 +34,7 @@ export function ExamQuestionPalette({
   isOverlay = false,
   onCloseOverlay,
 }: ExamQuestionPaletteProps) {
+  const { t } = useExamText();
   const totalCount = palette ? palette.length : questions.length || 10;
 
   // Lock body scroll and listen for Escape when in full-screen overlay mode
@@ -105,7 +107,7 @@ export function ExamQuestionPalette({
               letterSpacing: '0.08em',
             }}
           >
-            QUESTION Review
+            {t('questionReview')}
           </span>
           <span
             style={{
@@ -118,7 +120,7 @@ export function ExamQuestionPalette({
               border: '1px solid #E2E8F0',
             }}
           >
-            {totalCount} Questions
+            {totalCount} {t('questions')}
           </span>
         </div>
 
@@ -137,7 +139,7 @@ export function ExamQuestionPalette({
               alignItems: 'center',
               justifyContent: 'center',
             }}
-            aria-label="Close question palette"
+            aria-label={t('closePalette')}
           >
             <X size={20} />
           </button>
@@ -174,7 +176,7 @@ export function ExamQuestionPalette({
               letterSpacing: '0.04em',
             }}
           >
-            Answered
+            {t('answered')}
           </span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
             <span
@@ -212,7 +214,7 @@ export function ExamQuestionPalette({
               letterSpacing: '0.04em',
             }}
           >
-            Marked
+            {t('marked')}
           </span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
             <span
@@ -244,10 +246,10 @@ export function ExamQuestionPalette({
         }}
       >
         {[
-          { key: 'all', label: 'All' },
-          { key: 'answered', label: 'Answered' },
-          { key: 'marked', label: 'Marked' },
-          { key: 'unanswered', label: 'Unans.' },
+          { key: 'all', label: t('filterAll') },
+          { key: 'answered', label: t('answered') },
+          { key: 'marked', label: t('marked') },
+          { key: 'unanswered', label: t('filterUnanswered') },
         ].map((tab) => {
           const isActive = paletteFilter === tab.key;
           return (
@@ -430,7 +432,7 @@ export function ExamQuestionPalette({
               }
             }}
           >
-            {isRevealed ? '✓ Solution Revealed' : 'Submit & Show Solution'}
+            {isRevealed ? t('solutionRevealed') : t('submitAndShowSolution')}
           </button>
         )}
 
@@ -463,7 +465,7 @@ export function ExamQuestionPalette({
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            Finish & View Diagnosis
+            {t('finishAndView')}
           </button>
         )}
       </div>

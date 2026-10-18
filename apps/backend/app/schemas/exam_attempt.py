@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from app.db.models.enums import AttemptMode, QuestionResponseStatus, AttemptStatus, ConfidenceLevel
 
 
@@ -10,15 +10,52 @@ class StartExamRequest(BaseModel):
     exam_id: int | str
     mode: AttemptMode = AttemptMode.EXAM
     force_new: bool = False
+    # The language for the whole attempt: en (default), hi or mr. Ignored when resuming an attempt.
     language: Optional[str] = None
-    
+
     # Dynamic Subject-wise simulation parameters
     dynamic_subject: Optional[str] = None
     dynamic_topic: Optional[str] = None
     dynamic_subtopic: Optional[str] = None
     dynamic_exams: Optional[str] = None  # Comma separated
     dynamic_years: Optional[str] = None  # Comma separated
+    dynamic_difficulty: Optional[str] = None  # Comma separated EASY / MEDIUM / HARD, or "all"
+    dynamic_sets: Optional[str] = None  # Comma separated paper sets e.g. SET_A,SET_B, or "all"
     dynamic_limit: Optional[int] = None
+
+    @field_validator("language")
+    @classmethod
+    def _exam_language(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or not str(value).strip():
+            return None
+        from app.core.languages import exam_language_code
+        code = exam_language_code(value)
+        if code is None:
+            raise ValueError("Exams are available in English, Hindi and Marathi only")
+        return code
+
+    @field_validator("dynamic_sets")
+    @classmethod
+    def _known_sets(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        import re
+        sets = [v.strip().upper() for v in value.split(",") if v.strip() and v.strip().lower() != "all"]
+        bad = [v for v in sets if not re.fullmatch(r"[A-Z0-9_-]{1,20}", v)]
+        if bad:
+            raise ValueError(f"Unknown paper set: {', '.join(bad)}")
+        return ",".join(sets) or None
+
+    @field_validator("dynamic_difficulty")
+    @classmethod
+    def _known_difficulties(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        levels = [v.strip().upper() for v in value.split(",") if v.strip() and v.strip().lower() != "all"]
+        unknown = [v for v in levels if v not in ("EASY", "MEDIUM", "HARD")]
+        if unknown:
+            raise ValueError(f"Unknown difficulty: {', '.join(unknown)}")
+        return ",".join(levels) or None
 
 
 class SaveResponseRequest(BaseModel):
@@ -61,6 +98,8 @@ class BatchSaveResponseAck(BaseModel):
     status: str = "ACCEPTED"
     received_count: int
     response_summary: Optional[ResponseSummary] = None
+    # New answers dropped because the free plan's daily question limit was reached
+    daily_limit_skipped: int = 0
 
 
 class BatchStatusResponse(BaseModel):
@@ -161,6 +200,7 @@ class StartExamResponse(BaseModel):
     # Set on a resumed attempt: time left on the clock and the 1-based question the student was on
     remaining_seconds: Optional[int] = None
     current_question_index: int = 1
+    language: str = "en"
 
 
 class SaveResponseResponse(BaseModel):
@@ -219,6 +259,7 @@ class ExamStatusResponse(BaseModel):
     palette: List[QuestionPaletteItem]
     questions_presigned_url: Optional[str] = None
     questions_folder_url: Optional[str] = None
+    language: str = "en"
 
 
 class HeartbeatResponse(BaseModel):

@@ -40,6 +40,7 @@ import {
   ExamPipelineStatusItem,
   ExamIntegrityQuestionsResponse,
 } from '../../../services/adminService';
+import { ExamMarkingSchemeControl } from '../ExamMarkingSchemeControl';
 import { MissingQuestionsView } from './MissingQuestionsView';
 import { AddMissingQuestionModal } from '../modals/AddMissingQuestionModal';
 import { QuestionReviewCard, QuestionReviewSavePayload } from '../QuestionReviewCard';
@@ -1349,6 +1350,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 >
                   {selectedExam.source_year ? `Year ${selectedExam.source_year}` : '2024'}
                 </span>
+                <ExamMarkingSchemeControl examId={selectedExam.id} onSaved={(msg) => showToast('success', msg)} />
               </div>
             </div>
           </div>

@@ -29,6 +29,7 @@ import { fetchRoles, updateUserRoleAssignment } from '../services/rolesService';
 import { TestimonialApprovalsTab } from '../components/superadmin/TestimonialApprovalsTab';
 import { CreateStaffModal } from '../components/superadmin/CreateStaffModal';
 import PremiumAdmin from '../components/superadmin/premium/PremiumAdmin';
+import { RevenueEngagementTab } from '../components/superadmin/revenue/RevenueEngagementTab';
 import {
   TestimonialItem,
   fetchAllTestimonialsForAdmin,
@@ -368,6 +369,8 @@ export function SuperAdminPage({ onSignedOut }: { onSignedOut: () => void }) {
         );
       case 'premium':
         return <PremiumAdmin />;
+      case 'revenue':
+        return <RevenueEngagementTab />;
       default:
         return null;
     }

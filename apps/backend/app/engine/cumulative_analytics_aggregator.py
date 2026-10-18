@@ -1,8 +1,8 @@
 import math
 import uuid
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
-from sqlmodel import select, col
+from sqlmodel import case, col, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
@@ -31,6 +31,7 @@ from app.engine.matrices.guessing_tendency import GuessingTendencyStrategy
 from app.engine.matrices.fsrs_retention import FSRSEngine
 from app.engine.matrices.confidence_calibration import ConfidenceCalibrationStrategy
 from app.config.logger import setup_logger
+from app.services.scoring import UPSC_MARKS, UPSC_NEGATIVE
 
 logger = setup_logger("CumulativeAnalyticsAggregator")
 
@@ -115,6 +116,22 @@ class CumulativeAnalyticsAggregator:
             )
             rep_db_map = {r.attempt_id: r for r in rep_res.all()}
 
+        # Marks gained and lost per attempt, from each answer's stored score (its paper's own scheme)
+        marks_split: Dict[Any, Tuple[float, float]] = {}
+        if attempt_ids:
+            split_rows = await session.exec(
+                select(
+                    ExamQuestionResponse.attempt_id,
+                    func.coalesce(func.sum(case((col(ExamQuestionResponse.final_score) > 0, ExamQuestionResponse.final_score), else_=0.0)), 0.0),
+                    func.coalesce(func.sum(case((col(ExamQuestionResponse.final_score) < 0, -col(ExamQuestionResponse.final_score)), else_=0.0)), 0.0),
+                )
+                .where(col(ExamQuestionResponse.attempt_id).in_(attempt_ids))
+                .group_by(ExamQuestionResponse.attempt_id)
+            )
+            marks_split = {a_id: (float(g or 0.0), float(l or 0.0)) for a_id, g, l in split_rows.all()}
+        total_marks_gained = 0.0
+        total_marks_lost = 0.0
+
         # 1. Process Timeline & Collect Attempt Reports
         exam_timeline: List[Dict[str, Any]] = []
         all_tax_subjects: Dict[str, Dict[str, Any]] = {}
@@ -167,6 +184,10 @@ class CumulativeAnalyticsAggregator:
             total_questions_attempted_sum += (corr + inc)
             total_correct_sum += corr
             total_incorrect_sum += inc
+            # Attempts without stored answers (e.g. old synced sessions) fall back to UPSC marking
+            att_gained, att_lost = marks_split.get(att.id) or (corr * UPSC_MARKS, inc * UPSC_NEGATIVE)
+            total_marks_gained += att_gained
+            total_marks_lost += att_lost
             total_unattempted_sum += unatt
             total_time_spent_sum += t_spent
 
@@ -273,7 +294,8 @@ class CumulativeAnalyticsAggregator:
                         "topic": q_top,
                         "subtopic": q_sub,
                         "is_correct": eqr.is_correct,
-                        # Unattempted questions score exactly 0; attempted ones score +2 or -0.6667
+                        "final_score": eqr.final_score,
+                        # Unattempted questions score exactly 0; attempted ones score their marks or minus the penalty
                         "is_attempted": bool(eqr.is_correct or (eqr.final_score or 0.0) != 0.0),
                         "time_taken_seconds": eqr.time_taken_seconds,
                         "expected_time_seconds": eqr.expected_time_seconds,
@@ -347,6 +369,14 @@ class CumulativeAnalyticsAggregator:
                         "incorrect": 0,
                     }
 
+                # Marks this answer got under its paper's scheme; UPSC +2 / -2/3 for old reports without it
+                q_awarded = q.get("marks_awarded", q.get("final_score"))
+                gained = lost = 0.0
+                if is_att:
+                    if is_c:
+                        gained = float(q_awarded) if q_awarded is not None and float(q_awarded) > 0 else UPSC_MARKS
+                    else:
+                        lost = -float(q_awarded) if q_awarded is not None and float(q_awarded) <= 0 else UPSC_NEGATIVE
                 for bucket in (
                     all_tax_subjects[s_name],
                     t_obj,
@@ -361,6 +391,8 @@ class CumulativeAnalyticsAggregator:
                             bucket["correct"] += 1
                         else:
                             bucket["incorrect"] += 1
+                        bucket["marks_gained"] = bucket.get("marks_gained", 0.0) + gained
+                        bucket["marks_lost"] = bucket.get("marks_lost", 0.0) + lost
 
                 if is_att:
                     total_q_time_sec += float(q.get("time_taken_seconds") or 0.0)
@@ -490,8 +522,8 @@ class CumulativeAnalyticsAggregator:
             corr_cnt = s_data["correct"]
             inc_cnt = s_data.get("incorrect", max(0, att_cnt - corr_cnt))
             s_acc = round((corr_cnt / max(1, att_cnt)) * 100.0, 1) if att_cnt > 0 else 0.0
-            pos_marks = round(corr_cnt * 2.0, 2)
-            neg_marks = round(inc_cnt * 0.6667, 2)
+            pos_marks = round(s_data.get("marks_gained", corr_cnt * UPSC_MARKS), 2)
+            neg_marks = round(s_data.get("marks_lost", inc_cnt * UPSC_NEGATIVE), 2)
             net_marks = round(pos_marks - neg_marks, 2)
             mean_score = round(net_marks / n_att, 2)
 
@@ -513,8 +545,8 @@ class CumulativeAnalyticsAggregator:
                     t_corr = t_obj["correct"]
                     t_inc = t_obj.get("incorrect", max(0, t_att - t_corr))
                     t_acc = round((t_corr / max(1, t_att)) * 100.0, 1) if t_att > 0 else 0.0
-                    t_pos = round(t_corr * 2.0, 2)
-                    t_neg = round(t_inc * 0.6667, 2)
+                    t_pos = round(t_obj.get("marks_gained", t_corr * UPSC_MARKS), 2)
+                    t_neg = round(t_obj.get("marks_lost", t_inc * UPSC_NEGATIVE), 2)
                     t_net = round(t_pos - t_neg, 2)
                     t_mean = round(t_net / n_att, 2)
 
@@ -534,8 +566,8 @@ class CumulativeAnalyticsAggregator:
                             sub_corr = sub_obj["correct"]
                             sub_inc = sub_obj.get("incorrect", max(0, sub_att - sub_corr))
                             sub_acc = round((sub_corr / max(1, sub_att)) * 100.0, 1) if sub_att > 0 else 0.0
-                            sub_pos = round(sub_corr * 2.0, 2)
-                            sub_neg = round(sub_inc * 0.6667, 2)
+                            sub_pos = round(sub_obj.get("marks_gained", sub_corr * UPSC_MARKS), 2)
+                            sub_neg = round(sub_obj.get("marks_lost", sub_inc * UPSC_NEGATIVE), 2)
                             sub_net = round(sub_pos - sub_neg, 2)
                             sub_obj["accuracy_percentage"] = sub_acc
                             sub_obj["positive_marks"] = sub_pos
@@ -552,8 +584,8 @@ class CumulativeAnalyticsAggregator:
             corr_cnt = t_data["correct"]
             inc_cnt = t_data.get("incorrect", max(0, att_cnt - corr_cnt))
             t_acc = round((corr_cnt / max(1, att_cnt)) * 100.0, 1) if att_cnt > 0 else 0.0
-            pos_marks = round(corr_cnt * 2.0, 2)
-            neg_marks = round(inc_cnt * 0.6667, 2)
+            pos_marks = round(t_data.get("marks_gained", corr_cnt * UPSC_MARKS), 2)
+            neg_marks = round(t_data.get("marks_lost", inc_cnt * UPSC_NEGATIVE), 2)
             net_marks = round(pos_marks - neg_marks, 2)
             mean_score = round(net_marks / n_att, 2)
 
@@ -744,8 +776,8 @@ class CumulativeAnalyticsAggregator:
                 "correct_count": total_correct_sum,
                 "incorrect_count": total_incorrect_sum,
                 "unattempted_count": total_unattempted_sum,
-                "gross_positive_marks": round(total_correct_sum * 2.0, 2),
-                "negative_marks_lost": round(total_incorrect_sum * 0.6667, 2),
+                "gross_positive_marks": round(total_marks_gained, 2),
+                "negative_marks_lost": round(total_marks_lost, 2),
             },
             "psychometrics": {
                 "icrs_score": w_icrs,
@@ -800,11 +832,20 @@ class CumulativeAnalyticsAggregator:
         candidate_dict = {"user_id": str(user.id), "full_name": user.full_name, "email": user.email}
         exam_dict = {"attempt_id": "CUMULATIVE_ALL", "exam_id": "ALL_EXAMS", "exam_name": f"All {n_att} Completed Exams", "exam_code": "CUMULATIVE", "mode": "FULL_MOCK"}
 
-        cum_insight = await ReportAISynthesizer.generate_diagnostic_insight(
-            candidate_info=candidate_dict,
-            exam_info=exam_dict,
-            precalculated_metrics=precalc_payload,
-        )
+        # Free plan: no AI analysis, so no LLM call for the all-exams summary either
+        from app.services.free_plan import is_limited
+        if await is_limited(session, user):
+            cum_insight = ReportAISynthesizer.rule_based_insight(
+                candidate_info=candidate_dict,
+                exam_info=exam_dict,
+                precalculated_metrics=precalc_payload,
+            )
+        else:
+            cum_insight = await ReportAISynthesizer.generate_diagnostic_insight(
+                candidate_info=candidate_dict,
+                exam_info=exam_dict,
+                precalculated_metrics=precalc_payload,
+            )
 
         part_2_exam_macro_scorecard = {
             "score_summary": {
@@ -820,8 +861,8 @@ class CumulativeAnalyticsAggregator:
             "upsc_prelims_benchmark": {
                 "expected_cutoff_marks": 92.0,
                 "cutoff_margin": round((sum(i["total_score"] for i in exam_timeline)/max(1, n_att)) - 92.0, 2),
-                "positive_marks_earned": round(total_correct_sum * 2.0, 2),
-                "negative_marks_lost": round(total_incorrect_sum * 0.6667, 2),
+                "positive_marks_earned": round(total_marks_gained, 2),
+                "negative_marks_lost": round(total_marks_lost, 2),
             },
             "icrs": {"icrs_score": w_icrs, "readiness_tier": icrs_tier, "readiness_label": icrs_label, "interpretation": icrs_interp},
             "irt_3pl": {"latent_ability_theta": w_irt, "percentile_rank": percentile, "ability_label": ability_label},

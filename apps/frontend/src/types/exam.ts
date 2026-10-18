@@ -17,6 +17,9 @@ export interface UploadExamPayload {
   exam_type_id?: number;
   conflict_resolution?: string;
   paper_mode?: PaperMode;
+  /** The paper's marking scheme: marks for a correct answer and marks deducted for a wrong one */
+  marks_per_question?: number;
+  negative_marks_per_question?: number;
 }
 
 export interface UploadExamResponse {
@@ -214,6 +217,8 @@ export interface StartExamResponse {
   /** Set when an IN_PROGRESS attempt is resumed: time left and the 1-based question the student was on. */
   remaining_seconds?: number | null;
   current_question_index?: number;
+  /** The language chosen before starting (en / hi / mr), fixed for the whole attempt. */
+  language?: string;
 }
 
 export interface SaveResponseResponse {
@@ -269,6 +274,7 @@ export interface ExamStatusResponse {
   palette: QuestionPaletteItem[];
   questions_presigned_url?: string | null;
   questions_folder_url?: string | null;
+  language?: string;
 }
 
 export interface HeartbeatResponse {
@@ -388,6 +394,8 @@ export interface SegregatedAggregates {
 }
 
 export interface PsychometricReport {
+  /** Free plan: only the score and per-question review were sent; the analysis is part of Pro. */
+  analysis_locked?: boolean;
   is_cumulative?: boolean;
   exam_timeline?: ExamTimelineItem[];
   segregated_aggregates?: SegregatedAggregates;

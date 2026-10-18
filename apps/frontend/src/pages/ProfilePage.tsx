@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { AdminTopNav } from '../components/admin/AdminTopNav';
@@ -25,8 +25,23 @@ import { updateUserProfile, fetchCurrentUser } from '../services/authService';
 import { useRefreshUserOnFocus } from '../hooks/useRefreshUserOnFocus';
 import { UserAvatar } from '../components/common/UserAvatar';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
-import { WEEKLY_HOURS_OPTIONS, PROFICIENCY_LABELS } from '../constants/onboarding';
+import { WEEKLY_HOURS_OPTIONS, PROFICIENCY_LABELS, TARGET_YEAR_OPTIONS } from '../constants/onboarding';
+import { fetchActiveExamTypes } from '../services/examTypeService';
+import { INDIAN_STATES } from '../constants/indianStates';
+import { checkUsername } from '../services/leaderboardService';
 import { SubjectRatingEditor } from '../components/student/SubjectRatingEditor';
+
+const editableSelectStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 14px',
+  borderRadius: 'var(--radius)',
+  border: '1px solid var(--border-default)',
+  backgroundColor: 'var(--bg-subtle)',
+  color: 'var(--text-primary)',
+  fontSize: 14,
+  outline: 'none',
+  boxSizing: 'border-box',
+};
 
 const lockedFieldStyle: React.CSSProperties = {
   width: '100%',
@@ -50,8 +65,14 @@ export function ProfilePage() {
     return JSON.parse(localStorage.getItem('user') || '{}');
   });
 
-  const [activeTab, setActiveTab] = useState<'personal' | 'exam' | 'billing' | 'security'>('personal');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'personal' | 'exam' | 'billing' | 'security'>(() => {
+    const t = searchParams.get('tab');
+    return t === 'exam' || t === 'billing' || t === 'security' ? t : 'personal';
+  });
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -161,10 +182,60 @@ export function ProfilePage() {
   }, [clerkUser, isClerkLoaded]);
   
   // Exam Target Fields
-  // The primary target (exam / year / optional subject) is set once during onboarding and shown read-only.
-  const targetExam: string = user.target_exam || '';
-  const targetYear: string = user.target_year || '';
+  // Target exam and year can be changed any time; the optional subject is fixed after onboarding.
+  const [targetExam, setTargetExam] = useState<string>(user.target_exam || '');
+  const [targetYear, setTargetYear] = useState<string>(user.target_year || '');
+  useEffect(() => {
+    if (user.target_exam) setTargetExam(user.target_exam);
+    if (user.target_year) setTargetYear(user.target_year);
+  }, [user.target_exam, user.target_year]);
   const optionalSubject: string = user.optional_subject || '';
+  // Leaderboard: state, public username (changeable if free) and which name to show
+  const [stateName, setStateName] = useState<string>(user.state || '');
+  const [username, setUsername] = useState<string>(user.username || '');
+  const [leaderboardDisplay, setLeaderboardDisplay] = useState<'USERNAME' | 'NAME'>(user.leaderboard_display === 'NAME' ? 'NAME' : 'USERNAME');
+  // Weekly summary email: off by default; day 0 = Monday, hour in the student's local time
+  const [weeklyEmail, setWeeklyEmail] = useState({
+    enabled: Boolean(user.weekly_email_enabled),
+    day: typeof user.weekly_email_day === 'number' ? user.weekly_email_day : 6,
+    hour: typeof user.weekly_email_hour === 'number' ? user.weekly_email_hour : 18,
+  });
+  useEffect(() => {
+    if (typeof user.weekly_email_enabled === 'boolean') {
+      setWeeklyEmail({
+        enabled: user.weekly_email_enabled,
+        day: typeof user.weekly_email_day === 'number' ? user.weekly_email_day : 6,
+        hour: typeof user.weekly_email_hour === 'number' ? user.weekly_email_hour : 18,
+      });
+    }
+  }, [user.weekly_email_enabled, user.weekly_email_day, user.weekly_email_hour]);
+  const [usernameStatus, setUsernameStatus] = useState<{ checking: boolean; available: boolean | null; reason: string | null }>({ checking: false, available: null, reason: null });
+  useEffect(() => {
+    if (user.state) setStateName(user.state);
+    if (user.username) setUsername(user.username);
+    if (user.leaderboard_display) setLeaderboardDisplay(user.leaderboard_display === 'NAME' ? 'NAME' : 'USERNAME');
+  }, [user.state, user.username, user.leaderboard_display]);
+  useEffect(() => {
+    const value = username.trim().toLowerCase();
+    if (!value || value === (user.username || '')) {
+      setUsernameStatus({ checking: false, available: null, reason: null });
+      return;
+    }
+    setUsernameStatus({ checking: true, available: null, reason: null });
+    const timer = setTimeout(() => {
+      checkUsername(value).then((r) => setUsernameStatus({ checking: false, available: r.available, reason: r.reason }));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [username, user.username]);
+  const [examOptions, setExamOptions] = useState<string[]>([]);
+  useEffect(() => {
+    fetchActiveExamTypes()
+      .then((types) => setExamOptions(types.filter((t) => t.is_active !== false).map((t) => t.name)))
+      .catch(() => setExamOptions([]));
+  }, []);
+  // Keep the stored values selectable even if they're no longer in the current lists
+  const examChoices = targetExam && !examOptions.includes(targetExam) ? [targetExam, ...examOptions] : examOptions;
+  const yearChoices = targetYear && !TARGET_YEAR_OPTIONS.includes(targetYear) ? [targetYear, ...TARGET_YEAR_OPTIONS] : TARGET_YEAR_OPTIONS;
   const [weeklyGoalHours, setWeeklyGoalHours] = useState(user.weekly_hours || '');
   useEffect(() => {
     if (user.weekly_hours) setWeeklyGoalHours(user.weekly_hours);
@@ -191,34 +262,40 @@ export function ProfilePage() {
 
   useRefreshUserOnFocus(fresh => setUser((prev: any) => ({ ...prev, ...fresh })));
 
-  const handleSaveChanges = (e: React.FormEvent) => {
+  const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedUser = {
-      ...user,
-      full_name: fullName,
-      profile_image: profileImage,
-      phone,
-      bio,
-      weekly_hours: weeklyGoalHours || user.weekly_hours,
-    };
-
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-    setUser(updatedUser);
-    
-    // Trigger window events so header picks up changes
-    window.dispatchEvent(new Event('user_profile_updated'));
-    window.dispatchEvent(new Event('storage'));
-
-    updateUserProfile({
-      full_name: fullName,
-      profile_image: profileImage,
-      phone,
-      // Only the weekly goal is editable; the primary target is locked server-side after onboarding.
-      ...(isAdmin || isSuperAdmin || !weeklyGoalHours ? {} : { weekly_hours: weeklyGoalHours }),
-    }).catch(err => console.error("Failed to sync profile change with backend:", err));
-
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    const isStudent = !(isAdmin || isSuperAdmin);
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      const saved = await updateUserProfile({
+        full_name: fullName,
+        profile_image: profileImage,
+        phone,
+        ...(isStudent && weeklyGoalHours ? { weekly_hours: weeklyGoalHours } : {}),
+        // Target exam and year are editable; the optional subject is locked server-side after onboarding.
+        ...(isStudent && targetExam ? { target_exam: targetExam } : {}),
+        ...(isStudent && targetYear ? { target_year: targetYear } : {}),
+        ...(isStudent ? { state: stateName, leaderboard_display: leaderboardDisplay } : {}),
+        ...(isStudent
+          ? { weekly_email_enabled: weeklyEmail.enabled, weekly_email_day: weeklyEmail.day, weekly_email_hour: weeklyEmail.hour }
+          : {}),
+        ...(isStudent && username.trim() && username.trim().toLowerCase() !== (user.username || '') ? { username: username.trim().toLowerCase() } : {}),
+      });
+      const updatedUser = { ...user, ...saved, bio };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      // Trigger window events so header picks up changes
+      window.dispatchEvent(new Event('user_profile_updated'));
+      window.dispatchEvent(new Event('storage'));
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Failed to save profile:', err);
+      setSaveError(err?.message || 'Could not save your changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const isPro = user.subscription_tier === 'PREMIUM';
@@ -701,33 +778,37 @@ export function ProfilePage() {
             }}
           >
             <div>
-              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                Primary Target Exam <Lock size={12} color="var(--text-muted)" aria-hidden="true" />
+              <label htmlFor="profile-target-exam" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                Primary Target Exam
               </label>
-              <input
-                type="text"
-                readOnly
-                aria-readonly="true"
-                title="Set during onboarding and can't be changed"
+              <select
+                id="profile-target-exam"
                 value={targetExam}
-                placeholder="Not set"
-                style={{ ...lockedFieldStyle }}
-              />
+                onChange={(e) => setTargetExam(e.target.value)}
+                style={editableSelectStyle}
+              >
+                {!targetExam && <option value="">Select exam…</option>}
+                {examChoices.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
             </div>
 
             <div>
-              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                Target Attempt Year <Lock size={12} color="var(--text-muted)" aria-hidden="true" />
+              <label htmlFor="profile-target-year" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                Target Attempt Year
               </label>
-              <input
-                type="text"
-                readOnly
-                aria-readonly="true"
-                title="Set during onboarding and can't be changed"
-                value={targetYear ? `${targetYear} Attempt` : ''}
-                placeholder="Not set"
-                style={{ ...lockedFieldStyle }}
-              />
+              <select
+                id="profile-target-year"
+                value={targetYear}
+                onChange={(e) => setTargetYear(e.target.value)}
+                style={editableSelectStyle}
+              >
+                {!targetYear && <option value="">Select year…</option>}
+                {yearChoices.map((y) => (
+                  <option key={y} value={y}>{y} Attempt</option>
+                ))}
+              </select>
             </div>
 
             {/* Only older UPSC profiles have an optional subject; onboarding no longer asks for it. */}
@@ -772,6 +853,106 @@ export function ProfilePage() {
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Leaderboard identity */}
+            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: 16, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 16 : 20 }}>
+              <div style={{ gridColumn: '1 / -1', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                Leaderboard
+                <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-muted)', marginTop: 2 }}>
+                  Your state places you in the state ranking. Others see your username or your real name, as you choose.
+                </div>
+              </div>
+              <div>
+                <label htmlFor="profile-state" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>State</label>
+                <select id="profile-state" value={stateName} onChange={(e) => setStateName(e.target.value)} style={editableSelectStyle}>
+                  <option value="">Select state…</option>
+                  {INDIAN_STATES.map((st) => <option key={st} value={st}>{st}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="profile-username" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>Username</label>
+                <input
+                  id="profile-username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g. aspirant_2027"
+                  maxLength={20}
+                  autoComplete="off"
+                  aria-describedby="profile-username-help"
+                  style={{ ...editableSelectStyle }}
+                />
+                <div id="profile-username-help" style={{ fontSize: 12, marginTop: 5, color: usernameStatus.available === false ? 'var(--primary-red)' : usernameStatus.available ? '#059669' : 'var(--text-muted)' }}>
+                  {usernameStatus.checking
+                    ? 'Checking…'
+                    : usernameStatus.available === true
+                    ? 'Available'
+                    : usernameStatus.available === false
+                    ? (usernameStatus.reason || 'Not available')
+                    : '3-20 characters: lowercase letters, numbers or underscores'}
+                </div>
+              </div>
+              <fieldset style={{ gridColumn: '1 / -1', border: 'none', padding: 0, margin: 0 }}>
+                <legend style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Show on the leaderboard</legend>
+                <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 14 }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="radio" name="leaderboard-display" checked={leaderboardDisplay === 'USERNAME'} onChange={() => setLeaderboardDisplay('USERNAME')} />
+                    My username{username.trim() ? ` (${username.trim().toLowerCase()})` : ''}
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="radio" name="leaderboard-display" checked={leaderboardDisplay === 'NAME'} onChange={() => setLeaderboardDisplay('NAME')} />
+                    My real name ({fullName || 'your name'})
+                  </label>
+                </div>
+              </fieldset>
+            </div>
+
+            {/* Weekly summary email, scheduled by the student */}
+            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: 16 }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={weeklyEmail.enabled}
+                  onChange={(e) => setWeeklyEmail({ ...weeklyEmail, enabled: e.target.checked })}
+                />
+                Email me a weekly summary
+              </label>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '2px 0 10px 26px' }}>
+                Questions, accuracy, tests, XP, streak, milestones and your rank for the past 7 days. Every email has an unsubscribe link.
+              </div>
+              {weeklyEmail.enabled && (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
+                  <div>
+                    <label htmlFor="profile-weekly-day" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>Day</label>
+                    <select
+                      id="profile-weekly-day"
+                      value={weeklyEmail.day}
+                      onChange={(e) => setWeeklyEmail({ ...weeklyEmail, day: Number(e.target.value) })}
+                      style={editableSelectStyle}
+                    >
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((d, i) => (
+                        <option key={d} value={i}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="profile-weekly-hour" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>Time</label>
+                    <select
+                      id="profile-weekly-hour"
+                      value={weeklyEmail.hour}
+                      onChange={(e) => setWeeklyEmail({ ...weeklyEmail, hour: Number(e.target.value) })}
+                      style={editableSelectStyle}
+                    >
+                      {Array.from({ length: 24 }, (_, h) => (
+                        <option key={h} value={h}>
+                          {`${((h + 11) % 12) + 1}:00 ${h < 12 ? 'AM' : 'PM'}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Self-rated proficiency: editable here, also prompted for before the first study plan */}
@@ -905,7 +1086,7 @@ export function ProfilePage() {
             >
               <Lock size={14} style={{ flexShrink: 0, marginTop: 2 }} />
               <span>
-                Your primary target exam and attempt year were set during onboarding and can't be edited here. Your weekly goal can be changed any time.
+                You can change your target exam, attempt year and weekly goal any time.{optionalSubject ? ' Your optional subject was set during onboarding and stays fixed.' : ''}
               </span>
             </div>
 
@@ -1119,6 +1300,7 @@ export function ProfilePage() {
         <div style={{ marginTop: 24, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: isMobile ? 12 : 16 }}>
           <button
             type="submit"
+            disabled={isSaving}
             style={{
               padding: '12px 24px',
               width: isMobile ? '100%' : undefined,
@@ -1138,9 +1320,14 @@ export function ProfilePage() {
             }}
           >
             <Save size={18} />
-            <span>Save Profile Settings</span>
+            <span>{isSaving ? 'Saving…' : 'Save Profile Settings'}</span>
           </button>
 
+          {saveError && (
+            <div role="alert" style={{ color: 'var(--primary-red)', fontSize: 13, fontWeight: 700 }}>
+              {saveError}
+            </div>
+          )}
           {savedSuccess && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#3A8B53', fontSize: 13, fontWeight: 700 }}>
               <Check size={18} />

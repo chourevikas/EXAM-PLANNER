@@ -1,7 +1,8 @@
 import React from 'react';
 import { Clock, ChevronRight, Focus, Minimize2, SlidersHorizontal, Lightbulb, Globe } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { SUPPORTED_LANGUAGES } from '../../constants/languages';
+import { getLanguageOption } from '../../constants/languages';
+import { useExamText } from '../../i18n/examText';
 
 interface ExamHeaderProps {
   examTitle: string;
@@ -15,7 +16,6 @@ interface ExamHeaderProps {
   subtopicName?: string;
   parentBreadcrumb?: string;
   onBack?: () => void;
-  onLanguageChange: (lang: string) => void;
   onSubmitClick?: () => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
@@ -36,7 +36,6 @@ export function ExamHeader({
   subtopicName,
   parentBreadcrumb,
   onBack,
-  onLanguageChange,
   onSubmitClick,
   focusMode = false,
   onToggleFocusMode,
@@ -47,6 +46,7 @@ export function ExamHeader({
   const isAuth = !!(localStorage.getItem('access_token') && localStorage.getItem('user'));
   const rootBreadcrumb = parentBreadcrumb || (isAuth ? 'Dashboard' : 'Home');
   const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const { t } = useExamText();
 
   // One height for every header control so the select, icon buttons and Submit line up
   // (the touch-target class would otherwise stretch only the buttons to 44px).
@@ -205,7 +205,7 @@ export function ExamHeader({
                   lineHeight: 1,
                 }}
               >
-                TIME REMAINING
+                {t('timeRemaining')}
               </span>
             )}
             <span
@@ -235,8 +235,9 @@ export function ExamHeader({
           minWidth: 0,
         }}
       >
-        {/* Language Selector Dropdown */}
+        {/* The session's language: chosen before starting, fixed until it ends */}
         <div
+          data-testid="exam-language"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -248,38 +249,15 @@ export function ExamHeader({
             ...controlBox,
             color: 'var(--bg-card)',
             flexShrink: 0,
-            transition: 'border-color 0.2s ease',
+            fontSize: 'clamp(11px, 2vw, 12.5px)',
+            fontWeight: 600,
+            fontFamily: "'IBM Plex Sans', sans-serif",
           }}
-          title="Select Exam Language"
+          title="Language for this session. It was chosen before starting and can't be changed now."
         >
           {!isMobile && <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)', flexShrink: 0 }} />}
-          <select
-            value={language}
-            onChange={(e) => onLanguageChange(e.target.value)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--bg-card)',
-              fontSize: 'clamp(11px, 2vw, 12.5px)',
-              fontWeight: 600,
-              outline: 'none',
-              cursor: 'pointer',
-              fontFamily: "'IBM Plex Sans', sans-serif",
-              maxWidth: isMobile ? 84 : 130,
-            }}
-            aria-label="Select exam language"
-          >
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <option
-                key={lang.code}
-                value={lang.code}
-                style={{ background: 'var(--deep-navy)', color: '#FFFFFF' }}
-              >
-                {/* Phones only have room for the short native name */}
-                {isMobile ? lang.nativeName : `${lang.nativeName} (${lang.name})`}
-              </option>
-            ))}
-          </select>
+          {/* Phones only have room for the short native name */}
+          <span>{isMobile ? getLanguageOption(language).nativeName : `${getLanguageOption(language).nativeName} (${getLanguageOption(language).name})`}</span>
         </div>
         {isTabletOrBelow && onFilterClick && (
           <button
@@ -361,10 +339,10 @@ export function ExamHeader({
               whiteSpace: 'nowrap',
               transition: 'all 0.15s ease',
             }}
-            title={focusMode ? 'Exit Full Screen' : 'Enter Full Screen'}
+            title={focusMode ? t('exitFullScreen') : t('enterFullScreen')}
           >
             {focusMode ? <Minimize2 size={13} /> : <Focus size={13} />}
-            {!isTabletOrBelow && <span>{focusMode ? 'Exit Focus' : 'Full Screen'}</span>}
+            {!isTabletOrBelow && <span>{focusMode ? t('exitFocus') : t('fullScreen')}</span>}
           </button>
         )}
         {showSubmitButton && onSubmitClick && (
@@ -397,7 +375,7 @@ export function ExamHeader({
                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
             }}
           >
-            {isSubmitting ? 'Submitting...' : isMobile ? 'Submit' : 'Submit Test'}
+            {isSubmitting ? t('submitting') : isMobile ? t('submit') : t('submitTest')}
           </button>
         )}
       </div>

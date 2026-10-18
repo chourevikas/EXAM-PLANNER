@@ -312,7 +312,21 @@ class QuestionTranslationService:
                 # Commit batch for this language safely with retries
                 await sess.commit()
 
-            # 6. Finalize PipelineRun
+            # 6. Explanations and option analyses (English -> Hindi/Marathi). A failure here doesn't
+            # undo the question translations; the nightly job retries what's missing.
+            explanation_counts: Dict[str, int] = {}
+            try:
+                await self._update_run_status(sess, exam_id, "RUNNING", "TRANSLATING_EXPLANATIONS", 96.0)
+                from app.services.explanation_translation_service import translate_explanations
+                explanation_counts = await translate_explanations(
+                    sess, self.translator, question_ids=q_ids,
+                    target_languages=[iso for iso, _ in langs_to_process],
+                )
+            except Exception as expl_err:
+                await sess.rollback()
+                log.warning(f"Explanation translation for Exam #{exam_id} failed (retried nightly): {expl_err}")
+
+            # 7. Finalize PipelineRun
             await self._update_run_status(
                 sess, exam_id, "COMPLETED", "ALL_22_LANGUAGES_TRANSLATED", 100.0
             )
@@ -326,6 +340,8 @@ class QuestionTranslationService:
                 "questions_count": len(questions),
                 "translations_added": total_added,
                 "languages_processed": total_langs,
+                "explanations_added": explanation_counts.get("explanations_added", 0),
+                "analyses_added": explanation_counts.get("analyses_added", 0),
             }
 
         try:

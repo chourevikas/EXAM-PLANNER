@@ -151,6 +151,65 @@ async def send_pending_tasks_summary_email(email: EmailStr, user_name: str, pend
         return False
 
 
+async def send_weekly_summary_email(email: str, user_name: str, summary: dict, unsubscribe_url: str) -> bool:
+    """The student's weekly summary (scheduled by them), with a one-click unsubscribe link."""
+    from html import escape
+
+    def stat(label: str, value: str) -> str:
+        return (
+            "<td style='padding:12px;text-align:center;border:1px solid #E2E8F0;border-radius:6px'>"
+            f"<div style='font-size:22px;font-weight:bold;color:#0F172A'>{escape(value)}</div>"
+            f"<div style='font-size:12px;color:#64748B'>{escape(label)}</div></td>"
+        )
+
+    accuracy = f"{summary['accuracy']}%" if summary.get("accuracy") is not None else "—"
+    milestones = summary.get("milestones") or []
+    rank = summary.get("national_rank")
+    extras = []
+    if milestones:
+        extras.append(f"🏅 New milestones: <strong>{escape(', '.join(milestones))}</strong>")
+    if rank:
+        extras.append(f"🏆 National rank: <strong>#{rank}</strong>")
+    if summary.get("streak"):
+        extras.append(f"🔥 Current streak: <strong>{summary['streak']} day(s)</strong>")
+    if not summary.get("questions"):
+        extras.append("No questions answered this week. A short practice session today keeps your streak going.")
+
+    html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color:#0F172A;margin:0 0 4px">Your week on ExamPlanner</h2>
+        <p style="margin:0 0 16px;color:#64748B">Hi {escape(user_name or 'there')}, here's how the last 7 days went.</p>
+        <table role="presentation" style="width:100%;border-collapse:separate;border-spacing:8px"><tr>
+          {stat('Questions', str(summary.get('questions', 0)))}
+          {stat('Accuracy', accuracy)}
+          {stat('Tests', str(summary.get('tests', 0)))}
+          {stat('XP earned', str(summary.get('xp', 0)))}
+        </tr></table>
+        {''.join(f'<p style="margin:8px 0">{line}</p>' for line in extras)}
+        <div style="text-align:center;margin:28px 0">
+          <a href="{settings.FRONTEND_URL}/dashboard" style="background-color:#4F46E5;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:bold">Open your dashboard</a>
+        </div>
+        <p style="color:#94A3B8;font-size:12px">You chose to get this summary every week.
+          <a href="{escape(unsubscribe_url)}" style="color:#94A3B8">Unsubscribe</a> or change the day in your profile.</p>
+      </body>
+    </html>
+    """
+    subject = "Your week on ExamPlanner"
+    try:
+        if settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            message = MessageSchema(subject=subject, recipients=[email], body=html, subtype=MessageType.html)
+            await FastMail(get_fastmail_config()).send_message(message)
+            return True
+        if await _send_via_aws_ses([str(email)], subject, html):
+            return True
+        logger.info(f"📧 [DEV] Weekly summary email simulated for {email}: {summary}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send weekly summary email: {e}")
+        return False
+
+
 async def send_admin_notification_subscription(user_email: str, user_name: str):
     """Sends a notification email to the admin when a user successfully upgrades to premium."""
     

@@ -18,7 +18,8 @@ interface SimilarQuestionsSectionProps {
  */
 export function SimilarQuestionsSection({ questionId, language = 'en', limit = 4 }: SimilarQuestionsSectionProps) {
   const noExclusions = useMemo(() => new Set<string>(), []);
-  const { similar, isLoading } = useSimilarQuestions(questionId, language, noExclusions, limit);
+  // Post-test review: the same theme as it appeared in other years' papers
+  const { similar, isLoading } = useSimilarQuestions(questionId, language, noExclusions, limit, true);
   const [expandedId, setExpandedId] = useState<number | string | null>(null);
   const [answers, setAnswers] = useState<Record<string | number, number | string>>({});
   const [solutions, setSolutions] = useState<Record<string | number, QuestionSolutionData>>({});
@@ -43,15 +44,15 @@ export function SimilarQuestionsSection({ questionId, language = 'en', limit = 4
   if (!isLoading && similar.length === 0) return null;
 
   return (
-    <section aria-label="Similar questions" style={{ marginTop: 16 }}>
+    <section aria-label="Same theme in other years" style={{ marginTop: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <Layers size={15} color="var(--primary-red)" aria-hidden="true" />
         <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--primary-red)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Similar questions
+          Same theme in other years
         </span>
       </div>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 10px 0', lineHeight: 1.4 }}>
-        Previous-year questions on the same articles, acts and concepts. Try one to lock in this topic.
+        How this topic was asked in other years&apos; papers. Try one to lock it in.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {isLoading && similar.length === 0 ? (

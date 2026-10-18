@@ -342,6 +342,7 @@ async def get_similar_questions(
     include_related: bool = Query(default=True, description="Also match through relationships (e.g. Suba -> Sarkar)"),
     include_question: bool = Query(default=False, description="Embed each result's question card (text + options)"),
     language: str = Query(default="en", description="Language of embedded question cards"),
+    other_years_only: bool = Query(default=False, description="Only questions from other years (the same theme in other papers)"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -360,10 +361,41 @@ async def get_similar_questions(
         raise HTTPException(status_code=404, detail="Question not found")
         
     service = QuestionService(session)
-    
+
+    # "Same theme in other years": look wider, then drop matches from this paper or this year
+    fetch_limit = min(50, limit * 4) if other_years_only else limit
+
+    async def _from_other_years(results: list) -> list:
+        if not other_years_only or not results:
+            return results
+        from sqlmodel import select, col
+        from app.db.models.hierarchy import Exam
+
+        def year_of(q, exam_years):
+            return q.source_year or exam_years.get(q.exam_id)
+
+        ids = [int(r["question_id"]) for r in results if r.get("question_id") is not None]
+        rows = (await session.exec(select(Question).where(col(Question.id).in_(ids + [target_q.id])))).all()
+        exam_years = dict((await session.exec(
+            select(Exam.id, Exam.source_year).where(col(Exam.id).in_({q.exam_id for q in rows if q.exam_id}))
+        )).all())
+        by_id = {q.id: q for q in rows}
+        own_year = year_of(target_q, exam_years)
+        kept = []
+        for r in results:
+            q = by_id.get(int(r["question_id"])) if r.get("question_id") is not None else None
+            if q is None or q.exam_id == target_q.exam_id:
+                continue
+            year = year_of(q, exam_years)
+            if own_year is not None and year == own_year:
+                continue
+            r.setdefault("source_year", year)
+            kept.append(r)
+        return kept[:limit]
+
     if target_q.knowledge_tags_ai:
         # Use AI Jaccard Similarity; if it finds nothing, fall through to the deterministic layer
-        results = await service.get_similar_questions(qid_int, limit=limit)
+        results = await _from_other_years(await service.get_similar_questions(qid_int, limit=fetch_limit))
         if results:
             if include_question:
                 from sqlmodel import select, col
@@ -385,16 +417,16 @@ async def get_similar_questions(
     lang_code = parse_language(language)
     cache_key = build_cache_key(
         "questions:similar", str(qid_int), lim=limit, min=min_score, rel=include_related,
-        q=include_question, l=lang_code.value if include_question else None,
+        q=include_question, l=lang_code.value if include_question else None, oy=other_years_only,
     )
     cached = await cache.get(cache_key)
     if cached is not None:
         return JSONResponse(content=cached)
 
     from app.knowledge.similarity import SimilarityService
-    results = await SimilarityService(session).find_similar(
-        qid_int, limit=limit, min_score=min_score, include_related=include_related
-    )
+    results = await _from_other_years(await SimilarityService(session).find_similar(
+        qid_int, limit=fetch_limit, min_score=min_score, include_related=include_related
+    ))
     if include_question and results:
         from sqlmodel import select, col
         q_ids = [int(r["question_id"]) for r in results if r.get("question_id") is not None]
@@ -587,6 +619,27 @@ async def get_question_markdown_file(
     return await service.get_question_markdown_file(qid_int)
 
 
+async def _explanation_in_language(session: AsyncSession, question_id: int, lang_code: "LanguageCode"):
+    """The question's explanation in lang_code, else English, else any language; None when there is none."""
+    from app.db.models import QuestionExplanation
+    from app.db.models.enums import LanguageCode
+    from sqlalchemy import case
+    from sqlmodel import select, col
+
+    preference = case(
+        (col(QuestionExplanation.language) == lang_code, 0),
+        (col(QuestionExplanation.language) == LanguageCode.ENGLISH, 1),
+        else_=2,
+    )
+    stmt = (
+        select(QuestionExplanation)
+        .where(col(QuestionExplanation.question_id) == question_id)
+        .order_by(preference, col(QuestionExplanation.id))
+        .limit(1)
+    )
+    return (await session.exec(stmt)).first()
+
+
 @router.get("/{question_id}/solution", summary="Get Full Solution & Distractor Analysis for a Question", dependencies=[Depends(require_question_visible)])
 async def get_question_solution(
     question_id: int | str,
@@ -604,7 +657,7 @@ async def get_question_solution(
 
     lang_code = parse_language(language)
     from app.cache import get_cache, build_cache_key
-    from app.db.models import Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionOptionReasoning
+    from app.db.models import Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionOptionReasoning, LanguageCode
     from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
     from sqlalchemy import select
     from sqlmodel import col
@@ -619,7 +672,11 @@ async def get_question_solution(
     # Single optimized SQL join query: fetches Question, Explanation, Options, Translations, and Distractor Reasonings
     stmt = (
         select(Question, QuestionExplanation, QuestionOption, OptionTranslation, QuestionOptionReasoning)
-        .outerjoin(QuestionExplanation, col(QuestionExplanation.question_id) == col(Question.id))
+        # One explanation row per question: the requested language (English/other fallback below)
+        .outerjoin(
+            QuestionExplanation,
+            (col(QuestionExplanation.question_id) == col(Question.id)) & (col(QuestionExplanation.language) == lang_code),
+        )
         .join(QuestionOption, col(QuestionOption.question_id) == col(Question.id))
         .outerjoin(OptionTranslation, col(OptionTranslation.option_id) == col(QuestionOption.id))
         .outerjoin(QuestionOptionReasoning, col(QuestionOptionReasoning.question_option_id) == col(QuestionOption.id))
@@ -633,7 +690,7 @@ async def get_question_solution(
         q = await session.get(Question, qid_int)
         if not q or q.status == QuestionStatus.REJECTED:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
-        expl = (await session.exec(select(QuestionExplanation).where(col(QuestionExplanation.question_id) == q.id))).first()
+        expl = await _explanation_in_language(session, q.id, lang_code)
         sol_card = {
             "question_id": str(q.id),
             "question_number": q.question_number_in_paper,
@@ -653,39 +710,36 @@ async def get_question_solution(
         return JSONResponse(content=jsonable_encoder(sol_card))
 
     q = rows[0][0]
-    expl = rows[0][1]
+    expl = rows[0][1] or await _explanation_in_language(session, q.id, lang_code)
 
     correct_option_id = None
     correct_option_label = "A"
     distractor_scores = {}
 
+    def _lang_rank(row) -> int:
+        return 0 if row.language == lang_code else (1 if row.language == LanguageCode.ENGLISH else 2)
+
     opt_data = {}
     for _, _, opt, ot, qr in rows:
         if opt.id not in opt_data:
-            opt_data[opt.id] = {
-                "opt": opt,
-                "ot": None,
-                "qr": qr,
-            }
-        cur_ot = opt_data[opt.id]["ot"]
-        if ot:
-            if not cur_ot:
-                opt_data[opt.id]["ot"] = ot
-            elif ot.language == language or (hasattr(ot.language, "value") and ot.language.value == lang_str):
-                opt_data[opt.id]["ot"] = ot
-            elif ot.distractor_analysis and not cur_ot.distractor_analysis:
-                opt_data[opt.id]["ot"] = ot
+            opt_data[opt.id] = {"opt": opt, "ots": [], "qr": qr}
+        if ot and all(o.id != ot.id for o in opt_data[opt.id]["ots"]):
+            opt_data[opt.id]["ots"].append(ot)
         if qr and not opt_data[opt.id]["qr"]:
             opt_data[opt.id]["qr"] = qr
 
     for opt_id, entry in opt_data.items():
         opt = entry["opt"]
-        ot = entry["ot"]
         qr = entry["qr"]
+        # Option text and its analysis are chosen separately, each in the requested language, else
+        # English, else any: an option translated into Hindi before its analysis still shows one
+        ot = min(entry["ots"], key=_lang_rank, default=None)
+        analysed = [o for o in entry["ots"] if o.distractor_analysis and o.distractor_analysis.strip()]
+        analysis_row = min(analysed, key=_lang_rank, default=None)
 
         analysis_text = None
-        if ot and ot.distractor_analysis:
-            analysis_text = ot.distractor_analysis
+        if analysis_row:
+            analysis_text = analysis_row.distractor_analysis
         elif qr:
             why_t = (qr.why_tempting or "").strip()
             whats_t = (qr.whats_actually_true or "").strip()

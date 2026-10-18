@@ -1,3 +1,4 @@
+import { MonthlyPlanView } from '../components/student/MonthlyPlanView';
 import React, { useState, useEffect } from 'react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
@@ -264,7 +265,7 @@ function renderActivityCategoryDropdowns(
 }
 
 export function StudyPlannerPage() {
-  const [activeTab, setActiveTab] = useState<'weekly' | 'daily' | 'logs' | 'history'>('weekly');
+  const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'daily' | 'logs' | 'history'>('weekly');
   const [schedule, setSchedule] = useState<WeeklyScheduleResponse | null>(null);
   const [tasks, setTasks] = useState<StudyTaskItem[]>([]);
   const [activities, setActivities] = useState<StudyActivityItem[]>([]);
@@ -319,6 +320,26 @@ export function StudyPlannerPage() {
       fetchStudyTasks()
     ]);
     return { schedule: newSch, tasks: newTasks };
+  };
+
+  const [isRebuilding, setIsRebuilding] = useState(false);
+  const refreshWeek = async () => {
+    const [newSch, newTasks] = await Promise.all([fetchWeeklySchedule(), fetchStudyTasks()]);
+    setSchedule(newSch);
+    setTasks(newTasks);
+  };
+  const handleRebuildWeek = async () => {
+    setIsRebuilding(true);
+    setPlanError(null);
+    try {
+      const generated = await generatePlan();
+      setSchedule(generated.schedule);
+      setTasks(generated.tasks);
+    } catch {
+      setPlanError("We couldn't rebuild your week. Please try again.");
+    } finally {
+      setIsRebuilding(false);
+    }
   };
 
   const handleRatingPromptDone = async (saved: boolean) => {
@@ -671,6 +692,7 @@ export function StudyPlannerPage() {
       <div style={{ display: 'flex', gap: 12, marginBottom: 28, borderBottom: '1px solid var(--border-default)', paddingBottom: 12, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {[
           { key: 'weekly', label: '7-Day Weekly Board', icon: Ico.Cal },
+          { key: 'monthly', label: 'Month plan', icon: Ico.Cal },
           { key: 'daily', label: `Today's Focus (${todayTasks.length})`, icon: Ico.Check },
           { key: 'logs', label: `Study Session Logs (${activities.length})`, icon: Ico.Clock },
           { key: 'history', label: `Study History (${completedTasks.length})`, icon: Ico.Check }
@@ -724,6 +746,15 @@ export function StudyPlannerPage() {
                         Total Weekly Target: <strong>{Math.round(schedule.days.reduce((acc, d) => acc + d.allocated_minutes, 0) / 60)} hours</strong>
                       </div>
                     </div>
+                    <button
+                      data-testid="rebuild-week"
+                      onClick={handleRebuildWeek}
+                      disabled={isRebuilding}
+                      title="Replaces the generated tasks you haven't done yet. Your own tasks and finished ones stay."
+                      style={{ padding: '8px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--accent-border)', background: 'var(--accent-bg)', color: 'var(--accent-primary)', fontSize: 13, fontWeight: 700, cursor: isRebuilding ? 'wait' : 'pointer' }}
+                    >
+                      {isRebuilding ? 'Rebuilding…' : 'Rebuild from my results'}
+                    </button>
                   </div>
 
                   {schedule.days.every(d => d.tasks.length === 0) && (
@@ -734,7 +765,7 @@ export function StudyPlannerPage() {
                     }}>
                       <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Setting Up Your Weekly Study Targets...</div>
                       <div style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 500 }}>
-                        Your 7-day target plan across Polity, History, Economy, Geography, Environment, CSAT & Mocks is automatically initialized.
+                        Your week is built from your own results: revision when questions fall due, your weakest topics, new topics and a test day.
                       </div>
                     </div>
                   )}
@@ -1048,6 +1079,8 @@ export function StudyPlannerPage() {
                 )}
               </div>
             )}
+
+            {activeTab === 'monthly' && <MonthlyPlanView onGenerated={() => { refreshWeek().catch(() => {}); }} />}
 
             {/* TAB 4: STUDY HISTORY (COMPLETED TASKS) */}
             {activeTab === 'history' && (

@@ -296,7 +296,7 @@ export function MonthlyReportPage() {
           </div>
           <h1 style={bannerTitleStyle}>Monthly Performance & National Rank</h1>
           <p style={BANNER_SUBTITLE_STYLE}>
-            Percentile growth curve and exam readiness index for {data?.period || 'August 2026'}.
+            Percentile growth curve and exam readiness index for {data?.period || 'this month'}.
           </p>
         </div>
 
@@ -330,12 +330,16 @@ export function MonthlyReportPage() {
           <div style={metricGridStyle}>
             {/* 1. Predicted AIR */}
             <StudentMetricCard
-              title="PREDICTED ALL INDIA RANK"
-              value={`#${data?.predicted_rank ? data.predicted_rank.toLocaleString() : '---'}`}
+              title="PROJECTED ALL INDIA RANK"
+              value={data?.predicted_rank ? `#${data.predicted_rank.toLocaleString()}` : '—'}
               supportingText={
-                <span style={{ color: 'var(--success-green)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <TrendingUp size={14} /> Top {data?.top_percentage ?? 0}% among {data?.active_aspirants ? data.active_aspirants.toLocaleString() : '24,000'}+ active aspirants
-                </span>
+                data?.predicted_rank ? (
+                  <span style={{ color: 'var(--success-green)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <TrendingUp size={14} /> Top {data.top_percentage}% · projected from UPSC cut-off trends
+                  </span>
+                ) : (
+                  'Take a test to see your projected rank'
+                )
               }
               icon={<Award size={18} />}
               accentColor="var(--primary-red)"
@@ -344,11 +348,17 @@ export function MonthlyReportPage() {
             {/* 2. Overall Percentile */}
             <StudentMetricCard
               title="OVERALL PERCENTILE"
-              value={`${data?.overall_percentile ?? 0} %ile`}
+              value={data?.overall_percentile != null ? `${data.overall_percentile} %ile` : '—'}
               supportingText={
-                <span style={{ color: data?.percentile_delta && data.percentile_delta >= 0 ? 'var(--success-green)' : 'var(--warning-yellow)' }}>
-                  {data?.percentile_delta && data.percentile_delta >= 0 ? '↑ Up' : '↓ Down'} {Math.abs(data?.percentile_delta ?? 0)} %ile from last month ({data?.previous_month_percentile ?? 0} %ile)
-                </span>
+                data?.percentile_delta != null ? (
+                  <span style={{ color: data.percentile_delta >= 0 ? 'var(--success-green)' : 'var(--warning-yellow)' }}>
+                    {data.percentile_delta >= 0 ? '↑ Up' : '↓ Down'} {Math.abs(data.percentile_delta)} %ile from last month ({data.previous_month_percentile} %ile)
+                  </span>
+                ) : data?.overall_percentile != null ? (
+                  'Needs tests in both this month and last month to compare'
+                ) : (
+                  'Take a test to see your percentile'
+                )
               }
               icon={<BarChart2 size={18} />}
               accentColor="#3A8B53"
@@ -357,8 +367,8 @@ export function MonthlyReportPage() {
             {/* 3. Exam Readiness Index */}
             <StudentMetricCard
               title="EXAM READINESS INDEX"
-              value={`${data?.readiness_index ?? 0} / 100`}
-              supportingText={data?.readiness_status ?? 'High probability of clearing Prelims cutoff'}
+              value={data?.readiness_index != null ? `${data.readiness_index} / 100` : '—'}
+              supportingText={data?.readiness_status ?? ''}
               icon={<ShieldCheck size={18} />}
               accentColor="#F2B623"
             />
@@ -383,13 +393,15 @@ export function MonthlyReportPage() {
                     <div key={`growth_${pt.month}_${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}>
                         <span style={{ color: 'var(--text-primary)' }}>{pt.month}</span>
-                        <span style={{ color: 'var(--primary-red)' }}>{pt.percentile} %ile</span>
+                        <span style={{ color: pt.percentile != null ? 'var(--primary-red)' : 'var(--text-muted)' }}>
+                          {pt.percentile != null ? `${pt.percentile} %ile · ${pt.tests} test${pt.tests === 1 ? '' : 's'}` : 'No tests'}
+                        </span>
                       </div>
                       <div style={{ height: 10, width: '100%', backgroundColor: 'var(--bg-muted)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
                         <div
                           style={{
                             height: '100%',
-                            width: `${Math.min(pt.percentile, 100)}%`,
+                            width: `${Math.min(pt.percentile ?? 0, 100)}%`,
                             background: 'linear-gradient(90deg, var(--primary-red) 0%, #3A8B53 100%)',
                             borderRadius: 'var(--radius)',
                             transition: 'width 0.6s ease',
@@ -447,7 +459,7 @@ export function MonthlyReportPage() {
               <div>
                 <div style={CARD_HEADER_STYLE}>
                   <h3 style={CARD_TITLE_STYLE}>
-                    <Target size={18} color="#3A8B53" /> Subject Accuracy vs National Average
+                    <Target size={18} color="#3A8B53" /> Subject Accuracy vs ExamPlanner Average
                   </h3>
                   <span style={SUBJECT_BADGE_STYLE}>
                     {data?.subject_benchmark?.length || 0} Subjects
@@ -461,10 +473,10 @@ export function MonthlyReportPage() {
                         <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {formatEnum(sb.subject)}
                         </span>
-                        <span style={{ color: sb.user_accuracy >= sb.national_avg_accuracy ? 'var(--success-green)' : 'var(--warning-yellow)', flexShrink: 0 }}>
+                        <span style={{ color: sb.national_avg_accuracy == null || sb.user_accuracy >= sb.national_avg_accuracy ? 'var(--success-green)' : 'var(--warning-yellow)', flexShrink: 0 }}>
                           {sb.user_accuracy}%{' '}
                           <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 400 }}>
-                            (Nat: {sb.national_avg_accuracy}%)
+                            {sb.national_avg_accuracy != null ? `(Avg: ${sb.national_avg_accuracy}%)` : '(Avg: not enough data yet)'}
                           </span>
                         </span>
                       </div>
@@ -476,7 +488,7 @@ export function MonthlyReportPage() {
                             style={{
                               height: '100%',
                               width: `${sb.user_accuracy}%`,
-                              backgroundColor: sb.user_accuracy >= sb.national_avg_accuracy ? 'var(--success-green)' : 'var(--warning-yellow)',
+                              backgroundColor: sb.national_avg_accuracy == null || sb.user_accuracy >= sb.national_avg_accuracy ? 'var(--success-green)' : 'var(--warning-yellow)',
                               borderRadius: 'var(--radius)',
                             }}
                           />

@@ -83,6 +83,10 @@ class Exam(SQLModel, table=True):
     total_marks: Optional[float] = Field(
         default=200.0, description="Total paper maximum marks e.g. 200.0"
     )
+    # The paper's marking scheme, asked when it is added; copied onto its questions, which every score
+    # and report uses. None on very old rows means "the exam type's, else UPSC's".
+    marks_per_question: Optional[float] = Field(default=None, description="Marks for a correct answer e.g. 2.0")
+    negative_marks_per_question: Optional[float] = Field(default=None, description="Marks deducted for a wrong answer e.g. 0.67")
 
     description: Optional[str] = Field(default=None)
     pdf_path: Optional[str] = Field(default=None, description="S3 or local relative path to Question Paper PDF")

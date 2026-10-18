@@ -12,10 +12,10 @@ import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
 import { LogStudyModal } from '../components/student/LogStudyModal';
 import { fetchWeeklySchedule } from '../services/studyPlannerService';
+import { fetchLeaderboard } from '../services/leaderboardService';
 import { StudentMetricCardSkeleton } from '../components/student/StudentMetricCardSkeleton';
 import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 
-import { fetchPredictedRank, PredictedRankResponse } from '../services/analyticsService';
 import { ChevronLeft, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { formatEnum } from '../utils/formatEnum';
@@ -45,7 +45,6 @@ export function DashboardPage() {
   const [todayActivities, setTodayActivities] = useState<any[]>([]);
   const [subjectData, setSubjectData] = useState<any[]>([]);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState<boolean>(true);
-  const [predictedRank, setPredictedRank] = useState<PredictedRankResponse | null>(null);
   const [studyLog, setStudyLog] = useState<any>({
     activity_type: 'REVISION',
     activity_source: 'UNPLANNED',
@@ -60,6 +59,22 @@ export function DashboardPage() {
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
 
   const [dashboardStats, setDashboardStats] = useState<any>(null);
+  // National rank from the daily leaderboard (null until ranked)
+  const [nationalRank, setNationalRank] = useState<{ rank: number; total: number } | null>(null);
+  useEffect(() => {
+    fetchLeaderboard({ scope: 'national', pageSize: 1 })
+      .then((lb) => setNationalRank(lb.me ? { rank: lb.me.rank, total: lb.total } : null))
+      .catch(() => setNationalRank(null));
+  }, []);
+  // Questions due for spaced revision today (null until loaded)
+  const [revisionDue, setRevisionDue] = useState<{ due_today: number; topics: { subtopic: string; questions: number }[] } | null>(null);
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    guardedFetch('/api/v1/users/me/revision', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setRevisionDue)
+      .catch(() => setRevisionDue(null));
+  }, []);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [studyHoursData, setStudyHoursData] = useState<Array<{ day: string; hours: number; date?: string; logged_minutes?: number }>>([
     { day: 'Mon', hours: 0 },
@@ -127,7 +142,6 @@ export function DashboardPage() {
         statsResult,
         subjectResult,
         activityResult,
-        rankResult,
         badgesResult,
         examsResult,
         scheduleResult,
@@ -136,7 +150,6 @@ export function DashboardPage() {
         guardedFetch('/api/v1/attempts/student-dashboard-stats', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
         guardedFetch('/api/v1/analytics/subject-performance', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
         guardedFetch('/api/v1/analytics/activity/today', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
-        fetchPredictedRank(),
         token ? guardedFetch('/api/v1/study-plan/badges', { headers: authHeaders }).then(r => r.ok ? r.json() : null) : Promise.resolve(null),
         listExams(),
         fetchWeeklySchedule(),
@@ -154,9 +167,6 @@ export function DashboardPage() {
       }
       if (activityResult.status === 'fulfilled' && Array.isArray(activityResult.value)) {
         setTodayActivities(activityResult.value);
-      }
-      if (rankResult.status === 'fulfilled' && rankResult.value) {
-        setPredictedRank(rankResult.value);
       }
       if (badgesResult.status === 'fulfilled' && badgesResult.value?.unlocked) {
         setBadges(badgesResult.value);
@@ -187,6 +197,12 @@ export function DashboardPage() {
 
   const isFreeTier = user.subscription_tier !== 'PREMIUM';
 
+  const smartInsight = buildSmartInsight(subjectData);
+  // Chart only the subjects the student has answered; with no activity yet, show the full (empty) list
+  const answeredSubjects = subjectData.filter((s: any) => s.total_attempted > 0);
+  const chartSubjects = answeredSubjects.length > 0 ? answeredSubjects : subjectData;
+  const behaviour: DashboardBehaviour | undefined = dashboardStats?.behaviour;
+
   const todayQuestionsAttempted = todayActivities.reduce((acc: number, curr: any) => acc + (curr.questions_attempted || 0), 0);
   const totalQuestionsSolved = dashboardStats && dashboardStats.totalQuestionsAttempted !== undefined
     ? dashboardStats.totalQuestionsAttempted
@@ -203,7 +219,7 @@ export function DashboardPage() {
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 'clamp(13px, 2.5vw, 15px)', flexWrap: 'wrap' }}>
             <div style={{ color: 'var(--accent-primary)', flexShrink: 0 }}><Ico.Brain /></div>
-            <span><strong style={{ color: 'var(--text-primary)' }}>Smart Insight:</strong> Your polity accuracy is up 12% this week. Keep up the momentum!</span>
+            <span><strong style={{ color: 'var(--text-primary)' }}>Smart Insight:</strong> {smartInsight}</span>
           </div>
         </div>
 
@@ -232,6 +248,39 @@ export function DashboardPage() {
           <Ico.Pen /> Log Today's Study
         </button>
       </section>
+
+      {/* Due for revision today (spaced repetition) */}
+      {revisionDue && revisionDue.due_today > 0 && (
+        <section
+          data-testid="revision-due"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+            padding: '14px 18px', marginBottom: 20, borderRadius: 'var(--radius)',
+            backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-primary)' }}>
+              {revisionDue.due_today} {revisionDue.due_today === 1 ? 'question is' : 'questions are'} due for revision today
+            </div>
+            {revisionDue.topics.length > 0 && (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                Mostly {revisionDue.topics.slice(0, 3).map((t) => t.subtopic).join(', ')}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/practice-exam?source=revision')}
+            style={{
+              padding: '10px 16px', borderRadius: 'var(--radius)', border: 'none', backgroundColor: 'var(--primary-red)',
+              color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+            }}
+          >
+            Revise now
+          </button>
+        </section>
+      )}
 
       {/* 2. Key Metrics Grid (Admin Dashboard Design Language) */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 18, marginBottom: 32 }}>
@@ -295,6 +344,16 @@ export function DashboardPage() {
                 </span>
               }
               supportingText={
+                <span style={{ display: 'inline-flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                {nationalRank && (
+                  <Link
+                    to="/leaderboard"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ color: 'var(--text-primary)', fontWeight: 700, textDecoration: 'none' }}
+                  >
+                    Rank #{nationalRank.rank.toLocaleString()} of {nationalRank.total.toLocaleString()}
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -308,6 +367,7 @@ export function DashboardPage() {
                 >
                   View Achievements <Ico.ArrowRight size={13} />
                 </button>
+                </span>
               }
               icon={<Ico.Star filled />}
               onClick={() => navigate('/reports/monthly')}
@@ -349,7 +409,7 @@ export function DashboardPage() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={subjectData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={chartSubjects} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border-color)" opacity={0.6} />
                   <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} domain={[0, 100]} unit="%" />
@@ -372,7 +432,7 @@ export function DashboardPage() {
                     }}
                   />
                   <Bar dataKey="accuracy" radius={[6, 6, 0, 0]} maxBarSize={38}>
-                    {subjectData.map((entry: any, index: number) => (
+                    {chartSubjects.map((entry: any, index: number) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={entry.total_attempted === 0 ? 'var(--border-color)' : entry.accuracy >= 75 ? '#3A8B53' : entry.accuracy >= 60 ? 'var(--primary-red)' : '#F2B623'}
@@ -500,6 +560,12 @@ export function DashboardPage() {
               </div>
             </div>
 
+            {!behaviour || behaviour.answered === 0 ? (
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+                Answer a few questions in a practice test to see how you answer: first-try accuracy, near misses,
+                revisits, answer changes and pace.
+              </p>
+            ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 'clamp(16px, 3vw, 32px)' }}>
               {/* Decision Accuracy */}
               <div>
@@ -507,17 +573,17 @@ export function DashboardPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div style={{ padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Direct Hits</span>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--success-primary)' }}>68%</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Correct First Time</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--success-primary)' }}>{behaviour.first_try_correct_pct}%</span>
                     </div>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Perfect accuracy on first attempt.</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Right answer without changing it.</p>
                   </div>
                   <div style={{ padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Partial Understanding</span>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--warning-primary)' }}>22%</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Near Misses</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--warning-primary)' }}>{behaviour.near_miss_pct}%</span>
                     </div>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Selected the 2nd most probable option.</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Wrong, but picked the option closest to correct.</p>
                   </div>
                 </div>
               </div>
@@ -526,40 +592,29 @@ export function DashboardPage() {
               <div>
                 <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-disabled)', fontWeight: 700, marginBottom: 16 }}>Behavior Analysis</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Question Jumping</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-primary)' }}>Moderate (12 times)</span>
-                    </div>
-                    <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-                      <div style={{ width: '40%', height: '100%', backgroundColor: 'var(--warning-primary)', borderRadius: 'var(--radius)' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Option Hesitation</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--success-primary)' }}>Low (Avg 4s)</span>
-                    </div>
-                    <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-                      <div style={{ width: '15%', height: '100%', backgroundColor: 'var(--success-primary)', borderRadius: 'var(--radius)' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Avg Time / Question</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-primary)' }}>1m 12s</span>
-                    </div>
-                    <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-                      <div style={{ width: '60%', height: '100%', backgroundColor: 'var(--accent-primary)', borderRadius: 'var(--radius)' }} />
-                    </div>
-                  </div>
-
+                  <BehaviourBar
+                    label="Question Revisits"
+                    {...rateLevel(behaviour.revisits_per_10, 2, 5)}
+                    value={`${behaviour.revisits_per_10} per 10 Qs`}
+                    fill={Math.min(behaviour.revisits_per_10 / 10, 1)}
+                  />
+                  <BehaviourBar
+                    label="Answer Changes"
+                    {...rateLevel(behaviour.answer_changes_per_10, 1, 3)}
+                    value={`${behaviour.answer_changes_per_10} per 10 Qs`}
+                    fill={Math.min(behaviour.answer_changes_per_10 / 5, 1)}
+                  />
+                  <BehaviourBar
+                    label="Avg Time / Question"
+                    level=""
+                    color="var(--accent-primary)"
+                    value={formatSeconds(behaviour.avg_seconds_per_question)}
+                    fill={Math.min(behaviour.avg_seconds_per_question / 120, 1)}
+                  />
                 </div>
               </div>
             </div>
+            )}
           </div>
         </div>
 
@@ -986,9 +1041,9 @@ export function DashboardPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
               {/* Earned Badges */}
-              {badges?.unlocked?.map(badge => (
+              {badges?.unlocked?.map((badge: any) => (
                 <div key={badge.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--success-bg, rgba(16, 185, 129, 0.1))', borderRadius: 'var(--radius)', border: '1px solid var(--success-primary)' }}>
-                  <div style={{ fontSize: 32 }}>{badge.icon_url}</div>
+                  <div style={{ fontSize: 32 }}>{badge.icon_url || (badge.milestone ? '🏅' : '')}</div>
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{badge.name}</div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{badge.description}</div>
@@ -997,15 +1052,27 @@ export function DashboardPage() {
               ))}
 
               {/* Locked Badges */}
-              {badges?.locked?.map(badge => (
-                <div key={badge.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', border: '1px dashed var(--border-disabled)', opacity: 0.6 }}>
-                  <div style={{ fontSize: 32, filter: 'grayscale(1)' }}>{badge.icon_url}</div>
-                  <div>
+              {badges?.locked?.map((badge: any) => (
+                <div key={badge.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', border: '1px dashed var(--border-disabled)', opacity: badge.milestone ? 0.9 : 0.6 }}>
+                  <div style={{ fontSize: 32, filter: 'grayscale(1)' }}>{badge.icon_url || (badge.milestone ? '🏅' : '')}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                       {badge.name}
                       {badge.required_xp && <span style={{ fontSize: 11, backgroundColor: 'var(--bg-card)', padding: '2px 6px', borderRadius: 'var(--radius)', marginLeft: 8 }}>Requires {badge.required_xp} XP</span>}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{badge.description}</div>
+                    {/* Milestones show how close the student is */}
+                    {badge.milestone && (
+                      <div style={{ marginTop: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
+                          <span>{badge.milestone.criteria_label}: {badge.milestone.progress.toLocaleString()} / {badge.milestone.threshold.toLocaleString()}</span>
+                          {badge.milestone.xp_reward > 0 && <span>+{badge.milestone.xp_reward} XP</span>}
+                        </div>
+                        <div style={{ height: 6, backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min((badge.milestone.progress / Math.max(badge.milestone.threshold, 1)) * 100, 100)}%`, height: '100%', backgroundColor: 'var(--accent-primary)' }} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1043,5 +1110,59 @@ export function DashboardPage() {
         }}
       />
     </StudentLayout>
+  );
+}
+
+interface DashboardBehaviour {
+  answered: number;
+  first_try_correct_pct: number;
+  near_miss_pct: number;
+  revisits_per_10: number;
+  answer_changes_per_10: number;
+  avg_seconds_per_question: number;
+}
+
+/** One-line insight from the student's real subject accuracy (subjects with at least 5 answers count). */
+function buildSmartInsight(subjects: Array<{ subject: string; accuracy: number; total_attempted: number }>): string {
+  const answered = subjects.filter((s) => s.total_attempted > 0);
+  const solid = answered.filter((s) => s.total_attempted >= 5);
+  const pool = solid.length > 0 ? solid : answered;
+  if (pool.length === 0) return 'Take a practice test to unlock insights about your strong and weak subjects.';
+  if (pool.length === 1) {
+    const only = pool[0];
+    return `${only.accuracy}% accuracy in ${only.subject} so far. Try another subject to compare.`;
+  }
+  const sorted = [...pool].sort((a, b) => b.accuracy - a.accuracy);
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+  return `Your strongest subject is ${best.subject} (${best.accuracy}%). Focus on ${worst.subject} (${worst.accuracy}%) next.`;
+}
+
+/** Low / Moderate / High for a per-10-questions rate, with a matching colour. */
+function rateLevel(rate: number, moderateAt: number, highAt: number): { level: string; color: string } {
+  if (rate >= highAt) return { level: 'High', color: 'var(--primary-red)' };
+  if (rate >= moderateAt) return { level: 'Moderate', color: 'var(--warning-primary)' };
+  return { level: 'Low', color: 'var(--success-primary)' };
+}
+
+function formatSeconds(totalSeconds: number): string {
+  const secs = Math.round(totalSeconds);
+  if (secs < 60) return `${secs}s`;
+  return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+}
+
+function BehaviourBar({ label, level, value, color, fill }: { label: string; level: string; value: string; color: string; fill: number }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color, textAlign: 'right' }}>
+          {level ? `${level} (${value})` : value}
+        </span>
+      </div>
+      <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+        <div style={{ width: `${Math.max(fill, 0.03) * 100}%`, height: '100%', backgroundColor: color, borderRadius: 'var(--radius)' }} />
+      </div>
+    </div>
   );
 }

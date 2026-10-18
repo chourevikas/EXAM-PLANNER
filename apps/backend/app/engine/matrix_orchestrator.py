@@ -19,6 +19,7 @@ from app.engine.matrices.integrated_cognitive_readiness import IntegratedCogniti
 from app.engine.matrices.confidence_calibration import ConfidenceCalibrationStrategy
 from app.engine.matrices.answer_rounds import AnswerRoundStrategy
 from app.config.logger import setup_logger
+from app.services.scoring import awarded, question_marks
 
 logger = setup_logger("MatrixOrchestrator")
 
@@ -64,6 +65,39 @@ def accuracy_retention_estimate(acc_pct: float) -> float:
         return round(40.0 + (acc_pct / 50.0) * 18.0, 1)
     return 30.0
 
+
+
+DIFFICULTY_LEVELS = ("EASY", "MEDIUM", "HARD")
+
+
+def difficulty_breakdown(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Per difficulty level: questions, attempted, correct, wrong, skipped, accuracy (of attempted) and avg time.
+
+    Levels with no questions are left out. Unknown or missing difficulty counts as MEDIUM (the question default).
+    """
+    def level_of(q: Dict[str, Any]) -> str:
+        level = str(q.get("difficulty") or "MEDIUM").upper()
+        return level if level in DIFFICULTY_LEVELS else "MEDIUM"
+
+    rows = []
+    for level in DIFFICULTY_LEVELS:
+        qs = [q for q in questions if level_of(q) == level]
+        if not qs:
+            continue
+        attempted = [q for q in qs if q.get("is_attempted")]
+        correct = sum(1 for q in attempted if q.get("is_correct"))
+        times = [float(q.get("time_taken_seconds") or 0.0) for q in attempted]
+        rows.append({
+            "difficulty": level,
+            "total": len(qs),
+            "attempted": len(attempted),
+            "correct": correct,
+            "incorrect": len(attempted) - correct,
+            "unattempted": len(qs) - len(attempted),
+            "accuracy_pct": round(correct * 100.0 / len(attempted), 1) if attempted else None,
+            "avg_time_seconds": round(sum(times) / len(times), 1) if times else None,
+        })
+    return rows
 
 class MatrixOrchestrator:
     """
@@ -142,6 +176,8 @@ class MatrixOrchestrator:
             time_taken = float(r.get("time_taken_seconds", 0.0) or 0.0)
             exp_time = float(r.get("expected_time_seconds", 60.0) or 60.0)
             c_score = float(r.get("closeness_score_awarded", 1.0 if is_corr else 0.0))
+            # This question's marking scheme (UPSC +2 / -2/3 when the report input doesn't say)
+            q_pos, q_neg = question_marks(r.get("marks"), r.get("negative_marks"))
 
             # Compute item GTI mathematically if not already set
             gti_item = float(r.get("gti_item_score", 0.0))
@@ -165,8 +201,8 @@ class MatrixOrchestrator:
                 time_taken_sec=time_taken,
                 expected_time_sec=exp_time,
                 closeness_score=c_score,
-                marks_pos=float(r.get("marks", 2.0)),
-                marks_neg=float(r.get("negative_marks", 0.66)),
+                marks_pos=q_pos,
+                marks_neg=q_neg,
             )
 
             time_eff_ratio = round(time_taken / max(1.0, exp_time), 2)
@@ -266,12 +302,14 @@ class MatrixOrchestrator:
             is_sw = bool(r.get("is_switched", False))
             if is_sw:
                 init_corr = bool(r.get("initial_correct", False))
+                # A switch from wrong to right gains the marks plus the penalty avoided (UPSC: +2.67)
+                swing = q_pos + q_neg
                 if not init_corr and is_corr:
-                    osri_status = "Rewarding Switch (+2.67 Marks)"
-                    osri_impact = 2.6667
+                    osri_status = f"Rewarding Switch (+{swing:.2f} Marks)"
+                    osri_impact = round(swing, 4)
                 elif init_corr and not is_corr:
-                    osri_status = "Costly Second-Guess (-2.67 Marks)"
-                    osri_impact = -2.6667
+                    osri_status = f"Costly Second-Guess (-{swing:.2f} Marks)"
+                    osri_impact = -round(swing, 4)
                 else:
                     osri_status = "Neutral Switch"
                     osri_impact = 0.0
@@ -325,7 +363,8 @@ class MatrixOrchestrator:
                     "pacing_efficiency": pacing_friendly,
                     "time_efficiency_ratio": time_eff_ratio,
                     "time_efficiency_score": time_score_pct,
-                    "marks_awarded": round(2.0 if is_corr else (-0.6667 if r.get("selected_option_id") is not None else 0.0), 2),
+                    "marks_awarded": round(awarded(is_corr, r.get("selected_option_id") is not None, q_pos, q_neg), 2),
+                    "marks": q_pos,
                     "gti_item_score": round(gti_item, 4),
                     "item_guessing_label": item_guessing_label,
                     "confidence_level": r.get("confidence_level"),
@@ -593,7 +632,10 @@ class MatrixOrchestrator:
             "strategic_skip_count": strategic_cnt,
             "wasted_time_on_abandoned_seconds": round(wasted_abandoned_time, 1),
             "missed_easy_questions_count": missed_easy_cnt,
-            "potential_marks_left_on_table": round(missed_easy_cnt * 2.0, 2),
+            "potential_marks_left_on_table": round(sum(
+                float(q.get("marks") or 2.0) for q in part_1_questions
+                if not q.get("is_attempted") and str(q.get("difficulty", "")).upper() == "EASY"
+            ), 2),
         }
 
         # Human-friendly Readiness tier labels
@@ -764,9 +806,10 @@ class MatrixOrchestrator:
             strong_spots_categorized["techniques"].append("Well-Calibrated Confidence")
 
         # Mode-Aware Benchmark Analysis (Full Mock vs Practice / Guest Exam)
-        corr_marks = round(tot_corr_count * 2.0, 2)
+        # Gained and lost marks from each answer's own score (each paper's marking scheme)
+        corr_marks = round(sum(r["final_score"] for r in response_payloads if r["final_score"] > 0), 2)
         inc_count = sum(1 for r in response_payloads if not r["is_correct"] and r.get("selected_option_id") is not None)
-        neg_marks = round(inc_count * 0.6667, 2)
+        neg_marks = round(-sum(r["final_score"] for r in response_payloads if r["final_score"] < 0), 2)
         net_marks = round(tot_score, 2)
         if is_practice_test:
             # Scaled 46% qualifying target based on test max score
@@ -845,6 +888,7 @@ class MatrixOrchestrator:
             "closeness_distribution": closeness_counts,
             "unattempted_summary": unattempted_summary,
             "unattempted_analysis": unattempted_summary,
+            "difficulty_breakdown": difficulty_breakdown(part_1_questions),
             "confidence_calibration": confidence_eval,
             "answer_rounds": answer_rounds,
             "mentorship_insight": instant_mentorship_insight,

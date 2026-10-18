@@ -23,6 +23,7 @@ import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSo
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { ReportQuestionModal } from './ReportQuestionModal';
 import { getLanguageOption } from '../../constants/languages';
+import { useExamText, ExamTextKey } from '../../i18n/examText';
 
 interface ExamQuestionCardProps {
   question:
@@ -105,38 +106,65 @@ function cleanQuestionTextBody(rawText: string): string {
   return text.trim();
 }
 
+/** The question's own text in a non-English language ('' when it has none); no English fallback. */
+function findTranslatedQuestionText(q: any, cleanLang: string): string {
+  let raw = '';
+  const langOpt = getLanguageOption(cleanLang);
+  const enumName = langOpt?.enumName || cleanLang.toUpperCase();
+  const upper = cleanLang.toUpperCase();
+
+  if (cleanLang === 'hi' || cleanLang === 'hindi') {
+    if (q.textHindi) raw = q.textHindi;
+    else if (q.text_hindi) raw = q.text_hindi;
+    else if (q.question_text_hindi) raw = q.question_text_hindi;
+    else if (q.question_text_hi) raw = q.question_text_hi;
+  } else if (cleanLang === 'mr' || cleanLang === 'marathi') {
+    if (q.textMarathi) raw = q.textMarathi;
+    else if (q.text_marathi) raw = q.text_marathi;
+  }
+
+  if (!raw && q.translations) {
+    const t =
+      q.translations[enumName] ||
+      q.translations[cleanLang] ||
+      q.translations[upper] ||
+      q.translations[langOpt?.name?.toLowerCase()] ||
+      (cleanLang === 'hi' ? q.translations.HINDI : null) ||
+      (cleanLang === 'mr' ? q.translations.MARATHI : null);
+    if (typeof t === 'string') raw = t;
+    else if (t?.text) raw = t.text;
+    else if (t?.question_text) raw = t.question_text;
+  }
+  return raw;
+}
+
+/** The English text from the question's translations ('' when not included). */
+function englishTranslationText(q: any): string {
+  const eng = q?.translations?.ENGLISH || q?.translations?.en;
+  if (typeof eng === 'string') return eng;
+  return eng?.text || eng?.question_text || '';
+}
+
+/**
+ * True when a Hindi/Marathi session has to show this question in English: there is no text in the
+ * language, or the stored "translation" is just a copy of the English.
+ */
+export function isQuestionShownInEnglish(q: any, lang: string): boolean {
+  const cleanLang = (lang || 'en').trim().toLowerCase();
+  if (!q || cleanLang === 'en' || cleanLang === 'english') return false;
+  const translated = findTranslatedQuestionText(q, cleanLang).trim();
+  if (!translated) return true;
+  const english = englishTranslationText(q).trim();
+  return !!english && translated === english;
+}
+
 export function getQuestionText(q: any, lang: string): string {
   if (!q) return '';
   const cleanLang = (lang || 'en').trim().toLowerCase();
   let raw = '';
 
   if (cleanLang !== 'en' && cleanLang !== 'english') {
-    const langOpt = getLanguageOption(cleanLang);
-    const enumName = langOpt?.enumName || cleanLang.toUpperCase();
-    const upper = cleanLang.toUpperCase();
-
-    if (cleanLang === 'hi' || cleanLang === 'hindi') {
-      if (q.textHindi) raw = q.textHindi;
-      else if (q.text_hindi) raw = q.text_hindi;
-      else if (q.question_text_hindi) raw = q.question_text_hindi;
-      else if (q.question_text_hi) raw = q.question_text_hi;
-    } else if (cleanLang === 'mr' || cleanLang === 'marathi') {
-      if (q.textMarathi) raw = q.textMarathi;
-      else if (q.text_marathi) raw = q.text_marathi;
-    }
-
-    if (!raw && q.translations) {
-      const t =
-        q.translations[enumName] ||
-        q.translations[cleanLang] ||
-        q.translations[upper] ||
-        q.translations[langOpt?.name?.toLowerCase()] ||
-        (cleanLang === 'hi' ? q.translations.HINDI : null) ||
-        (cleanLang === 'mr' ? q.translations.MARATHI : null);
-      if (typeof t === 'string') raw = t;
-      else if (t?.text) raw = t.text;
-      else if (t?.question_text) raw = t.question_text;
-    }
+    raw = findTranslatedQuestionText(q, cleanLang);
   }
 
   if (!raw) {
@@ -312,6 +340,7 @@ export function ExamQuestionCard({
   confidence = null,
   onConfidenceChange,
 }: ExamQuestionCardProps) {
+  const { t } = useExamText();
   const [showDetailedSolution, setShowDetailedSolution] = useState<boolean>(false);
   const [showReport, setShowReport] = useState<boolean>(false);
 
@@ -378,6 +407,8 @@ export function ExamQuestionCard({
 
   const passageContent = getPassageText(question, language);
   const questionContent = getQuestionText(question, language);
+  // In a Hindi/Marathi session, a question with no translation yet is shown in English with a note
+  const shownInEnglish = !!questionContent.trim() && isQuestionShownInEnglish(question, language);
 
   const options = (question.options || []).map((opt: any, optIdx: number) => {
     const rawLabel = opt.option_label || opt.label;
@@ -584,8 +615,9 @@ export function ExamQuestionCard({
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  QUESTION {(question as any)?.question_number || questionIndex + 1}{' '}
-                  {totalQuestions ? `OF ${totalQuestions}` : ''}
+                  {totalQuestions
+                    ? t('questionNumberOf', { n: (question as any)?.question_number || questionIndex + 1, total: totalQuestions })
+                    : t('questionNumber', { n: (question as any)?.question_number || questionIndex + 1 })}
                 </span>
 
                 {/* Difficulty Badge */}
@@ -612,7 +644,7 @@ export function ExamQuestionCard({
                       backgroundColor: diffColors.text,
                     }}
                   />
-                  {difficultyLabel}
+                  {['EASY', 'MEDIUM', 'HARD'].includes(difficultyLabel) ? t(difficultyLabel as ExamTextKey) : difficultyLabel}
                 </span>
 
                 {/* Time & Tier Badge */}
@@ -729,8 +761,8 @@ export function ExamQuestionCard({
                   <button
                     type="button"
                     onClick={() => setShowReport(true)}
-                    title="Report a problem with this question"
-                    aria-label="Report a problem with this question"
+                    title={t('reportProblem')}
+                    aria-label={t('reportProblem')}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -760,7 +792,7 @@ export function ExamQuestionCard({
                   <button
                     type="button"
                     onClick={onToggleBookmark}
-                    title={isBookmarked ? 'Remove Bookmark' : 'Bookmark Question'}
+                    title={isBookmarked ? t('removeBookmark') : t('bookmarkQuestion')}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -799,6 +831,23 @@ export function ExamQuestionCard({
               flexDirection: 'column',
             }}
           >
+            {shownInEnglish && (
+              <div
+                role="note"
+                data-testid="not-in-language"
+                style={{
+                  marginBottom: 10,
+                  padding: '6px 10px',
+                  fontSize: 12.5,
+                  color: '#92400E',
+                  backgroundColor: '#FFFBEB',
+                  border: '1px solid #FDE68A',
+                  borderRadius: 'var(--radius)',
+                }}
+              >
+                {t('notInLanguage', { language: getLanguageOption(language).name })}
+              </div>
+            )}
             {/* Question Body */}
             <div
               style={{
@@ -1084,7 +1133,7 @@ export function ExamQuestionCard({
                       }}
                     >
                       <ChevronLeft size={15} />
-                      {!isMobile && <span>Prev</span>}
+                      {!isMobile && <span>{t('prev')}</span>}
                     </button>
                   )}
 
@@ -1114,7 +1163,7 @@ export function ExamQuestionCard({
                         fontFamily: "'Plus Jakarta Sans', sans-serif",
                       }}
                     >
-                      <span>Next</span>
+                      <span>{t('next')}</span>
                       <ChevronRight size={15} />
                     </button>
                   )}
@@ -1184,12 +1233,12 @@ export function ExamQuestionCard({
                           {isRevealing ? (
                             <>
                               <Loader2 size={14} className="spin-loader" />
-                              <span>Loading solution...</span>
+                              <span>{t('loadingSolution')}</span>
                             </>
                           ) : (
                             <>
                               <CheckCircle2 size={14} />
-                              <span>Submit & Show Solution</span>
+                              <span>{t('submitAndShowSolution')}</span>
                             </>
                           )}
                         </button>
@@ -1228,7 +1277,7 @@ export function ExamQuestionCard({
                             size={14}
                             color={showDetailedSolution ? 'var(--primary-red)' : '#64748B'}
                           />
-                          <span>{showDetailedSolution ? 'Hide Solution' : 'Show Solution'}</span>
+                          <span>{showDetailedSolution ? t('hideSolution') : t('showSolution')}</span>
                         </button>
                       )}
                     </>

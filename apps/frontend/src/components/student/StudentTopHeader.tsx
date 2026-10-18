@@ -182,26 +182,12 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             topics: data.topics || []
           });
         } else {
-          throw new Error('Fallback search');
+          throw new Error(`Search failed (${res.status})`);
         }
       } catch (err) {
-        const q = searchQuery.toLowerCase();
-        const mockResults = [
-          { id: 'm1', title: 'UPSC Prelims Practice Test #12', type: 'Practice Test', url: '/mocks' },
-          { id: 'm2', title: 'GS Paper I Topic Test - Polity', type: 'Sectional', url: '/mocks' }
-        ].filter(m => m.title.toLowerCase().includes(q));
-
-        const pyqResults = [
-          { id: 'p1', title: 'UPSC CSE 2023 GS Paper I', type: 'PYQ Paper', url: '/pyq' },
-          { id: 'p2', title: 'UPSC CSE 2022 GS Paper I', type: 'PYQ Paper', url: '/pyq' }
-        ].filter(p => p.title.toLowerCase().includes(q));
-
-        const topicResults = [
-          { id: 't1', title: 'Fundamental Rights & Preamble', type: 'Polity', url: '/study-planner' },
-          { id: 't2', title: 'Monetary Policy & RBI Guidelines', type: 'Economy', url: '/study-planner' }
-        ].filter(t => t.title.toLowerCase().includes(q));
-
-        setSearchResults({ mocks: mockResults, pyqs: pyqResults, topics: topicResults });
+        // Show nothing rather than made-up matches when search is unavailable
+        console.warn('Search failed:', err);
+        setSearchResults({ mocks: [], pyqs: [], topics: [] });
       } finally {
         setIsSearching(false);
       }
