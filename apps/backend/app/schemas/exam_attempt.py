@@ -152,6 +152,9 @@ class QuestionOut(BaseModel):
     passage_translations: Optional[Dict[str, Any]] = None
     text_hindi: Optional[str] = None
     passage_text_hindi: Optional[str] = None
+    # The source paper's exam tag ("MPSC", "UPSC", ...) and year, for the question card
+    exam_name: Optional[str] = None
+    source_year: Optional[int] = None
 
 
 class NavigationMeta(BaseModel):

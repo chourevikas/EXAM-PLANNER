@@ -300,7 +300,11 @@ class ExamJsonBuilder:
             for sb in sb_res.all():
                 subjects_map[sb.id] = sb
 
+        # 8. Exam badge ("MPSC", "UPSC", ...) per source paper; a subject-wise test mixes several papers
+        exam_badges = await self._exam_badges({q.exam_id for q in questions if q.exam_id})
+
         return {
+            "exam_badges": exam_badges,
             "trans_map": trans_map,
             "options_map": options_map,
             "opt_trans_map": opt_trans_map,
@@ -314,6 +318,20 @@ class ExamJsonBuilder:
             "subjects_map": subjects_map,
             "assets_map": assets_map,
         }
+
+    async def _exam_badges(self, exam_ids: set) -> Dict[int, str]:
+        """Short exam tag for each paper id, from its name, the same label the practice question cards show."""
+        if not exam_ids:
+            return {}
+        from app.services.exam_session_service import exam_badge_label, load_exam_type_codes
+        type_codes = await load_exam_type_codes(self.session)
+        rows = (await self.session.exec(select(Exam).where(col(Exam.id).in_(list(exam_ids))))).all()
+        badges: Dict[int, str] = {}
+        for e in rows:
+            label = exam_badge_label(e.name or e.code, type_codes)
+            if label:
+                badges[e.id] = label
+        return badges
 
     async def build_single_question_cards(
         self,
@@ -600,6 +618,11 @@ class ExamJsonBuilder:
         else:
             q_assets = []
 
+        if preloaded is not None:
+            exam_badge = preloaded.get("exam_badges", {}).get(q.exam_id)
+        else:
+            exam_badge = (await self._exam_badges({q.exam_id} if q.exam_id else set())).get(q.exam_id)
+
         q_card = {
             "question_id": str(q.id),
             "question_number": q.question_number_in_paper,
@@ -620,6 +643,8 @@ class ExamJsonBuilder:
             "topic": top_name,
             "subtopic": sub_name,
             "options": public_options,
+            "exam_name": exam_badge,
+            "source_year": q.source_year,
         }
 
         sol_card = {} if not include_solution_data else {
