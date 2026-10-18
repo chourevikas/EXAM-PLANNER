@@ -242,8 +242,8 @@ export function StudentSidebar({
           </div>
         </nav>
 
-        {/* Upgrade to PRO Box preserved at bottom */}
-        {!isCollapsedDesktop && (
+        {/* Upgrade to PRO Box preserved at bottom — hidden for students already on Premium */}
+        {!isCollapsedDesktop && user?.subscription_tier !== 'PREMIUM' && (
           <div style={{ padding: 12 }}>
             <div
               style={{

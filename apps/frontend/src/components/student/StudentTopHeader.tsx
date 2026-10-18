@@ -16,6 +16,7 @@ import {
   Trophy,
   Menu,
   Zap,
+  Flame,
   X
 } from 'lucide-react';
 import { UserAvatar } from '../common/UserAvatar';
@@ -354,6 +355,30 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
       {/* Right Controls: Notification Bell, User Avatar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16, position: 'relative', flexShrink: 0 }}>
 
+        {/* Current study streak */}
+        {typeof currentUser?.current_streak === 'number' && (
+          <div
+            title={`Current streak: ${currentUser.current_streak} day${currentUser.current_streak === 1 ? '' : 's'}`}
+            aria-label={`Current streak: ${currentUser.current_streak} day${currentUser.current_streak === 1 ? '' : 's'}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 10px',
+              borderRadius: 999,
+              backgroundColor: 'rgba(249, 115, 22, 0.15)',
+              border: '1px solid rgba(249, 115, 22, 0.4)',
+              color: 'var(--bg-card)',
+              fontSize: 13,
+              fontWeight: 700,
+              lineHeight: 1,
+            }}
+          >
+            <Flame size={16} color="#F97316" fill={currentUser.current_streak > 0 ? '#F97316' : 'none'} />
+            <span>{currentUser.current_streak}</span>
+            {!isMobile && <span style={{ fontWeight: 500, opacity: 0.8 }}>day{currentUser.current_streak === 1 ? '' : 's'}</span>}
+          </div>
+        )}
 
         {/* Notification Bell */}
         <div style={{ position: 'relative' }}>
