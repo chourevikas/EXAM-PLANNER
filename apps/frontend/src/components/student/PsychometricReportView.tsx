@@ -535,6 +535,11 @@ export function PsychometricReportView({
         const tName = q.topic || q.topic_name || 'Core Concepts';
         const subName = q.subtopic || 'Foundations';
         const state = getQuestionState(q);
+        // Marks this answer got under its paper's scheme; UPSC +2 / -2/3 for older reports without it
+        const awardedRaw = (q as any).marks_awarded;
+        const hasAwarded = typeof awardedRaw === 'number';
+        const gained = state.isAtt && state.isCorr ? (hasAwarded && awardedRaw > 0 ? awardedRaw : 2.0) : 0;
+        const lost = state.isAtt && !state.isCorr ? (hasAwarded && awardedRaw <= 0 ? -awardedRaw : 0.6667) : 0;
         const qNum = Number(q.question_number || idx + 1);
         const timeTaken = Number(q.time_taken_seconds || 60);
         const expTime = Number(q.expected_time_seconds || 60);
@@ -643,12 +648,17 @@ export function PsychometricReportView({
         } else {
           subObj.unattempted += 1;
         }
+
+        for (const node of [sObj, tObj, subObj]) {
+          node.marks_gained = (node.marks_gained || 0) + gained;
+          node.marks_lost = (node.marks_lost || 0) + lost;
+        }
       });
 
       const finalizeNode = (node: any) => {
         const acc = node.attempted > 0 ? Math.round((node.correct / node.attempted) * 100) : 0;
-        const posMarks = Math.round(node.correct * 2.0 * 100) / 100;
-        const negMarks = Math.round(node.incorrect * 0.6667 * 100) / 100;
+        const posMarks = Math.round((node.marks_gained ?? node.correct * 2.0) * 100) / 100;
+        const negMarks = Math.round((node.marks_lost ?? node.incorrect * 0.6667) * 100) / 100;
         const netMarks = Math.round((posMarks - negMarks) * 100) / 100;
         const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
         const meanScore = Math.round((netMarks / numExams) * 100) / 100;

@@ -54,6 +54,7 @@ from app.schemas.exam_attempt import (
     BatchStatusResponse,
 )
 from app.services.exam_json_builder import ExamJsonBuilder
+from app.services.scoring import UPSC_MARKS, UPSC_NEGATIVE, awarded, question_marks
 from app.engine.matrices.time_tiered_scoring import TimeTieredScoringStrategy
 from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
 from app.engine.matrices.guessing_tendency import GuessingTendencyStrategy
@@ -1780,17 +1781,27 @@ class ExamSessionService:
         # Batch preload question numbers for all response questions to avoid N+1 DB queries in scoring loop
         all_scoring_q_ids = list({r.question_id for r in responses if r.question_id})
         q_paper_nums: Dict[int, int] = {}
+        # Each question's own marking scheme (set from the exam type at import), not UPSC for every paper
+        q_marks: Dict[int, Tuple[float, float]] = {}
         if all_scoring_q_ids:
             q_meta_res = await self.session.exec(
-                select(Question.id, Question.question_number_in_paper).where(col(Question.id).in_(all_scoring_q_ids))
+                select(Question.id, Question.question_number_in_paper, Question.marks, Question.negative_marks)
+                .where(col(Question.id).in_(all_scoring_q_ids))
             )
-            q_paper_nums = {q_id: q_num for q_id, q_num in q_meta_res.all() if q_num is not None}
+            for q_id, q_num, q_pos, q_neg in q_meta_res.all():
+                if q_num is not None:
+                    q_paper_nums[q_id] = q_num
+                q_marks[q_id] = question_marks(q_pos, q_neg)
 
         tot_correct = 0
         tot_incorrect = 0
         tot_unattempted = 0
         tot_raw_score = 0.0
-        max_possible = float(exam.total_marks or 200.0)
+        # The most this attempt's questions can score; the exam's stored total when they aren't known
+        max_possible = (
+            round(sum(q_marks.get(r.question_id, (UPSC_MARKS, 0.0))[0] for r in responses), 2)
+            if q_marks else float(exam.total_marks or 200.0)
+        )
 
         for r in responses:
             if r.selected_option_id is None:
@@ -1813,8 +1824,8 @@ class ExamSessionService:
                 r.is_correct = is_corr
                 r.closeness_score_awarded = c_score
 
-                # Standard UPSC Prelims Scoring: +2.00 marks for correct, -0.6667 (-2/3) marks for incorrect
-                r.final_score = 2.0 if is_corr else -0.6667
+                pos, neg = q_marks.get(r.question_id, (UPSC_MARKS, UPSC_NEGATIVE))
+                r.final_score = round(awarded(is_corr, True, pos, neg), 4)
 
                 if is_corr:
                     tot_correct += 1
@@ -2204,6 +2215,21 @@ class ExamSessionService:
                         if opt_str in ("A", "B", "C", "D", "E"):
                             guest_q_ids_needing_options.add(q_id_val)
 
+        # Marks for every question in the synced sessions (each paper's own scheme)
+        guest_q_ids: Set[int] = set()
+        for item in sessions_list:
+            for r_item in item.get("responses") or []:
+                try:
+                    guest_q_ids.add(int(r_item.get("question_id")))
+                except (ValueError, TypeError):
+                    continue
+        guest_marks: Dict[int, Tuple[float, float]] = {}
+        if guest_q_ids:
+            for q_id, q_pos, q_neg in (await self.session.exec(
+                select(Question.id, Question.marks, Question.negative_marks).where(col(Question.id).in_(list(guest_q_ids)))
+            )).all():
+                guest_marks[q_id] = question_marks(q_pos, q_neg)
+
         guest_opt_label_map: Dict[Tuple[int, str], int] = {}
         if guest_q_ids_needing_options:
             guest_opt_stmt = select(QuestionOption).where(
@@ -2297,7 +2323,7 @@ class ExamSessionService:
                         selected_option_id=opt_id_val,
                         question_status=QuestionResponseStatus.ANSWERED if opt_id_val else QuestionResponseStatus.UNVISITED,
                         is_correct=is_corr,
-                        final_score=2.0 if is_corr else (-0.66 if opt_id_val else 0.0),
+                        final_score=round(awarded(is_corr, bool(opt_id_val) or is_corr, *guest_marks.get(q_id_val, (UPSC_MARKS, UPSC_NEGATIVE))), 4),
                         time_taken_seconds=float(r_item.get("time_taken_seconds") or 60.0),
                         expected_time_seconds=float(r_item.get("expected_time_seconds") or 60.0),
                         is_switched=bool(r_item.get("is_switched", False)),

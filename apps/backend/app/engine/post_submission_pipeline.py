@@ -35,6 +35,7 @@ from app.engine.matrices.fsrs_retention import FSRSEngine
 from app.storage.factory import get_storage_provider
 from app.db.session import managed_async_session
 from app.config.logger import setup_logger
+from app.services.scoring import question_marks
 
 logger = setup_logger("PostSubmissionPipeline")
 
@@ -638,6 +639,9 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
             "is_correct": r.is_correct,
             "closeness_score_awarded": r.closeness_score_awarded,
             "final_score": r.final_score,
+            # The paper's own marking scheme for this question
+            "marks": question_marks(getattr(q_model, "marks", None), getattr(q_model, "negative_marks", None))[0],
+            "negative_marks": question_marks(getattr(q_model, "marks", None), getattr(q_model, "negative_marks", None))[1],
             "time_taken_seconds": float(r.time_taken_seconds or 0.0),
             "expected_time_seconds": float(r.expected_time_seconds if (r.expected_time_seconds and r.expected_time_seconds > 0) else 60.0),
             "is_switched": r.is_switched,

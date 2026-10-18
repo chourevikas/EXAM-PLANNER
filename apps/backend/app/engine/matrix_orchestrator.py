@@ -19,6 +19,7 @@ from app.engine.matrices.integrated_cognitive_readiness import IntegratedCogniti
 from app.engine.matrices.confidence_calibration import ConfidenceCalibrationStrategy
 from app.engine.matrices.answer_rounds import AnswerRoundStrategy
 from app.config.logger import setup_logger
+from app.services.scoring import awarded, question_marks
 
 logger = setup_logger("MatrixOrchestrator")
 
@@ -175,6 +176,8 @@ class MatrixOrchestrator:
             time_taken = float(r.get("time_taken_seconds", 0.0) or 0.0)
             exp_time = float(r.get("expected_time_seconds", 60.0) or 60.0)
             c_score = float(r.get("closeness_score_awarded", 1.0 if is_corr else 0.0))
+            # This question's marking scheme (UPSC +2 / -2/3 when the report input doesn't say)
+            q_pos, q_neg = question_marks(r.get("marks"), r.get("negative_marks"))
 
             # Compute item GTI mathematically if not already set
             gti_item = float(r.get("gti_item_score", 0.0))
@@ -198,8 +201,8 @@ class MatrixOrchestrator:
                 time_taken_sec=time_taken,
                 expected_time_sec=exp_time,
                 closeness_score=c_score,
-                marks_pos=float(r.get("marks", 2.0)),
-                marks_neg=float(r.get("negative_marks", 0.66)),
+                marks_pos=q_pos,
+                marks_neg=q_neg,
             )
 
             time_eff_ratio = round(time_taken / max(1.0, exp_time), 2)
@@ -299,12 +302,14 @@ class MatrixOrchestrator:
             is_sw = bool(r.get("is_switched", False))
             if is_sw:
                 init_corr = bool(r.get("initial_correct", False))
+                # A switch from wrong to right gains the marks plus the penalty avoided (UPSC: +2.67)
+                swing = q_pos + q_neg
                 if not init_corr and is_corr:
-                    osri_status = "Rewarding Switch (+2.67 Marks)"
-                    osri_impact = 2.6667
+                    osri_status = f"Rewarding Switch (+{swing:.2f} Marks)"
+                    osri_impact = round(swing, 4)
                 elif init_corr and not is_corr:
-                    osri_status = "Costly Second-Guess (-2.67 Marks)"
-                    osri_impact = -2.6667
+                    osri_status = f"Costly Second-Guess (-{swing:.2f} Marks)"
+                    osri_impact = -round(swing, 4)
                 else:
                     osri_status = "Neutral Switch"
                     osri_impact = 0.0
@@ -358,7 +363,8 @@ class MatrixOrchestrator:
                     "pacing_efficiency": pacing_friendly,
                     "time_efficiency_ratio": time_eff_ratio,
                     "time_efficiency_score": time_score_pct,
-                    "marks_awarded": round(2.0 if is_corr else (-0.6667 if r.get("selected_option_id") is not None else 0.0), 2),
+                    "marks_awarded": round(awarded(is_corr, r.get("selected_option_id") is not None, q_pos, q_neg), 2),
+                    "marks": q_pos,
                     "gti_item_score": round(gti_item, 4),
                     "item_guessing_label": item_guessing_label,
                     "confidence_level": r.get("confidence_level"),
@@ -626,7 +632,10 @@ class MatrixOrchestrator:
             "strategic_skip_count": strategic_cnt,
             "wasted_time_on_abandoned_seconds": round(wasted_abandoned_time, 1),
             "missed_easy_questions_count": missed_easy_cnt,
-            "potential_marks_left_on_table": round(missed_easy_cnt * 2.0, 2),
+            "potential_marks_left_on_table": round(sum(
+                float(q.get("marks") or 2.0) for q in part_1_questions
+                if not q.get("is_attempted") and str(q.get("difficulty", "")).upper() == "EASY"
+            ), 2),
         }
 
         # Human-friendly Readiness tier labels
@@ -797,9 +806,10 @@ class MatrixOrchestrator:
             strong_spots_categorized["techniques"].append("Well-Calibrated Confidence")
 
         # Mode-Aware Benchmark Analysis (Full Mock vs Practice / Guest Exam)
-        corr_marks = round(tot_corr_count * 2.0, 2)
+        # Gained and lost marks from each answer's own score (each paper's marking scheme)
+        corr_marks = round(sum(r["final_score"] for r in response_payloads if r["final_score"] > 0), 2)
         inc_count = sum(1 for r in response_payloads if not r["is_correct"] and r.get("selected_option_id") is not None)
-        neg_marks = round(inc_count * 0.6667, 2)
+        neg_marks = round(-sum(r["final_score"] for r in response_payloads if r["final_score"] < 0), 2)
         net_marks = round(tot_score, 2)
         if is_practice_test:
             # Scaled 46% qualifying target based on test max score
