@@ -2,10 +2,10 @@
 
 **Source:** client PRD "Exam planner (2).docx" (21 sections + USP + home search bar)
 **Checked against:** `release/0.0.1` and the unmerged branches, 16 Oct 2026
-**Status:** reviewed with the client; decisions recorded in §0 (16 Oct 2026). Progress and the next asks are in the status update below (18 Oct 2026). Second-round answers recorded 16 Oct 2026. Implementation plan: [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md)
+**Status:** reviewed with the client; decisions recorded in §0 (16 Oct 2026). Progress, what's merged and what's left are in the status update below (18 Oct 2026). Second-round answers recorded 16 Oct 2026. Implementation plan: [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md)
 
 ## Context
-The PRD has 21 sections plus the USP and a home search bar. Every requirement was checked against the code and marked **Done / Partial / Missing**. Features that **look built but run on hard-coded or made-up data** are flagged separately, because they are the bigger risk: a demo would show numbers that aren't real. This document is the analysis plus a suggested order for the work; nothing has been implemented from it yet.
+The PRD has 21 sections plus the USP and a home search bar. Every requirement was checked against the code and marked **Done / Partial / Missing**. Features that **look built but run on hard-coded or made-up data** are flagged separately, because they are the bigger risk: a demo would show numbers that aren't real. The sections from §1 on are the original analysis (16 Oct) and describe the code before this work; the status update above says what has changed since.
 
 Legend: ✅ Done · 🟡 Partial · ❌ Missing · ⚠️ looks done but uses hard-coded or fake data
 
@@ -14,13 +14,16 @@ Legend: ✅ Done · 🟡 Partial · ❌ Missing · ⚠️ looks done but uses ha
 ## Status update (18 Oct 2026)
 For the next client call. Details per item are in [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md).
 
-### Built (in review, not yet merged)
+**Everything below is merged into `release/0.0.1`**, except online payments (Cashfree), which is on hold.
+
+### Built and merged
 | Area | What students and admins get |
 |---|---|
 | Real numbers only | Made-up insights, ranks, benchmarks and search results removed or replaced with real data |
 | Target exam / year | Editable on the profile |
 | Difficulty analysis | Easy / Medium / Hard breakdown in the report, difficulty filter for subject-wise tests |
 | Free plan | 20 questions a day across tests and practice; score, answers and explanations free; analysis locked |
+| Existing students | Pro free for 3 months from the deploy; new students start on the free plan. Pro ends automatically on its end date |
 | Leaderboards | Daily national and state ranks per exam from real XP and correct answers; username or real name |
 | Milestones | Admin-managed (create, edit, switch off); 500 questions and 30-day streak on |
 | Weekly email | Student picks day and time; one-click unsubscribe |
@@ -28,25 +31,39 @@ For the next client call. Details per item are in [PRD_IMPLEMENTATION_PLAN.md](P
 | Explanations in Hindi / Marathi | Translated automatically after upload and nightly (needs working translation credentials in production) |
 | Translation coverage | Admin view per paper and language, with "translate missing" |
 | Exam screen labels | Buttons, timer, palette, dialogs and solution headings in Hindi and Marathi |
+| Marking scheme | Asked for when an exam is uploaded and editable later from the QA screen; used for scores and reports. A change applies to new tests only |
+| Practise bookmarks | "Practise these" on the Bookmarks page: an untimed session of bookmarked questions |
+| Speed and negative-marking trends | Two charts on the Analytics page, one point per test |
+| Revision reminders | "N questions due for revision today" on the dashboard, a revision practice session and a 7 AM in-app reminder, from the spaced-repetition dates |
+| PYQs | "Same theme in other years" in the post-test review; paper-set filter for year-wise and subject-wise PYQs |
+| Study plan | Built from the student's own results (revision due, weak topics, new topics, a Sunday test) within their weekly hours; new Month plan with a revision-and-full-papers last week |
+| Super admin | Revenue & Engagement tab |
 | Pricing page | No fake checkout: "Online payment coming soon"; free plan described correctly |
-| Marking | Each paper scored by its own marking scheme (UPSC unchanged) |
 
 ### Needs the client
-1. **Marking scheme per exam.** Only UPSC is configured; MPSC and BPSC papers currently use UPSC marks. Which marks and negative marks does each exam use?
-2. **Hindi and Marathi wording** of the exam screen labels: a native speaker should review it.
-3. **Online payments.** On hold on our side; Pro is granted by an admin until then.
-4. **Translation credentials** for production (Google Cloud Translation or Vertex), so explanations get translated.
+1. **MPSC and BPSC marking schemes.** Set them from the "Marking" control on each exam's QA screen. Until then those papers score like UPSC.
+2. **Online payments.** On hold on our side; Pro is granted by an admin until then. Going live needs Cashfree production keys and the webhooks set up in the Cashfree dashboard.
+3. **Translation credentials** for production (Google Cloud Translation or Vertex), so explanations get translated.
 
-### Quick wins to approve (data already exists; mostly screen work)
-| # | Item | Why it's cheap |
+Hindi and Marathi wording needs no separate review: the person approving each question checks it (client decision, 18 Oct).
+
+### Still open: to prioritise with the client
+| # | Item | Notes |
 |---|---|---|
 | 1 | Notes per question | The database column exists; needs an editor on bookmarks and the question card |
-| 2 | Dashboard: real "questions today" (tests + practice), streak card, daily goal | The counts already exist; today the card counts only manually logged study |
-| 3 | Practice from bookmarked or wrong questions, plus a mistake notebook | A revision mode exists in the backend but nothing starts it |
-| 4 | Speed and negative-marking trend charts | Stored for every attempt, never charted |
-| 5 | Explicit "reserve for round 2" action | Round tracking already exists; needs a button and a round-2 pass |
+| 2 | Dashboard: real "questions today", streak card, daily goal | The counts already exist |
+| 3 | Mistake notebook / frequently wrong questions | Practice from bookmarks and from due revision is built; a "wrong questions" list is not |
+| 4 | "Reserve for round 2" action | Round tracking already exists; needs a button and a round-2 pass |
+| 5 | Mock-test series | The admin "Mock tests" screen still shows sample data; there's no real series |
+| 6 | Full-text question search | The search bar finds exams, topics and subtopics, not question text |
+| 7 | SEO question pages | The marketing site has exam and current-affairs pages only |
+| 8 | Improvement tracker | Per-topic improvement %, revision count, last revised date; a consistency score |
+| 9 | More reminders and notification settings | Mock-test and current-affairs reminders, push notifications, a notification preferences page |
+| 10 | Social | Friends ranking, platform daily/weekly challenges, public or private profile |
+| 11 | Explanation extras | UPSC trend, possible future questions, sources and books |
+| 12 | Practice page's own filter bar and the "similar questions" panel in Hindi/Marathi | Exam screen labels are done; these two aren't |
 
-Larger items (SEO question pages, full-text question search, mock-test series, friends ranking and platform challenges, study plan from the student's data) stay in the backlog until the client prioritises them. The AI items stay on hold.
+The AI items stay on hold.
 
 ---
 

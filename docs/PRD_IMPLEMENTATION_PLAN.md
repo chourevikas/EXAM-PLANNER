@@ -2,6 +2,7 @@
 
 **Based on:** [PRD_GAP_ANALYSIS.md](PRD_GAP_ANALYSIS.md) and the client decisions recorded there in §0, including the second-round answers (16 Oct 2026)
 **Branch base:** `release/0.0.1`. One feature branch and PR per workstream (`pankajpandey/<topic>`).
+**Status (18 Oct 2026):** Phases 0.2 to 6 are built and merged into `release/0.0.1` (up to PR #57). Only 0.1 (Cashfree payments) is not merged. What's left is under [What's left](#whats-left).
 **Definition of done for every item:**
 - backend tests added or updated;
 - tested end to end in the browser (UI + API) as the right role, at desktop and phone widths;
@@ -36,11 +37,11 @@ Until it lands, the pricing page shows "Online payment coming soon" instead of t
 
 - Merge `origin/pankajpandey/payment-gateway-integration` into `release/0.0.1`.
   - It brings `routers/payments.py`, `services/entitlement_service.py`, `require_feature` in `core/deps.py`, `routers/entitlements.py`, `FeatureUsageEvent` and migrations `056`/`060`/`061`.
-- **Migration chain:** `release/0.0.1` already has migrations up to `059_response_answer_round`. Re-parent the branch's migrations onto the current head. Check each file's `revision` string, not its filename (see the run-app skill).
+- **Migration chain:** `release/0.0.1` now has migrations up to `068_existing_students_pro`. Add a merge revision (or re-parent the branch's migrations) onto that head. Check each file's `revision` string, not its filename (see the run-app skill).
 - Delete the localStorage "payment" in `apps/frontend/src/pages/PricingPage.tsx` (`handleCompletePayment`) and use the branch's checkout flow.
 - Run the whole flow against the **Cashfree sandbox** before release: order → pay → webhook → subscription active → receipt. Production go-live (keys, domain whitelist, dashboard webhooks including `DISPUTE_*`) stays a separate ops task.
 
-### 0.2 Remove made-up numbers ✅ built
+### 0.2 Remove made-up numbers ✅ built (one item left)
 Replace each with a real query, or hide the widget until real data exists:
 
 | Where | Fix |
@@ -50,9 +51,9 @@ Replace each with a real query, or hide the widget until real data exists:
 | `analytics_service.get_monthly_benchmark` | Real monthly series from attempts. Remove the generated `−3.5`/month history, the fixed `"August 2026"` and the static national averages |
 | `analytics_service.get_predicted_rank` | Replace it with the real rank from Phase 3, and show "not enough data" when there are no attempts (instead of 75.0) |
 | `/study-plan/weekly-insights` | Remove the default `avg_accuracy=78` and the fixed focus text |
-| `POST /study-plan/generate-weekly-plan` | Keep the template but stop labelling it "AI" (`is_ai_recommended`), since the AI recommendation is on hold |
+| `POST /study-plan/generate-weekly-plan` | Superseded: the plan is now built from the student's data (6.7) |
 | `StudentTopHeader.tsx` fake search results on error | Show an error/empty state |
-| Admin `MockTestsView.tsx`, `MockSelectionPage` `progressPercent=65` | Hide the admin screen; compute progress for real |
+| Admin `MockTestsView.tsx`, `MockSelectionPage` `progressPercent=65` | Progress is computed for real. **Still open:** the admin Mock tests screen shows hard-coded sample tests; hide it or build a real mock series |
 | Dead `pages/SignUpPage.tsx`, `pages/SignInPage.tsx` (fake Google account) | Delete |
 | `PricingPage` feature list | List only features that exist |
 
@@ -160,7 +161,7 @@ Payments are on hold, so this uses the existing `StudentProfile.subscription_tie
 
 ---
 
-## Phase 5: full language support in the exam
+## Phase 5: full language support in the exam ✅ built
 **Launch languages: English, Hindi, Marathi** (client-confirmed). Questions are already fully translated into all three. The remaining work is explanations, option analysis and exam screen labels. Other languages stay best-effort, falling back to English.
 
 ### 5.1 Language chosen before the session, fixed for the whole session ✅ built
@@ -206,23 +207,96 @@ Client decision (17 Oct): English is the default for practice and exam simulatio
 - **Translated:** the exam and practice screens' labels follow the session language: the timer, Submit, Full Screen, Prev/Next/Finish, Clear and Mark, "How sure?" with Sure/50-50/Guess, the question palette, the submit dialog, the question number and difficulty, Show/Hide Solution, and the solution card's headings ("Option (C) is correct", detailed explanation, option-by-option reasoning, traps).
 - **How:** a small dictionary (`src/i18n/examText.tsx`) with English fallback. The exam, practice and guest pages provide the session language; screens outside them (the post-test report, bookmarks) stay English.
 - **Fallback note:** a question with no Hindi/Marathi text (or only an English copy) shows "This question isn't available in Hindi yet, so it's shown in English."
-- **The client should check the Hindi and Marathi wording** with a native speaker.
+- **Wording review:** no separate native-speaker review; the person approving each question checks it (client decision, 18 Oct).
 - **Not translated yet:**
   - the practice page's own filter bar and the "similar questions" side panel;
   - per-option distractor labels that come from the backend (e.g. "High-Closeness Distractor").
 
 ---
 
-## Backlog: not discussed with the client (raise on the next call)
-- Notes per question (`QuestionBookmark.notes` already exists).
+## Phase 6: client round 3 (18 Oct) ✅ built
+Client answers (18 Oct):
+- every exam gets its own marking scheme, used everywhere including reports;
+- no native-speaker review;
+- existing students get Pro, new students start free.
+
+They also asked for the items below.
+
+### 6.1 Marking scheme per exam
+- **Upload:** the exam upload asks for marks per question and negative marks per wrong answer, prefilled from the exam type and validated.
+- **Editing:** an admin can change the scheme from the QA review screen header.
+- **Scoring:** the scheme comes from the exam, then its exam type, then UPSC (+2 / −2/3). A change applies to **new tests only**; tests already taken keep their scores.
+- **Migration** `067_exam_marking_scheme` fills existing exams from their questions' marks.
+- **Still to do:** set the MPSC and BPSC schemes from the QA screen.
+
+### 6.2 Existing students get Pro for 3 months
+- **Migration** `068_existing_students_pro` gives every existing student without an active subscription a 90-day Pro subscription (source `PROMO`), starting when the migration runs, i.e. at deploy.
+- **Expiry:** a daily job expires subscriptions on their end date, moves the student back to the free plan and sends an in-app notice.
+- **Pricing page:** shows "You're on Pro until <date>".
+
+### 6.3 Practise bookmarked questions
+"Practise these" on the Bookmarks page: an untimed practice session of bookmarked questions (`GET /users/me/bookmarks/practice`, `/practice-exam?source=bookmarks`).
+
+### 6.4 Speed and negative-marking trends
+Two charts on the Analytics page, one point per completed test: seconds per question and marks lost to wrong answers, with a recent-vs-earlier summary. Locked on the free plan.
+
+### 6.5 Revision reminders
+The spaced-repetition dates the pipeline already calculated now reach the student:
+- a dashboard card ("N questions are due for revision today");
+- a revision practice session, most overdue first;
+- a 7 AM IST in-app reminder, once a day.
+
+Answering in practice reschedules the question.
+
+### 6.6 PYQs: same theme in other years, paper-set filter
+- **Same theme in other years:** shown in the post-test review (client choice: after submitting, not during the timed exam); other years only, each labelled with its year.
+- **Paper-set filter:** for year-wise PYQs and the subject-wise builder.
+
+### 6.7 Study plan from the student's data, and a month plan
+The fixed UPSC template is gone.
+- **Daily time:** the student's weekly hours ÷ 7, or 2 hours if they didn't answer.
+- **Each day, in order:**
+  1. revision due that day;
+  2. weak subtopics (below 60%), with the reason;
+  3. untried subtopics with the most questions;
+  4. a test on Sunday.
+- **Month plan:** a new tab with a calendar. The last week is consolidation: no new topics, revision, and full papers on Wednesday and Sunday.
+- **Rebuilding** replaces only open generated tasks. The student's own tasks and completed tasks stay.
+- Rule-based: the AI study recommendation stays on hold.
+
+### 6.8 Super admin: Revenue & Engagement
+A new tab in the super admin app (`apps/superadmin`) with:
+- revenue, MRR and Pro students by source;
+- active students, questions and tests over 7 days to 12 months.
+
+---
+
+## What's left
+As of 18 Oct 2026, on `release/0.0.1`.
+
+**Before or right after deploying**
+- Check the production database is at migration `068`. The deploy runs `alembic upgrade head || true`, so a failed migration doesn't fail the deploy.
+- Set the MPSC and BPSC marking schemes (6.1).
+- Production translation credentials, so explanations get translated (5.2).
+
+**Payments (0.1, on hold)**
+- Merge the Cashfree branch with an Alembic merge revision joining its `056`/`060`/`061` to `068`.
+- Run a sandbox payment end to end.
+- Go live with production keys and the dashboard webhooks (including `DISPUTE_*`).
+
+**Not built yet: to prioritise with the client**
+- Notes per question (`QuestionBookmark.notes` exists, unused).
 - "Reserve for round 2" action.
-- Real "questions today", streak and daily goal on the dashboard.
-- Mistake notebook, frequently wrong questions, revision practice from bookmarked or wrong questions (`AttemptMode.REVISION` exists).
-- Speed and negative-marking trend charts.
-- Mock-test series.
-- SEO question pages.
-- Full-text question search for the home bar.
-- Explanation extras (trend, sources, books).
+- Dashboard: real "questions today", streak card and daily goal.
+- Mistake notebook / frequently wrong questions (`AttemptMode.REVISION` exists).
+- Mock-test series. The admin Mock tests screen still shows sample data (0.2).
+- Full-text question search for the home bar (today it finds exams, topics and subtopics).
+- SEO question pages (the marketing site has exam and current-affairs pages only).
+- Improvement tracker: per-topic improvement %, revision count, last revised date; consistency score.
+- Mock-test and current-affairs reminders, push notifications, a notification preferences page.
+- Friends ranking, platform daily/weekly challenges, public or private profile.
+- Explanation extras: UPSC trend, possible future questions, sources and books.
+- Practice page filter bar and the "similar questions" panel in Hindi/Marathi (5.4).
 
 ## Out of scope (client-confirmed)
 - Option elimination: the client confirmed it already exists; no work.
@@ -234,8 +308,10 @@ AI mistake analysis, NOT/INCORRECT keyword detection, AI study recommendation, A
 ---
 
 ## Open questions for the client
-1. **Marking scheme per exam type.** Scores now follow each paper's own marks. Only UPSC (+2 / −2/3) is configured; MPSC and BPSC papers were imported with UPSC marks. Please confirm each exam's scheme.
-2. **Hindi and Marathi wording** of the exam screen labels (`apps/frontend/src/i18n/examText.tsx`): please have a native speaker review it.
+None at the moment. Answered on 18 Oct:
+- **Marking scheme:** set per exam at upload, editable later; changes apply to new tests only. The MPSC and BPSC values still need entering (6.1).
+- **Hindi and Marathi wording:** no separate review; checked when each question is approved.
+- **Existing students:** Pro for 3 months from the deploy; new students start free.
 
 (XP values were approved on 17 Oct: correct +10, test +50, active day +20, milestone +100.)
 
