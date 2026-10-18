@@ -352,17 +352,17 @@ export function ExamQuestionCard({
     }
   }, [questionIndex, revealResult]);
 
-  // Extract Question Tags & Metadata
+  // Extract Question Tags & Metadata. No default exam: a question without one shows no exam tag rather than a wrong one.
   const examName =
     (question as any).exam_name ||
     (question as any).examName ||
     (question as any).exam_type ||
-    'UPSC CSE';
+    '';
 
   const sourceYear =
     (question as any).source_year || (question as any).exam_year || (question as any).year || '';
 
-  const examYearDisplay = sourceYear ? `${examName} ${sourceYear}` : examName;
+  const examYearDisplay = [examName, sourceYear].filter(Boolean).join(' ');
 
   const subjectLabel = (question as any).subject_name || (question as any).subject || '';
 

@@ -494,6 +494,8 @@ class ExamSessionService:
             passage_translations=q_item.get("passage_translations"),
             text_hindi=q_item.get("text_hindi") or q_item.get("question_text_hindi"),
             passage_text_hindi=q_item.get("passage_text_hindi"),
+            exam_name=q_item.get("exam_name"),
+            source_year=q_item.get("source_year"),
         )
 
         nav_meta = NavigationMeta(
