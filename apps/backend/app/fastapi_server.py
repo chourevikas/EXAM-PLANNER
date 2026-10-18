@@ -90,6 +90,14 @@ async def lifespan(app: FastAPI):
     except Exception as err:
         logger.warning(f"Could not start weekly email scheduler: {err}")
 
+    # Catch up on subscriptions that ended while the server was down (it also runs nightly)
+    try:
+        import asyncio
+        from app.services.subscription_expiry_service import run_expiry_job
+        asyncio.create_task(run_expiry_job())
+    except Exception as err:
+        logger.warning(f"Could not run the subscription expiry check: {err}")
+
     logger.info("Application startup complete. Uvicorn server is ready to accept connections.")
     try:
         yield

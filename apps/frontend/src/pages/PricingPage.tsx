@@ -8,8 +8,20 @@ import {
   Lock,
 } from 'lucide-react';
 
+/** The signed-in student's plan, from the stored profile (refreshed from /auth/me when the app loads). */
+function currentPlan(): { isPro: boolean; endsAt: string | null } {
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    return { isPro: u.subscription_tier === 'PREMIUM', endsAt: u.subscription_ends_at || null };
+  } catch {
+    return { isPro: false, endsAt: null };
+  }
+}
+
 export function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
+  const { isPro, endsAt } = currentPlan();
+  const endsLabel = endsAt ? new Date(endsAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
   const [plans, setPlans] = useState<any[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   useEffect(() => {
@@ -141,7 +153,7 @@ export function PricingPage() {
               cursor: 'not-allowed'
             }}
           >
-            Current Plan
+            {isPro ? 'Free plan' : 'Current Plan'}
           </button>
         </div>
 
@@ -195,6 +207,19 @@ export function PricingPage() {
                 </div>
               </div>
 
+              {isPro ? (
+                <div
+                  data-testid="pro-active"
+                  style={{
+                    marginTop: 32, padding: '14px 16px', borderRadius: 'var(--radius)', textAlign: 'center',
+                    backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', color: '#047857', fontSize: 14, fontWeight: 700,
+                  }}
+                >
+                  <CheckCircle2 size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+                  You're on Pro{endsLabel ? ` until ${endsLabel}` : ''}
+                </div>
+              ) : (
+              <>
               {/* Online payment isn't live yet: no checkout until it is (it used to fake one in the browser) */}
               <button
                 type="button"
@@ -215,6 +240,8 @@ export function PricingPage() {
                 <a href="mailto:support@examplanner.in" style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>support@examplanner.in</a>
                 {' '}and we'll activate it for you.
               </p>
+              </>
+              )}
             </div>
           ))
         )}

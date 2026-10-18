@@ -428,6 +428,13 @@ async def _daily_midnight_scheduler_loop():
             except Exception as lb_err:
                 logger.error(f"⚠️ Leaderboard refresh error (non-fatal): {lb_err}", exc_info=True)
 
+            # End subscriptions whose period is over (paid, admin grants, launch promo) -> back to Free
+            try:
+                from app.services.subscription_expiry_service import run_expiry_job
+                await run_expiry_job()
+            except Exception as exp_err:
+                logger.error(f"⚠️ Subscription expiry error (non-fatal): {exp_err}", exc_info=True)
+
             # Run proactive translation for Hindi + Marathi (non-blocking — errors don't stop the loop)
             try:
                 await run_midnight_translation_job()
