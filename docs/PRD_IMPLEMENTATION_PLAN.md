@@ -31,14 +31,16 @@ Two items weren't discussed but **have to come first**. Payment is simulated (it
 
 ## Phase 0: foundation (not discussed with the client; required)
 
-### 0.1 Merge real payments
+### 0.1 Merge real payments ⏸ on hold (our decision, 17 Oct)
+Until it lands, the pricing page shows "Online payment coming soon" instead of the simulated checkout, and admins grant Pro by hand.
+
 - Merge `origin/pankajpandey/payment-gateway-integration` into `release/0.0.1`.
   - It brings `routers/payments.py`, `services/entitlement_service.py`, `require_feature` in `core/deps.py`, `routers/entitlements.py`, `FeatureUsageEvent` and migrations `056`/`060`/`061`.
 - **Migration chain:** `release/0.0.1` already has migrations up to `059_response_answer_round`. Re-parent the branch's migrations onto the current head. Check each file's `revision` string, not its filename (see the run-app skill).
 - Delete the localStorage "payment" in `apps/frontend/src/pages/PricingPage.tsx` (`handleCompletePayment`) and use the branch's checkout flow.
 - Run the whole flow against the **Cashfree sandbox** before release: order → pay → webhook → subscription active → receipt. Production go-live (keys, domain whitelist, dashboard webhooks including `DISPUTE_*`) stays a separate ops task.
 
-### 0.2 Remove made-up numbers
+### 0.2 Remove made-up numbers ✅ built
 Replace each with a real query, or hide the widget until real data exists:
 
 | Where | Fix |
@@ -56,7 +58,7 @@ Replace each with a real query, or hide the widget until real data exists:
 
 ---
 
-## Phase 1: quick client items
+## Phase 1: quick client items ✅ built
 
 ### 1.1 Target exam and year editable
 - `apps/backend/app/routers/auth.py`: remove `target_exam` and `target_year` from `LOCKED_TARGET_FIELDS`. Keep `optional_subject` locked; it was removed on purpose.
@@ -232,7 +234,10 @@ AI mistake analysis, NOT/INCORRECT keyword detection, AI study recommendation, A
 ---
 
 ## Open questions for the client
-1. **XP values per action** (they decide leaderboard ranks). Proposal: correct answer +10, test completed +50, streak day +20, milestone +100.
+1. **Marking scheme per exam type.** Scores now follow each paper's own marks. Only UPSC (+2 / −2/3) is configured; MPSC and BPSC papers were imported with UPSC marks. Please confirm each exam's scheme.
+2. **Hindi and Marathi wording** of the exam screen labels (`apps/frontend/src/i18n/examText.tsx`): please have a native speaker review it.
+
+(XP values were approved on 17 Oct: correct +10, test +50, active day +20, milestone +100.)
 
 **Defaults we'll use unless the client objects:**
 - The free-plan limit resets at midnight IST.

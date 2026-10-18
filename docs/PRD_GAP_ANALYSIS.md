@@ -2,12 +2,51 @@
 
 **Source:** client PRD "Exam planner (2).docx" (21 sections + USP + home search bar)
 **Checked against:** `release/0.0.1` and the unmerged branches, 16 Oct 2026
-**Status:** reviewed with the client; decisions recorded in §0 (16 Oct 2026). Second-round answers recorded 16 Oct 2026. Implementation plan: [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md)
+**Status:** reviewed with the client; decisions recorded in §0 (16 Oct 2026). Progress and the next asks are in the status update below (18 Oct 2026). Second-round answers recorded 16 Oct 2026. Implementation plan: [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md)
 
 ## Context
 The PRD has 21 sections plus the USP and a home search bar. Every requirement was checked against the code and marked **Done / Partial / Missing**. Features that **look built but run on hard-coded or made-up data** are flagged separately, because they are the bigger risk: a demo would show numbers that aren't real. This document is the analysis plus a suggested order for the work; nothing has been implemented from it yet.
 
 Legend: ✅ Done · 🟡 Partial · ❌ Missing · ⚠️ looks done but uses hard-coded or fake data
+
+---
+
+## Status update (18 Oct 2026)
+For the next client call. Details per item are in [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md).
+
+### Built (in review, not yet merged)
+| Area | What students and admins get |
+|---|---|
+| Real numbers only | Made-up insights, ranks, benchmarks and search results removed or replaced with real data |
+| Target exam / year | Editable on the profile |
+| Difficulty analysis | Easy / Medium / Hard breakdown in the report, difficulty filter for subject-wise tests |
+| Free plan | 20 questions a day across tests and practice; score, answers and explanations free; analysis locked |
+| Leaderboards | Daily national and state ranks per exam from real XP and correct answers; username or real name |
+| Milestones | Admin-managed (create, edit, switch off); 500 questions and 30-day streak on |
+| Weekly email | Student picks day and time; one-click unsubscribe |
+| Exam language | English by default; Hindi or Marathi chosen before a test or practice and kept for the session |
+| Explanations in Hindi / Marathi | Translated automatically after upload and nightly (needs working translation credentials in production) |
+| Translation coverage | Admin view per paper and language, with "translate missing" |
+| Exam screen labels | Buttons, timer, palette, dialogs and solution headings in Hindi and Marathi |
+| Pricing page | No fake checkout: "Online payment coming soon"; free plan described correctly |
+| Marking | Each paper scored by its own marking scheme (UPSC unchanged) |
+
+### Needs the client
+1. **Marking scheme per exam.** Only UPSC is configured; MPSC and BPSC papers currently use UPSC marks. Which marks and negative marks does each exam use?
+2. **Hindi and Marathi wording** of the exam screen labels: a native speaker should review it.
+3. **Online payments.** On hold on our side; Pro is granted by an admin until then.
+4. **Translation credentials** for production (Google Cloud Translation or Vertex), so explanations get translated.
+
+### Quick wins to approve (data already exists; mostly screen work)
+| # | Item | Why it's cheap |
+|---|---|---|
+| 1 | Notes per question | The database column exists; needs an editor on bookmarks and the question card |
+| 2 | Dashboard: real "questions today" (tests + practice), streak card, daily goal | The counts already exist; today the card counts only manually logged study |
+| 3 | Practice from bookmarked or wrong questions, plus a mistake notebook | A revision mode exists in the backend but nothing starts it |
+| 4 | Speed and negative-marking trend charts | Stored for every attempt, never charted |
+| 5 | Explicit "reserve for round 2" action | Round tracking already exists; needs a button and a round-2 pass |
+
+Larger items (SEO question pages, full-text question search, mock-test series, friends ranking and platform challenges, study plan from the student's data) stay in the backlog until the client prioritises them. The AI items stay on hold.
 
 ---
 
