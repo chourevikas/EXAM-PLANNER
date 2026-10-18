@@ -3,6 +3,7 @@ import { ReportPreparingLoader } from '../components/common/ReportPreparingLoade
 import { useSearchParams } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { PsychometricReportView } from '../components/student/PsychometricReportView';
+import { SpeedNegativeTrends } from '../components/student/SpeedNegativeTrends';
 import { Ico } from '../components/common/Icons';
 import {
   getPsychometricReportJson,
@@ -912,6 +913,7 @@ export function AnalyticsPage() {
               </div>
             )
           )}
+          {selectedAttemptId === 'CUMULATIVE_ALL' && !cumulativeLocked && attemptsHistory.length > 1 && <SpeedNegativeTrends />}
           {/* Completed Exam History Quick-Access Table/Cards (When in Cumulative Mode) */}
           {selectedAttemptId === 'CUMULATIVE_ALL' && attemptsHistory.length > 0 && (
             <section

@@ -350,6 +350,18 @@ async def get_user_monthly_benchmark(
     return await service.get_monthly_benchmark(current_user.id)
 
 
+@router.get("/trends/speed-negative", summary="Speed and negative marking across the student's completed tests")
+async def get_speed_and_negative_trend(
+    limit: int = 20,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Seconds per answered question and marks lost to wrong answers, per completed test (oldest first)."""
+    await _deny_analysis_on_free_plan(session, current_user)
+    from app.services.trend_service import speed_and_negative_marking
+    return await speed_and_negative_marking(session, current_user.id, max(2, min(limit, 50)))
+
+
 @router.get("/subject-performance", summary="Get Subject-Wise Accuracy & Performance Metrics")
 async def get_user_subject_performance(
     current_user: User = Depends(get_current_user),
