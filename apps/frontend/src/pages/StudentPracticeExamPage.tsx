@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ExamLanguageProvider, examText } from '../i18n/examText';
 import {
   SlidersHorizontal,
   ChevronDown,
@@ -1768,6 +1769,7 @@ export function StudentPracticeExamPage() {
   }
 
   return (
+    <ExamLanguageProvider language={language}>
     <div
       style={{
         display: 'flex',
@@ -1793,7 +1795,7 @@ export function StudentPracticeExamPage() {
             borderBottom: `1px solid ${(dailyUsage.remaining ?? 0) > 0 ? '#FDE68A' : '#FECACA'}`,
           }}
         >
-          Free plan: {dailyUsage.remaining} of {dailyUsage.limit} questions left today
+          {examText(language, 'freePlanLeft', { remaining: dailyUsage.remaining ?? 0, limit: dailyUsage.limit ?? 0 })}
         </div>
       )}
       {/* Top Header Bar */}
@@ -4226,5 +4228,6 @@ export function StudentPracticeExamPage() {
         </div>
       )}
     </div>
+    </ExamLanguageProvider>
   );
 }

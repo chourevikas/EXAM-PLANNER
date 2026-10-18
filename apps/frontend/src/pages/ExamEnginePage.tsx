@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ExamLanguageProvider, examText } from '../i18n/examText';
 import { ReportPreparingLoader } from '../components/common/ReportPreparingLoader';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
@@ -1342,6 +1343,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   }
 
   return (
+    <ExamLanguageProvider language={language}>
     <div
       style={{
         minHeight: '100vh',
@@ -1386,7 +1388,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             border: `1px solid ${(dailyUsage.remaining ?? 0) > 0 ? '#FDE68A' : '#FECACA'}`,
           }}
         >
-          Free plan: {dailyUsage.remaining} of {dailyUsage.limit} questions left today
+          {examText(language, 'freePlanLeft', { remaining: dailyUsage.remaining ?? 0, limit: dailyUsage.limit ?? 0 })}
         </div>
       )}
       <FreePlanLimitModal open={showLimitModal} onClose={() => setShowLimitModal(false)} limit={dailyUsage?.limit} />
@@ -1509,7 +1511,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             {isLoadingQuestion ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F4F6F8' }}>
                 <Loader2 size={24} className="animate-spin" color="var(--primary-red)" />
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>Loading question #{currentQIndex + 1}...</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>{examText(language, 'loadingQuestion', { n: currentQIndex + 1 })}</span>
               </div>
             ) : activeQuestion ? (
               <MemoExamQuestionCard
@@ -1854,6 +1856,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       {/* Fullscreen overlay while the test is submitted and the report starts */}
       {isSubmitting && <ReportPreparingLoader variant="overlay" />}
     </div>
+    </ExamLanguageProvider>
   );
 }
 

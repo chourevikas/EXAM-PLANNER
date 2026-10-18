@@ -16,6 +16,7 @@ import {
   BookmarkCheck,
 } from 'lucide-react';
 import { formatEnum } from '../../utils/formatEnum';
+import { useExamText, ExamTextKey } from '../../i18n/examText';
 
 export interface DistractorItem {
   option_id?: number | string;
@@ -141,6 +142,7 @@ export function QuestionSolutionMarkdownCard({
   isLoading = false,
   options = [],
 }: QuestionSolutionMarkdownCardProps) {
+  const { t } = useExamText();
   if (isLoading) {
     return (
       <div
@@ -159,7 +161,7 @@ export function QuestionSolutionMarkdownCard({
         }}
       >
         <Loader2 size={18} className="animate-spin text-blue-600" />
-        <span style={{ fontSize: 14, fontWeight: 600 }}>Loading Comprehensive Solution & Distractor Analysis...</span>
+        <span style={{ fontSize: 14, fontWeight: 600 }}>{t('loadingFullSolution')}</span>
       </div>
     );
   }
@@ -350,16 +352,16 @@ export function QuestionSolutionMarkdownCard({
                   color: isUserCorrect ? '#15803D' : isUserCorrect === false ? '#B91C1C' : 'var(--deep-navy)',
                 }}
               >
-                Option ({correctLabel}) is Correct
+                {t('optionIsCorrect', { label: correctLabel })}
               </span>
               {selectedOptionLabel && selectedOptionLabel !== correctLabel && (
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#DC2626' }}>
-                  (Your selection: Option {selectedOptionLabel})
+                  {t('yourSelection', { label: selectedOptionLabel })}
                 </span>
               )}
             </div>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              Comprehensive Solution & Distractor Evaluation
+              {t('solutionSubtitle')}
             </span>
           </div>
         </div>
@@ -381,7 +383,9 @@ export function QuestionSolutionMarkdownCard({
               }`,
             }}
           >
-            {formatEnum(difficulty)} Tier
+            {['EASY', 'MEDIUM', 'HARD'].includes(String(difficulty).toUpperCase())
+              ? t(`${String(difficulty).toUpperCase()}_TIER` as ExamTextKey)
+              : `${formatEnum(difficulty)} Tier`}
           </span>
           {solution.topic && (
             <span
@@ -422,7 +426,7 @@ export function QuestionSolutionMarkdownCard({
             }}
           >
             <BookOpen size={16} style={{ color: 'var(--primary-red)' }} />
-            Detailed Explanation & Reference
+            {t('detailedExplanation')}
           </div>
           <div
             style={{
@@ -467,7 +471,7 @@ export function QuestionSolutionMarkdownCard({
                   }}
                 >
                   <Target size={13} style={{ color: 'var(--primary-red)' }} />
-                  Option-by-Option Reasoning
+                  {t('optionReasoning')}
                 </div>
                 <div className="prose prose-slate max-w-none text-slate-800" style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{reverseLogic}</ReactMarkdown>
@@ -494,7 +498,7 @@ export function QuestionSolutionMarkdownCard({
                   }}
                 >
                   <Target size={13} style={{ color: 'var(--primary-red)' }} />
-                  Option-by-Option Analysis
+                  {t('optionAnalysis')}
                 </div>
                 {distractorsList.map((item, idx) => {
                   const isOptionCorrect = item.is_correct || item.label === correctLabel;
@@ -568,8 +572,10 @@ export function QuestionSolutionMarkdownCard({
                           }}
                         >
                           {isOptionCorrect
-                            ? 'Correct Key'
-                            : item.classification || `Distractor (${item.closeness_score ?? 0})`}
+                            ? t('correctKey')
+                            : item.classification === 'Distractor'
+                              ? t('distractor')
+                              : item.classification || `${t('distractor')} (${item.closeness_score ?? 0})`}
                         </span>
                       </div>
 
@@ -579,7 +585,7 @@ export function QuestionSolutionMarkdownCard({
                         </p>
                       ) : (
                         <p style={{ margin: '0 0 0 30px', fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          {isOptionCorrect ? 'This is the correct answer.' : 'This option is incorrect.'}
+                          {isOptionCorrect ? t('thisIsCorrect') : t('thisIsIncorrect')}
                         </p>
                       )}
                     </div>
@@ -612,7 +618,7 @@ export function QuestionSolutionMarkdownCard({
               }}
             >
               <AlertTriangle size={17} style={{ color: '#F2B623' }} />
-              Common Exam Traps & Pitfalls
+              {t('commonTraps')}
             </div>
             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13.5, color: '#78350F', lineHeight: 1.6 }}>
               {commonTraps.map((trap, idx) => (
@@ -640,7 +646,7 @@ export function QuestionSolutionMarkdownCard({
       >
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
           <FileCheck2 size={14} />
-          Cognitive Skill: {solution.cognitive_skill || 'Analytical & Conceptual Reasoning'}
+          {t('cognitiveSkill')}: {solution.cognitive_skill || 'Analytical & Conceptual Reasoning'}
         </span>
       </div>
     </div>

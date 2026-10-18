@@ -200,9 +200,14 @@ Client decision (17 Oct): English is the default for practice and exam simulatio
 - An untranslated copy (Hindi/Marathi text still in English words) counts as missing. Numbers, sequences and formulas that legitimately stay the same count as translated.
 - Migration 066 adds the `admin.translations` permission row, and the `admin.milestones` row that Phase 4 missed, so custom roles can be granted both.
 
-### 5.4 Remaining (not started)
-- **Exam screen labels:** add a small i18n dictionary for the exam screens only (`ExamEnginePage`, `ExamQuestionCard`, `ExamFooterBar`, palette, submit dialog, timer, solution card headings), driven by the session language, with English fallback. No app-wide i18n framework yet.
-- **Fallback rule:** if a question isn't translated, show English with a small "not available in <language>" note, never a blank.
+### 5.4 Exam screen labels in Hindi and Marathi ✅ built
+- **Translated:** the exam and practice screens' labels follow the session language: the timer, Submit, Full Screen, Prev/Next/Finish, Clear and Mark, "How sure?" with Sure/50-50/Guess, the question palette, the submit dialog, the question number and difficulty, Show/Hide Solution, and the solution card's headings ("Option (C) is correct", detailed explanation, option-by-option reasoning, traps).
+- **How:** a small dictionary (`src/i18n/examText.tsx`) with English fallback. The exam, practice and guest pages provide the session language; screens outside them (the post-test report, bookmarks) stay English.
+- **Fallback note:** a question with no Hindi/Marathi text (or only an English copy) shows "This question isn't available in Hindi yet, so it's shown in English."
+- **The client should check the Hindi and Marathi wording** with a native speaker.
+- **Not translated yet:**
+  - the practice page's own filter bar and the "similar questions" side panel;
+  - per-option distractor labels that come from the backend (e.g. "High-Closeness Distractor").
 
 ---
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ExamLanguageProvider } from '../i18n/examText';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
@@ -1853,6 +1854,7 @@ export function GuestExamPage() {
   const unattemptedCount = Math.max(0, currentTotalQuestions - answeredCount);
 
   return (
+    <ExamLanguageProvider language={language}>
     <div
       style={{
         display: 'flex',
@@ -4632,5 +4634,6 @@ export function GuestExamPage() {
         </div>
       )}
     </div>
+    </ExamLanguageProvider>
   );
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { Clock, ChevronRight, Focus, Minimize2, SlidersHorizontal, Lightbulb, Globe } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { getLanguageOption } from '../../constants/languages';
+import { useExamText } from '../../i18n/examText';
 
 interface ExamHeaderProps {
   examTitle: string;
@@ -45,6 +46,7 @@ export function ExamHeader({
   const isAuth = !!(localStorage.getItem('access_token') && localStorage.getItem('user'));
   const rootBreadcrumb = parentBreadcrumb || (isAuth ? 'Dashboard' : 'Home');
   const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const { t } = useExamText();
 
   // One height for every header control so the select, icon buttons and Submit line up
   // (the touch-target class would otherwise stretch only the buttons to 44px).
@@ -203,7 +205,7 @@ export function ExamHeader({
                   lineHeight: 1,
                 }}
               >
-                TIME REMAINING
+                {t('timeRemaining')}
               </span>
             )}
             <span
@@ -337,10 +339,10 @@ export function ExamHeader({
               whiteSpace: 'nowrap',
               transition: 'all 0.15s ease',
             }}
-            title={focusMode ? 'Exit Full Screen' : 'Enter Full Screen'}
+            title={focusMode ? t('exitFullScreen') : t('enterFullScreen')}
           >
             {focusMode ? <Minimize2 size={13} /> : <Focus size={13} />}
-            {!isTabletOrBelow && <span>{focusMode ? 'Exit Focus' : 'Full Screen'}</span>}
+            {!isTabletOrBelow && <span>{focusMode ? t('exitFocus') : t('fullScreen')}</span>}
           </button>
         )}
         {showSubmitButton && onSubmitClick && (
@@ -373,7 +375,7 @@ export function ExamHeader({
                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
             }}
           >
-            {isSubmitting ? 'Submitting...' : isMobile ? 'Submit' : 'Submit Test'}
+            {isSubmitting ? t('submitting') : isMobile ? t('submit') : t('submitTest')}
           </button>
         )}
       </div>
