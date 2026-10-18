@@ -372,12 +372,76 @@ class GenerateWeeklyPlanRequest(SQLModel):
     start_date: Optional[str] = None
     overwrite_existing: Optional[bool] = False
 
+
+class GenerateMonthlyPlanRequest(SQLModel):
+    month: Optional[str] = None  # YYYY-MM; this month when left out
+
+
+def _today_ist() -> date:
+    from app.services.free_plan import IST
+    return datetime.now(timezone.utc).astimezone(IST).date()
+
+
+def _month_range(month: Optional[str], today: date) -> tuple[date, date]:
+    if month:
+        try:
+            first = datetime.strptime(month, "%Y-%m").date()
+        except ValueError:
+            raise HTTPException(status_code=422, detail="month must be YYYY-MM")
+    else:
+        first = today.replace(day=1)
+    following = (first.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return first, following - timedelta(days=1)
+
+
+async def _write_generated_plan(session: AsyncSession, user_id: int, start: date, end: date,
+                                carry_to: date, monthly: bool) -> int:
+    """Replaces the student's open generated tasks in [start, end] with a fresh data-driven plan.
+
+    Tasks the student added themselves and anything already completed are kept. Unfinished tasks
+    from before `start` move to `carry_to`. Returns how many tasks were created.
+    """
+    from app.services.study_plan_generator import build_plan
+
+    await session.exec(delete(StudyTask).where(
+        StudyTask.user_id == user_id,
+        StudyTask.scheduled_date >= start,
+        StudyTask.scheduled_date <= end,
+        StudyTask.is_ai_recommended == True,
+        StudyTask.is_completed == False,
+    ))
+    for past_t in (await session.exec(select(StudyTask).where(
+        StudyTask.user_id == user_id, StudyTask.scheduled_date < start, StudyTask.is_completed == False
+    ))).all():
+        past_t.scheduled_date = carry_to
+        session.add(past_t)
+    await session.commit()
+
+    existing_keys = {(title, str(d)) for title, d in (await session.exec(
+        select(StudyTask.title, StudyTask.scheduled_date).where(
+            StudyTask.user_id == user_id, StudyTask.scheduled_date >= start, StudyTask.scheduled_date <= end
+        )
+    )).all()}
+    created = 0
+    for t in await build_plan(session, user_id, start, end, today=_today_ist(), monthly=monthly):
+        key = (t["title"], str(t["scheduled_date"]))
+        if key in existing_keys:
+            continue
+        existing_keys.add(key)
+        session.add(StudyTask(user_id=user_id, is_completed=False, is_ai_recommended=True, **t))
+        created += 1
+    await session.commit()
+    await _drop_cached_schedule(user_id)
+    return created
+
+
 @router.post("/generate-weekly-plan")
 async def generate_weekly_study_plan(
     req: Optional[GenerateWeeklyPlanRequest] = None,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    """A week built from the student's own data: due revision, weak subtopics, new subtopics, a test day."""
     today = datetime.now(timezone.utc).date()
     start_date_str = req.start_date if req else None
     if start_date_str:
@@ -389,163 +453,80 @@ async def generate_weekly_study_plan(
         base_date = today - timedelta(days=today.weekday())
 
     end_date = base_date + timedelta(days=6)
-
-    # Clear ONLY AI-generated template tasks for the current week, keeping user custom tasks (is_ai_recommended == False)
-    stmt_delete = delete(StudyTask).where(
-        StudyTask.user_id == current_user.id,
-        StudyTask.scheduled_date >= base_date,
-        StudyTask.scheduled_date <= end_date,
-        StudyTask.is_ai_recommended == True,
-    )
-    await session.exec(stmt_delete)
-    await session.commit()
-
-    # Carry forward any incomplete tasks from past weeks to the current week (Monday)
-    stmt_past_incomplete = select(StudyTask).where(
-        StudyTask.user_id == current_user.id,
-        StudyTask.scheduled_date < base_date,
-        StudyTask.is_completed == False
-    )
-    past_incomplete_tasks = (await session.exec(stmt_past_incomplete)).all()
-    for past_t in past_incomplete_tasks:
-        past_t.scheduled_date = base_date  # Reschedule to current week Monday
-        session.add(past_t)
-    await session.commit()
-
-    template_schedule = [
-        # Monday (Day 0 - Polity Focus)
-        [
-            {"title": "Polity: Preamble & Key Features of Constitution", "subject": "Indian Polity & Governance", "topic": "Preamble & Key Features", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Polity: Fundamental Rights (Articles 12 to 22)", "subject": "Indian Polity & Governance", "topic": "Fundamental Rights Part 1", "allocated_time_minutes": 45, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Polity: Directive Principles (DPSP) & Duties", "subject": "Indian Polity & Governance", "topic": "DPSP & Fundamental Duties", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Polity Revision: Emergency Provisions & Schedules", "subject": "Indian Polity & Governance", "topic": "Emergency & Schedules", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Polity Revision: Constitutional Bodies & CAG", "subject": "Indian Polity & Governance", "topic": "CAG, Election Commission", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Polity Revision: Amendments & Basic Structure", "subject": "Indian Polity & Governance", "topic": "Basic Structure Doctrine", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Polity Quiz 1: Preamble & Fundamental Rights MCQs", "subject": "Indian Polity & Governance", "topic": "Preamble MCQs", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "Polity Quiz 2: DPSP & Union Executive MCQs", "subject": "Indian Polity & Governance", "topic": "DPSP Quiz", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "Polity PYQs: UPSC Past Years Question Practice", "subject": "Indian Polity & Governance", "topic": "UPSC Polity PYQs", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PYQ_SOLVING"}
-        ],
-        # Tuesday (Day 1 - Modern History Focus)
-        [
-            {"title": "History: 1857 Revolt & Causes of Uprising", "subject": "Modern Indian History", "topic": "1857 Revolt", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "History: Socio-Religious Reform Movements", "subject": "Modern Indian History", "topic": "19th Century Reformers", "allocated_time_minutes": 45, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "History: Early Congress & Moderate Phase", "subject": "Modern Indian History", "topic": "INC Formation & Moderates", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "History Revision: Governor Generals & Viceroys", "subject": "Modern Indian History", "topic": "Viceroys & Reforms", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "History Revision: Peasant & Tribal Movements", "subject": "Modern Indian History", "topic": "Tribal Uprisings", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "History Revision: Colonial Press & Education Acts", "subject": "Modern Indian History", "topic": "Press & Education Acts", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "History Quiz 1: 1857 Revolt & Reformers MCQs", "subject": "Modern Indian History", "topic": "1857 & Reform MCQs", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "History Quiz 2: Freedom Movement Chronology Quiz", "subject": "Modern Indian History", "topic": "Chronology Quiz", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "History PYQs: UPSC Past Years History Questions", "subject": "Modern Indian History", "topic": "Modern History PYQs", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PYQ_SOLVING"}
-        ],
-        # Wednesday (Day 2 - Indian Economy Focus)
-        [
-            {"title": "Economy: GDP, GNP & National Income Accounting", "subject": "Indian Economy", "topic": "National Income", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Economy: RBI Monetary Policy & Inflation Tools", "subject": "Indian Economy", "topic": "Monetary Policy & Inflation", "allocated_time_minutes": 45, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Economy: Banking System, NPA & IBC Code", "subject": "Indian Economy", "topic": "Banking & NPA", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Economy Revision: Union Budget & Fiscal Deficit", "subject": "Indian Economy", "topic": "Fiscal Deficit & Budget", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Economy Revision: Balance of Payments & Forex Reserves", "subject": "Indian Economy", "topic": "BoP & Forex", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Economy Revision: Tax Structure & GST Mechanisms", "subject": "Indian Economy", "topic": "GST & Direct Tax", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Economy Quiz 1: Monetary Policy & Inflation MCQs", "subject": "Indian Economy", "topic": "Inflation MCQs", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "Economy Quiz 2: Banking & Financial Markets Quiz", "subject": "Indian Economy", "topic": "Financial Markets", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "Economy PYQs: UPSC Past 10 Years Economy Questions", "subject": "Indian Economy", "topic": "Economy PYQs", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PYQ_SOLVING"}
-        ],
-        # Thursday (Day 3 - Geography & Environment Focus)
-        [
-            {"title": "Geography: Indian Drainage Systems & Major Rivers", "subject": "Geography & Environment", "topic": "Indian River Systems", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Geography: Monsoon System & Climate Zones of India", "subject": "Geography & Environment", "topic": "Monsoon & Climate", "allocated_time_minutes": 45, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Environment: Biodiversity Hotspots & National Parks", "subject": "Geography & Environment", "topic": "Biodiversity & Sanctuaries", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Geography Revision: Mountain Passes & Physical Features", "subject": "Geography & Environment", "topic": "Passes & Relief", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Environment Revision: Wildlife Protection Act & Ramsar Sites", "subject": "Geography & Environment", "topic": "WPA & Wetlands", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Environment Revision: Climate Conventions (COP, UNFCCC)", "subject": "Geography & Environment", "topic": "UNFCCC & COP", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Geography Quiz 1: River Map Location MCQs", "subject": "Geography & Environment", "topic": "River Map Quiz", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "Environment Quiz 2: Species Status & Protected Areas", "subject": "Geography & Environment", "topic": "IUCN Status Quiz", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "Geography PYQs: UPSC Physical Geography Questions", "subject": "Geography & Environment", "topic": "Geography PYQs", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PYQ_SOLVING"}
-        ],
-        # Friday (Day 4 - Science, Tech & CSAT Focus)
-        [
-            {"title": "Science & Tech: ISRO Space Missions & Launch Vehicles", "subject": "Science & Technology", "topic": "Space Missions & GSLV", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Science & Tech: Biotech, Genome Editing & Vaccines", "subject": "Science & Technology", "topic": "CRISPR & Biotech", "allocated_time_minutes": 35, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "CSAT Focus: Reading Comprehension Passages", "subject": "CSAT & Aptitude", "topic": "Passage Comprehension", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Science Revision: Emerging Tech (AI, Quantum, 5G)", "subject": "Science & Technology", "topic": "AI & Quantum Tech", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "CSAT Revision: Syllogism & Logical Deduction", "subject": "CSAT & Aptitude", "topic": "Syllogism & Deductions", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "CSAT Revision: Data Interpretation & Chart Reading", "subject": "CSAT & Aptitude", "topic": "Data Interpretation", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Science Quiz 1: Space & Biotech Practice MCQs", "subject": "Science & Technology", "topic": "Space Tech Quiz", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "CSAT Quiz 2: Passage Comprehension Practice Test", "subject": "CSAT & Aptitude", "topic": "Passage Speed Test", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "CSAT PYQs: UPSC Past 5 Years Aptitude Test", "subject": "CSAT & Aptitude", "topic": "Aptitude PYQs", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PYQ_SOLVING"}
-        ],
-        # Saturday (Day 5 - Current Affairs Focus)
-        [
-            {"title": "Current Affairs: PIB Monthly Policy Highlights", "subject": "Current Affairs", "topic": "PIB & Policy", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Current Affairs: Important Government Schemes & Portals", "subject": "Current Affairs", "topic": "Government Schemes", "allocated_time_minutes": 45, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Current Affairs: International Relations & Summits", "subject": "Current Affairs", "topic": "G20, BRICS & Summits", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "IR Revision: Bilateral Exercises & Treaties", "subject": "Current Affairs", "topic": "Military Exercises", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Schemes Revision: Social Welfare & Health Schemes", "subject": "Current Affairs", "topic": "Health Schemes", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Reports Revision: Global Indices & Ranking Reports", "subject": "Current Affairs", "topic": "Global Indices", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Affairs Quiz 1: PIB & Policy Practice Quiz", "subject": "Current Affairs", "topic": "Policy Quiz", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "Affairs Quiz 2: International Summit MCQs", "subject": "Current Affairs", "topic": "IR Summit Quiz", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PRACTICE_MCQS"},
-            {"title": "Affairs PYQs: Current Affairs Past Exam Questions", "subject": "Current Affairs", "topic": "Current Affairs PYQs", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "PYQ_SOLVING"}
-        ],
-        # Sunday (Day 6 - Synthesis & Mock Focus)
-        [
-            {"title": "Synthesis: Weekly Mind Maps & Formula Sheets", "subject": "General Studies", "topic": "Mind Maps", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Synthesis: Short Notes Consolidation for GS1-GS3", "subject": "General Studies", "topic": "Short Notes", "allocated_time_minutes": 45, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Synthesis: Weak Spots Mapping & Strategy Adjustment", "subject": "General Studies", "topic": "Strategy Mapping", "allocated_time_minutes": 30, "priority": "HIGH", "activity_type": "NEW_TOPIC"},
-            {"title": "Full Revision: Polity & History Core Articles/Dates", "subject": "General Studies", "topic": "Polity & History Review", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Full Revision: Economy Formulas & Indicators", "subject": "General Studies", "topic": "Economy Indicators Review", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Full Revision: Geography Maps & Species Lists", "subject": "General Studies", "topic": "Geography Map Review", "allocated_time_minutes": 30, "priority": "MEDIUM", "activity_type": "CONCEPT_REVISION"},
-            {"title": "Sunday Mock 1: Sectional Test 1 (50 MCQs)", "subject": "General Studies", "topic": "Sectional Test 1", "allocated_time_minutes": 45, "priority": "HIGH", "activity_type": "MOCK_TEST"},
-            {"title": "Sunday Mock 2: Sectional Test 2 (50 MCQs)", "subject": "General Studies", "topic": "Sectional Test 2", "allocated_time_minutes": 45, "priority": "HIGH", "activity_type": "MOCK_TEST"},
-            {"title": "Sunday Mock 3: Full Sunday Mini Mock Review", "subject": "General Studies", "topic": "Mock Review", "allocated_time_minutes": 45, "priority": "HIGH", "activity_type": "MOCK_TEST"}
-        ]
-    ]
-
-    existing_titles_stmt = select(StudyTask.title, StudyTask.scheduled_date).where(
-        StudyTask.user_id == current_user.id,
-        StudyTask.scheduled_date >= base_date,
-        StudyTask.scheduled_date <= end_date
-    )
-    existing_rows = (await session.exec(existing_titles_stmt)).all()
-    existing_keys = {(t_title, str(t_date)) for t_title, t_date in existing_rows}
-
-    today_date = datetime.now(timezone.utc).date()
-    created_tasks = []
-    for day_idx, day_tasks in enumerate(template_schedule):
-        task_date = base_date + timedelta(days=day_idx)
-        # Mid-Week Onboarding: Skip past days when generating the current week's plan
-        if task_date < today_date:
-            continue
-
-        date_str = str(task_date)
-        for t_info in day_tasks:
-            key = (t_info["title"], date_str)
-            if key in existing_keys:
-                continue
-            existing_keys.add(key)
-            new_task = StudyTask(
-                user_id=current_user.id,
-                title=t_info["title"],
-                description=f"Weekly plan target for {t_info['subject']}",
-                subject=t_info["subject"],
-                topic=t_info["topic"],
-                priority=t_info["priority"],
-                allocated_time_minutes=t_info["allocated_time_minutes"],
-                activity_type=t_info["activity_type"],
-                scheduled_date=task_date,
-                is_completed=False,
-                is_ai_recommended=True
-            )
-            session.add(new_task)
-            created_tasks.append(new_task)
-
-    await session.commit()
-    await _drop_cached_schedule(current_user.id)
+    created = await _write_generated_plan(session, current_user.id, base_date, end_date, base_date, monthly=False)
     return {
-        "message": f"Successfully generated 7-day study plan with {len(created_tasks)} target tasks!",
-        "task_count": len(created_tasks),
+        "message": f"Generated your week from your own results: {created} tasks.",
+        "task_count": created,
         "start_date": str(base_date),
         "end_date": str(end_date),
         "generated": True
     }
+
+
+@router.post("/generate-monthly-plan")
+async def generate_monthly_study_plan(
+    req: Optional[GenerateMonthlyPlanRequest] = None,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """The same plan for a whole calendar month; its last week is for revision and full papers."""
+    today = _today_ist()
+    first, last = _month_range(req.month if req else None, today)
+    if last < today:
+        raise HTTPException(status_code=422, detail="That month is already over")
+    created = await _write_generated_plan(session, current_user.id, first, last, max(first, today), monthly=True)
+    return {
+        "message": f"Generated your month from your own results: {created} tasks.",
+        "task_count": created,
+        "start_date": str(first),
+        "end_date": str(last),
+        "generated": True
+    }
+
+
+@router.get("/monthly-schedule")
+async def get_monthly_schedule(
+    month: Optional[str] = Query(None, description="YYYY-MM; this month when left out"),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Tasks for every day of a calendar month, for the planner's Month view."""
+    today = _today_ist()
+    first, last = _month_range(month, today)
+    tasks = (await session.exec(select(StudyTask).where(
+        StudyTask.user_id == current_user.id, StudyTask.scheduled_date >= first, StudyTask.scheduled_date <= last
+    ).order_by(StudyTask.scheduled_date, StudyTask.id))).all()
+    by_day: dict = {}
+    for t in tasks:
+        by_day.setdefault(str(t.scheduled_date), []).append(t)
+    days = []
+    d = first
+    while d <= last:
+        day_tasks = by_day.get(str(d), [])
+        days.append({
+            "date": str(d),
+            "is_today": d == today,
+            "allocated_minutes": sum(t.allocated_time_minutes or 30 for t in day_tasks),
+            "completed_tasks_count": sum(1 for t in day_tasks if t.is_completed),
+            "total_tasks_count": len(day_tasks),
+            "tasks": [
+                {
+                    "id": str(t.id),
+                    "title": t.title,
+                    "description": t.description,
+                    "subject": t.subject,
+                    "topic": t.topic,
+                    "priority": t.priority or "MEDIUM",
+                    "allocated_time_minutes": t.allocated_time_minutes or 30,
+                    "activity_type": t.activity_type or "CONCEPT_REVISION",
+                    "is_completed": t.is_completed,
+                    "is_ai_recommended": t.is_ai_recommended,
+                }
+                for t in day_tasks
+            ],
+        })
+        d += timedelta(days=1)
+    return {"month": first.strftime("%Y-%m"), "start_date": str(first), "end_date": str(last), "days": days}
 
 # ==================== WEEKLY SCHEDULE ENDPOINT ====================
 
