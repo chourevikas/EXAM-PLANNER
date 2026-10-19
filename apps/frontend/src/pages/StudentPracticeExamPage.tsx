@@ -358,11 +358,17 @@ export function StudentPracticeExamPage() {
   // The session's language lives in ?lang= (en / hi / mr): chosen in the picker before practice starts,
   // kept by every filter change (they copy the URL) and by a reload, so it stays fixed for the session
   const urlLang = searchParams.get('lang');
-  // ?source=bookmarks | revision: practise the student's bookmarked questions, or the ones due for
-  // spaced revision today, instead of a filtered set
+  // ?source=bookmarks | revision | mistakes | search: practise the student's bookmarked questions, the ones
+  // due for spaced revision today, their mistake notebook (Pro; ?view=frequent for 2+ misses), or the
+  // matches of a header search (?q=, opening at ?start=), instead of a filtered set
   const practiceSource = searchParams.get('source');
   const isRevisionSession = practiceSource === 'revision';
-  const isBookmarkSession = practiceSource === 'bookmarks' || isRevisionSession;
+  const isMistakeSession = practiceSource === 'mistakes';
+  const isSearchSession = practiceSource === 'search';
+  const isBookmarkSession = practiceSource === 'bookmarks' || isRevisionSession || isMistakeSession || isSearchSession;
+  const searchTerm = searchParams.get('q') || '';
+  const searchStart = searchParams.get('start') || '';
+  const mistakeView = searchParams.get('view') === 'frequent' ? 'frequent' : 'all';
   const hasSessionLanguage = SUPPORTED_LANGUAGES.some((l) => l.code === urlLang);
   const language = hasSessionLanguage ? (urlLang as string) : 'en';
 
@@ -883,7 +889,7 @@ export function StudentPracticeExamPage() {
   const [showMobileFilterPanel, setShowMobileFilterPanel] = useState(false);
 
   const SESSION_KEY = isBookmarkSession
-    ? `student_practice_session_${practiceSource}`
+    ? `student_practice_session_${practiceSource}${isSearchSession ? `_${searchTerm}_${searchStart}` : isMistakeSession ? `_${mistakeView}` : ''}`
     : `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
   const sessionKeyRef = useRef(SESSION_KEY);
   sessionKeyRef.current = SESSION_KEY;
@@ -1094,8 +1100,19 @@ export function StudentPracticeExamPage() {
         if (isBookmarkSession) {
           const token = localStorage.getItem('access_token');
           const bmParams = new URLSearchParams({ language, limit: '200' });
-          const sourceUrl = isRevisionSession ? '/api/v1/users/me/revision/practice' : '/api/v1/users/me/bookmarks/practice';
-          if (isRevisionSession) bmParams.set('limit', '50');
+          let sourceUrl = '/api/v1/users/me/bookmarks/practice';
+          if (isRevisionSession) {
+            sourceUrl = '/api/v1/users/me/revision/practice';
+            bmParams.set('limit', '50');
+          } else if (isMistakeSession) {
+            sourceUrl = '/api/v1/users/me/mistakes/practice';
+            bmParams.set('view', mistakeView);
+          } else if (isSearchSession) {
+            sourceUrl = '/api/v1/search/questions/practice';
+            bmParams.set('q', searchTerm);
+            bmParams.set('limit', '50');
+            if (searchStart) bmParams.set('start', searchStart);
+          }
           const res = await guardedFetch(`${sourceUrl}?${bmParams.toString()}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
@@ -1271,7 +1288,7 @@ export function StudentPracticeExamPage() {
     }
 
     loadPracticeQuestions();
-  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, hasSessionLanguage, isBookmarkSession]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, hasSessionLanguage, isBookmarkSession, practiceSource, searchTerm, searchStart, mistakeView]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -1737,11 +1754,23 @@ export function StudentPracticeExamPage() {
           }}
         >
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--deep-navy)', marginBottom: 8 }}>
-            {isRevisionSession ? 'Nothing due for revision today' : isBookmarkSession ? 'No bookmarked questions yet' : 'No Questions Available'}
+            {isRevisionSession
+              ? 'Nothing due for revision today'
+              : isMistakeSession
+                ? 'No mistakes to practise'
+                : isSearchSession
+                  ? 'No questions match your search'
+                  : isBookmarkSession
+                    ? 'No bookmarked questions yet'
+                    : 'No Questions Available'}
           </h2>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
             {isRevisionSession ? (
               <>Questions come back here when it's time to revise them, based on how you answered them in tests and practice.</>
+            ) : isMistakeSession ? (
+              <>Questions you answer wrong in tests and practice collect in your mistake notebook. Once you get one right, it leaves the list.</>
+            ) : isSearchSession ? (
+              <>Nothing matched <strong>"{searchTerm}"</strong>. Try fewer or different words.</>
             ) : isBookmarkSession ? (
               <>Bookmark questions while you practise or review a test, then practise them here.</>
             ) : (
@@ -1755,8 +1784,8 @@ export function StudentPracticeExamPage() {
             <button
               onClick={() => {
                 const current = new URLSearchParams(searchParams);
-                current.delete('subject');
-                current.delete('topic');
+                // Leaving a bookmark / revision / mistakes / search session too, or it would reload the same empty set
+                ['subject', 'topic', 'source', 'q', 'start', 'view'].forEach((k) => current.delete(k));
                 navigate(`?${current.toString()}`);
               }}
               style={{
@@ -1860,6 +1889,15 @@ export function StudentPracticeExamPage() {
                 Revising <strong>{totalQuestions}</strong> {totalQuestions === 1 ? 'question' : 'questions'} due today. Each answer schedules
                 its next revision: sooner if wrong, later if right.
               </span>
+            ) : isMistakeSession ? (
+              <span>
+                Practising <strong>{totalQuestions}</strong> {mistakeView === 'frequent' ? 'frequently missed' : ''} {totalQuestions === 1 ? 'mistake' : 'mistakes'}.
+                Get one right and it leaves your notebook.
+              </span>
+            ) : isSearchSession ? (
+              <span>
+                <strong>{totalQuestions}</strong> {totalQuestions === 1 ? 'question matches' : 'questions match'} <strong>"{searchTerm}"</strong>
+              </span>
             ) : (
               <span>
                 Practising your <strong>{totalQuestions}</strong> bookmarked {totalQuestions === 1 ? 'question' : 'questions'}
@@ -1867,10 +1905,10 @@ export function StudentPracticeExamPage() {
             )}
             <button
               type="button"
-              onClick={() => navigate(isRevisionSession ? '/dashboard' : '/bookmarks')}
+              onClick={() => navigate(isRevisionSession ? '/dashboard' : isMistakeSession ? '/mistakes' : isSearchSession ? '/dashboard' : '/bookmarks')}
               style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontWeight: 700, cursor: 'pointer', fontSize: 13.5 }}
             >
-              {isRevisionSession ? 'Back to dashboard' : 'Back to bookmarks'}
+              {isRevisionSession || isSearchSession ? 'Back to dashboard' : isMistakeSession ? 'Back to mistake notebook' : 'Back to bookmarks'}
             </button>
           </div>
         </div>

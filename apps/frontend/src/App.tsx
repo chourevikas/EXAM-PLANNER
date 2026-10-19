@@ -59,6 +59,9 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const BookmarksPage = lazy(() =>
   import('./pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })),
 );
+const MistakesPage = lazy(() =>
+  import('./pages/MistakesPage').then((m) => ({ default: m.MistakesPage })),
+);
 const CurrentAffairsPage = lazy(() =>
   import('./pages/CurrentAffairsPage').then((m) => ({ default: m.CurrentAffairsPage })),
 );
@@ -224,6 +227,7 @@ export default function App() {
             <Route path="/mocks" element={<MockSelectionPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/bookmarks" element={<BookmarksPage />} />
+            <Route path="/mistakes" element={<MistakesPage />} />
             <Route path="/billing" element={<PricingPage />} />
           </Route>
           <Route

@@ -21,6 +21,9 @@ export function prefetchRoute(routePath: string) {
     case '/bookmarks':
       import('../pages/BookmarksPage');
       break;
+    case '/mistakes':
+      import('../pages/MistakesPage');
+      break;
     case '/challenges':
       import('../pages/ChallengesPage');
       break;

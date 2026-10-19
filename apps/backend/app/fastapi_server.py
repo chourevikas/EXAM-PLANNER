@@ -22,6 +22,7 @@ from app.routers.translations import router as translations_router
 from app.routers.business_metrics import router as business_metrics_router
 from app.routers.exam_marking import router as exam_marking_router
 from app.routers.revision import router as revision_router
+from app.routers.mistakes import router as mistakes_router
 from app.routers.admin import router as admin_router
 from app.routers.exams import router as exams_router
 from app.routers.questions import router as questions_router
@@ -226,6 +227,7 @@ app.include_router(translations_router, prefix=settings.API_V1_STR)
 app.include_router(business_metrics_router, prefix=settings.API_V1_STR)
 app.include_router(exam_marking_router, prefix=settings.API_V1_STR)
 app.include_router(revision_router, prefix=settings.API_V1_STR)
+app.include_router(mistakes_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(exams_router, prefix=settings.API_V1_STR)
 app.include_router(questions_router, prefix=settings.API_V1_STR)
