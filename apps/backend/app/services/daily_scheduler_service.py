@@ -51,6 +51,7 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
     logger.info(f"🚀 Starting daily midnight email digest run for {date_str} (cutoff: {cutoff_date})...")
 
     user_tasks_map: Dict[int, Dict[str, Any]] = {}
+    no_email: set = set()
 
     try:
         async with async_session_factory() as session:
@@ -81,9 +82,16 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
                         "allocated_time_minutes": task.allocated_time_minutes or 30
                     })
 
+            # Students who turned these reminders off on the Notifications tab
+            from app.services.reminder_service import opted_out
+            no_in_app = await opted_out(session, "notify_pending_tasks")
+            no_email = await opted_out(session, "notify_task_email")
+
             # Also create in-app notification in batch if not already present
             today_start = datetime.now(ZoneInfo("Asia/Kolkata")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
             for uid, data in user_tasks_map.items():
+                if uid in no_in_app:
+                    continue
                 user = data["user"]
                 tasks_list = data["tasks"]
                 pending_count = len(tasks_list)
@@ -153,7 +161,7 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
                 logger.error(f"Failed sending midnight digest to {user.email}: {e}")
                 failed_count += 1
 
-    tasks = [_send_single_user_digest(uid, data) for uid, data in user_tasks_map.items()]
+    tasks = [_send_single_user_digest(uid, data) for uid, data in user_tasks_map.items() if uid not in no_email]
     await asyncio.gather(*tasks, return_exceptions=True)
 
     # Mark as dispatched for today in cache

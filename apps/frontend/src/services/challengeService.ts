@@ -81,7 +81,7 @@ export interface CreateChallengePayload {
   question_count: number;
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
   subject_names?: string[];
-  exam_type_id?: number;
+  exam_type_ids?: number[];
   years?: number[];
   time_limit_minutes: number;
   visibility: 'INVITE_ONLY' | 'PUBLIC';

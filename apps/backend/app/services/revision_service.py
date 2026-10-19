@@ -146,9 +146,11 @@ async def send_daily_reminders(session: AsyncSession, now: Optional[datetime] = 
     students = (await session.exec(
         select(User.id).where(User.role == UserRole.STUDENT, User.status == UserStatus.ACTIVE)
     )).all()
+    from app.services.reminder_service import opted_out
+    turned_off = await opted_out(session, "notify_revision")
     sent = 0
     for user_id in students:
-        if user_id in already:
+        if user_id in already or user_id in turned_off:
             continue
         summary = await due_summary(session, user_id, now)
         n = summary["due_today"]

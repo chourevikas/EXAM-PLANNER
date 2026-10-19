@@ -14,6 +14,7 @@ import {
   Globe,
   Bell,
   Swords,
+  NotebookPen,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { prefetchRoute } from '../../utils/routePrefetch';
@@ -71,6 +72,7 @@ export function StudentSidebar({
     { icon: Globe, label: 'Current Affairs', to: '/learn/current-affairs' },
     { icon: Bell, label: 'Announcements', to: '/notifications' },
     { icon: Bookmark, label: 'Bookmarks', to: '/bookmarks' },
+    { icon: NotebookPen, label: 'Mistake Notebook', to: '/mistakes' },
   ];
 
   const reportItems = [

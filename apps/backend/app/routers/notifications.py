@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel, Field
 from sqlmodel import select, col, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -213,6 +214,44 @@ async def get_user_notifications(
     )
 
 
+class NotificationSettingsIn(BaseModel):
+    """Any subset of the reminder settings; omitted fields keep their value."""
+    notify_revision: Optional[bool] = None
+    notify_pending_tasks: Optional[bool] = None
+    notify_task_email: Optional[bool] = None
+    notify_weak_topic: Optional[bool] = None
+    notify_current_affairs: Optional[bool] = None
+    notify_full_paper: Optional[bool] = None
+    notify_full_paper_day: Optional[int] = Field(default=None, ge=0, le=6)
+    weekly_email_enabled: Optional[bool] = None
+    weekly_email_day: Optional[int] = Field(default=None, ge=0, le=6)
+    weekly_email_hour: Optional[int] = Field(default=None, ge=0, le=23)
+
+
+# Declared before /{notification_id} so "settings" isn't read as a notification id
+@router.get("/settings", summary="The student's reminder and email settings")
+async def get_notification_settings(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services import reminder_service
+    return await reminder_service.get_settings(session, current_user.id)
+
+
+@router.put("/settings", summary="Change reminder and email settings")
+async def update_notification_settings(
+    payload: NotificationSettingsIn,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    from app.db.models.user import UserRole
+    from app.services import reminder_service
+
+    if current_user.role != UserRole.STUDENT:
+        raise HTTPException(status_code=403, detail="Reminder settings are for students.")
+    return await reminder_service.update_settings(session, current_user.id, payload.model_dump(exclude_none=True))
+
+
 @router.get("/{notification_id}", summary="Get Single Published Notification Detail")
 async def get_published_notification_detail(
     notification_id: int,
@@ -369,7 +408,7 @@ async def unsubscribe_weekly_email(
         profile.weekly_email_enabled = False
         session.add(profile)
         await session.commit()
-        message, code = "You won't get the weekly summary email any more. You can turn it back on in your profile.", 200
+        message, code = "You won't get the weekly summary email any more. You can turn it back on under Profile → Notifications.", 200
     return HTMLResponse(
         status_code=code,
         content=(

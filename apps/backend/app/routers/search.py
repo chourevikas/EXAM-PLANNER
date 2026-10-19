@@ -1,11 +1,19 @@
-from typing import Any
+from typing import Any, Optional
+from urllib.parse import urlencode
+
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import select, or_
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
+from sqlmodel import select, or_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.cache import get_cache, build_cache_key
+from app.config.logger import setup_logger
+from app.core.deps import get_current_user
 from app.db.session import get_async_session
-from app.db.models import Exam, Topic, Subtopic, QuestionSourceType
+from app.db.models import Exam, Topic, Subtopic, QuestionSourceType, Question, User
+
+logger = setup_logger("GlobalSearch")
 
 router = APIRouter(prefix="/search", tags=["Global Search"])
 
@@ -22,7 +30,7 @@ async def global_search(
     """
     clean_query = q.strip()
     if not clean_query:
-        return {"mocks": [], "pyqs": [], "topics": []}
+        return {"mocks": [], "pyqs": [], "topics": [], "questions": []}
 
     cache = get_cache()
     cache_key = build_cache_key("search", clean_query.lower())
@@ -35,6 +43,7 @@ async def global_search(
         "mocks": [],
         "pyqs": [],
         "topics": [],
+        "questions": [],
     }
 
     try:
@@ -90,6 +99,12 @@ async def global_search(
     except Exception:
         pass
 
+    # 3. Question text (full-text); each result opens a practice session on all the matches, from that question
+    try:
+        results["questions"] = await _question_results(session, clean_query)
+    except Exception as err:
+        logger.warning(f"Question search failed for {clean_query!r}: {err}")
+
     # Fallback if no results found
     if not any(results.values()):
         results["topics"].append({
@@ -102,3 +117,63 @@ async def global_search(
     await cache.set(cache_key, results, ttl_seconds=600)
     return results
 
+
+
+QUESTION_RESULTS = 8
+
+
+async def _question_results(session: AsyncSession, query: str) -> list[dict[str, Any]]:
+    from app.services.exam_session_service import exam_badge_label, load_exam_type_codes
+    from app.services.question_search_service import search_questions, snippet
+
+    matches = await search_questions(session, query, limit=QUESTION_RESULTS)
+    if not matches:
+        return []
+    ids = [qid for qid, _ in matches]
+    meta = {
+        qid: (name, code, q_year, e_year, mixed)
+        for qid, name, code, q_year, e_year, mixed in (await session.exec(
+            select(Question.id, Exam.name, Exam.code, Question.source_year, Exam.source_year, Exam.is_mixed_bank)
+            .outerjoin(Exam, col(Exam.id) == col(Question.exam_id))
+            .where(col(Question.id).in_(ids))
+        )).all()
+    }
+    type_codes = await load_exam_type_codes(session)
+    out = []
+    for qid, text in matches:
+        name, code, q_year, e_year, mixed = meta.get(qid, (None, None, None, None, False))
+        badge = exam_badge_label(name or code, type_codes) if (name or code) else None
+        year = q_year or (None if mixed else e_year)
+        out.append({
+            "id": str(qid),
+            "title": snippet(text, query),
+            "type": " ".join(str(p) for p in (badge, year) if p) or "Question",
+            "url": "/practice-exam?" + urlencode({"source": "search", "q": query, "start": qid}),
+        })
+    return out
+
+
+@router.get("/questions/practice", summary="Questions matching a search, with solutions, for a practice session")
+async def search_practice(
+    q: str = Query(..., min_length=1, max_length=200),
+    start: Optional[int] = Query(default=None, description="Question to open first (the one clicked)"),
+    language: str = Query(default="en", description="Session language: en, hi or mr"),
+    limit: int = Query(default=50, ge=1, le=100),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Same item shape as GET /questions, best match first; the clicked question is moved to the front."""
+    from app.core.languages import parse_language
+    from app.services.question_search_service import search_questions
+    from app.services.question_service import QuestionService
+
+    ids = [qid for qid, _ in await search_questions(session, q, limit=limit)]
+    if start is not None and start in ids:
+        ids.remove(start)
+        ids.insert(0, start)
+    by_id = {x.id: x for x in (await session.exec(select(Question).where(col(Question.id).in_(ids)))).all()} if ids else {}
+    questions = [by_id[i] for i in ids if i in by_id]
+    items = await QuestionService(session)._build_batch_question_detail_responses(
+        questions, target_lang=parse_language(language), include_solutions=True
+    )
+    return JSONResponse(content=jsonable_encoder({"items": items, "total": len(items)}))

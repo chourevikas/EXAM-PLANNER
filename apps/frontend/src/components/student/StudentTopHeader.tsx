@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useClerk, useUser } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import {
-  Search,
   Bell,
   User,
   CreditCard,
@@ -11,9 +10,6 @@ import {
   LogOut,
   CheckCheck,
   Check,
-  BookOpen,
-  Target,
-  Trophy,
   Menu,
   Zap,
   Flame,
@@ -22,6 +18,7 @@ import {
 import { UserAvatar } from '../common/UserAvatar';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { guardedFetch } from '../../utils/apiGuard';
+import { HeaderSearch } from './HeaderSearch';
 
 interface StudentTopHeaderProps {
   user: any;
@@ -40,19 +37,14 @@ function getUserInitials(name?: string): string {
 export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTopHeaderProps) {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(user);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
   const [removingNotifIds, setRemovingNotifIds] = useState<Set<string>>(new Set());
-  const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchExpanded, setSearchExpanded] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const clerk = useClerk();
   const { user: clerkUser } = useUser();
@@ -129,26 +121,14 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
       if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
         setShowNotifications(false);
         setShowProfileMenu(false);
-        setSearchResults(null);
-        setSearchExpanded(false);
       }
     }
 
+    // Search has its own ⌘K and Escape handling (HeaderSearch)
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        if (isMobile) {
-          setSearchExpanded(true);
-          setTimeout(() => searchInputRef.current?.focus(), 100);
-        } else {
-          searchInputRef.current?.focus();
-        }
-      }
       if (e.key === 'Escape') {
         setShowNotifications(false);
         setShowProfileMenu(false);
-        setSearchExpanded(false);
-        setSearchResults(null);
       }
     };
 
@@ -160,42 +140,6 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     };
   }, [isMobile]);
 
-  useEffect(() => {
-    if (searchQuery.trim().length === 0) {
-      setSearchResults(null);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        const headers: Record<string, string> = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const res = await fetch(`/api/v1/search?q=${encodeURIComponent(searchQuery)}`, { headers });
-        if (res.ok) {
-          const data = await res.json();
-          setSearchResults({
-            mocks: data.mocks || [],
-            pyqs: data.pyqs || [],
-            topics: data.topics || []
-          });
-        } else {
-          throw new Error(`Search failed (${res.status})`);
-        }
-      } catch (err) {
-        // Show nothing rather than made-up matches when search is unavailable
-        console.warn('Search failed:', err);
-        setSearchResults({ mocks: [], pyqs: [], topics: [] });
-      } finally {
-        setIsSearching(false);
-      }
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   const handleMarkAsRead = async (noti: any, e?: React.MouseEvent) => {
     if (e) {
@@ -281,7 +225,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     }
   };
 
-  // Show search bar inline on desktop/tablet landscape, or as an icon-only on mobile
+  // Search bar inline on desktop/tablet landscape, an icon that opens a bar on phones
   const showInlineSearch = !isMobile;
 
   return (
@@ -352,8 +296,12 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
         )}
       </div>
 
-      {/* Right Controls: Notification Bell, User Avatar */}
+      {/* Center: search (questions, papers, topics) */}
+      {showInlineSearch && <HeaderSearch />}
+
+      {/* Right Controls: Search (phones), Streak, Notification Bell, User Avatar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16, position: 'relative', flexShrink: 0 }}>
+        {!showInlineSearch && <HeaderSearch compact />}
 
         {/* Current study streak */}
         {typeof currentUser?.current_streak === 'number' && (
