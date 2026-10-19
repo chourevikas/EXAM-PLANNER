@@ -23,7 +23,8 @@ class CreateChallengeRequest(BaseModel):
     difficulty: Optional[DifficultyLevel] = None
     subject_name: Optional[str] = None  # legacy single subject; prefer subject_names
     subject_names: List[str] = []
-    exam_type_id: Optional[int] = None
+    exam_type_id: Optional[int] = None  # legacy single exam; prefer exam_type_ids
+    exam_type_ids: List[int] = []
     years: List[int] = []
     time_limit_minutes: int = 15
     visibility: ChallengeVisibility = ChallengeVisibility.INVITE_ONLY

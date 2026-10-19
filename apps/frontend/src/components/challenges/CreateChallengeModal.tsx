@@ -39,6 +39,16 @@ const twoCol: React.CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
   gap: 14,
 };
+const chipStyle = (on: boolean): React.CSSProperties => ({
+  padding: '6px 14px',
+  borderRadius: 20,
+  cursor: 'pointer',
+  fontSize: 13,
+  fontWeight: 600,
+  border: on ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
+  backgroundColor: on ? 'var(--accent-bg)' : 'var(--bg-body)',
+  color: 'var(--text-main)',
+});
 
 export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
   const navigate = useNavigate();
@@ -47,7 +57,7 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
   const [options, setOptions] = useState<ChallengeOptions>({ exams: [], years: [], subject_years: {} });
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [examTypeId, setExamTypeId] = useState<number | ''>('');
+  const [examTypeIds, setExamTypeIds] = useState<number[]>([]);
   const [years, setYears] = useState<number[]>([]);
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState<string>('');
@@ -81,22 +91,34 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
     };
   }, [onClose, submitting]);
 
-  const selectedExam = examTypeId === '' ? null : options.exams.find((e) => e.id === examTypeId) ?? null;
-
-  // Years on offer follow the chosen exam; with no exam chosen, every year that has questions.
-  const availableYears = useMemo(
-    () => (selectedExam ? selectedExam.years : options.years),
-    [selectedExam, options.years]
+  const selectedExams = useMemo(
+    () => options.exams.filter((e) => examTypeIds.includes(e.id)),
+    [options.exams, examTypeIds]
   );
 
-  // Subjects follow the chosen exam and, once years are picked, only those with questions in those years.
+  // Years on offer follow the chosen exams (any of them); with no exam chosen, every year that has questions.
+  const availableYears = useMemo(() => {
+    if (selectedExams.length === 0) return options.years;
+    return Array.from(new Set(selectedExams.flatMap((e) => e.years))).sort((a, b) => b - a);
+  }, [selectedExams, options.years]);
+
+  // Subjects follow the chosen exams and, once years are picked, only those with questions in those years.
   const availableSubjects = useMemo(() => {
-    const map = selectedExam ? selectedExam.subject_years : options.subject_years;
+    const map: Record<string, number[]> = {};
+    if (selectedExams.length === 0) {
+      Object.assign(map, options.subject_years);
+    } else {
+      selectedExams.forEach((e) =>
+        Object.entries(e.subject_years).forEach(([name, ys]) => {
+          map[name] = [...(map[name] || []), ...ys];
+        })
+      );
+    }
     return Object.entries(map)
       .filter(([, subjectYears]) => years.length === 0 || subjectYears.some((y) => years.includes(y)))
       .map(([name]) => name)
       .sort((a, b) => a.localeCompare(b));
-  }, [selectedExam, options.subject_years, years]);
+  }, [selectedExams, options.subject_years, years]);
 
   // Never keep a selection the current exam/years can't produce.
   useEffect(() => {
@@ -106,7 +128,8 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
     setSubjectNames((prev) => (prev.every((n) => availableSubjects.includes(n)) ? prev : prev.filter((n) => availableSubjects.includes(n))));
   }, [availableSubjects]);
 
-  const handleExamChange = (value: string) => setExamTypeId(value === '' ? '' : Number(value));
+  const toggleExam = (id: number) =>
+    setExamTypeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const toggleYear = (year: number) =>
     setYears((prev) => (prev.includes(year) ? prev.filter((y) => y !== year) : [...prev, year]));
@@ -129,7 +152,7 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
         question_count: questionCount,
         difficulty: (difficulty || undefined) as any,
         subject_names: subjectNames.length ? subjectNames : undefined,
-        exam_type_id: examTypeId === '' ? undefined : examTypeId,
+        exam_type_ids: examTypeIds.length ? examTypeIds : undefined,
         years: years.length ? years : undefined,
         time_limit_minutes: timeLimitMinutes,
         visibility,
@@ -264,13 +287,25 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
               </div>
 
               <div>
-                <label style={labelStyle} htmlFor="cc-exam">Exam</label>
-                <select id="cc-exam" style={inputStyle} value={examTypeId} onChange={(e) => handleExamChange(e.target.value)}>
-                  <option value="">Any Exam</option>
-                  {options.exams.map((ex) => (
-                    <option key={ex.id} value={ex.id}>{ex.name}</option>
-                  ))}
-                </select>
+                <label style={labelStyle}>
+                  Exams <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(pick one or more, or leave blank for any exam)</span>
+                </label>
+                {options.exams.length === 0 ? (
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                    {optionsLoaded ? 'No exams available yet. Questions will be drawn from every exam.' : 'Loading exams…'}
+                  </div>
+                ) : (
+                  <div role="group" aria-label="Exams" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {options.exams.map((ex) => {
+                      const on = examTypeIds.includes(ex.id);
+                      return (
+                        <button type="button" key={ex.id} aria-pressed={on} onClick={() => toggleExam(ex.id)} style={chipStyle(on)}>
+                          {ex.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -283,8 +318,8 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
                       ? 'Loading subjects…'
                       : years.length > 0
                         ? 'No subjects have questions for the selected year(s). Questions will be drawn from the whole exam.'
-                        : selectedExam
-                          ? 'No subject breakdown is available for this exam yet. Questions will be drawn from the whole exam.'
+                        : selectedExams.length > 0
+                          ? `No subject breakdown is available for ${selectedExams.length === 1 ? 'this exam' : 'these exams'} yet. Questions will be drawn from the whole exam.`
                           : 'No subjects available yet.'}
                   </div>
                 ) : (
@@ -297,16 +332,7 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
                           key={name}
                           aria-pressed={on}
                           onClick={() => toggleSubject(name)}
-                          style={{
-                            padding: '6px 14px',
-                            borderRadius: 20,
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            fontWeight: 600,
-                            border: on ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
-                            backgroundColor: on ? 'var(--accent-bg)' : 'var(--bg-body)',
-                            color: 'var(--text-main)',
-                          }}
+                          style={chipStyle(on)}
                         >
                           {name}
                         </button>
@@ -332,16 +358,7 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
                           key={y}
                           aria-pressed={on}
                           onClick={() => toggleYear(y)}
-                          style={{
-                            padding: '6px 14px',
-                            borderRadius: 20,
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            fontWeight: 600,
-                            border: on ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
-                            backgroundColor: on ? 'var(--accent-bg)' : 'var(--bg-body)',
-                            color: 'var(--text-main)',
-                          }}
+                          style={chipStyle(on)}
                         >
                           {y}
                         </button>

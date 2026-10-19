@@ -63,7 +63,7 @@ class ChallengeService:
         subject_names: Optional[List[str]],
         difficulty,
         question_count: int,
-        exam_type: Optional[ExamType] = None,
+        exam_types: Optional[List[ExamType]] = None,
         years: Optional[List[int]] = None,
         legacy_subject: Optional[str] = None,
     ) -> List[Question]:
@@ -80,14 +80,15 @@ class ChallengeService:
                 query = query.where(func.lower(Subject.name).in_([n.strip().lower() for n in subject_names]))
             else:
                 query = query.where(Subject.name.ilike(f"%{legacy_subject.strip()}%"))
-        if exam_type or years:
+        if exam_types or years:
             query = query.join(Exam, Exam.id == Question.exam_id)
-        if exam_type:
+        if exam_types:
+            # A question from any of the chosen exams
             query = query.where(
-                or_(
-                    Exam.exam_type_id == exam_type.id,
-                    func.lower(Exam.name).contains(exam_type.name.lower()),
-                )
+                or_(*[
+                    or_(Exam.exam_type_id == et.id, func.lower(Exam.name).contains(et.name.lower()))
+                    for et in exam_types
+                ])
             )
         if years:
             query = query.where(func.coalesce(Question.source_year, Exam.source_year).in_(years))
@@ -186,18 +187,21 @@ class ChallengeService:
     async def create_challenge(
         self, creator: User, payload: CreateChallengeRequest
     ) -> ChallengeSummary:
-        exam_type: Optional[ExamType] = None
-        if payload.exam_type_id:
-            exam_type = await self.session.get(ExamType, payload.exam_type_id)
+        # One or more exams (exam_type_ids), or the legacy single exam_type_id; none means any exam
+        exam_type_ids = list(dict.fromkeys(payload.exam_type_ids or ([payload.exam_type_id] if payload.exam_type_id else [])))
+        exam_types: List[ExamType] = []
+        for type_id in exam_type_ids:
+            exam_type = await self.session.get(ExamType, type_id)
             if not exam_type or not exam_type.is_active:
                 raise HTTPException(status_code=400, detail="Selected exam is not available.")
+            exam_types.append(exam_type)
         years = sorted({int(y) for y in payload.years}, reverse=True)
 
         # Trim, drop blanks, and de-duplicate case-insensitively (first spelling wins).
         subject_names = list({n.strip().lower(): n.strip() for n in reversed(payload.subject_names) if n and n.strip()}.values())[::-1]
         legacy_subject = (payload.subject_name or "").strip() or None
         questions = await self._sample_questions(
-            subject_names, payload.difficulty, payload.question_count, exam_type, years, legacy_subject
+            subject_names, payload.difficulty, payload.question_count, exam_types, years, legacy_subject
         )
         if not questions:
             raise HTTPException(
@@ -216,8 +220,9 @@ class ChallengeService:
             difficulty=payload.difficulty,
             subject_name=(", ".join(subject_names) if subject_names else legacy_subject),
             subject_names=subject_names or None,
-            exam_type_id=exam_type.id if exam_type else None,
-            exam_name=exam_type.name if exam_type else None,
+            # The id only when there is exactly one exam; the name lists them all, for display
+            exam_type_id=exam_types[0].id if len(exam_types) == 1 else None,
+            exam_name=(", ".join(et.name for et in exam_types)[:200] or None),
             years=years or None,
             time_limit_minutes=payload.time_limit_minutes,
             visibility=payload.visibility,

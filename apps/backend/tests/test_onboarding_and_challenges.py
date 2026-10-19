@@ -13,7 +13,7 @@ from app.db.models.user import User, UserRole, StudentProfile, SubscriptionTier
 from app.db.models.exam_type import ExamType
 from app.db.models.hierarchy import Exam, SyllabusVersion, Subject, Topic, Subtopic
 from app.db.models.question import Question, QuestionTranslation
-from app.db.models.challenge import ChallengeQuestion
+from app.db.models.challenge import Challenge, ChallengeQuestion
 from app.db.models.enums import QuestionStatus, LanguageCode
 from app.core.security import create_access_token, get_password_hash
 
@@ -337,6 +337,35 @@ async def test_challenge_questions_follow_exam_and_year_filters(client):
 
     assert (await _create(client, "alice", exam_type_id=_state["mpsc_type"], years=[2024])).status_code == 400
     assert (await _create(client, "alice", exam_type_id=99999)).status_code == 400
+
+
+@pytest.mark.anyio
+async def test_challenge_can_draw_from_several_exams(client):
+    q = _state["qids"]  # created as dave (Pro): alice's free challenges are needed by later tests
+
+    async def stored(challenge_id):
+        async with AsyncSession(test_engine) as s:
+            ids = set((await s.exec(select(ChallengeQuestion.question_id).where(ChallengeQuestion.challenge_id == challenge_id))).all())
+            return ids, await s.get(Challenge, challenge_id)
+
+    both = await _create(client, "dave", exam_type_ids=[_state["upsc_type"], _state["mpsc_type"]])
+    assert both.status_code == 200, both.text
+    assert both.json()["exam_name"] == "UPSC Civil Services Examination, MPSC Rajyaseva"
+    ids, row = await stored(both.json()["id"])
+    assert ids == set(q["upsc2023"] + q["upsc2024"] + q["mpsc2023"])
+    assert row.exam_type_id is None  # several exams: the names say which
+
+    # Years narrow every chosen exam; 2024 only exists for UPSC
+    both_2024 = await _create(client, "dave", exam_type_ids=[_state["upsc_type"], _state["mpsc_type"]], years=[2024])
+    assert (await stored(both_2024.json()["id"]))[0] == set(q["upsc2024"])
+
+    # One exam in the list behaves like the legacy single exam_type_id; duplicates are ignored
+    one = await _create(client, "dave", exam_type_ids=[_state["mpsc_type"], _state["mpsc_type"]])
+    ids, row = await stored(one.json()["id"])
+    assert (ids, row.exam_type_id, one.json()["exam_name"]) == (set(q["mpsc2023"]), _state["mpsc_type"], "MPSC Rajyaseva")
+
+    # Any unknown exam in the list is rejected
+    assert (await _create(client, "dave", exam_type_ids=[_state["upsc_type"], 99999])).status_code == 400
 
 
 @pytest.mark.anyio
