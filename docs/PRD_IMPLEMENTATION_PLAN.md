@@ -2,7 +2,7 @@
 
 **Based on:** [PRD_GAP_ANALYSIS.md](PRD_GAP_ANALYSIS.md) and the client decisions recorded there in §0, including the second-round answers (16 Oct 2026)
 **Branch base:** `release/0.0.1`. One feature branch and PR per workstream (`pankajpandey/<topic>`).
-**Status (18 Oct 2026):** Phases 0.2 to 6 are built and merged into `release/0.0.1` (up to PR #57). Only 0.1 (Cashfree payments) is not merged. What's left is under [What's left](#whats-left).
+**Status (19 Oct 2026):** Phases 0.2 to 7 are built and merged into `release/0.0.1` (up to PR #62). Only 0.1 (Cashfree payments) is not merged. What's left is under [What's left](#whats-left).
 **Definition of done for every item:**
 - backend tests added or updated;
 - tested end to end in the browser (UI + API) as the right role, at desktop and phone widths;
@@ -37,7 +37,7 @@ Until it lands, the pricing page shows "Online payment coming soon" instead of t
 
 - Merge `origin/pankajpandey/payment-gateway-integration` into `release/0.0.1`.
   - It brings `routers/payments.py`, `services/entitlement_service.py`, `require_feature` in `core/deps.py`, `routers/entitlements.py`, `FeatureUsageEvent` and migrations `056`/`060`/`061`.
-- **Migration chain:** `release/0.0.1` now has migrations up to `068_existing_students_pro`. Add a merge revision (or re-parent the branch's migrations) onto that head. Check each file's `revision` string, not its filename (see the run-app skill).
+- **Migration chain:** `release/0.0.1` now has migrations up to `069_reminders_and_question_search`. Add a merge revision (or re-parent the branch's migrations) onto that head. Check each file's `revision` string, not its filename (see the run-app skill).
 - Delete the localStorage "payment" in `apps/frontend/src/pages/PricingPage.tsx` (`handleCompletePayment`) and use the branch's checkout flow.
 - Run the whole flow against the **Cashfree sandbox** before release: order → pay → webhook → subscription active → receipt. Production go-live (keys, domain whitelist, dashboard webhooks including `DISPUTE_*`) stays a separate ops task.
 
@@ -271,29 +271,61 @@ A new tab in the super admin app (`apps/superadmin`) with:
 
 ---
 
+## Phase 7: revision, search and reminders (19 Oct) ✅ built
+Items from the "not built yet" list, plus fixes from client testing.
+
+### 7.1 Mistake notebook (Pro)
+- **Page:** `/mistakes`, in the sidebar. Every question answered wrong in submitted tests and in practice, merged per question: times wrong, last wrong date, most-missed first.
+- **Filters:** "All" and "Missed 2+ times" tabs, a subject filter, "Show fixed ones". A question is fixed, and leaves the list, once the student's latest answer is right. Blank answers and tests still in progress don't count.
+- **Practice:** `GET /users/me/mistakes/practice`, `/practice-exam?source=mistakes` (`&view=frequent` for 2+ misses).
+- **Free plan:** a locked card; the API answers 403.
+
+### 7.2 Full-text question search
+- **Header search bar** is back (a UI cleanup on 19 Sep had removed it from the screen). ⌘K/Ctrl+K on desktop; an icon that opens a bar on phones.
+- **Questions group:** an excerpt, the exam and the year. Clicking one opens practice on all the matches, starting with that question (`/search/questions/practice`, `/practice-exam?source=search`).
+- **Matching:** English uses a full-text index on question text (migration `069`), every word as a prefix, ranked. Hindi and Marathi use a substring match, because how Postgres splits Devanagari depends on the database locale.
+
+### 7.3 Reminders and notification settings
+- **Notifications tab** on the profile (`GET/PUT /notifications/settings`). Each reminder can be turned off: revision due, study plan tasks, weak topic, new current affairs, weekly full paper (with its day), the daily task email and the weekly summary email. The weekly email settings moved here from Exam Targets.
+- **New in-app reminders**, from the hourly loop, each once per window:
+  - weak topic: Mondays 8 AM IST, the lowest-accuracy subtopic over 30 days (below 60%, at least 5 answers), with a practice link;
+  - new current affairs: 6 PM IST on days something was published;
+  - weekly full paper: 9 AM IST on the student's chosen day, the newest full PYQ paper they haven't attempted. This stands in for mock-test reminders until the mock-test series exists.
+- **Existing reminders** (revision, pending tasks, task email) follow the settings. Everything defaults to on.
+- **Migration** `069_reminders_and_question_search` adds the settings columns and the search index; it skips anything that already exists.
+
+### 7.4 Challenges across several exams
+The Create Challenge form takes one or more exams (chips, like subjects and years); questions come from any of them, and the years and subjects on offer combine. API: `exam_type_ids`, with the single `exam_type_id` still accepted. No migration.
+
+### 7.5 Fixes and small items
+- The current streak shows in the header, next to the bell.
+- Pro students no longer see "Upgrade to PRO" in the sidebar.
+- Questions in a PYQ simulation are tagged with their own paper's exam and year: an MPSC paper showed "UPSC CSE" on every question.
+
+---
+
 ## What's left
-As of 18 Oct 2026, on `release/0.0.1`.
+As of 19 Oct 2026, on `release/0.0.1`.
 
 **Before or right after deploying**
-- Check the production database is at migration `068`. The deploy runs `alembic upgrade head || true`, so a failed migration doesn't fail the deploy.
+- Check the production database is at migration `069`. The deploy runs `alembic upgrade head || true`, so a failed migration doesn't fail the deploy.
 - Set the MPSC and BPSC marking schemes (6.1).
 - Production translation credentials, so explanations get translated (5.2).
+- An exam type on every paper (MPSC and BPSC included), so challenges can offer those exams (7.4).
 
 **Payments (0.1, on hold)**
-- Merge the Cashfree branch with an Alembic merge revision joining its `056`/`060`/`061` to `068`.
+- Merge the Cashfree branch with an Alembic merge revision joining its `056`/`060`/`061` to `069`.
 - Run a sandbox payment end to end.
 - Go live with production keys and the dashboard webhooks (including `DISPUTE_*`).
 
 **Not built yet: to prioritise with the client**
 - Notes per question (`QuestionBookmark.notes` exists, unused).
 - "Reserve for round 2" action.
-- Dashboard: real "questions today", streak card and daily goal.
-- Mistake notebook / frequently wrong questions (`AttemptMode.REVISION` exists).
-- Mock-test series. The admin Mock tests screen still shows sample data (0.2).
-- Full-text question search for the home bar (today it finds exams, topics and subtopics).
+- Dashboard: real "questions today", streak card and daily goal (the streak now shows in the header).
+- Mock-test series. The admin Mock tests screen still shows sample data (0.2). Mock-test reminders wait on this (7.3).
 - SEO question pages (the marketing site has exam and current-affairs pages only).
 - Improvement tracker: per-topic improvement %, revision count, last revised date; consistency score.
-- Mock-test and current-affairs reminders, push notifications, a notification preferences page.
+- Push notifications (reminders go to the in-app bell and email).
 - Friends ranking, platform daily/weekly challenges, public or private profile.
 - Explanation extras: UPSC trend, possible future questions, sources and books.
 - Practice page filter bar and the "similar questions" panel in Hindi/Marathi (5.4).
