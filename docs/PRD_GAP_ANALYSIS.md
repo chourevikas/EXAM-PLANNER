@@ -2,7 +2,7 @@
 
 **Source:** client PRD "Exam planner (2).docx" (21 sections + USP + home search bar)
 **Checked against:** `release/0.0.1` and the unmerged branches, 16 Oct 2026
-**Status:** reviewed with the client; decisions recorded in §0 (16 Oct 2026). Progress, what's merged and what's left are in the status update below (18 Oct 2026). Second-round answers recorded 16 Oct 2026. Implementation plan: [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md)
+**Status:** reviewed with the client; decisions recorded in §0 (16 Oct 2026). Progress, what's merged and what's left are in the status update below (19 Oct 2026). Second-round answers recorded 16 Oct 2026. Implementation plan: [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md)
 
 ## Context
 The PRD has 21 sections plus the USP and a home search bar. Every requirement was checked against the code and marked **Done / Partial / Missing**. Features that **look built but run on hard-coded or made-up data** are flagged separately, because they are the bigger risk: a demo would show numbers that aren't real. The sections from §1 on are the original analysis (16 Oct) and describe the code before this work; the status update above says what has changed since.
@@ -11,7 +11,7 @@ Legend: ✅ Done · 🟡 Partial · ❌ Missing · ⚠️ looks done but uses ha
 
 ---
 
-## Status update (18 Oct 2026)
+## Status update (19 Oct 2026)
 For the next client call. Details per item are in [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md).
 
 **Everything below is merged into `release/0.0.1`**, except online payments (Cashfree), which is on hold.
@@ -39,11 +39,18 @@ For the next client call. Details per item are in [PRD_IMPLEMENTATION_PLAN.md](P
 | Study plan | Built from the student's own results (revision due, weak topics, new topics, a Sunday test) within their weekly hours; new Month plan with a revision-and-full-papers last week |
 | Super admin | Revenue & Engagement tab |
 | Pricing page | No fake checkout: "Online payment coming soon"; free plan described correctly |
+| Mistake notebook (Pro) | Every question answered wrong in tests and practice, most-missed first; "Missed 2+ times" tab, subject filter, practise from the list. A question leaves the list once the student gets it right. Free students see a locked card |
+| Question search | The header search bar is back and finds question text (English, Hindi, Marathi), plus papers and topics. Clicking a question opens practice on all the matches |
+| Reminders and notification settings | New Notifications tab on the profile: each reminder can be turned off. New in-app reminders: weakest topic (Mondays), new current affairs (evenings), a full past paper not yet taken (weekly, on the student's chosen day). The weekly email settings moved here |
+| Streak in the header | The current streak shows next to the notification bell |
+| Challenges | More than one exam can be picked when creating a challenge |
+| Fixes | Pro students no longer see "Upgrade to PRO" in the sidebar. Questions in an MPSC paper are tagged MPSC, not "UPSC CSE" |
 
 ### Needs the client
 1. **MPSC and BPSC marking schemes.** Set them from the "Marking" control on each exam's QA screen. Until then those papers score like UPSC.
 2. **Online payments.** On hold on our side; Pro is granted by an admin until then. Going live needs Cashfree production keys and the webhooks set up in the Cashfree dashboard.
 3. **Translation credentials** for production (Google Cloud Translation or Vertex), so explanations get translated.
+4. **An exam type on every paper.** Challenges only offer exams whose papers have an exam type set, so check that the MPSC and BPSC papers have one (in the dev data, the MPSC paper has none).
 
 Hindi and Marathi wording needs no separate review: the person approving each question checks it (client decision, 18 Oct).
 
@@ -51,17 +58,15 @@ Hindi and Marathi wording needs no separate review: the person approving each qu
 | # | Item | Notes |
 |---|---|---|
 | 1 | Notes per question | The database column exists; needs an editor on bookmarks and the question card |
-| 2 | Dashboard: real "questions today", streak card, daily goal | The counts already exist |
-| 3 | Mistake notebook / frequently wrong questions | Practice from bookmarks and from due revision is built; a "wrong questions" list is not |
-| 4 | "Reserve for round 2" action | Round tracking already exists; needs a button and a round-2 pass |
-| 5 | Mock-test series | The admin "Mock tests" screen still shows sample data; there's no real series |
-| 6 | Full-text question search | The search bar finds exams, topics and subtopics, not question text |
-| 7 | SEO question pages | The marketing site has exam and current-affairs pages only |
-| 8 | Improvement tracker | Per-topic improvement %, revision count, last revised date; a consistency score |
-| 9 | More reminders and notification settings | Mock-test and current-affairs reminders, push notifications, a notification preferences page |
-| 10 | Social | Friends ranking, platform daily/weekly challenges, public or private profile |
-| 11 | Explanation extras | UPSC trend, possible future questions, sources and books |
-| 12 | Practice page's own filter bar and the "similar questions" panel in Hindi/Marathi | Exam screen labels are done; these two aren't |
+| 2 | Dashboard: real "questions today", streak card, daily goal | The counts already exist; the streak now shows in the header |
+| 3 | "Reserve for round 2" action | Round tracking already exists; needs a button and a round-2 pass |
+| 4 | Mock-test series | The admin "Mock tests" screen still shows sample data; there's no real series. Mock-test reminders wait on this (a weekly full-paper reminder covers it for now) |
+| 5 | SEO question pages | The marketing site has exam and current-affairs pages only |
+| 6 | Improvement tracker | Per-topic improvement %, revision count, last revised date; a consistency score |
+| 7 | Push notifications | Reminders go to the in-app bell and email; browser push isn't built |
+| 8 | Social | Friends ranking, platform daily/weekly challenges, public or private profile |
+| 9 | Explanation extras | UPSC trend, possible future questions, sources and books |
+| 10 | Practice page's own filter bar and the "similar questions" panel in Hindi/Marathi | Exam screen labels are done; these two aren't |
 
 The AI items stay on hold.
 
