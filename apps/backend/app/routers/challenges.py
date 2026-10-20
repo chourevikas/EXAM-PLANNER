@@ -16,6 +16,7 @@ from app.schemas.challenge import (
     SubmitChallengeAttemptResponse,
     LeaderboardEntry,
     ChallengeOptions,
+    ChallengeInvitee,
 )
 
 router = APIRouter(prefix="/challenges", tags=["Challenges"])
@@ -68,7 +69,7 @@ async def get_challenge(
     return await service.get_challenge_summary(challenge_id, current_user)
 
 
-@router.post("/{challenge_id}/invite", status_code=204, summary="Invite a Specific User to a Challenge")
+@router.post("/{challenge_id}/invite", response_model=ChallengeInvitee, summary="Invite a Specific User to a Challenge")
 async def invite_user(
     challenge_id: int,
     payload: InviteUserRequest,
@@ -76,7 +77,17 @@ async def invite_user(
     current_user: User = Depends(get_current_user),
 ):
     service = ChallengeService(session)
-    await service.invite_user(challenge_id, current_user, payload.email)
+    return await service.invite_user(challenge_id, current_user, payload.email)
+
+
+@router.get("/{challenge_id}/invites", response_model=List[ChallengeInvitee], summary="Who the Creator Has Invited")
+async def list_invitees(
+    challenge_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    service = ChallengeService(session)
+    return await service.list_invitees(challenge_id, current_user)
 
 
 @router.get("/{challenge_id}/leaderboard", response_model=List[LeaderboardEntry], summary="Get Challenge Leaderboard")

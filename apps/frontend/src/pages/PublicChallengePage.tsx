@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Swords, ArrowRight, LogIn, Clock } from 'lucide-react';
+import { Swords, ArrowRight, LogIn, Clock, Lock } from 'lucide-react';
 import { PublicLayout } from '../components/common/PublicLayout';
 import { getPublicChallengePreview, ChallengePublicPreview, formatChallengeExpiry } from '../services/challengeService';
 
@@ -72,6 +72,21 @@ export function PublicChallengePage() {
                 >
                   <Clock size={13} /> {formatChallengeExpiry(preview.expires_at)}
                 </p>
+              )}
+              {preview.visibility === 'INVITE_ONLY' && !preview.is_expired && (
+                <div
+                  data-testid="invite-only-note"
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 8, textAlign: 'left', margin: '0 0 20px',
+                    padding: '12px 14px', borderRadius: 10, backgroundColor: '#F1F5F9', color: '#334155', fontSize: 13.5, lineHeight: 1.5,
+                  }}
+                >
+                  <Lock size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <span>
+                    This challenge is <strong>invite only</strong>: only people {preview.creator_name || 'the creator'} invited can take it.
+                    If that's you, sign in with the email they invited.
+                  </span>
+                </div>
               )}
               {preview.is_expired ? (
                 <div

@@ -47,6 +47,17 @@ export interface ChallengeSummary {
   /** Each user gets one attempt per challenge; true once it has been submitted. */
   has_attempted?: boolean;
   has_in_progress?: boolean;
+  /** How you relate to it: you created it, were invited, took a public one from its link, or are just viewing one. */
+  relation?: 'CREATED' | 'INVITED' | 'JOINED' | 'VIEWING';
+}
+
+export interface ChallengeInvitee {
+  user_id: number;
+  name: string;
+  email: string;
+  invited_at: string;
+  has_attempted: boolean;
+  score?: number | null;
 }
 
 export interface ChallengeExamOption {
@@ -73,6 +84,8 @@ export interface ChallengePublicPreview {
   share_token: string;
   expires_at?: string | null;
   is_expired: boolean;
+  /** An invite-only link works only for the people the creator invited. */
+  visibility?: 'INVITE_ONLY' | 'PUBLIC';
 }
 
 export interface CreateChallengePayload {
@@ -202,13 +215,22 @@ export async function getPublicChallengePreview(shareToken: string): Promise<Cha
   return await parseJsonOrThrow(response);
 }
 
-export async function inviteUserToChallenge(challengeId: number, email: string): Promise<void> {
+export async function inviteUserToChallenge(challengeId: number, email: string): Promise<ChallengeInvitee> {
   const response = await guardedFetch(`${API_BASE_URL}/challenges/${challengeId}/invite`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ email }),
   });
-  await parseJsonOrThrow(response);
+  return await parseJsonOrThrow(response);
+}
+
+/** Who the creator has invited and whether each has taken it yet (creator only). */
+export async function listInvitees(challengeId: number): Promise<ChallengeInvitee[]> {
+  const response = await guardedFetch(`${API_BASE_URL}/challenges/${challengeId}/invites`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return (await parseJsonOrThrow(response)) || [];
 }
 
 export async function getLeaderboard(challengeId: number | string): Promise<LeaderboardEntry[]> {

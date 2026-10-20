@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Swords, Crown, X } from 'lucide-react';
+import { Swords, Crown, X, Globe, Lock } from 'lucide-react';
 import {
   createChallenge,
   fetchChallengeOptions,
@@ -12,6 +12,22 @@ import {
 } from '../../services/challengeService';
 
 const DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'] as const;
+
+// What the two settings mean: the link works for everyone, or only for the people the creator invites
+const VISIBILITY_CHOICES = [
+  {
+    value: 'PUBLIC' as const,
+    title: 'Anyone with the link',
+    hint: 'Share it on WhatsApp or anywhere. Whoever opens it can sign in and take it.',
+    Icon: Globe,
+  },
+  {
+    value: 'INVITE_ONLY' as const,
+    title: 'Only people I invite',
+    hint: 'Invite friends by their ExamPlanner email; they get a notification. The link works only for them.',
+    Icon: Lock,
+  },
+];
 
 interface CreateChallengeModalProps {
   onClose: () => void;
@@ -417,28 +433,32 @@ export function CreateChallengeModal({ onClose }: CreateChallengeModalProps) {
 
               <div>
                 <label style={labelStyle}>Who can take this challenge?</label>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  {(['INVITE_ONLY', 'PUBLIC'] as const).map((v) => (
-                    <button
-                      type="button"
-                      key={v}
-                      aria-pressed={visibility === v}
-                      onClick={() => setVisibility(v)}
-                      style={{
-                        flex: 1,
-                        padding: '10px 12px',
-                        borderRadius: 'var(--radius)',
-                        cursor: 'pointer',
-                        border: visibility === v ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
-                        backgroundColor: visibility === v ? 'var(--accent-bg)' : 'var(--bg-body)',
-                        color: 'var(--text-main)',
-                        fontWeight: 600,
-                        fontSize: 13,
-                      }}
-                    >
-                      {v === 'INVITE_ONLY' ? 'Invite Only' : 'Public Link'}
-                    </button>
-                  ))}
+                <div role="radiogroup" aria-label="Who can take this challenge" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+                  {VISIBILITY_CHOICES.map(({ value, title, hint, Icon }) => {
+                    const on = visibility === value;
+                    return (
+                      <button
+                        type="button"
+                        key={value}
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setVisibility(value)}
+                        style={{
+                          display: 'flex', gap: 10, alignItems: 'flex-start', textAlign: 'left',
+                          padding: '12px 14px', borderRadius: 'var(--radius)', cursor: 'pointer',
+                          border: on ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                          backgroundColor: on ? 'var(--accent-bg)' : 'var(--bg-body)',
+                          color: 'var(--text-main)',
+                        }}
+                      >
+                        <Icon size={18} color={on ? 'var(--accent-primary)' : 'var(--text-muted)'} style={{ flexShrink: 0, marginTop: 1 }} />
+                        <span>
+                          <span style={{ display: 'block', fontWeight: 700, fontSize: 13.5 }}>{title}</span>
+                          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.45 }}>{hint}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8, marginBottom: 0 }}>
                   Everyone gets a single attempt at a challenge, and it stops accepting attempts once the open period ends.
