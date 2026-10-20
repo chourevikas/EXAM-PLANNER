@@ -14,6 +14,7 @@ from app.db.models.exam_type import ExamType
 from app.db.models.hierarchy import Exam, SyllabusVersion, Subject, Topic, Subtopic
 from app.db.models.question import Question, QuestionTranslation
 from app.db.models.challenge import Challenge, ChallengeQuestion
+from app.db.models.notification import UserNotification
 from app.db.models.enums import QuestionStatus, LanguageCode
 from app.core.security import create_access_token, get_password_hash
 
@@ -392,9 +393,9 @@ async def test_each_user_gets_only_one_attempt_per_challenge(client):
 
     done = (await client.get(f"/api/v1/challenges/{cid}", headers=_h("bob"))).json()
     assert (done["has_attempted"], done["has_in_progress"]) == (True, False)
-    # the list flag (challenges appear in your list once you created or were invited to them)
+    # the list flag (taking a public challenge from its link puts it in your list)
     invite = await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "bob@ob.test"}, headers=_h("alice"))
-    assert invite.status_code == 204, invite.text
+    assert invite.status_code == 200, invite.text
     listed = next(c for c in (await client.get("/api/v1/challenges", headers=_h("bob"))).json() if c["id"] == cid)
     assert listed["has_attempted"] is True
 
@@ -405,6 +406,59 @@ async def test_each_user_gets_only_one_attempt_per_challenge(client):
     # …and the flags are per user
     carol_view = (await client.get(f"/api/v1/challenges/{cid}", headers=_h("carol"))).json()
     assert carol_view["has_attempted"] is False
+
+
+@pytest.mark.anyio
+async def test_invite_only_challenges_invites_and_where_they_show_up(client):
+    from datetime import datetime, timedelta, timezone
+
+    # dave (Pro) makes an invite-only challenge; its link says so before anyone signs in
+    made = await _create(client, "dave", exam_type_id=_state["upsc_type"], visibility="INVITE_ONLY")
+    assert made.status_code == 200, made.text
+    cid, token = made.json()["id"], made.json()["share_token"]
+    assert (await client.get(f"/api/v1/challenges/public/{token}")).json()["visibility"] == "INVITE_ONLY"
+    assert (await client.get(f"/api/v1/challenges/{cid}", headers=_h("bob"))).status_code == 403
+
+    # invite by email in any case; it rings their bell once, even if invited twice
+    invited = await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": " BOB@OB.test "}, headers=_h("dave"))
+    assert invited.status_code == 200, invited.text
+    assert (invited.json()["name"], invited.json()["has_attempted"]) == ("Bob", False)
+    assert (await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "bob@ob.test"}, headers=_h("dave"))).status_code == 200
+    async with AsyncSession(test_engine) as s:
+        notes = (await s.exec(select(UserNotification).where(
+            UserNotification.notification_type == "CHALLENGE_INVITE", UserNotification.action_url == f"/challenges/{cid}"
+        ))).all()
+    assert [(n.user_id, n.title) for n in notes] == [(_state["users"]["bob"][0], "Dave challenged you")]
+
+    assert (await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "dave@ob.test"}, headers=_h("dave"))).status_code == 400
+    assert (await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "nobody@ob.test"}, headers=_h("dave"))).status_code == 404
+    assert (await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "carol@ob.test"}, headers=_h("bob"))).status_code == 403
+    assert (await client.get(f"/api/v1/challenges/{cid}/invites", headers=_h("bob"))).status_code == 403
+
+    # bob now sees it as invited, takes it, and dave's invite list shows his score
+    assert (await client.get(f"/api/v1/challenges/{cid}", headers=_h("bob"))).json()["relation"] == "INVITED"
+    start = await client.post(f"/api/v1/challenges/{cid}/attempts/start", headers=_h("bob"))
+    assert (await client.post(f"/api/v1/challenges/attempts/{start.json()['attempt_id']}/submit", headers=_h("bob"))).status_code == 200
+    invitees = (await client.get(f"/api/v1/challenges/{cid}/invites", headers=_h("dave"))).json()
+    assert [(i["name"], i["has_attempted"], i["score"]) for i in invitees] == [("Bob", True, 0.0)]
+    assert next(c for c in (await client.get("/api/v1/challenges", headers=_h("dave"))).json() if c["id"] == cid)["relation"] == "CREATED"
+
+    # a public challenge: carol is just viewing until she takes it, then it's in her list as joined
+    pub = (await _create(client, "dave", exam_type_id=_state["upsc_type"])).json()
+    assert (await client.get(f"/api/v1/challenges/{pub['id']}", headers=_h("carol"))).json()["relation"] == "VIEWING"
+    assert pub["id"] not in [c["id"] for c in (await client.get("/api/v1/challenges", headers=_h("carol"))).json()]
+    assert (await client.post(f"/api/v1/challenges/{pub['share_token']}/attempts/start", headers=_h("carol"))).status_code == 200
+    joined = next(c for c in (await client.get("/api/v1/challenges", headers=_h("carol"))).json() if c["id"] == pub["id"])
+    assert joined["relation"] == "JOINED"
+
+    # nobody new can be invited once it has closed
+    async with AsyncSession(test_engine) as s:
+        row = await s.get(Challenge, cid)
+        row.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        s.add(row)
+        await s.commit()
+    closed = await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "carol@ob.test"}, headers=_h("dave"))
+    assert closed.status_code == 400 and "closed" in closed.json()["detail"]
 
 
 @pytest.mark.anyio
