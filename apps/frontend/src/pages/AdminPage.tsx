@@ -23,6 +23,7 @@ const MilestonesView = lazy(() => import('../components/admin/views/MilestonesVi
 const TranslationsView = lazy(() => import('../components/admin/views/TranslationsView').then(m => ({ default: m.TranslationsView })));
 const ReportedQuestionsView = lazy(() => import('../components/admin/views/ReportedQuestionsView').then(m => ({ default: m.ReportedQuestionsView })));
 const TestimonialsView = lazy(() => import('../components/admin/views/TestimonialsView').then(m => ({ default: m.TestimonialsView })));
+const PlannerSyllabusView = lazy(() => import('../components/admin/views/PlannerSyllabusView').then(m => ({ default: m.PlannerSyllabusView })));
 const ThemeSettingsView = lazy(() => import('../components/admin/views/ThemeSettingsView').then(m => ({ default: m.ThemeSettingsView })));
 
 function NoAccessView({ onHome }: { onHome: () => void }) {
@@ -164,6 +165,8 @@ export function AdminPage() {
         return <ReportedQuestionsView onNavigate={handleNavigate} onChanged={refreshReportedCount} />;
       case 'theme':
         return <ThemeSettingsView />;
+      case 'planner-syllabus':
+        return <PlannerSyllabusView />;
       default:
         return <AdminOverviewView onNavigate={handleNavigate} permissions={permissions} />;
     }

@@ -23,6 +23,8 @@ from app.routers.business_metrics import router as business_metrics_router
 from app.routers.exam_marking import router as exam_marking_router
 from app.routers.revision import router as revision_router
 from app.routers.mistakes import router as mistakes_router
+from app.routers.admin_planner import router as admin_planner_router
+from app.routers.planner import router as planner_router
 from app.routers.admin import router as admin_router
 from app.routers.exams import router as exams_router
 from app.routers.questions import router as questions_router
@@ -236,6 +238,7 @@ app.include_router(review_router, prefix=settings.API_V1_STR)
 app.include_router(webhooks_router, prefix=settings.API_V1_STR)
 app.include_router(pipeline_router, prefix=settings.API_V1_STR)
 app.include_router(study_plan_router, prefix=settings.API_V1_STR)
+app.include_router(planner_router, prefix=settings.API_V1_STR)
 app.include_router(attempts_router, prefix=settings.API_V1_STR)
 app.include_router(search_router, prefix=settings.API_V1_STR)
 app.include_router(syllabus_router, prefix=settings.API_V1_STR)
@@ -249,6 +252,7 @@ app.include_router(current_affairs_router, prefix=settings.API_V1_STR)
 app.include_router(public_current_affairs_router, prefix=settings.API_V1_STR)
 app.include_router(exam_types_router, prefix=settings.API_V1_STR)
 app.include_router(admin_notifications_router, prefix=settings.API_V1_STR)
+app.include_router(admin_planner_router, prefix=settings.API_V1_STR)
 app.include_router(challenges_router, prefix=settings.API_V1_STR)
 app.include_router(site_settings_router, prefix=settings.API_V1_STR)
 # Premium plan, discounts & manual grants

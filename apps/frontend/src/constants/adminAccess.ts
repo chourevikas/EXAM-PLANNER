@@ -17,6 +17,7 @@ export const VIEW_PERMISSION: Record<string, string | null> = {
   testimonials: 'admin.testimonials',
   analytics: 'admin.analytics',
   theme: 'admin.theme',
+  'planner-syllabus': 'admin.planner_syllabus',
 };
 
 /**

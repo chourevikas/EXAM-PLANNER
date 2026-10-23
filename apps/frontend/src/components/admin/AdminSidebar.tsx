@@ -17,6 +17,7 @@ import {
   Palette,
   Medal,
   Languages,
+  BookOpenCheck,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { canAccessView } from '../../constants/adminAccess';
@@ -82,6 +83,7 @@ export function AdminSidebar({
     { icon: Users, label: 'Users', id: 'users' },
     { icon: Award, label: 'Teacher Rewards', id: 'teacher-rewards' },
     { icon: Globe, label: 'Current Affairs', id: 'current-affairs' },
+    { icon: BookOpenCheck, label: 'Planner Syllabus', id: 'planner-syllabus' },
     { icon: Bell, label: 'Notifications', id: 'notifications' },
     { icon: Medal, label: 'Milestones', id: 'milestones' },
     { icon: Languages, label: 'Translations', id: 'translations' },
@@ -140,6 +142,9 @@ function prefetchAdminView(viewId: string) {
       break;
     case 'theme':
       import('./views/ThemeSettingsView');
+      break;
+    case 'planner-syllabus':
+      import('./views/PlannerSyllabusView');
       break;
   }
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, Upload, Sliders, ClipboardCheck, BookOpen, Flag, Users, Award, Globe, Bell, MessageSquareQuote, BarChart2, Palette } from 'lucide-react';
+import { Search, Upload, Sliders, ClipboardCheck, BookOpen, Flag, Users, Award, Globe, Bell, MessageSquareQuote, BarChart2, Palette, BookOpenCheck } from 'lucide-react';
 import { canAccessView } from '../../constants/adminAccess';
 
 interface Section {
@@ -18,6 +18,7 @@ const SECTIONS: Section[] = [
   { id: 'users', label: 'Users', keywords: 'users candidates students accounts subscription', icon: Users },
   { id: 'teacher-rewards', label: 'Teacher Rewards', keywords: 'teacher rewards points', icon: Award },
   { id: 'current-affairs', label: 'Current Affairs', keywords: 'current affairs news', icon: Globe },
+  { id: 'planner-syllabus', label: 'Planner Syllabus', keywords: 'study planner syllabus subjects topics subtopics exams', icon: BookOpenCheck },
   { id: 'notifications', label: 'Notifications', keywords: 'notifications broadcast announcement', icon: Bell },
   { id: 'testimonials', label: 'Testimonial Approvals', keywords: 'testimonials stories approve reviews', icon: MessageSquareQuote },
   { id: 'analytics', label: 'Reports & Analytics', keywords: 'analytics reports statistics', icon: BarChart2 },
