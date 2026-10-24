@@ -277,6 +277,30 @@ export function RecommendedQuestionCard({
                 : `Practice Question ${idx + 1}`;
             })()}
           </div>
+          {Array.isArray((rec as any).match_reasons) && (rec as any).match_reasons.length > 0 && (
+            <div
+              data-testid="match-reason-tags"
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}
+            >
+              {((rec as any).match_reasons as string[]).slice(0, 2).map((reason) => (
+                <span
+                  key={reason}
+                  title={`Matched because: ${reason}`}
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    borderRadius: 10,
+                    backgroundColor: '#EEF2FF',
+                    color: '#4338CA',
+                    border: '1px solid #C7D2FE',
+                  }}
+                >
+                  🔑 {reason}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Inline Options Dropdown */}

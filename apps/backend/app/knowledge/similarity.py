@@ -32,6 +32,11 @@ from app.knowledge.vocabulary import NODE_CONCEPT, NODE_ENTITY
 CANDIDATES_PER_SIGNAL = 300
 MAX_MATCHES_PER_SIGNAL = 3  # a long shared list must not drown out a precise match
 MIN_SPECIFICITY = 0.5
+# A node linked to more questions than this ("India", "Government of India", "Logic", a year) says
+# nothing about topical similarity, so it is not used as a match signal at all.
+MAX_NODE_QUESTIONS = 40
+# Matches scoring below this (e.g. only a shared theme name) are not shown as "similar".
+MIN_MATCH_SCORE = 15
 
 TIER_ORDER = {"exact": 0, "related": 1, "nano_theme": 2, "microtheme": 3}
 
@@ -84,6 +89,12 @@ class SimilarityService:
             select(QuestionConcept.concept_id, QuestionConcept.weight).where(QuestionConcept.question_id == question_id)
         )).all())
         nano, micro = await self._theme_names(question_id)
+
+        # Drop broad nodes up front: they must not create candidates, relationships or reasons
+        entity_counts = await self._counts(QuestionEntity, QuestionEntity.entity_id, list(entities))
+        concept_counts = await self._counts(QuestionConcept, QuestionConcept.concept_id, list(concepts))
+        entities = {k: v for k, v in entities.items() if entity_counts.get(k, 0) <= MAX_NODE_QUESTIONS}
+        concepts = {k: v for k, v in concepts.items() if concept_counts.get(k, 0) <= MAX_NODE_QUESTIONS}
 
         candidates: Dict[int, _Candidate] = {}
 
@@ -154,7 +165,7 @@ class SimilarityService:
 
         for cand in candidates.values():
             cand.finalize()
-        ranked = [c for c in candidates.values() if c.score > 0 and c.score >= min_score]
+        ranked = [c for c in candidates.values() if c.score > 0 and c.score >= max(min_score, MIN_MATCH_SCORE)]
         details = await self._details([c.question_id for c in ranked])
         ranked.sort(key=lambda c: (
             -c.score, TIER_ORDER[c.tier], -(details.get(c.question_id, {}).get("source_year") or 0), -c.question_id,
@@ -207,11 +218,16 @@ class SimilarityService:
                 )
                 _cand(qid).add("relationship", self.weights["relationship"] * weight, reason)
 
-    async def _specificity(self, link_model, id_col, ids: List[int]) -> Dict[int, float]:
-        counts = (await self.session.exec(
+    async def _counts(self, link_model, id_col, ids: List[int]) -> Dict[int, int]:
+        if not ids:
+            return {}
+        rows = (await self.session.exec(
             select(id_col, func.count(link_model.question_id)).where(col(id_col).in_(ids)).group_by(id_col)
         )).all()
-        return {nid: specificity(count) for nid, count in counts}
+        return {nid: count for nid, count in rows}
+
+    async def _specificity(self, link_model, id_col, ids: List[int]) -> Dict[int, float]:
+        return {nid: specificity(count) for nid, count in (await self._counts(link_model, id_col, ids)).items()}
 
     async def _node_names(self, nodes: Set[Tuple[str, int]]) -> Dict[Tuple[str, int], str]:
         names: Dict[Tuple[str, int], str] = {}

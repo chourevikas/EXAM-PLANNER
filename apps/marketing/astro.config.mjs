@@ -17,6 +17,31 @@ const stripGoogleFontImports = {
   },
 };
 
+// Dev only: in production nginx sends app paths (/signin, /dashboard, ...) to the SPA. Locally those
+// links hit this Astro server and 404, so hand them off to the SPA dev server.
+const SPA_ORIGIN = process.env.SPA_ORIGIN || 'http://localhost:3000';
+const SPA_PREFIXES = [
+  '/signin', '/login', '/signup', '/register', '/dashboard', '/billing', '/practice-exam', '/guest-exam',
+  '/verify-email', '/forgot-password', '/reset-password', '/change-password', '/sso-callback',
+];
+const redirectAppPathsToSpa = {
+  name: 'redirect-app-paths-to-spa',
+  apply: 'serve',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const url = req.url || '';
+      const path = url.split('?')[0];
+      if (SPA_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) {
+        res.statusCode = 302;
+        res.setHeader('Location', `${SPA_ORIGIN}${url}`);
+        res.end();
+        return;
+      }
+      next();
+    });
+  },
+};
+
 export default defineConfig({
   site: 'https://examplanner.in',
   output: 'static',
@@ -25,7 +50,7 @@ export default defineConfig({
   trailingSlash: 'never',
   server: { port: 4321, host: true },
   vite: {
-    plugins: [stripGoogleFontImports],
+    plugins: [stripGoogleFontImports, redirectAppPathsToSpa],
     resolve: {
       alias: { '@app': frontendSrc },
       // Shared SPA components must use this app's single copy of React.
