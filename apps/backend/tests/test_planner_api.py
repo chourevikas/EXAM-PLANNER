@@ -15,6 +15,10 @@ from app.db.models.user import User, UserRole, StudentProfile, SubscriptionTier
 from app.db.models.planner import PlannerExam, PlannerSubject, PlannerTopic, PlannerSubtopic, UserSyllabusCoverage
 from app.db.models.study_plan import StudyTask
 from app.core.security import create_access_token, get_password_hash
+from app.db.models.exam_type import ExamType
+from app.db.models.hierarchy import Exam, Subject, Topic, Subtopic, SyllabusVersion
+from app.db.models.question import Question
+from app.db.models.enums import ExamStatus, QuestionSourceType, QuestionStatus
 from app.services.planner_service import today_ist
 
 test_engine = create_async_engine("sqlite+aiosqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -39,7 +43,17 @@ async def _add(session, obj):
 
 
 async def _seed(session: AsyncSession):
-    exam = await _add(session, PlannerExam(code="prelims", label="UPSC Prelims"))
+    upsc = await _add(session, ExamType(type="upsc", name="UPSC CSE", total_duration=120, number_of_questions=100,
+                                        total_marks=200, negative_marks=0.66, positive_marks=2))
+    paper = await _add(session, Exam(code="UPSC-2024", name="UPSC 2024", source_year=2024, exam_type_id=upsc.id,
+                                     exam_type=QuestionSourceType.PYQ, status=ExamStatus.PUBLISHED, is_active=True))
+    version = await _add(session, SyllabusVersion(exam_id=paper.id, version_code="v1"))
+    bsub = await _add(session, Subject(name="Indian Polity & Governance", code="IPG", version_id=version.id))
+    btop = await _add(session, Topic(name="Salient Features of Indian Constitution", code="SF", subject_id=bsub.id))
+    bst = await _add(session, Subtopic(name="Constitution and Types", code="CT", topic_id=btop.id))
+    await _add(session, Question(exam_id=paper.id, question_number_in_paper=1, status=QuestionStatus.PUBLISHED,
+                                 subtopic_id=bst.id, source_year=2024))
+    exam = await _add(session, PlannerExam(code="prelims", label="UPSC Prelims", exam_type_id=upsc.id))
     mains = await _add(session, PlannerExam(code="mains", label="UPSC Mains", answer_writing=True, sort_order=1))
     await _add(session, PlannerExam(code="hidden", label="Hidden", is_active=False, sort_order=2))
     subtopics = {}
@@ -128,6 +142,11 @@ async def test_generate_follow_and_rebuild(client):
     # 8 topics over 5 days: one topic today (own task first)
     assert [t["block"] for t in day] == [None, None, "ca", "custom", "pyq"]
     assert day[1]["title"] == "Constitution: Preamble" and day[1]["planned"] and not day[0]["planned"]
+    # Practice opens the planner exam's question-bank exam, filtered to the closest subject
+    assert day[1]["practice"] == {"exam": "UPSC", "subject": "Indian Polity & Governance"}
+    pyq = next(t for t in day if t["block"] == "pyq")
+    assert pyq["practice"] == {"exam": "UPSC", "subject": "Indian Polity & Governance"}
+    assert next(t for t in day if t["block"] == "ca")["practice"] is None
 
     ov = (await client.get(f"{API}/overview", headers=_h())).json()
     assert ov["topics"] == 8 and ov["days"] == 5 and ov["plan"]["exam"] == "prelims"
@@ -223,3 +242,41 @@ async def test_free_students_cannot_import_long_plans_and_shares_carry_only_the_
     res = await client.post(f"{API}/share/{token}/import", headers=_h("free"))
     assert res.status_code == 403 and res.json()["detail"]["code"] == "PRO_STUDY_PLANNER"
     assert (await client.post(f"{API}/share/{token}/import", headers=_h())).status_code == 200
+
+
+def test_practice_filters_use_the_closest_bank_match():
+    from app.services.planner_service import _BankIndex, _join_filter
+    bank = _BankIndex([
+        (1, "Indian Polity & Governance", "Constitutional Bodies", "Finance Commission", 4),
+        (2, "History", "Medieval India", "Delhi Sultanate", 3),
+        (3, "Indian Culture", "Architecture", "Temple Architecture", 2),
+        (4, "Economy", "Money and Banking", "RBI", 0),  # no questions: never a target
+    ])
+    assert bank.resolve(1, "x", "x", "x") == {"subject": "Indian Polity & Governance", "topic": "Constitutional Bodies",
+                                              "subtopic": "Finance Commission"}
+    assert bank.resolve(None, "Polity", "Bodies", "finance commission")["subtopic"] == "Finance Commission"
+    assert bank.resolve(None, "Indian History", "Medieval India", "Mughals") == {"subject": "History", "topic": "Medieval India"}
+    # "Indian" alone doesn't make Indian History match Indian Culture
+    assert bank.resolve(None, "Indian History", "Ancient", "Vedic Age") == {"subject": "History"}
+    assert bank.resolve(None, "Indian Economy", "Banking", "RBI") == {}
+    assert _join_filter(["History", "History", "Polity"]) == "History,Polity"
+    assert _join_filter(["Art, Culture", "History"]) == "Art, Culture;;History"
+
+
+def test_practice_filters_match_on_shared_words():
+    from app.services.planner_service import _BankIndex
+    bank = _BankIndex([
+        (1, "Indian Polity & Governance", "Union & Its Territory", "Article 1-4", 6),
+        (2, "Indian Polity & Governance", "Salient Features of Indian Constitution", "Constitution and Types", 6),
+        (3, "Polity", "Local Self-Government", "73rd Amendment — Panchayati Raj", 3),
+        (4, "Polity", "Fundamental Rights", "Article 32", 11),
+        (5, "Geography", "World Map related", "Countries, Capitals & Geographical Features", 2),
+    ])
+    polity = ("Polity and Governance", "Constitution")
+    assert bank.resolve(None, *polity, "Union and its Territory") == {"subject": "Indian Polity & Governance", "topic": "Union & Its Territory"}
+    assert bank.resolve(None, *polity, "Salient Features")["topic"] == "Salient Features of Indian Constitution"
+    assert bank.resolve(None, "Polity and Governance", "Local Government", "Panchayati Raj (73rd Amendment)")["subtopic"] == "73rd Amendment — Panchayati Raj"
+    # The topic's words ("Union Government") don't drag unrelated subtopics onto "Union & Its Territory"
+    assert bank.resolve(None, "Polity and Governance", "Union Government", "Parliament") == {"subject": "Indian Polity & Governance"}
+    # "Features" alone isn't a match, and another subject needs two shared words
+    assert bank.resolve(None, "Indian Society", "Society", "Salient Features") == {}

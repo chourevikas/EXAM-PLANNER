@@ -15,7 +15,8 @@ from sqlmodel import select, delete, func, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models.enums import ActivitySource, LanguageCode, QuestionStatus, StudyActivityType
-from app.db.models.hierarchy import Subject, Topic, Subtopic
+from app.db.models.exam_type import ExamType
+from app.db.models.hierarchy import Exam, Subject, Topic, Subtopic
 from app.db.models.question import Question, QuestionTranslation
 from app.db.models.planner import (
     PlannerExam, PlannerSettings, PlannerSubject, PlannerSubtopic, PlannerTopic, StudyPlan, StudyPlanShare,
@@ -305,23 +306,155 @@ def task_out(t: StudyTask, practice: Optional[Dict[str, str]] = None) -> Dict[st
             "description": t.description}
 
 
+# Words too common in syllabus names to say two names are about the same thing
+_GENERIC_WORDS = {"indian", "india", "and", "general", "state", "studies", "the", "its", "for", "with", "world",
+                  "constitution", "constitutional", "basics", "basic", "issues", "role", "important", "other",
+                  "feature", "features", "concept", "concepts", "aspect", "aspects", "related", "miscellaneous"}
+
+
+def _words(name: str) -> set:
+    """Meaningful words of a syllabus name ("Union & Its Territory" -> {"union", "territory"}), plurals folded."""
+    for ch in "&,()/-—:.'":
+        name = name.replace(ch, " ")
+    out = set()
+    for w in (name or "").lower().split():
+        if len(w) > 2 and w not in _GENERIC_WORDS:
+            out.add(w[:-1] if len(w) > 4 and w.endswith("s") else w)
+    return out
+
+
+class _BankIndex:
+    """Question-bank names with published questions, for matching planner topics to practice filters.
+    Each paper has its own copy of the syllabus, so names are merged and the busiest copy wins."""
+
+    def __init__(self, rows):
+        self.by_id: Dict[int, Tuple[str, str, str]] = {}
+        self.subtopics: Dict[str, Tuple[str, str, str, int]] = {}
+        self.topics: Dict[str, Tuple[str, str, int]] = {}
+        self.subjects: Dict[str, Tuple[str, int]] = {}
+        for sid, subj, top, st, n in rows:
+            n = int(n or 0)
+            if not n:
+                continue
+            self.by_id[sid] = (subj, top, st)
+            if n > self.subtopics.get(st.lower(), ("", "", "", 0))[3]:
+                self.subtopics[st.lower()] = (subj, top, st, n)
+            t = self.topics.get(top.lower())
+            if not t or t[0] == subj:
+                self.topics[top.lower()] = (subj, top, (t[2] if t else 0) + n)
+            sj = self.subjects.get(subj.lower())
+            self.subjects[subj.lower()] = (subj, (sj[1] if sj else 0) + n)
+
+    def subject_for(self, name: str) -> Optional[str]:
+        """The bank subject closest to a planner subject: the same name, else the most shared words
+        ("Polity and Governance" ~ "Indian Polity & Governance", "Indian History" ~ "History"), then the most questions."""
+        name = (name or "").lower()
+        if name in self.subjects:
+            return self.subjects[name][0]
+        words = _words(name)
+        best = None
+        for key, (label, n) in self.subjects.items():
+            shared = len(words & _words(key))
+            if shared and (best is None or (shared, n) > best[1:]):
+                best = (label, shared, n)
+        return best[0] if best else None
+
+    def _closest(self, words: set, candidates, subject: Optional[str]):
+        """The candidate whose words overlap `words` the most (more than a quarter of both sets together), inside the
+        planner subject's bank subject first; another subject's candidate needs two shared words. Ties go to the one
+        with more questions."""
+        best = None
+        for key, val in candidates:
+            other = _words(key)
+            shared = len(words & other)
+            same = val[0] == subject
+            overlap = shared / len(words | other) if shared else 0
+            if overlap <= 0.25 or (not same and shared < 2):
+                continue
+            score = (same, overlap, val[-1])
+            if best is None or score > best[0]:
+                best = (score, val)
+        return best[1] if best else None
+
+    def resolve(self, bank_id: Optional[int], subject: str, topic: str, subtopic: str) -> Dict[str, str]:
+        """Practice filters for a planner subtopic, most specific first: the linked bank subtopic; a bank subtopic or
+        topic with the same name; then the bank subtopic, else topic, sharing the most words with it; else the
+        closest subject. Empty when nothing matches (practice opens unfiltered)."""
+        if bank_id in self.by_id:
+            s, t, st = self.by_id[bank_id]
+            return {"subject": s, "topic": t, "subtopic": st}
+        hit = self.subtopics.get((subtopic or "").lower())
+        if hit:
+            return {"subject": hit[0], "topic": hit[1], "subtopic": hit[2]}
+        for name in (subtopic, topic):
+            hit = self.topics.get((name or "").lower())
+            if hit:
+                return {"subject": hit[0], "topic": hit[1]}
+        bank_subject = self.subject_for(subject)
+        words = _words(subtopic)
+        hit = self._closest(words, self.subtopics.items(), bank_subject)
+        if hit:
+            return {"subject": hit[0], "topic": hit[1], "subtopic": hit[2]}
+        hit = self._closest(words, self.topics.items(), bank_subject)
+        if hit:
+            return {"subject": hit[0], "topic": hit[1]}
+        return {"subject": bank_subject} if bank_subject else {}
+
+
+async def _bank_index(session: AsyncSession, exam_type_id: Optional[int] = None) -> _BankIndex:
+    """The bank for one exam type (its papers' published questions), or the whole bank."""
+    q = (select(Subtopic.id, Subject.name, Topic.name, Subtopic.name, func.count(Question.id))
+         .join(Topic, col(Topic.id) == col(Subtopic.topic_id)).join(Subject, col(Subject.id) == col(Topic.subject_id))
+         .join(Question, (col(Question.subtopic_id) == col(Subtopic.id)) & (Question.status == QuestionStatus.PUBLISHED)))
+    if exam_type_id:
+        q = q.join(Exam, col(Exam.id) == col(Question.exam_id)).where(Exam.exam_type_id == exam_type_id)
+    return _BankIndex((await session.exec(q.group_by(Subtopic.id, Subject.name, Topic.name, Subtopic.name))).all())
+
+
+def _join_filter(values: List[str]) -> Optional[str]:
+    """The practice page's multi-value format: ',' or ';;' when a name has a comma."""
+    vals = list(dict.fromkeys(v for v in values if v))
+    if not vals:
+        return None
+    return ";;".join(vals) if any("," in v for v in vals) else ",".join(vals)
+
+
 async def tasks_between(session: AsyncSession, user_id: int, start: date, end: date) -> List[Dict[str, Any]]:
-    """Tasks by day. Topics linked to the question bank carry its subject/topic/subtopic names for Practice."""
+    """Tasks by day. Plan topics (and their revisions) carry practice filters: the planner exam's question-bank
+    exam type and the closest bank match. A day's "10 PYQs" block carries the filters of that day's topics."""
     rows = (await session.exec(
-        select(StudyTask, Subject.name, Topic.name, Subtopic.name, Subtopic.id)
+        select(StudyTask, PlannerSubject.name, PlannerTopic.name, PlannerSubtopic.name, PlannerSubtopic.bank_subtopic_id,
+               PlannerExam.exam_type_id, ExamType.type)
         .outerjoin(PlannerSubtopic, col(PlannerSubtopic.id) == col(StudyTask.planner_subtopic_id))
-        .outerjoin(Subtopic, col(Subtopic.id) == col(PlannerSubtopic.bank_subtopic_id))
-        .outerjoin(Topic, col(Topic.id) == col(Subtopic.topic_id))
-        .outerjoin(Subject, col(Subject.id) == col(Topic.subject_id))
+        .outerjoin(PlannerTopic, col(PlannerTopic.id) == col(PlannerSubtopic.topic_id))
+        .outerjoin(PlannerSubject, col(PlannerSubject.id) == col(PlannerTopic.subject_id))
+        .outerjoin(PlannerExam, col(PlannerExam.id) == col(PlannerSubject.exam_id))
+        .outerjoin(ExamType, col(ExamType.id) == col(PlannerExam.exam_type_id))
         .where(StudyTask.user_id == user_id, StudyTask.scheduled_date >= start, StudyTask.scheduled_date <= end)
         .order_by(StudyTask.scheduled_date, StudyTask.id))).all()
-    # Practice only where the linked subtopic has questions to practise
-    bank_ids = {sid for *_, sid in rows if sid}
-    with_questions = set((await session.exec(
-        select(Question.subtopic_id).where(col(Question.subtopic_id).in_(list(bank_ids)),
-                                           Question.status == QuestionStatus.PUBLISHED).distinct())).all()) if bank_ids else set()
-    return [task_out(t, {"subject": s, "topic": tp, "subtopic": st} if sid in with_questions else None)
-            for t, s, tp, st, sid in rows]
+    banks: Dict[Optional[int], _BankIndex] = {}
+    practice: Dict[int, Dict[str, str]] = {}
+    for t, subj, top, st, bank_id, et_id, et_type in rows:
+        if not (t.planner_subtopic_id and st):
+            continue
+        if et_id not in banks:
+            banks[et_id] = await _bank_index(session, et_id)
+        p = banks[et_id].resolve(bank_id, subj, top, st)
+        practice[t.id] = {"exam": et_type.upper(), **p} if et_type else p
+    by_day: Dict[date, List[Dict[str, str]]] = defaultdict(list)
+    for t, *_ in rows:
+        if t.id in practice and t.block is None:
+            by_day[t.scheduled_date].append(practice[t.id])
+    out = []
+    for t, *_ in rows:
+        p = practice.get(t.id)
+        if t.block == "pyq":
+            day = by_day.get(t.scheduled_date, [])
+            p = {k: v for k, v in (("exam", _join_filter([x.get("exam") for x in day])),
+                                    ("subject", _join_filter([x.get("subject") for x in day])),
+                                    ("topic", _join_filter([x.get("topic") for x in day if x.get("subject")]))) if v}
+        out.append(task_out(t, p))
+    return out
 
 
 async def _own_task(session: AsyncSession, user_id: int, task_id: int) -> StudyTask:

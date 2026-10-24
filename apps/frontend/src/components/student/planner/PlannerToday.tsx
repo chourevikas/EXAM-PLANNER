@@ -102,7 +102,8 @@ export function PlannerToday({ version, onChanged, onAddTask, focusDate }: {
 
   const practice = (t: PlannerTask) => {
     if (!t.practice) return;
-    const q = new URLSearchParams({ exam: 'All Exams', subject: t.practice.subject, topic: t.practice.topic, subtopic: t.practice.subtopic });
+    const q = new URLSearchParams({ exam: t.practice.exam || 'All Exams' });
+    (['subject', 'topic', 'subtopic'] as const).forEach((k) => { const v = t.practice?.[k]; if (v) q.set(k, v); });
     navigate(`/practice-exam?${q.toString()}`);
   };
 

@@ -22,6 +22,8 @@ class PlannerExam(SQLModel, table=True):
     label: str = Field(max_length=120)
     group: str = Field(default="main", max_length=20)  # main | optional
     answer_writing: bool = Field(default=False)  # Mains-style plans add a daily answer-writing block
+    # The question-bank exam type whose questions Practice opens (e.g. upsc for UPSC Prelims)
+    exam_type_id: Optional[int] = Field(default=None, foreign_key="exam_types.id", ondelete="SET NULL")
     sort_order: int = Field(default=0)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=_now, sa_type=DateTimeTZ)

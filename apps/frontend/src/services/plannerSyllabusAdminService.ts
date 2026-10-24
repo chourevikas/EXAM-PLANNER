@@ -10,6 +10,8 @@ export interface PlannerExamAdmin {
   answer_writing: boolean;
   is_active: boolean;
   sort_order: number;
+  /** Question-bank exam type Practice opens; null = every exam. */
+  exam_type_id: number | null;
   subjects: number;
   subtopics: number;
 }
@@ -18,7 +20,8 @@ export interface PlannerSubtopicNode { id: number; name: string; bank_subtopic_i
 export interface PlannerTopicNode { id: number; name: string; subtopics: PlannerSubtopicNode[] }
 export interface PlannerSubjectNode { id: number; name: string; topics: PlannerTopicNode[] }
 
-export type PlannerExamInput = Pick<PlannerExamAdmin, 'code' | 'label' | 'group' | 'answer_writing' | 'is_active'>;
+export type PlannerExamInput = Pick<PlannerExamAdmin, 'code' | 'label' | 'group' | 'answer_writing' | 'is_active' | 'exam_type_id'>;
+export interface BankExamType { id: number; code: string; name: string; is_active: boolean }
 
 const BASE = '/api/v1/admin/planner';
 
@@ -41,12 +44,14 @@ async function call<T>(path: string, fallback: string, init: RequestInit = {}): 
   return res.status === 204 ? (undefined as T) : res.json();
 }
 
+export const listBankExamTypes = () => call<BankExamType[]>('/exam-types', 'Could not load exam types');
+
 export const listPlannerExams = () => call<PlannerExamAdmin[]>('/exams', 'Could not load planner exams');
 
 export const createPlannerExam = (input: PlannerExamInput) =>
   call<PlannerExamAdmin>('/exams', 'Could not add the exam', { method: 'POST', body: JSON.stringify(input) });
 
-export const updatePlannerExam = (id: number, patch: Partial<Omit<PlannerExamInput, 'code'>>) =>
+export const updatePlannerExam = (id: number, patch: Partial<Omit<PlannerExamInput, 'code'>> & { clear_exam_type?: boolean }) =>
   call<PlannerExamAdmin>(`/exams/${id}`, 'Could not save the exam', { method: 'PATCH', body: JSON.stringify(patch) });
 
 export const deletePlannerExam = (id: number) =>

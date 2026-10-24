@@ -45,7 +45,8 @@ export interface PlannerTask {
   priority: string;
   activity_type: string;
   planner_subtopic_id: number | null;
-  practice: { subject: string; topic: string; subtopic: string } | null;
+  /** Practice filters (closest question-bank match); {} = practice unfiltered; null = no Practice button. */
+  practice: { exam?: string; subject?: string; topic?: string; subtopic?: string } | null;
   planned: boolean;
   description: string | null;
 }

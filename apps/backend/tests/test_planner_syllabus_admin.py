@@ -15,6 +15,7 @@ from app.db.models.planner import PlannerExam, PlannerSubtopic, UserSyllabusCove
 from app.db.models.study_plan import StudyTask
 from app.db.models.enums import ExamStatus, QuestionSourceType
 from app.core.security import create_access_token, get_password_hash
+from app.db.models.exam_type import ExamType
 from app.services.planner_syllabus_service import parse_import
 
 test_engine = create_async_engine("sqlite+aiosqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -39,7 +40,9 @@ async def _add(session, obj):
 
 
 async def _seed(session: AsyncSession):
-    exam = await _add(session, Exam(code="PS-1", name="UPSC 2024", source_year=2024, exam_type=QuestionSourceType.PYQ,
+    upsc = await _add(session, ExamType(type="upsc", name="UPSC CSE", total_duration=120, number_of_questions=100,
+                                        total_marks=200, negative_marks=0.66, positive_marks=2))
+    exam = await _add(session, Exam(code="PS-1", name="UPSC 2024", exam_type_id=upsc.id, source_year=2024, exam_type=QuestionSourceType.PYQ,
                                     status=ExamStatus.PUBLISHED, is_active=True))
     version = await _add(session, SyllabusVersion(exam_id=exam.id, version_code="v1"))
     subject = await _add(session, Subject(name="Polity", code="POL", version_id=version.id))
@@ -82,7 +85,11 @@ async def test_students_cannot_use_admin_api(client):
 
 @pytest.mark.anyio
 async def test_build_edit_import_and_delete_a_syllabus(client):
-    res = await client.post(f"{API}/exams", json={"code": "MPSC Prelims", "label": "MPSC Prelims"}, headers=_h())
+    types = (await client.get(f"{API}/exam-types", headers=_h())).json()
+    assert [t["code"] for t in types] == ["upsc"]
+    res = await client.post(f"{API}/exams", json={"code": "MPSC Prelims", "label": "MPSC Prelims", "exam_type_id": types[0]["id"]}, headers=_h())
+    assert res.json()["exam_type_id"] == types[0]["id"]
+    assert (await client.post(f"{API}/exams", json={"code": "x1", "label": "X", "exam_type_id": 999}, headers=_h())).status_code == 404
     assert res.status_code == 201, res.text
     exam = res.json()
     assert exam["code"] == "mpsc_prelims" and exam["group"] == "main"
@@ -134,6 +141,7 @@ async def test_build_edit_import_and_delete_a_syllabus(client):
     res = await client.post(f"{API}/exams/{exam['id']}/import", headers=_h(), json={"text": '{"Economy": {"Banking": ["RBI"]}}', "mode": "replace"})
     assert res.json()["added"] == {"subjects": 1, "topics": 1, "subtopics": 1}
     assert (await client.patch(f"{API}/exams/{exam['id']}", json={"is_active": False}, headers=_h())).json()["is_active"] is False
+    assert (await client.patch(f"{API}/exams/{exam['id']}", json={"clear_exam_type": True}, headers=_h())).json()["exam_type_id"] is None
     assert (await client.post(f"{API}/exams/{exam['id']}/import", headers=_h(), json={"text": "nope"})).status_code == 422
     assert (await client.delete(f"{API}/exams/{exam['id']}", headers=_h())).status_code == 204
     async for session in _override_session():

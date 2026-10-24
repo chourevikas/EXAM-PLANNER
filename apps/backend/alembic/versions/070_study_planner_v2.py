@@ -58,6 +58,13 @@ def _seed() -> None:
                                         .returning(top_t.c.id)).scalar_one()
                 bind.execute(st_t.insert(), [{"topic_id": topic_id, "name": n, "sort_order": i}
                                              for i, n in enumerate(topic["subtopics"])])
+    # Practice opens each planner exam's questions: UPSC exams use the upsc exam type, State PCS an MPSC one, CDS a CDS one
+    for codes, pattern in ((("prelims", "mains", "opt_geo", "opt_psir", "opt_pa"), "upsc%"), (("pcs",), "mpsc%"),
+                           (("cds",), "cds%")):
+        op.execute(sa.text(
+            "UPDATE planner_exams SET exam_type_id = (SELECT id FROM exam_types WHERE LOWER(type) LIKE :p"
+            " ORDER BY is_active DESC, id LIMIT 1) WHERE code IN :codes"
+        ).bindparams(sa.bindparam("codes", expanding=True), p=pattern, codes=list(codes)))
     # Link to the question bank by name; admins fix the rest in the Planner Syllabus screen
     # (each paper has its own copy of the syllabus: pick the copy with the most published questions)
     op.execute(
@@ -78,6 +85,8 @@ def upgrade() -> None:
             sa.Column("label", sa.String(120), nullable=False),
             sa.Column("group", sa.String(20), nullable=False, server_default="main"),
             sa.Column("answer_writing", sa.Boolean(), nullable=False, server_default=sa.false()),
+            sa.Column("exam_type_id", sa.BigInteger(), sa.ForeignKey("exam_types.id", ondelete="SET NULL"),
+                      nullable=True),
             sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
             sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
             sa.Column("created_at", TS, nullable=False, server_default=NOW),

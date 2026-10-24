@@ -4,8 +4,8 @@ import {
 } from 'lucide-react';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import {
-  PlannerExamAdmin, PlannerExamInput, PlannerLevel, PlannerSubjectNode,
-  addPlannerNode, createPlannerExam, deletePlannerExam, deletePlannerNode, fetchPlannerTree, importPlannerSyllabus,
+  BankExamType, PlannerExamAdmin, PlannerExamInput, PlannerLevel, PlannerSubjectNode,
+  addPlannerNode, createPlannerExam, listBankExamTypes, deletePlannerExam, deletePlannerNode, fetchPlannerTree, importPlannerSyllabus,
   listPlannerExams, reorderPlannerExams, reorderPlannerNodes, searchBankSubtopics, updatePlannerExam, updatePlannerNode,
 } from '../../../services/plannerSyllabusAdminService';
 
@@ -42,7 +42,7 @@ const ghostBtn: React.CSSProperties = {
 
 const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
 
-const EMPTY_EXAM: PlannerExamInput = { code: '', label: '', group: 'main', answer_writing: false, is_active: true };
+const EMPTY_EXAM: PlannerExamInput = { code: '', label: '', group: 'main', answer_writing: false, is_active: true, exam_type_id: null };
 
 const IMPORT_HINT = `One subject per line:
 Polity|Constitution:Preamble,Fundamental Rights;Parliament:Lok Sabha,Rajya Sabha
@@ -54,6 +54,7 @@ or JSON: {"Polity": {"Constitution": ["Preamble", "Fundamental Rights"]}}`;
 export function PlannerSyllabusView() {
   const { isTabletOrBelow } = useBreakpoint();
   const [exams, setExams] = useState<PlannerExamAdmin[]>([]);
+  const [examTypes, setExamTypes] = useState<BankExamType[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [tree, setTree] = useState<PlannerSubjectNode[]>([]);
   const [open, setOpen] = useState<Record<number, boolean>>({});
@@ -89,6 +90,7 @@ export function PlannerSyllabusView() {
   }, []);
 
   useEffect(() => { loadExams(); }, [loadExams]);
+  useEffect(() => { listBankExamTypes().then(setExamTypes).catch(() => {}); }, []);
   useEffect(() => { loadTree(selected); }, [selected, loadTree]);
 
   /** Run a change, show what happened, then reload the tree. */
@@ -198,6 +200,14 @@ export function PlannerSyllabusView() {
               <option value="optional">Optional subject</option>
             </select>
           </label>
+          <label style={{ fontSize: 13, fontWeight: 700 }}>
+            Practice questions from
+            <select style={{ ...input, marginTop: 6 }} value={examForm.exam_type_id ?? ''}
+              onChange={(e) => setExamForm({ ...examForm, exam_type_id: e.target.value ? Number(e.target.value) : null })}>
+              <option value="">All exams</option>
+              {examTypes.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.code}){t.is_active ? '' : ' – inactive'}</option>)}
+            </select>
+          </label>
           <label style={{ fontSize: 13, display: 'flex', gap: 8, alignItems: 'center' }}>
             <input type="checkbox" checked={examForm.answer_writing} onChange={(e) => setExamForm({ ...examForm, answer_writing: e.target.checked })} />
             Mains-style: add a daily answer-writing task to plans
@@ -235,7 +245,20 @@ export function PlannerSyllabusView() {
                 <InlineName value={exam.label} size={17} onSave={(label) => patchExam({ label }, 'Exam renamed.')} />
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Code: {exam.code}</div>
               </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <label style={{ fontSize: 12.5, display: 'flex', gap: 6, alignItems: 'center' }} title="The question-bank exam the Practice button opens for this planner exam">
+                  Practice from
+                  <select aria-label="Practice questions from" style={{ ...input, width: 'auto', padding: '5px 8px', fontSize: 12.5 }}
+                    value={exam.exam_type_id ?? ''}
+                    onChange={(e) => {
+                      const id = e.target.value ? Number(e.target.value) : null;
+                      patchExam(id ? { exam_type_id: id } : { clear_exam_type: true },
+                        id ? `Practice will open ${examTypes.find((t) => t.id === id)?.name || 'that exam'} questions.` : 'Practice will search every exam.');
+                    }}>
+                    <option value="">All exams</option>
+                    {examTypes.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.code})</option>)}
+                  </select>
+                </label>
                 <label style={{ fontSize: 12.5, display: 'flex', gap: 6, alignItems: 'center' }}>
                   <input type="checkbox" checked={exam.answer_writing}
                     onChange={(e) => patchExam({ answer_writing: e.target.checked }, e.target.checked ? 'Plans will include answer writing.' : 'Answer writing removed from new plans.')} />

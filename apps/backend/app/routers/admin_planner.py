@@ -9,6 +9,7 @@ from sqlmodel import select, func
 from app.core.deps import require_admin_section
 from app.db.session import AsyncSession, get_async_session
 from app.db.models.user import User
+from app.db.models.exam_type import ExamType
 from app.db.models.hierarchy import Subtopic
 from app.db.models.planner import PlannerExam, PlannerSubject, PlannerTopic, PlannerSubtopic
 from app.services import planner_syllabus_service as syl
@@ -25,6 +26,7 @@ class ExamIn(BaseModel):
     group: Literal["main", "optional"] = "main"
     answer_writing: bool = False
     is_active: bool = True
+    exam_type_id: Optional[int] = None  # question-bank exam type that Practice opens
 
 
 class ExamPatch(BaseModel):
@@ -32,6 +34,8 @@ class ExamPatch(BaseModel):
     group: Optional[Literal["main", "optional"]] = None
     answer_writing: Optional[bool] = None
     is_active: Optional[bool] = None
+    exam_type_id: Optional[int] = None
+    clear_exam_type: bool = False  # Practice then searches every exam
 
 
 class NodeIn(BaseModel):
@@ -67,7 +71,8 @@ async def _counts(session: AsyncSession) -> dict:
 def _exam_out(e: PlannerExam, counts: dict) -> dict:
     s, st = counts.get(e.id, (0, 0))
     return {"id": e.id, "code": e.code, "label": e.label, "group": e.group, "answer_writing": e.answer_writing,
-            "is_active": e.is_active, "sort_order": e.sort_order, "subjects": s, "subtopics": st}
+            "is_active": e.is_active, "sort_order": e.sort_order, "exam_type_id": e.exam_type_id,
+            "subjects": s, "subtopics": st}
 
 
 async def _exam(session: AsyncSession, exam_id: int) -> PlannerExam:
@@ -75,6 +80,18 @@ async def _exam(session: AsyncSession, exam_id: int) -> PlannerExam:
     if not exam:
         raise HTTPException(404, "Planner exam not found")
     return exam
+
+
+async def _check_exam_type(session: AsyncSession, exam_type_id: Optional[int]) -> None:
+    if exam_type_id is not None and not await session.get(ExamType, exam_type_id):
+        raise HTTPException(404, "Exam type not found")
+
+
+@router.get("/exam-types")
+async def list_exam_types(session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
+    """Question-bank exam types a planner exam can practise from."""
+    rows = (await session.exec(select(ExamType).order_by(ExamType.is_active.desc(), ExamType.name))).all()
+    return [{"id": t.id, "code": t.type, "name": t.name, "is_active": t.is_active} for t in rows]
 
 
 @router.get("/exams")
@@ -92,8 +109,10 @@ async def create_exam(body: ExamIn, session: AsyncSession = Depends(get_async_se
     if await syl.exam_by_code(session, code):
         raise HTTPException(409, f"An exam with code '{code}' already exists")
     top = (await session.exec(select(func.max(PlannerExam.sort_order)))).first()
+    await _check_exam_type(session, body.exam_type_id)
     exam = PlannerExam(code=code, label=body.label.strip(), group=body.group, answer_writing=body.answer_writing,
-                       is_active=body.is_active, sort_order=(top if top is not None else -1) + 1)
+                       is_active=body.is_active, exam_type_id=body.exam_type_id,
+                       sort_order=(top if top is not None else -1) + 1)
     session.add(exam)
     await session.commit()
     await session.refresh(exam)
@@ -104,8 +123,11 @@ async def create_exam(body: ExamIn, session: AsyncSession = Depends(get_async_se
 async def update_exam(exam_id: int, body: ExamPatch, session: AsyncSession = Depends(get_async_session),
                       _: User = Depends(_admin)):
     exam = await _exam(session, exam_id)
-    for k, v in body.model_dump(exclude_none=True).items():
+    await _check_exam_type(session, body.exam_type_id)
+    for k, v in body.model_dump(exclude_none=True, exclude={"clear_exam_type"}).items():
         setattr(exam, k, v.strip() if isinstance(v, str) else v)
+    if body.clear_exam_type:
+        exam.exam_type_id = None
     session.add(exam)
     await session.commit()
     await session.refresh(exam)
