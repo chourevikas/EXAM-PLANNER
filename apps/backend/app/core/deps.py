@@ -566,6 +566,7 @@ ADMIN_SECTION_PERMISSIONS = {
     "admin.review": "Question & Solution QA",
     "admin.question_bank": "Question Bank Catalog",
     "admin.reported_questions": "Reported Questions",
+    "admin.feedback": "Feedback",
     "admin.users": "Users",
     "admin.teacher_rewards": "Teacher Rewards",
     "admin.current_affairs": "Current Affairs",

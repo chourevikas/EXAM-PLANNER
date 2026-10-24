@@ -161,6 +161,12 @@ class Settings(BaseSettings):
     )
     DISCORD_ALERT_WEBHOOK_URL: Optional[str] = Field(default=None)
 
+    # Error tracking (Sentry). Empty DSN = off.
+    SENTRY_DSN: Optional[str] = Field(default=None)
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(
+        default=0.0, description="Share of requests sent as performance traces (0 = errors only)"
+    )
+
     # LLM Settings & Provider Credentials
     LLM_PROVIDER: str = Field(default="vertexai")  # vertexai, openai, bedrock
     GCP_PROJECT_ID: Optional[str] = Field(default=None)
@@ -172,6 +178,10 @@ class Settings(BaseSettings):
     LLM_USD_TO_INR: float = Field(
         default=95.5,
         description="INR billed per USD of list price; 95.5 matches the Sept 2026 GCP invoice (taxes included)",
+    )
+    LLM_DAILY_BUDGET_INR: float = Field(
+        default=0.0,
+        description="Daily LLM spend (IST day) after which report insights use the rule-based text; 0 = no limit",
     )
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(
         default="gcp-service-account.json"

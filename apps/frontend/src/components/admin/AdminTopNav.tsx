@@ -31,6 +31,7 @@ const breadcrumbMap: Record<string, string> = {
   'mock-tests': 'Mock Tests',
   testimonials: 'Testimonial Approvals',
   'reported-questions': 'Reported Questions',
+  feedback: 'Feedback',
   resources: 'Learning Resources',
   users: 'Users Management',
   'teacher-rewards': 'Teacher Rewards',

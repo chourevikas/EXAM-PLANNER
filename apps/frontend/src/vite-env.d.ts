@@ -4,6 +4,8 @@ interface ImportMetaEnv {
   readonly VITE_CLERK_PUBLISHABLE_KEY: string
   readonly VITE_SUPERADMIN_URL?: string
   readonly VITE_MARKETING_ORIGIN?: string
+  readonly VITE_SENTRY_DSN?: string
+  readonly VITE_SENTRY_ENVIRONMENT?: string
   // more env variables...
 }
 

@@ -13,9 +13,11 @@ import {
   Menu,
   Zap,
   Flame,
-  X
+  X,
+  MessageSquareWarning
 } from 'lucide-react';
 import { UserAvatar } from '../common/UserAvatar';
+import { ReportProblemModal } from './ReportProblemModal';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { guardedFetch } from '../../utils/apiGuard';
 import { HeaderSearch } from './HeaderSearch';
@@ -39,6 +41,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
   const [currentUser, setCurrentUser] = useState(user);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showReportProblem, setShowReportProblem] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
@@ -597,6 +600,13 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               <Link to="/billing" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
                 <CreditCard size={15} /> Subscription Plan
               </Link>
+              <button
+                type="button"
+                onClick={() => { setShowProfileMenu(false); setShowReportProblem(true); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: 'var(--text-secondary)', background: 'none', border: 'none', width: '100%', cursor: 'pointer', fontSize: 13, fontWeight: 500, textAlign: 'left', minHeight: 44 }}
+              >
+                <MessageSquareWarning size={15} /> Report a problem
+              </button>
               <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 4, paddingTop: 4 }}>
                 <button
                   type="button"
@@ -636,6 +646,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
         </div>
 
       </div>
+      {showReportProblem && <ReportProblemModal onClose={() => setShowReportProblem(false)} />}
     </header>
   );
 }
