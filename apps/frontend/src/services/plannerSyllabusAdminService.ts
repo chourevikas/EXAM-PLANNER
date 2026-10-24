@@ -1,17 +1,20 @@
 import { guardedFetch } from '../utils/apiGuard';
 
+/** Admin: study syllabi of an exam type (Prelims, Mains, optionals) and their subjects → topics → subtopics. */
 export type PlannerLevel = 'subjects' | 'topics' | 'subtopics';
+export type SyllabusStage = 'prelims' | 'mains' | 'optional';
 
-export interface PlannerExamAdmin {
+export interface ExamSyllabusAdmin {
   id: number;
-  code: string;
+  exam_type_id: number;
+  exam_type_code: string;
+  stage: SyllabusStage;
+  name: string;
+  /** What students see, e.g. "UPSC Prelims", "UPSC Optional: Geography". */
   label: string;
-  group: 'main' | 'optional';
   answer_writing: boolean;
-  is_active: boolean;
   sort_order: number;
-  /** Question-bank exam type Practice opens; null = every exam. */
-  exam_type_id: number | null;
+  is_active: boolean;
   subjects: number;
   subtopics: number;
 }
@@ -20,10 +23,7 @@ export interface PlannerSubtopicNode { id: number; name: string; bank_subtopic_i
 export interface PlannerTopicNode { id: number; name: string; subtopics: PlannerSubtopicNode[] }
 export interface PlannerSubjectNode { id: number; name: string; topics: PlannerTopicNode[] }
 
-export type PlannerExamInput = Pick<PlannerExamAdmin, 'code' | 'label' | 'group' | 'answer_writing' | 'is_active' | 'exam_type_id'>;
-export interface BankExamType { id: number; code: string; name: string; is_active: boolean }
-
-const BASE = '/api/v1/admin/planner';
+const BASE = '/api/v1/admin';
 
 function headers(): Record<string, string> {
   const token = localStorage.getItem('access_token');
@@ -44,45 +44,46 @@ async function call<T>(path: string, fallback: string, init: RequestInit = {}): 
   return res.status === 204 ? (undefined as T) : res.json();
 }
 
-export const listBankExamTypes = () => call<BankExamType[]>('/exam-types', 'Could not load exam types');
+const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
 
-export const listPlannerExams = () => call<PlannerExamAdmin[]>('/exams', 'Could not load planner exams');
+/** Exam types that have syllabi, each with them (for counts on the Exam Types list). */
+export const listAllSyllabi = () =>
+  call<{ id: number; code: string; name: string; syllabi: ExamSyllabusAdmin[] }[]>('/syllabi', 'Could not load syllabi');
 
-export const createPlannerExam = (input: PlannerExamInput) =>
-  call<PlannerExamAdmin>('/exams', 'Could not add the exam', { method: 'POST', body: JSON.stringify(input) });
+export const listSyllabi = (examTypeId: number) =>
+  call<ExamSyllabusAdmin[]>(`/exam-types/${examTypeId}/syllabi`, 'Could not load the syllabi');
 
-export const updatePlannerExam = (id: number, patch: Partial<Omit<PlannerExamInput, 'code'>> & { clear_exam_type?: boolean }) =>
-  call<PlannerExamAdmin>(`/exams/${id}`, 'Could not save the exam', { method: 'PATCH', body: JSON.stringify(patch) });
+export const createSyllabus = (examTypeId: number, stage: SyllabusStage, name?: string) =>
+  call<ExamSyllabusAdmin>(`/exam-types/${examTypeId}/syllabi`, 'Could not add the syllabus', json('POST', { stage, name }));
 
-export const deletePlannerExam = (id: number) =>
-  call<void>(`/exams/${id}`, 'Could not delete the exam', { method: 'DELETE' });
+export const reorderSyllabi = (examTypeId: number, ids: number[]) =>
+  call<void>(`/exam-types/${examTypeId}/syllabi/reorder`, 'Could not reorder', json('POST', { ids }));
 
-export const reorderPlannerExams = (ids: number[]) =>
-  call<void>('/exams/reorder', 'Could not reorder', { method: 'POST', body: JSON.stringify({ ids }) });
+export const updateSyllabus = (id: number, patch: { name?: string; answer_writing?: boolean; is_active?: boolean }) =>
+  call<ExamSyllabusAdmin>(`/syllabi/${id}`, 'Could not save the syllabus', json('PATCH', patch));
 
-export const fetchPlannerTree = (examId: number) =>
-  call<{ exam: PlannerExamAdmin; subjects: PlannerSubjectNode[] }>(`/exams/${examId}/tree`, 'Could not load the syllabus');
+export const deleteSyllabus = (id: number) => call<void>(`/syllabi/${id}`, 'Could not delete the syllabus', { method: 'DELETE' });
 
-export const importPlannerSyllabus = (examId: number, text: string, mode: 'merge' | 'replace') =>
-  call<{ added: Record<PlannerLevel, number> }>(`/exams/${examId}/import`, 'Could not import', {
-    method: 'POST',
-    body: JSON.stringify({ text, mode }),
-  });
+export const fetchSyllabusTree = (id: number) =>
+  call<{ syllabus: ExamSyllabusAdmin; subjects: PlannerSubjectNode[] }>(`/syllabi/${id}/tree`, 'Could not load the syllabus');
+
+export const importSyllabus = (id: number, text: string, mode: 'merge' | 'replace') =>
+  call<{ added: Record<PlannerLevel, number> }>(`/syllabi/${id}/import`, 'Could not import', json('POST', { text, mode }));
+
+export const searchBankSubtopics = (syllabusId: number, q: string) =>
+  call<{ id: number; label: string }[]>(`/syllabi/${syllabusId}/bank-subtopics?q=${encodeURIComponent(q)}`, 'Search failed');
 
 export const addPlannerNode = (level: PlannerLevel, parentId: number, name: string) =>
-  call<{ id: number }>(`/${level}`, 'Could not add', { method: 'POST', body: JSON.stringify({ parent_id: parentId, name }) });
+  call<{ id: number }>(`/syllabi/nodes/${level}`, 'Could not add', json('POST', { parent_id: parentId, name }));
 
 export const updatePlannerNode = (
   level: PlannerLevel,
   id: number,
   patch: { name?: string; bank_subtopic_id?: number; clear_bank?: boolean },
-) => call<void>(`/${level}/${id}`, 'Could not save', { method: 'PATCH', body: JSON.stringify(patch) });
+) => call<void>(`/syllabi/nodes/${level}/${id}`, 'Could not save', json('PATCH', patch));
 
 export const deletePlannerNode = (level: PlannerLevel, id: number) =>
-  call<void>(`/${level}/${id}`, 'Could not delete', { method: 'DELETE' });
+  call<void>(`/syllabi/nodes/${level}/${id}`, 'Could not delete', { method: 'DELETE' });
 
 export const reorderPlannerNodes = (level: PlannerLevel, ids: number[]) =>
-  call<void>(`/${level}/reorder`, 'Could not reorder', { method: 'POST', body: JSON.stringify({ ids }) });
-
-export const searchBankSubtopics = (q: string) =>
-  call<{ id: number; label: string }[]>(`/bank-subtopics?q=${encodeURIComponent(q)}`, 'Search failed');
+  call<void>(`/syllabi/nodes/${level}/reorder`, 'Could not reorder', json('POST', { ids }));

@@ -1,26 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  PlanRequest, PlannerExam, PlannerSettings, estimatePlan, fetchSyllabus, generatePlan,
+  PlanRequest, PlannerExams, PlannerSettings, estimatePlan, fetchSyllabus, generatePlan,
 } from '../../../services/plannerService';
+import { ExamPicker, validSyllabusId } from './ExamPicker';
 import { Check, Chip, Notice, ProTag, WEEKDAYS, btn, card, h2, input, label, sub, todayKey } from './plannerUi';
 
 const DAY_PRESETS = [7, 15, 30, 60, 90];
 
 const DEFAULTS: PlanRequest = {
-  exam: 'prelims', days: 30, exam_date: null, subjects: null, subject_days: {}, hours: 4, mock: 0, rest: null,
+  syllabus_id: 0, days: 30, exam_date: null, subjects: null, subject_days: {}, hours: 4, mock: 0, rest: null,
   tail: true, mix: 1, ca: true, pyq: true, custom_title: '', weak_first: false, auto_catch: true,
 };
 
 /** "Set up your study plan": pick an exam and days, optionally fine-tune, then generate. */
 export function PlanSetup({ exams, settings, onGenerated, onUpgrade }: {
-  exams: PlannerExam[];
+  exams: PlannerExams;
   settings: PlannerSettings;
   onGenerated: (message: string, warning: string | null) => void;
   onUpgrade: () => void;
 }) {
   const [form, setForm] = useState<PlanRequest>(() => {
     const p = { ...DEFAULTS, ...(settings.prefs || {}) } as PlanRequest;
-    if (!exams.some((e) => e.code === p.exam)) p.exam = exams[0]?.code || 'prelims';
+    p.syllabus_id = validSyllabusId(exams, p.syllabus_id) ?? 0;
     if (!settings.pro) p.days = Math.min(p.days, settings.free_max_days);
     return p;
   });
@@ -31,15 +32,13 @@ export function PlanSetup({ exams, settings, onGenerated, onUpgrade }: {
   const [more, setMore] = useState(false);
   const pro = settings.pro;
 
-  const mains = exams.filter((e) => e.group === 'main');
-  const optionals = exams.filter((e) => e.group === 'optional');
-  const isOptional = optionals.some((e) => e.code === form.exam);
   const set = <K extends keyof PlanRequest>(k: K, v: PlanRequest[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   // Subjects of the chosen exam; a new exam starts with all of them selected
   useEffect(() => {
     let live = true;
-    fetchSyllabus(form.exam).then((s) => {
+    if (!form.syllabus_id) return;
+    fetchSyllabus(form.syllabus_id).then((s) => {
       if (!live) return;
       const list = s.subjects.map((x) => ({ name: x.name, pending: x.total - x.done }));
       setSubjects(list);
@@ -49,7 +48,7 @@ export function PlanSetup({ exams, settings, onGenerated, onUpgrade }: {
       });
     }).catch((e) => live && setError(e.message));
     return () => { live = false; };
-  }, [form.exam]);
+  }, [form.syllabus_id]);
 
   const request = useMemo<PlanRequest>(() => ({
     ...form,
@@ -60,7 +59,7 @@ export function PlanSetup({ exams, settings, onGenerated, onUpgrade }: {
 
   // Live estimate, debounced
   useEffect(() => {
-    if (!request.subjects || !request.days) return;
+    if (!request.syllabus_id || !request.subjects || !request.days) return;
     const id = window.setTimeout(() => {
       estimatePlan(request).then((e) => setEstimate(e)).catch((e) => setEstimate({ text: e.message, warning: null }));
     }, 300);
@@ -95,15 +94,9 @@ export function PlanSetup({ exams, settings, onGenerated, onUpgrade }: {
       <h2 style={h2}>Set up your study plan</h2>
       <p style={sub}>Choose your exam and number of days, then tap Generate plan. Topics you've already covered are left out.</p>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-        {mains.map((e) => <Chip key={e.code} on={form.exam === e.code} onClick={() => set('exam', e.code)}>{e.label}</Chip>)}
-        {optionals.length > 0 && <Chip on={isOptional} onClick={() => !isOptional && set('exam', optionals[0].code)}>Optional subject</Chip>}
+      <div style={{ marginBottom: 10 }}>
+        <ExamPicker exams={exams} value={form.syllabus_id || null} onChange={(id) => set('syllabus_id', id)} />
       </div>
-      {isOptional && (
-        <select aria-label="Optional subject" style={{ ...input, marginBottom: 10 }} value={form.exam} onChange={(e) => set('exam', e.target.value)}>
-          {optionals.map((e) => <option key={e.code} value={e.code}>{e.label.replace(/^Optional:\s*/, '')}</option>)}
-        </select>
-      )}
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '6px 0 10px' }}>
         <label htmlFor="planDays" style={label}>Plan for</label>

@@ -305,15 +305,20 @@ The Create Challenge form takes one or more exams (chips, like subjects and year
 ## Phase 8: Study Planner v2, the client's planner (23 Oct) 🚧 in review
 The client shared their planner (`examplanner-all-pages-opens-planner.html`, the Study Planner frame). It ran only in the browser and saved to localStorage. It is now built on the real stack, saved per account. It replaces the one-click week and month plan from 6.7: the student generates the plan from a form.
 
-### 8.1 Planner syllabus (admin)
-- **Planner exams:** UPSC Prelims, State PCS, CDS, UPSC Mains, and the optionals Geography, PSIR and Public Administration. Each has subjects → topics → subtopics, seeded from the client's file (350 subtopics).
-- **Separate from the question bank:** these tables are not the paper `exams`. A planner subtopic can link to a question-bank subtopic, which drives its Practice button and the weak-topic data. Links are made by name on seeding and import; admins set the rest.
-- **Admin screen:** Planner Syllabus, under the section permission `admin.planner_syllabus`. Admins can:
-  - add, rename, hide, reorder and delete exams;
+### 8.1 Study syllabi belong to exam types (admin)
+- **Structure:** each exam type has study syllabi: UPSC has Prelims, Mains and its optionals (Geography, PSIR, Public Administration); MPSC has Prelims, seeded from the client's State PCS list. Each syllabus is a subject → topic → subtopic tree. Students see them as "UPSC Prelims", "UPSC Optional: Geography" and so on.
+- **Seeding:** each syllabus is seeded only if its exam type exists (`upsc`, `mpsc`, `cds`). The others stay in `app/planner/seed/syllabus.json`, ready for bulk import once the exam type is created. CDS waits for a CDS exam type.
+- **Separate from paper syllabi:** these trees are not the per-paper trees built from question tags; those only list what questions cover, and every paper has its own copy. A planner subtopic can link to a question-bank subtopic of the same exam type, which gives Practice an exact filter and feeds weak-topic data. Links are made by name on seeding and import; admins set the rest.
+- **Admin:** **Exam Types → Syllabus** on each exam type. Admins can:
+  - add Prelims, Mains or an optional subject;
+  - reorder, hide and delete syllabi, and turn answer writing on or off;
   - edit the tree;
   - bulk import, either as `Subject|Topic:sub,sub;Topic:sub` lines or as JSON, merging into or replacing the syllabus;
-  - link subtopics to the question bank.
+  - link subtopics to that exam type's question bank.
+- **Access:** follows the Exam Types permission.
+- **Deleting an exam type** that still has a syllabus is refused.
 - **Migration:** `070_study_planner_v2`.
+- **Later phase:** make the upload pipeline tag each question against its exam type's syllabus, so Practice filters and weak-topic data are exact without name matching.
 
 ### 8.2 Generating a plan
 - **Inputs:** exam, days (up to 365) or an exam date, subjects, days per subject, hours a day, mock day, rest day, a revision tail for the last ~12% of days, subjects per day, daily blocks (current affairs, 10 PYQs, the student's own task; answer writing for Mains-style exams), weak topics first, and auto catch-up.
@@ -338,11 +343,13 @@ The client shared their planner (`examplanner-all-pages-opens-planner.html`, the
 
 ### 8.6 API
 - **Student:** `/planner/*`:
-  - exams, syllabus, coverage, settings;
-  - estimate, generate, plan, overview, tasks, plan-tasks;
+  - `exams` (exam types with their syllabi, plus the one to preselect: the student's last plan, else their target exam);
+  - `syllabus/{syllabus_id}`, coverage, settings;
+  - estimate, generate, plan, overview, tasks, plan-tasks (plans take a `syllabus_id`);
   - skip, reopen, catch-up, focus;
   - tracker, revision-plan, share.
-- **Admin:** `/admin/planner/*`.
+- **Practice:** `exam` is always set to the syllabus's exam type, and matching only uses that exam type's questions.
+- **Admin:** `/admin/exam-types/{id}/syllabi` and `/admin/syllabi/*`.
 - **Unchanged:** completing a task is still `POST /study-plan/tasks/{id}/complete`.
 - **Still in the API:** `/study-plan/generate-weekly-plan` and `/generate-monthly-plan` stay (their tests cover the month view and cache invalidation), but the app no longer calls them. Remove them in a cleanup.
 
@@ -363,8 +370,8 @@ As of 19 Oct 2026, on `release/0.0.1`.
 - Go live with production keys and the dashboard webhooks (including `DISPUTE_*`).
 
 **Study Planner v2 (Phase 8)**
-- Client to confirm the free limits (8.5) and the State PCS syllabus (the seed is generic; an MPSC-specific one can be entered in Planner Syllabus).
-- Admins to link the remaining planner subtopics to the question bank. Each paper has its own copy of the syllabus, so pick the active paper's copy.
+- Client to confirm the free limits (8.5) and the MPSC Prelims syllabus (seeded from the client's generic State PCS list; an MPSC-specific one can be entered under Exam Types → Syllabus). MPSC and CDS syllabi appear only once those exam types exist.
+- Admins to link the remaining planner subtopics to the question bank (Exam Types → Syllabus). Each paper has its own copy of the syllabus, so pick the active paper's copy.
 - Remove the unused `/study-plan/generate-weekly-plan` and `/generate-monthly-plan` endpoints.
 
 **Not built yet: to prioritise with the client**

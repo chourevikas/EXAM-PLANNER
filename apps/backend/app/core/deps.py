@@ -575,7 +575,6 @@ ADMIN_SECTION_PERMISSIONS = {
     "admin.testimonials": "Testimonial Approvals",
     "admin.analytics": "Reports & Analytics",
     "admin.theme": "Theme",
-    "admin.planner_syllabus": "Planner Syllabus",
 }
 
 

@@ -24,6 +24,7 @@ from app.services.planner_service import today_ist
 test_engine = create_async_engine("sqlite+aiosqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 _state: dict = {}
 API = "/api/v1/planner"
+PRELIMS, MAINS, HIDDEN, MPSC_PRE = 1, 2, 3, 4  # planner syllabus ids seeded below
 
 
 async def _override_session():
@@ -53,9 +54,11 @@ async def _seed(session: AsyncSession):
     bst = await _add(session, Subtopic(name="Constitution and Types", code="CT", topic_id=btop.id))
     await _add(session, Question(exam_id=paper.id, question_number_in_paper=1, status=QuestionStatus.PUBLISHED,
                                  subtopic_id=bst.id, source_year=2024))
-    exam = await _add(session, PlannerExam(code="prelims", label="UPSC Prelims", exam_type_id=upsc.id))
-    mains = await _add(session, PlannerExam(code="mains", label="UPSC Mains", answer_writing=True, sort_order=1))
-    await _add(session, PlannerExam(code="hidden", label="Hidden", is_active=False, sort_order=2))
+    exam = await _add(session, PlannerExam(id=PRELIMS, exam_type_id=upsc.id, stage="prelims", name="Prelims"))
+    mains = await _add(session, PlannerExam(id=MAINS, exam_type_id=upsc.id, stage="mains", name="Mains",
+                                            answer_writing=True, sort_order=1))
+    await _add(session, PlannerExam(id=HIDDEN, exam_type_id=upsc.id, stage="optional", name="Hidden", is_active=False,
+                                    sort_order=2))
     subtopics = {}
     for si, (sname, topics) in enumerate({"Polity": {"Constitution": ["Preamble", "Fundamental Rights", "DPSP"],
                                                      "Parliament": ["Lok Sabha", "Rajya Sabha"]},
@@ -65,6 +68,9 @@ async def _seed(session: AsyncSession):
             t = await _add(session, PlannerTopic(subject_id=s.id, name=tname, sort_order=ti))
             for i, n in enumerate(subs):
                 subtopics[n] = (await _add(session, PlannerSubtopic(topic_id=t.id, name=n, sort_order=i))).id
+    mpsc = await _add(session, ExamType(type="mpsc", name="MPSC State Services", total_duration=120,
+                                        number_of_questions=100, total_marks=200, negative_marks=0.5, positive_marks=2))
+    await _add(session, PlannerExam(id=MPSC_PRE, exam_type_id=mpsc.id, stage="prelims", name="Prelims"))
     ms = await _add(session, PlannerSubject(exam_id=mains.id, name="GS-2"))
     mt = await _add(session, PlannerTopic(subject_id=ms.id, name="Polity"))
     await _add(session, PlannerSubtopic(topic_id=mt.id, name="Federalism"))
@@ -73,8 +79,8 @@ async def _seed(session: AsyncSession):
         return User(full_name=name, email=f"{name.lower()}@pl.test", role=UserRole.STUDENT, password_hash=get_password_hash("x"))
 
     pro, free, other = await _add(session, student("Pro")), await _add(session, student("Free")), await _add(session, student("Other"))
-    session.add_all([StudentProfile(user_id=pro.id, subscription_tier=SubscriptionTier.PREMIUM),
-                     StudentProfile(user_id=free.id, subscription_tier=SubscriptionTier.FREE),
+    session.add_all([StudentProfile(user_id=pro.id, subscription_tier=SubscriptionTier.PREMIUM, target_exam="UPSC CSE"),
+                     StudentProfile(user_id=free.id, subscription_tier=SubscriptionTier.FREE, target_exam="MPSC Rajyaseva"),
                      StudentProfile(user_id=other.id, subscription_tier=SubscriptionTier.PREMIUM)])
     await session.commit()
     _state.update(pro=pro.id, free=free.id, other=other.id, sub=subtopics)
@@ -100,16 +106,22 @@ def _db() -> AsyncSession:
     return AsyncSession(test_engine, expire_on_commit=False)
 
 
-PLAN = {"exam": "prelims", "days": 5, "mock": None, "hours": 4}
+PLAN = {"syllabus_id": PRELIMS, "days": 5, "mock": None, "hours": 4}
 
 
 @pytest.mark.anyio
 async def test_exams_syllabus_and_estimate(client):
     exams = (await client.get(f"{API}/exams", headers=_h())).json()
-    assert [e["code"] for e in exams] == ["prelims", "mains"]
-    syl = (await client.get(f"{API}/syllabus/prelims", headers=_h())).json()
+    # The student's target exam comes first and is preselected
+    assert [g["code"] for g in exams["exam_types"]] == ["upsc", "mpsc"]
+    assert [x["label"] for x in exams["exam_types"][0]["syllabi"]] == ["UPSC Prelims", "UPSC Mains"]
+    assert exams["default_syllabus_id"] == PRELIMS
+    free = (await client.get(f"{API}/exams", headers=_h("free"))).json()
+    assert free["exam_types"][0]["code"] == "mpsc" and free["default_syllabus_id"] == MPSC_PRE
+    syl = (await client.get(f"{API}/syllabus/{PRELIMS}", headers=_h())).json()
+    assert syl["exam"]["label"] == "UPSC Prelims"
     assert syl["total"] == 8 and syl["percent"] == 0 and [s["name"] for s in syl["subjects"]] == ["Polity", "Economy"]
-    assert (await client.get(f"{API}/syllabus/hidden", headers=_h())).status_code == 404
+    assert (await client.get(f"{API}/syllabus/{HIDDEN}", headers=_h())).status_code == 404
     est = (await client.post(f"{API}/estimate", json={**PLAN, "subjects": ["Polity"]}, headers=_h())).json()
     assert est["text"].startswith("1 subject(s), 5 topics → about 1 topic per day over 5 study day(s)")
     bad = await client.post(f"{API}/estimate", json={**PLAN, "exam_date": str(today_ist())}, headers=_h())
@@ -138,6 +150,9 @@ async def test_generate_follow_and_rebuild(client):
 
     res = (await client.post(f"{API}/generate", json={**PLAN, "custom_title": "Revise notes"}, headers=_h())).json()
     assert res["topics"] == 8 and res["days"] == 5 and "Scheduled 8 topic(s) over 5 study day(s)" in res["message"]
+    # Once the student has a plan the picker keeps their target exam first (not alphabetical: MPSC < UPSC)
+    exams = (await client.get(f"{API}/exams", headers=_h())).json()
+    assert [g["code"] for g in exams["exam_types"]] == ["upsc", "mpsc"] and exams["default_syllabus_id"] == PRELIMS
     day = (await client.get(f"{API}/tasks", params={"start": str(today), "end": str(today)}, headers=_h())).json()
     # 8 topics over 5 days: one topic today (own task first)
     assert [t["block"] for t in day] == [None, None, "ca", "custom", "pyq"]
@@ -149,13 +164,13 @@ async def test_generate_follow_and_rebuild(client):
     assert next(t for t in day if t["block"] == "ca")["practice"] is None
 
     ov = (await client.get(f"{API}/overview", headers=_h())).json()
-    assert ov["topics"] == 8 and ov["days"] == 5 and ov["plan"]["exam"] == "prelims"
+    assert ov["topics"] == 8 and ov["days"] == 5 and ov["plan"]["syllabus_id"] == PRELIMS and ov["plan"]["exam_label"] == "UPSC Prelims"
     assert [x["name"] for x in ov["subjects"]] == ["Polity", "Economy"]
 
     # Finishing a plan topic covers its subtopic and lines up revisions at +1, +3, +7 and +21 days
     topic = day[1]
     assert (await client.post(f"/api/v1/study-plan/tasks/{topic['id']}/complete", headers=_h())).status_code == 200
-    syl = (await client.get(f"{API}/syllabus/prelims", headers=_h())).json()
+    syl = (await client.get(f"{API}/syllabus/{PRELIMS}", headers=_h())).json()
     assert syl["done"] == 1 and syl["week_done"] == 1
     s = _db()
     revs = (await s.exec(select(StudyTask).where(StudyTask.block == "auto_rev"))).all()
@@ -214,8 +229,32 @@ async def test_catch_up_tracker_focus_and_settings(client):
 
 
 @pytest.mark.anyio
+async def test_settings_row_created_once_when_first_requests_race(client):
+    # The planner page loads /exams and /settings together; on a first visit both find no settings row.
+    from app.db.models.planner import PlannerSettings
+    from app.services import planner_service
+    user = await _add(_db(), User(full_name="Racer", email="racer@pl.test", role=UserRole.STUDENT,
+                                  password_hash=get_password_hash("x")))
+    winner, loser = _db(), _db()
+    real_exec, calls = loser.exec, []
+
+    async def exec_missing_first(stmt, *a, **kw):
+        calls.append(stmt)
+        if len(calls) == 1:  # the loser's lookup ran before the winner's insert was committed
+            return await real_exec(select(PlannerSettings).where(PlannerSettings.user_id == -1))
+        return await real_exec(stmt, *a, **kw)
+
+    loser.exec = exec_missing_first
+    first = await planner_service.get_settings(winner, user.id)
+    second = await planner_service.get_settings(loser, user.id)
+    assert second.id == first.id
+    rows = (await _db().exec(select(PlannerSettings).where(PlannerSettings.user_id == user.id))).all()
+    assert len(rows) == 1
+
+
+@pytest.mark.anyio
 async def test_mains_answer_writing_share_import_and_revision_plan(client):
-    res = await client.post(f"{API}/generate", json={"exam": "mains", "days": 3, "mock": None}, headers=_h("other"))
+    res = await client.post(f"{API}/generate", json={"syllabus_id": MAINS, "days": 3, "mock": None}, headers=_h("other"))
     assert res.status_code == 200
     day = (await client.get(f"{API}/tasks", params={"start": str(today_ist()), "end": str(today_ist())}, headers=_h("other"))).json()
     assert "aw" in [t["block"] for t in day]

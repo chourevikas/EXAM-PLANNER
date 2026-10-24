@@ -15,18 +15,28 @@ def _now() -> datetime:
 
 
 class PlannerExam(SQLModel, table=True):
+    """A study syllabus of an exam type: UPSC Prelims, UPSC Mains, UPSC Optional: Geography, MPSC Prelims…"""
     __tablename__ = "planner_exams"
+    __table_args__ = (
+        UniqueConstraint("exam_type_id", "stage", "name", name="uq_planner_exams_type_stage_name"),
+        Index("ix_planner_exams_type_order", "exam_type_id", "sort_order"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
-    code: str = Field(max_length=50, unique=True, index=True)
-    label: str = Field(max_length=120)
-    group: str = Field(default="main", max_length=20)  # main | optional
+    # Practice opens this exam type's questions. An exam type with a syllabus can't be deleted.
+    exam_type_id: int = Field(foreign_key="exam_types.id", ondelete="RESTRICT", index=True)
+    stage: str = Field(default="prelims", max_length=20)  # prelims | mains | optional
+    name: str = Field(max_length=120)  # "Prelims", "Mains", or the optional's subject
     answer_writing: bool = Field(default=False)  # Mains-style plans add a daily answer-writing block
-    # The question-bank exam type whose questions Practice opens (e.g. upsc for UPSC Prelims)
-    exam_type_id: Optional[int] = Field(default=None, foreign_key="exam_types.id", ondelete="SET NULL")
     sort_order: int = Field(default=0)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=_now, sa_type=DateTimeTZ)
+
+
+def syllabus_label(exam_type_code: str, stage: str, name: str) -> str:
+    """What students see: "UPSC Prelims", "UPSC Optional: Geography"."""
+    code = (exam_type_code or "").upper()
+    return f"{code} Optional: {name}" if stage == "optional" else f"{code} {name}"
 
 
 class PlannerSubject(SQLModel, table=True):

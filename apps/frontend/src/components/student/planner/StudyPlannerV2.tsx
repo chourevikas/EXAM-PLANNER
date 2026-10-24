@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { PlannerExam, PlannerSettings, fetchPlannerExams, fetchPlannerSettings, fetchShare, importShare } from '../../../services/plannerService';
+import { PlannerExams, PlannerSettings, fetchPlannerExams, fetchPlannerSettings, fetchShare, importShare } from '../../../services/plannerService';
 import { MyPlan } from './MyPlan';
 import { PlanSetup } from './PlanSetup';
 import { PlannerToday } from './PlannerToday';
@@ -22,7 +22,7 @@ export function StudyPlannerV2({ tab, setTab, version, onChanged, onAddTask }: {
 }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [exams, setExams] = useState<PlannerExam[] | null>(null);
+  const [exams, setExams] = useState<PlannerExams | null>(null);
   const [settings, setSettings] = useState<PlannerSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState<{ message: string; warning: string | null } | null>(null);
@@ -107,7 +107,7 @@ export function StudyPlannerV2({ tab, setTab, version, onChanged, onAddTask }: {
       {tab === 'progress' && <ProgressTracker version={version} onOpenDay={openDay} />}
 
       {tab === 'syllabus' && (
-        <SyllabusCoverage exams={exams} version={version} initialExam={settings.prefs?.exam} onChanged={onChanged} />
+        <SyllabusCoverage exams={exams} version={version} initialExam={settings.prefs?.syllabus_id} onChanged={onChanged} />
       )}
 
       {tab === 'revision' && <RevisionPlan pro={settings.pro} onChanged={onChanged} onUpgrade={upgrade} />}

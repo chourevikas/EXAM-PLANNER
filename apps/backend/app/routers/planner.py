@@ -21,7 +21,7 @@ PRO_CODE = "PRO_STUDY_PLANNER"
 
 
 class PlanRequest(BaseModel):
-    exam: str = PField(min_length=1, max_length=50)
+    syllabus_id: int  # an exam type's study syllabus (UPSC Prelims, UPSC Mains, …)
     days: int = PField(ge=1, le=365)
     exam_date: Optional[date] = None
     subjects: Optional[List[str]] = None  # None = every subject of the exam
@@ -63,15 +63,16 @@ async def _require_pro(session: AsyncSession, user: User, what: str) -> None:
 
 
 @router.get("/exams")
-async def list_exams(session: AsyncSession = Depends(get_async_session), _: User = Depends(get_current_user)):
-    return await svc.active_exams(session)
+async def list_exams(session: AsyncSession = Depends(get_async_session), user: User = Depends(get_current_user)):
+    """Exam types with their study syllabi, and the one to preselect for this student."""
+    return await svc.active_exams(session, user.id)
 
 
-@router.get("/syllabus/{exam_code}")
-async def get_syllabus(exam_code: str, session: AsyncSession = Depends(get_async_session),
+@router.get("/syllabus/{syllabus_id}")
+async def get_syllabus(syllabus_id: int, session: AsyncSession = Depends(get_async_session),
                        user: User = Depends(get_current_user)):
     try:
-        return await svc.syllabus(session, user.id, exam_code)
+        return await svc.syllabus(session, user.id, syllabus_id)
     except PlannerError as e:
         raise _fail(e)
 

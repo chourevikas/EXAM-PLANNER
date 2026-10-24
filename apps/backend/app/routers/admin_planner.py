@@ -1,5 +1,5 @@
-"""Admin: the Study Planner syllabus. Planner exams, and their subjects -> topics -> subtopics."""
-import re
+"""Admin: study syllabi of exam types (UPSC Prelims, UPSC Mains, optionals…) and their subjects -> topics ->
+subtopics. Edited from the Exam Types screen, so access follows the Exam Types permission."""
 from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -14,28 +14,23 @@ from app.db.models.hierarchy import Subtopic
 from app.db.models.planner import PlannerExam, PlannerSubject, PlannerTopic, PlannerSubtopic
 from app.services import planner_syllabus_service as syl
 
-router = APIRouter(prefix="/admin/planner", tags=["Admin Planner Syllabus"])
-_admin = require_admin_section("admin.planner_syllabus")
+router = APIRouter(prefix="/admin", tags=["Admin Exam Syllabi"])
+_admin = require_admin_section("admin.exam_types")
 Level = Literal["subjects", "topics", "subtopics"]
+Stage = Literal["prelims", "mains", "optional"]
 PARENT_MODEL = {"subjects": PlannerExam, "topics": PlannerSubject, "subtopics": PlannerTopic}
 
 
-class ExamIn(BaseModel):
-    code: str = PField(min_length=2, max_length=50)
-    label: str = PField(min_length=1, max_length=120)
-    group: Literal["main", "optional"] = "main"
-    answer_writing: bool = False
-    is_active: bool = True
-    exam_type_id: Optional[int] = None  # question-bank exam type that Practice opens
+class SyllabusIn(BaseModel):
+    stage: Stage
+    name: Optional[str] = PField(default=None, max_length=120)  # required for optionals; else "Prelims"/"Mains"
+    answer_writing: Optional[bool] = None  # defaults to on for Mains and optionals
 
 
-class ExamPatch(BaseModel):
-    label: Optional[str] = PField(default=None, min_length=1, max_length=120)
-    group: Optional[Literal["main", "optional"]] = None
+class SyllabusPatch(BaseModel):
+    name: Optional[str] = PField(default=None, min_length=1, max_length=120)
     answer_writing: Optional[bool] = None
     is_active: Optional[bool] = None
-    exam_type_id: Optional[int] = None
-    clear_exam_type: bool = False  # Practice then searches every exam
 
 
 class NodeIn(BaseModel):
@@ -58,132 +53,149 @@ class ImportIn(BaseModel):
     mode: Literal["merge", "replace"] = "merge"
 
 
-async def _counts(session: AsyncSession) -> dict:
+async def _counts(session: AsyncSession, ids: List[int]) -> dict:
+    if not ids:
+        return {}
     rows = (await session.exec(
         select(PlannerSubject.exam_id, func.count(func.distinct(PlannerSubject.id)), func.count(PlannerSubtopic.id))
         .select_from(PlannerSubject)
         .join(PlannerTopic, PlannerTopic.subject_id == PlannerSubject.id, isouter=True)
         .join(PlannerSubtopic, PlannerSubtopic.topic_id == PlannerTopic.id, isouter=True)
-        .group_by(PlannerSubject.exam_id))).all()
+        .where(PlannerSubject.exam_id.in_(ids)).group_by(PlannerSubject.exam_id))).all()
     return {r[0]: (r[1], r[2]) for r in rows}
 
 
-def _exam_out(e: PlannerExam, counts: dict) -> dict:
-    s, st = counts.get(e.id, (0, 0))
-    return {"id": e.id, "code": e.code, "label": e.label, "group": e.group, "answer_writing": e.answer_writing,
-            "is_active": e.is_active, "sort_order": e.sort_order, "exam_type_id": e.exam_type_id,
-            "subjects": s, "subtopics": st}
+async def _out(session: AsyncSession, items: List[PlannerExam], et: ExamType) -> List[dict]:
+    counts = await _counts(session, [s.id for s in items])
+    return [{**syl.syllabus_out(s, et), "subjects": counts.get(s.id, (0, 0))[0], "subtopics": counts.get(s.id, (0, 0))[1]}
+            for s in items]
 
 
-async def _exam(session: AsyncSession, exam_id: int) -> PlannerExam:
-    exam = await session.get(PlannerExam, exam_id)
-    if not exam:
-        raise HTTPException(404, "Planner exam not found")
-    return exam
-
-
-async def _check_exam_type(session: AsyncSession, exam_type_id: Optional[int]) -> None:
-    if exam_type_id is not None and not await session.get(ExamType, exam_type_id):
+async def _exam_type(session: AsyncSession, exam_type_id: int) -> ExamType:
+    et = await session.get(ExamType, exam_type_id)
+    if not et:
         raise HTTPException(404, "Exam type not found")
+    return et
 
 
-@router.get("/exam-types")
-async def list_exam_types(session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
-    """Question-bank exam types a planner exam can practise from."""
-    rows = (await session.exec(select(ExamType).order_by(ExamType.is_active.desc(), ExamType.name))).all()
-    return [{"id": t.id, "code": t.type, "name": t.name, "is_active": t.is_active} for t in rows]
+async def _syllabus(session: AsyncSession, syllabus_id: int) -> PlannerExam:
+    s = await session.get(PlannerExam, syllabus_id)
+    if not s:
+        raise HTTPException(404, "Syllabus not found")
+    return s
 
 
-@router.get("/exams")
-async def list_exams(session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
-    exams = (await session.exec(select(PlannerExam).order_by(PlannerExam.sort_order, PlannerExam.id))).all()
-    counts = await _counts(session)
-    return [_exam_out(e, counts) for e in exams]
+def _stage_order(s: PlannerExam):
+    return (syl.STAGES.index(s.stage) if s.stage in syl.STAGES else 9, s.sort_order, s.id)
 
 
-@router.post("/exams", status_code=201)
-async def create_exam(body: ExamIn, session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
-    code = re.sub(r"[^a-z0-9_]+", "_", body.code.strip().lower()).strip("_")
-    if not code:
-        raise HTTPException(422, "Code must contain letters or numbers")
-    if await syl.exam_by_code(session, code):
-        raise HTTPException(409, f"An exam with code '{code}' already exists")
-    top = (await session.exec(select(func.max(PlannerExam.sort_order)))).first()
-    await _check_exam_type(session, body.exam_type_id)
-    exam = PlannerExam(code=code, label=body.label.strip(), group=body.group, answer_writing=body.answer_writing,
-                       is_active=body.is_active, exam_type_id=body.exam_type_id,
+@router.get("/syllabi")
+async def all_syllabi(session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
+    """Every exam type that has syllabi, with them (for the Exam Types list counts)."""
+    return await syl.syllabi_by_exam_type(session, active_only=False)
+
+
+@router.get("/exam-types/{exam_type_id}/syllabi")
+async def list_syllabi(exam_type_id: int, session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
+    et = await _exam_type(session, exam_type_id)
+    items = sorted((await session.exec(select(PlannerExam).where(PlannerExam.exam_type_id == et.id))).all(),
+                   key=_stage_order)
+    return await _out(session, items, et)
+
+
+@router.post("/exam-types/{exam_type_id}/syllabi", status_code=201)
+async def create_syllabus(exam_type_id: int, body: SyllabusIn, session: AsyncSession = Depends(get_async_session),
+                          _: User = Depends(_admin)):
+    et = await _exam_type(session, exam_type_id)
+    name = (body.name or "").strip()
+    if body.stage == "optional" and not name:
+        raise HTTPException(422, "Give the optional subject's name")
+    name = name or body.stage.capitalize()
+    exists = (await session.exec(select(PlannerExam).where(
+        PlannerExam.exam_type_id == et.id, PlannerExam.stage == body.stage,
+        func.lower(PlannerExam.name) == name.lower()))).first()
+    if exists:
+        raise HTTPException(409, f"{syl.syllabus_label(et.type, body.stage, name)} already exists")
+    top = (await session.exec(select(func.max(PlannerExam.sort_order)).where(PlannerExam.exam_type_id == et.id))).first()
+    item = PlannerExam(exam_type_id=et.id, stage=body.stage, name=name,
+                       answer_writing=body.answer_writing if body.answer_writing is not None else body.stage != "prelims",
                        sort_order=(top if top is not None else -1) + 1)
-    session.add(exam)
+    session.add(item)
     await session.commit()
-    await session.refresh(exam)
-    return _exam_out(exam, {})
+    await session.refresh(item)
+    return (await _out(session, [item], et))[0]
 
 
-@router.patch("/exams/{exam_id}")
-async def update_exam(exam_id: int, body: ExamPatch, session: AsyncSession = Depends(get_async_session),
-                      _: User = Depends(_admin)):
-    exam = await _exam(session, exam_id)
-    await _check_exam_type(session, body.exam_type_id)
-    for k, v in body.model_dump(exclude_none=True, exclude={"clear_exam_type"}).items():
-        setattr(exam, k, v.strip() if isinstance(v, str) else v)
-    if body.clear_exam_type:
-        exam.exam_type_id = None
-    session.add(exam)
-    await session.commit()
-    await session.refresh(exam)
-    return _exam_out(exam, await _counts(session))
-
-
-@router.delete("/exams/{exam_id}", status_code=204)
-async def delete_exam(exam_id: int, session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
-    await syl.delete_exam(session, await _exam(session, exam_id))
-    await session.commit()
-
-
-@router.post("/exams/reorder")
-async def reorder_exams(body: Reorder, session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
-    exams = {e.id: e for e in (await session.exec(select(PlannerExam).where(PlannerExam.id.in_(body.ids)))).all()}
-    for i, eid in enumerate(body.ids):
-        if eid in exams:
-            exams[eid].sort_order = i
-            session.add(exams[eid])
+@router.post("/exam-types/{exam_type_id}/syllabi/reorder")
+async def reorder_syllabi(exam_type_id: int, body: Reorder, session: AsyncSession = Depends(get_async_session),
+                          _: User = Depends(_admin)):
+    items = {s.id: s for s in (await session.exec(select(PlannerExam).where(
+        PlannerExam.exam_type_id == exam_type_id, PlannerExam.id.in_(body.ids)))).all()}
+    for i, sid in enumerate(body.ids):
+        if sid in items:
+            items[sid].sort_order = i
+            session.add(items[sid])
     await session.commit()
     return {"ok": True}
 
 
-@router.get("/exams/{exam_id}/tree")
-async def get_tree(exam_id: int, session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
-    exam = await _exam(session, exam_id)
-    tree = await syl.exam_tree(session, exam.id)
+@router.patch("/syllabi/{syllabus_id}")
+async def update_syllabus(syllabus_id: int, body: SyllabusPatch, session: AsyncSession = Depends(get_async_session),
+                          _: User = Depends(_admin)):
+    item = await _syllabus(session, syllabus_id)
+    if body.name is not None and item.stage != "optional":
+        raise HTTPException(422, "Only optional subjects can be renamed")
+    for k, v in body.model_dump(exclude_none=True).items():
+        setattr(item, k, v.strip() if isinstance(v, str) else v)
+    session.add(item)
+    await session.commit()
+    await session.refresh(item)
+    return (await _out(session, [item], await session.get(ExamType, item.exam_type_id)))[0]
+
+
+@router.delete("/syllabi/{syllabus_id}", status_code=204)
+async def delete_syllabus(syllabus_id: int, session: AsyncSession = Depends(get_async_session),
+                          _: User = Depends(_admin)):
+    await syl.delete_exam(session, await _syllabus(session, syllabus_id))
+    await session.commit()
+
+
+@router.get("/syllabi/{syllabus_id}/tree")
+async def get_tree(syllabus_id: int, session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
+    item = await _syllabus(session, syllabus_id)
+    et = await session.get(ExamType, item.exam_type_id)
+    tree = await syl.exam_tree(session, item.id)
     names = await syl.bank_names(session, [st["bank_subtopic_id"] for s in tree for t in s["topics"]
                                            for st in t["subtopics"]])
     for s in tree:
         for t in s["topics"]:
             for st in t["subtopics"]:
                 st["bank_label"] = names.get(st["bank_subtopic_id"])
-    return {"exam": _exam_out(exam, await _counts(session)), "subjects": tree}
+    return {"syllabus": (await _out(session, [item], et))[0], "subjects": tree}
 
 
-@router.post("/exams/{exam_id}/import")
-async def import_syllabus(exam_id: int, body: ImportIn, session: AsyncSession = Depends(get_async_session),
+@router.post("/syllabi/{syllabus_id}/import")
+async def import_syllabus(syllabus_id: int, body: ImportIn, session: AsyncSession = Depends(get_async_session),
                           _: User = Depends(_admin)):
-    exam = await _exam(session, exam_id)
+    item = await _syllabus(session, syllabus_id)
     try:
         tree = syl.parse_import(body.text)
     except ValueError as e:
         raise HTTPException(422, str(e))
-    added = await syl.import_tree(session, exam, tree, replace=body.mode == "replace")
+    added = await syl.import_tree(session, item, tree, replace=body.mode == "replace")
     await session.commit()
     return {"added": added}
 
 
-@router.get("/bank-subtopics")
-async def bank_subtopics(q: str = Query(..., min_length=2), session: AsyncSession = Depends(get_async_session),
-                         _: User = Depends(_admin)):
-    return await syl.search_bank_subtopics(session, q)
+@router.get("/syllabi/{syllabus_id}/bank-subtopics")
+async def bank_subtopics(syllabus_id: int, q: str = Query(..., min_length=2),
+                         session: AsyncSession = Depends(get_async_session), _: User = Depends(_admin)):
+    """Question-bank subtopics in this syllabus's exam type, to link a planner subtopic to."""
+    item = await _syllabus(session, syllabus_id)
+    return await syl.search_bank_subtopics(session, q, item.exam_type_id)
 
 
-@router.post("/{level}", status_code=201)
+@router.post("/syllabi/nodes/{level}", status_code=201)
 async def create_node(level: Level, body: NodeIn, session: AsyncSession = Depends(get_async_session),
                       _: User = Depends(_admin)):
     if not await session.get(PARENT_MODEL[level], body.parent_id):
@@ -197,7 +209,7 @@ async def create_node(level: Level, body: NodeIn, session: AsyncSession = Depend
     return node.model_dump()
 
 
-@router.patch("/{level}/{node_id}")
+@router.patch("/syllabi/nodes/{level}/{node_id}")
 async def update_node(level: Level, node_id: int, body: NodePatch, session: AsyncSession = Depends(get_async_session),
                       _: User = Depends(_admin)):
     node = await session.get(syl.LEVELS[level], node_id)
@@ -218,7 +230,7 @@ async def update_node(level: Level, node_id: int, body: NodePatch, session: Asyn
     return node.model_dump()
 
 
-@router.delete("/{level}/{node_id}", status_code=204)
+@router.delete("/syllabi/nodes/{level}/{node_id}", status_code=204)
 async def delete_node(level: Level, node_id: int, session: AsyncSession = Depends(get_async_session),
                       _: User = Depends(_admin)):
     if not await session.get(syl.LEVELS[level], node_id):
@@ -227,7 +239,7 @@ async def delete_node(level: Level, node_id: int, session: AsyncSession = Depend
     await session.commit()
 
 
-@router.post("/{level}/reorder")
+@router.post("/syllabi/nodes/{level}/reorder")
 async def reorder_nodes(level: Level, body: Reorder, session: AsyncSession = Depends(get_async_session),
                         _: User = Depends(_admin)):
     model = syl.LEVELS[level]

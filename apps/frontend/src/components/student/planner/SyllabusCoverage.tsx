@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { PlannerExam, SyllabusData, fetchSyllabus, savePlannerSettings, setCoverage } from '../../../services/plannerService';
-import { Bar, Chip, Notice, btn, card, h2, input, sub } from './plannerUi';
+import { PlannerExams, SyllabusData, fetchSyllabus, savePlannerSettings, setCoverage } from '../../../services/plannerService';
+import { ExamPicker, validSyllabusId } from './ExamPicker';
+import { Bar, Notice, btn, card, h2, input, sub } from './plannerUi';
 
 /** Syllabus coverage: the exam's full syllabus, subtopics ticked off as the student covers them. */
 export function SyllabusCoverage({ exams, version, initialExam, onChanged }: {
-  exams: PlannerExam[];
+  exams: PlannerExams;
   version: number;
-  initialExam?: string | null;
+  /** The syllabus to open on (the student's last plan). */
+  initialExam?: number | null;
   onChanged: () => void;
 }) {
-  const [exam, setExam] = useState(initialExam && exams.some((e) => e.code === initialExam) ? initialExam : exams[0]?.code);
+  const [exam, setExam] = useState<number | null>(() => validSyllabusId(exams, initialExam));
   const [data, setData] = useState<SyllabusData | null>(null);
   const [open, setOpen] = useState<Record<number, boolean>>({});
   const [target, setTarget] = useState<number | ''>('');
@@ -61,8 +63,6 @@ export function SyllabusCoverage({ exams, version, initialExam, onChanged }: {
     }
   };
 
-  const mains = exams.filter((e) => e.group === 'main');
-  const optionals = exams.filter((e) => e.group === 'optional');
 
   return (
     <section style={card}>
@@ -73,14 +73,7 @@ export function SyllabusCoverage({ exams, version, initialExam, onChanged }: {
       <p style={sub}>Full syllabus, subject and topic-wise. Tick a subtopic off once you've covered it. Finishing a plan topic ticks it for you.</p>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-        {mains.map((e) => <Chip key={e.code} on={exam === e.code} onClick={() => { setExam(e.code); setOpen({}); }}>{e.label}</Chip>)}
-        {optionals.length > 0 && (
-          <select aria-label="Optional subject" value={optionals.some((o) => o.code === exam) ? exam : ''}
-            onChange={(e) => { if (e.target.value) { setExam(e.target.value); setOpen({}); } }} style={{ ...input, padding: '5px 8px', fontSize: 13 }}>
-            <option value="">Optional subject…</option>
-            {optionals.map((o) => <option key={o.code} value={o.code}>{o.label.replace(/^Optional:\s*/, '')}</option>)}
-          </select>
-        )}
+        <ExamPicker exams={exams} value={exam} onChange={(id) => { setExam(id); setOpen({}); }} />
       </div>
 
       {error && <div style={{ marginBottom: 10 }}><Notice kind="error">{error}</Notice></div>}

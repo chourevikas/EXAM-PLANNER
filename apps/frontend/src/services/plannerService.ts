@@ -4,10 +4,27 @@ import { guardedFetch } from '../utils/apiGuard';
 const BASE = '/api/v1/planner';
 export const PRO_PLANNER_CODE = 'PRO_STUDY_PLANNER';
 
-export interface PlannerExam { code: string; label: string; group: 'main' | 'optional'; answer_writing: boolean }
+/** An exam type's study syllabus: UPSC Prelims, UPSC Mains, UPSC Optional: Geography, MPSC Prelims… */
+export interface ExamSyllabus {
+  id: number;
+  exam_type_id: number;
+  exam_type_code: string;
+  stage: 'prelims' | 'mains' | 'optional';
+  name: string;
+  label: string;
+  answer_writing: boolean;
+}
+
+export interface PlannerExamType { id: number; code: string; name: string; syllabi: ExamSyllabus[] }
+
+export interface PlannerExams {
+  /** The student's target exam first. */
+  exam_types: PlannerExamType[];
+  default_syllabus_id: number | null;
+}
 
 export interface PlanRequest {
-  exam: string;
+  syllabus_id: number;
   days: number;
   exam_date?: string | null;
   subjects?: string[] | null;
@@ -54,7 +71,7 @@ export interface PlannerTask {
 export interface CountRow { name: string; total: number; done: number }
 
 export interface PlanOverview {
-  plan: { exam: string | null; exam_label: string | null; start_date: string; days: number; options: Partial<PlanRequest> } | null;
+  plan: { syllabus_id: number | null; exam_label: string | null; start_date: string; days: number; options: Partial<PlanRequest> } | null;
   topics: number;
   done: number;
   days: number;
@@ -84,7 +101,7 @@ export interface TrackerData {
 
 export interface SyllabusSubtopic { id: number; name: string; covered: boolean }
 export interface SyllabusData {
-  exam: { code: string; label: string; answer_writing: boolean };
+  exam: { syllabus_id: number; exam_type: string; stage: string; name: string; label: string; answer_writing: boolean };
   subjects: { id: number; name: string; total: number; done: number; topics: { id: number; name: string; subtopics: SyllabusSubtopic[] }[] }[];
   total: number;
   done: number;
@@ -129,12 +146,12 @@ async function call<T>(path: string, fallback: string, init: RequestInit = {}): 
 
 const post = (body?: unknown): RequestInit => ({ method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
 
-export const fetchPlannerExams = () => call<PlannerExam[]>('/exams', 'Could not load exams');
+export const fetchPlannerExams = () => call<PlannerExams>('/exams', 'Could not load exams');
 export const fetchPlannerSettings = () => call<PlannerSettings>('/settings', 'Could not load your planner');
 export const savePlannerSettings = (s: { daily_goal?: number; weekly_target?: number }) =>
   call<{ daily_goal: number; weekly_target: number }>('/settings', 'Could not save', { method: 'PUT', body: JSON.stringify(s) });
 
-export const fetchSyllabus = (exam: string) => call<SyllabusData>(`/syllabus/${encodeURIComponent(exam)}`, 'Could not load the syllabus');
+export const fetchSyllabus = (syllabusId: number) => call<SyllabusData>(`/syllabus/${syllabusId}`, 'Could not load the syllabus');
 export const setCoverage = (subtopicId: number, covered: boolean) =>
   call<{ ok: boolean }>(`/coverage/${subtopicId}`, 'Could not save', { method: 'PUT', body: JSON.stringify({ covered }) });
 

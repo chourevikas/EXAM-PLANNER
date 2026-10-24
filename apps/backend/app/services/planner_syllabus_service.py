@@ -1,4 +1,5 @@
-"""Planner syllabus: read the exam -> subject -> topic -> subtopic tree, edit it, and bulk-import into it.
+"""Study syllabi of exam types (PlannerExam = UPSC Prelims, UPSC Mains, …): read the subject -> topic -> subtopic
+tree, edit it, bulk-import into it, and link it to the question bank of the same exam type.
 
 Deletes remove children explicitly (not only through ON DELETE CASCADE) so they behave the same on SQLite.
 """
@@ -9,8 +10,9 @@ from sqlmodel import select, delete, update, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models.hierarchy import Exam, Subject, SyllabusVersion, Topic, Subtopic
+from app.db.models.exam_type import ExamType
 from app.db.models.planner import (
-    PlannerExam, PlannerSubject, PlannerTopic, PlannerSubtopic, UserSyllabusCoverage,
+    PlannerExam, PlannerSubject, PlannerTopic, PlannerSubtopic, UserSyllabusCoverage, syllabus_label,
 )
 from app.db.models.enums import QuestionStatus
 from app.db.models.question import Question
@@ -20,8 +22,27 @@ LEVELS = {"subjects": PlannerSubject, "topics": PlannerTopic, "subtopics": Plann
 PARENT = {"subjects": "exam_id", "topics": "subject_id", "subtopics": "topic_id"}
 
 
-async def exam_by_code(session: AsyncSession, code: str) -> Optional[PlannerExam]:
-    return (await session.exec(select(PlannerExam).where(PlannerExam.code == code))).first()
+STAGES = ("prelims", "mains", "optional")
+
+
+async def syllabi_by_exam_type(session: AsyncSession, active_only: bool) -> List[Dict[str, Any]]:
+    """Exam types that have syllabi, each with its syllabi in order (prelims, mains, optionals)."""
+    q = select(PlannerExam, ExamType).join(ExamType, ExamType.id == PlannerExam.exam_type_id)
+    if active_only:
+        q = q.where(PlannerExam.is_active == True, ExamType.is_active == True)
+    out: Dict[int, Dict[str, Any]] = {}
+    for syl, et in (await session.exec(q.order_by(ExamType.name, PlannerExam.sort_order, PlannerExam.id))).all():
+        group = out.setdefault(et.id, {"id": et.id, "code": et.type, "name": et.name, "syllabi": []})
+        group["syllabi"].append(syllabus_out(syl, et))
+    for g in out.values():
+        g["syllabi"].sort(key=lambda x: (STAGES.index(x["stage"]) if x["stage"] in STAGES else 9, x["sort_order"]))
+    return list(out.values())
+
+
+def syllabus_out(syl: PlannerExam, et: ExamType) -> Dict[str, Any]:
+    return {"id": syl.id, "exam_type_id": syl.exam_type_id, "exam_type_code": et.type, "stage": syl.stage,
+            "name": syl.name, "label": syllabus_label(et.type, syl.stage, syl.name),
+            "answer_writing": syl.answer_writing, "sort_order": syl.sort_order, "is_active": syl.is_active}
 
 
 async def exam_tree(session: AsyncSession, exam_id: int) -> List[Dict[str, Any]]:
@@ -65,11 +86,14 @@ async def bank_names(session: AsyncSession, ids: Sequence[int]) -> Dict[int, str
     return {r[0]: _bank_label(r) for r in rows}
 
 
-async def search_bank_subtopics(session: AsyncSession, q: str, limit: int = 20) -> List[Dict[str, Any]]:
+async def search_bank_subtopics(session: AsyncSession, q: str, exam_type_id: Optional[int] = None,
+                                 limit: int = 20) -> List[Dict[str, Any]]:
+    """Bank subtopics or topics matching q, in one exam type's papers when given."""
     like = f"%{q.strip().lower()}%"
-    rows = (await session.exec(
-        _bank_paths().where(func.lower(Subtopic.name).like(like) | func.lower(Topic.name).like(like))
-        .order_by(Subtopic.name, Exam.name, Subtopic.id).limit(limit))).all()
+    stmt = _bank_paths().where(func.lower(Subtopic.name).like(like) | func.lower(Topic.name).like(like))
+    if exam_type_id:
+        stmt = stmt.where(Exam.exam_type_id == exam_type_id)
+    rows = (await session.exec(stmt.order_by(Subtopic.name, Exam.name, Subtopic.id).limit(limit))).all()
     return [{"id": r[0], "label": _bank_label(r)} for r in rows]
 
 
@@ -193,17 +217,18 @@ async def import_tree(session: AsyncSession, exam: PlannerExam, tree: Dict[str, 
                 st_order += 1
                 added["subtopics"] += 1
     await session.flush()
-    await link_bank_by_name(session, exam.id)
+    await link_bank_by_name(session, exam)
     return added
 
 
-async def link_bank_by_name(session: AsyncSession, exam_id: int) -> None:
-    """Fill bank_subtopic_id for this exam's unlinked subtopics whose name matches a bank subtopic.
-    Every paper has its own copy of the syllabus, so pick the copy with the most published questions."""
+async def link_bank_by_name(session: AsyncSession, exam: PlannerExam) -> None:
+    """Fill bank_subtopic_id for this syllabus's unlinked subtopics whose name matches a bank subtopic in the
+    same exam type's papers. Every paper has its own copy of the syllabus, so pick the copy with the most
+    published questions."""
     rows = (await session.exec(
         select(PlannerSubtopic).join(PlannerTopic, PlannerTopic.id == PlannerSubtopic.topic_id)
         .join(PlannerSubject, PlannerSubject.id == PlannerTopic.subject_id)
-        .where(PlannerSubject.exam_id == exam_id, PlannerSubtopic.bank_subtopic_id.is_(None)))).all()
+        .where(PlannerSubject.exam_id == exam.id, PlannerSubtopic.bank_subtopic_id.is_(None)))).all()
     if not rows:
         return
     names = {r.name.lower() for r in rows}
@@ -211,8 +236,10 @@ async def link_bank_by_name(session: AsyncSession, exam_id: int) -> None:
     bank: Dict[str, int] = {}
     for bid, bname, _n in (await session.exec(
             select(Subtopic.id, Subtopic.name, published)
+            .join(Topic, Topic.id == Subtopic.topic_id).join(Subject, Subject.id == Topic.subject_id)
+            .join(SyllabusVersion, SyllabusVersion.id == Subject.version_id).join(Exam, Exam.id == SyllabusVersion.exam_id)
             .outerjoin(Question, (Question.subtopic_id == Subtopic.id) & (Question.status == QuestionStatus.PUBLISHED))
-            .where(func.lower(Subtopic.name).in_(names))
+            .where(func.lower(Subtopic.name).in_(names), Exam.exam_type_id == exam.exam_type_id)
             .group_by(Subtopic.id, Subtopic.name).order_by(published.desc(), Subtopic.id))).all():
         bank.setdefault(bname.lower(), bid)
     for r in rows:

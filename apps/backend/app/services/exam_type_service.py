@@ -106,6 +106,17 @@ class ExamTypeService:
                 detail=f"Cannot delete exam type '{exam_type.name}' ({exam_type.type}) because {count} exam paper(s) are linked to it. Reassign or delete associated exams first.",
             )
 
+        # Its study syllabi hold students' plans and coverage, so they have to be removed on purpose first
+        from sqlmodel import select, func
+        from app.db.models.planner import PlannerExam
+        syllabi = (await self.repo.session.exec(
+            select(func.count(PlannerExam.id)).where(PlannerExam.exam_type_id == exam_type.id))).one()
+        if syllabi:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot delete exam type '{exam_type.name}' ({exam_type.type}) because it has {syllabi} study syllabus(es). Delete them under Syllabus first.",
+            )
+
         await self.repo.delete(exam_type)
         await self._invalidate_cache()
         return {

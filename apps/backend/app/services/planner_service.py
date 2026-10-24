@@ -20,10 +20,11 @@ from app.db.models.hierarchy import Exam, Subject, Topic, Subtopic
 from app.db.models.question import Question, QuestionTranslation
 from app.db.models.planner import (
     PlannerExam, PlannerSettings, PlannerSubject, PlannerSubtopic, PlannerTopic, StudyPlan, StudyPlanShare,
-    UserSyllabusCoverage,
+    UserSyllabusCoverage, syllabus_label,
 )
 from app.db.models.study_plan import StudyActivity, StudyTask
 from app.db.models.user import StudentProfile
+from app.db.upsert import bulk_insert_on_conflict_do_nothing
 from app.services import planner_engine as engine
 from app.services import planner_syllabus_service as syl
 from app.services.free_plan import IST
@@ -71,12 +72,15 @@ async def drop_cache(user_id: int) -> None:
 # ── Settings ─────────────────────────────────────────────────────────────────
 
 async def get_settings(session: AsyncSession, user_id: int) -> PlannerSettings:
-    s = (await session.exec(select(PlannerSettings).where(PlannerSettings.user_id == user_id))).first()
+    q = select(PlannerSettings).where(PlannerSettings.user_id == user_id)
+    s = (await session.exec(q)).first()
     if not s:
-        s = PlannerSettings(user_id=user_id, prefs={})
-        session.add(s)
+        # The planner page loads /planner/exams and /planner/settings together, and both create the row on a
+        # first visit; ON CONFLICT DO NOTHING lets the slower one read the winner's row instead of failing.
+        await bulk_insert_on_conflict_do_nothing(session, PlannerSettings, [PlannerSettings(user_id=user_id, prefs={})],
+                                                 ["user_id"])
         await session.commit()
-        await session.refresh(s)
+        s = (await session.exec(q)).one()
     return s
 
 
@@ -100,17 +104,51 @@ async def active_plan(session: AsyncSession, user_id: int) -> Optional[StudyPlan
 
 # ── Syllabus and coverage ────────────────────────────────────────────────────
 
-async def active_exams(session: AsyncSession) -> List[Dict[str, Any]]:
-    exams = (await session.exec(select(PlannerExam).where(PlannerExam.is_active == True)
-                                .order_by(PlannerExam.sort_order, PlannerExam.id))).all()
-    return [{"code": e.code, "label": e.label, "group": e.group, "answer_writing": e.answer_writing} for e in exams]
+def _target_exam_type(groups: List[Dict[str, Any]], target: Optional[str]) -> Optional[Dict[str, Any]]:
+    """The exam type matching the student's onboarding target ("UPSC CSE" -> upsc, "MPSC Rajyaseva" -> mpsc)."""
+    t = (target or "").lower()
+    if not t:
+        return None
+    for g in groups:
+        code = g["code"].lower()
+        if t.split()[0].startswith(code) or code.startswith(t.split()[0]) or g["name"].lower() in t:
+            return g
+    return None
 
 
-async def _exam(session: AsyncSession, code: str) -> PlannerExam:
-    exam = await syl.exam_by_code(session, code)
-    if not exam or not exam.is_active:
-        raise PlannerError("That exam is not available in the planner.", 404)
-    return exam
+async def active_exams(session: AsyncSession, user_id: Optional[int] = None) -> Dict[str, Any]:
+    """Exam types with their active syllabi (the student's target exam first), and the syllabus to start on: the
+    student's last plan or saved choice, else the first syllabus of their target exam, else the first one listed."""
+    groups = await syl.syllabi_by_exam_type(session, active_only=True)
+    ids = [s["id"] for g in groups for s in g["syllabi"]]
+    default = None
+    if user_id:
+        profile = (await session.exec(select(StudentProfile).where(StudentProfile.user_id == user_id))).first()
+        g = _target_exam_type(groups, profile.target_exam if profile else None)
+        if g:
+            groups = [g] + [x for x in groups if x is not g]
+        prefs = (await get_settings(session, user_id)).prefs or {}
+        if prefs.get("syllabus_id") in ids:
+            default = prefs["syllabus_id"]
+        elif g and g["syllabi"]:
+            default = g["syllabi"][0]["id"]
+    if default is None and ids:
+        default = ids[0]
+    return {"exam_types": groups, "default_syllabus_id": default}
+
+
+async def _exam(session: AsyncSession, syllabus_id: int) -> Tuple[PlannerExam, ExamType]:
+    """An active syllabus of an active exam type, with the exam type."""
+    exam = await session.get(PlannerExam, syllabus_id) if syllabus_id else None
+    et = await session.get(ExamType, exam.exam_type_id) if exam else None
+    if not exam or not exam.is_active or not et or not et.is_active:
+        raise PlannerError("That syllabus is not available in the planner.", 404)
+    return exam, et
+
+
+def _exam_info(exam: PlannerExam, et: ExamType) -> Dict[str, Any]:
+    return {"syllabus_id": exam.id, "exam_type": et.type, "stage": exam.stage, "name": exam.name,
+            "label": syllabus_label(et.type, exam.stage, exam.name), "answer_writing": exam.answer_writing}
 
 
 async def _covered(session: AsyncSession, user_id: int) -> Dict[int, datetime]:
@@ -122,8 +160,8 @@ def _aware(ts: datetime) -> datetime:
     return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
 
 
-async def syllabus(session: AsyncSession, user_id: int, code: str) -> Dict[str, Any]:
-    exam = await _exam(session, code)
+async def syllabus(session: AsyncSession, user_id: int, syllabus_id: int) -> Dict[str, Any]:
+    exam, et = await _exam(session, syllabus_id)
     tree = await syl.exam_tree(session, exam.id)
     covered = await _covered(session, user_id)
     total = done = 0
@@ -140,8 +178,7 @@ async def syllabus(session: AsyncSession, user_id: int, code: str) -> Dict[str, 
     settings = await get_settings(session, user_id)
     since = datetime.combine(week_start(today_ist()), datetime.min.time(), tzinfo=IST)
     week_done = sum(1 for ts in covered.values() if _aware(ts) >= since)
-    return {"exam": {"code": exam.code, "label": exam.label, "answer_writing": exam.answer_writing},
-            "subjects": tree, "total": total, "done": done, "percent": round(done * 100 / total) if total else 0,
+    return {"exam": _exam_info(exam, et), "subjects": tree, "total": total, "done": done, "percent": round(done * 100 / total) if total else 0,
             "week_done": week_done, "weekly_target": settings.weekly_coverage_target}
 
 
@@ -205,7 +242,7 @@ def check_limits(req: Dict[str, Any], limited: bool) -> None:
 
 
 async def _prepare(session: AsyncSession, user_id: int, req: Dict[str, Any]):
-    exam = await _exam(session, req["exam"])
+    exam, _et = await _exam(session, req["syllabus_id"])
     try:
         days, note = engine.plan_days(req.get("days"), req.get("exam_date"), today_ist())
     except ValueError as e:
@@ -273,7 +310,7 @@ async def generate(session: AsyncSession, user_id: int, req: Dict[str, Any]) -> 
             priority="HIGH" if t["planner_subtopic_id"] in weak_ids or t["block"] == "mock" else "MEDIUM"))
 
     settings = await get_settings(session, user_id)
-    settings.prefs = {k: req.get(k) for k in ("exam", "days", "subjects", "subject_days", "hours", "mock", "rest",
+    settings.prefs = {k: req.get(k) for k in ("syllabus_id", "days", "subjects", "subject_days", "hours", "mock", "rest",
                                                "tail", "mix", "ca", "pyq", "custom_title", "weak_first", "auto_catch")}
     session.add(settings)
     await session.commit()
@@ -567,10 +604,10 @@ async def overview(session: AsyncSession, user_id: int) -> Dict[str, Any]:
         if t.planner_subtopic_id and t.block is None:
             subjects[t.subject or "Other"][0] += 1
             subjects[t.subject or "Other"][1] += int(t.is_completed)
-    exam = await session.get(PlannerExam, plan.planner_exam_id) if plan and plan.planner_exam_id else None
+    info = await _plan_exam_info(session, plan)
     topics = sum(v[0] for v in subjects.values())
     return {
-        "plan": {"exam": exam.code if exam else None, "exam_label": exam.label if exam else None,
+        "plan": {"syllabus_id": info["syllabus_id"] if info else None, "exam_label": info["label"] if info else None,
                  "start_date": str(plan.start_date), "days": plan.days, "options": plan.options} if plan else None,
         "topics": topics, "done": sum(v[1] for v in subjects.values()), "days": len(by_day),
         "end_date": str(max(by_day)) if by_day else None,
@@ -580,6 +617,12 @@ async def overview(session: AsyncSession, user_id: int) -> Dict[str, Any]:
         "missed": len(await _missed(session, user_id)),
         "auto_catchup": auto_msg,
     }
+
+
+async def _plan_exam_info(session: AsyncSession, plan: Optional[StudyPlan]) -> Optional[Dict[str, Any]]:
+    exam = await session.get(PlannerExam, plan.planner_exam_id) if plan and plan.planner_exam_id else None
+    et = await session.get(ExamType, exam.exam_type_id) if exam else None
+    return _exam_info(exam, et) if exam and et else None
 
 
 async def plan_tasks(session: AsyncSession, user_id: int) -> List[Dict[str, Any]]:
@@ -756,8 +799,8 @@ async def create_share(session: AsyncSession, user_id: int) -> str:
     if not rows:
         raise PlannerError("Generate a plan first, then share it.")
     base = min(plan.start_date, rows[0].scheduled_date)
-    exam = await session.get(PlannerExam, plan.planner_exam_id) if plan and plan.planner_exam_id else None
-    payload = {"exam": exam.code if exam else None, "exam_label": exam.label if exam else None, "tasks": [
+    info = await _plan_exam_info(session, plan)
+    payload = {"syllabus_id": info["syllabus_id"] if info else None, "exam_label": info["label"] if info else None, "tasks": [
         {"off": (t.scheduled_date - base).days, "subject": t.subject, "topic": t.topic, "subtopic": t.subtopic,
          "title": t.title, "minutes": t.allocated_time_minutes, "block": t.block, "activity_type": t.activity_type,
          "planner_subtopic_id": t.planner_subtopic_id} for t in rows]}
@@ -790,7 +833,7 @@ async def import_share(session: AsyncSession, user_id: int, token: str, limited:
     ids = {t["planner_subtopic_id"] for t in tasks if t.get("planner_subtopic_id")}
     alive = set((await session.exec(select(PlannerSubtopic.id).where(col(PlannerSubtopic.id).in_(list(ids)))))
                 .all()) if ids else set()
-    exam = await syl.exam_by_code(session, p["exam"]) if p.get("exam") else None
+    exam = await session.get(PlannerExam, p["syllabus_id"]) if p.get("syllabus_id") else None
     await clear_open_generated(session, user_id)
     for old in (await session.exec(select(StudyPlan).where(StudyPlan.user_id == user_id, StudyPlan.is_active == True))).all():
         old.is_active = False
