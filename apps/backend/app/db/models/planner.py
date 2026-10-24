@@ -113,3 +113,5 @@ class PlannerSettings(SQLModel, table=True):
     daily_goal_topics: int = Field(default=3)
     weekly_coverage_target: int = Field(default=5)
     prefs: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(PortableJSON))  # last generate-form values
+    # Secret in the student's calendar subscription link (/public/planner/calendar/<token>.ics); reset to revoke
+    calendar_token: Optional[str] = Field(default=None, max_length=64, unique=True, index=True)

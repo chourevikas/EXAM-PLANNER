@@ -319,3 +319,35 @@ def test_practice_filters_match_on_shared_words():
     assert bank.resolve(None, "Polity and Governance", "Union Government", "Parliament") == {"subject": "Indian Polity & Governance"}
     # "Features" alone isn't a match, and another subject needs two shared words
     assert bank.resolve(None, "Indian Society", "Society", "Salient Features") == {}
+
+
+@pytest.mark.anyio
+async def test_calendar_subscription_feed(client):
+    assert (await client.get(f"{API}/calendar", headers=_h("free"))).status_code == 403
+    await client.post(f"{API}/generate", json={**PLAN, "days": 3}, headers=_h("other"))
+    links = (await client.get(f"{API}/calendar", headers=_h("other"))).json()
+    path = links["path"]
+    assert path.startswith("/api/v1/public/planner/calendar/") and path.endswith(".ics")
+    assert (await client.get(f"{API}/calendar", headers=_h("other"))).json() == links  # same link until reset
+
+    feed = await client.get(path)  # no login: calendar apps fetch it by the secret link
+    assert feed.status_code == 200 and feed.headers["content-type"].startswith("text/calendar")
+    body = feed.text
+    assert body.startswith("BEGIN:VCALENDAR") and "X-WR-CALNAME:ExamPlanner study plan – UPSC Prelims" in body
+    assert body.count("BEGIN:VEVENT") == body.count("END:VEVENT") > 3 and "SUMMARY:Study: " in body
+    assert all(len(line.encode()) <= 75 for line in body.split("\r\n"))
+
+    # Resetting the link revokes the old one
+    new = (await client.post(f"{API}/calendar/reset", headers=_h("other"))).json()
+    assert new["path"] != path
+    assert (await client.get(path)).status_code == 404
+    assert (await client.get(new["path"])).status_code == 200
+
+
+def test_ics_escaping_and_folding():
+    from app.services.planner_ics import build_calendar
+    body = build_calendar([{"date": "2026-11-01", "title": "Art, Culture; Heritage — " + "x" * 120, "subject": "Art",
+                            "minutes": 30, "block": None}], 7, "UPSC Prelims")
+    assert r"Art\, Culture\; Heritage" in body.replace("\r\n ", "")
+    assert all(len(line.encode()) <= 75 for line in body.split("\r\n"))
+    assert "UID:2026-11-01-plan-7@examplanner" in body

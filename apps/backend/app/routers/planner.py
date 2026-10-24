@@ -6,17 +6,21 @@ days per subject, share links and the revision plan (PDF and calendar export are
 from datetime import date, datetime
 from typing import Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlmodel import select
 from pydantic import BaseModel, Field as PField
 
 from app.core.deps import get_current_user
 from app.db.session import AsyncSession, get_async_session
 from app.db.models.user import User
+from app.db.models.planner import PlannerSettings
 from app.services import free_plan
 from app.services import planner_service as svc
 from app.services.planner_service import PlannerError
 
 router = APIRouter(prefix="/planner", tags=["Study Planner"])
+# No login: calendar apps fetch the feed by its secret link
+public_router = APIRouter(prefix="/public/planner", tags=["Public — Study Planner calendar"])
 PRO_CODE = "PRO_STUDY_PLANNER"
 
 
@@ -146,6 +150,20 @@ async def plan_tasks(session: AsyncSession = Depends(get_async_session), user: U
     return await svc.plan_tasks(session, user.id)
 
 
+@router.get("/calendar")
+async def calendar(session: AsyncSession = Depends(get_async_session), user: User = Depends(get_current_user)):
+    """The student's private calendar subscription links (Pro)."""
+    await _require_pro(session, user, "Adding your plan to a calendar")
+    return await svc.calendar_links(session, user.id)
+
+
+@router.post("/calendar/reset")
+async def reset_calendar(session: AsyncSession = Depends(get_async_session), user: User = Depends(get_current_user)):
+    """A new secret: calendars subscribed to the old link stop updating."""
+    await _require_pro(session, user, "Adding your plan to a calendar")
+    return await svc.calendar_links(session, user.id, reset=True)
+
+
 @router.post("/tasks/{task_id}/skip")
 async def skip(task_id: int, session: AsyncSession = Depends(get_async_session), user: User = Depends(get_current_user)):
     try:
@@ -218,3 +236,20 @@ async def import_share(token: str, session: AsyncSession = Depends(get_async_ses
                                                     limited=await free_plan.is_limited(session, user))}
     except PlannerError as e:
         raise _fail(e)
+
+
+@public_router.get("/calendar/{token}.ics", include_in_schema=False)
+async def calendar_feed(token: str, session: AsyncSession = Depends(get_async_session)):
+    """The study plan as an iCalendar feed. A student who is no longer Pro gets an empty calendar."""
+    try:
+        body = await svc.calendar_feed(session, token)
+    except PlannerError as e:
+        raise _fail(e)
+    owner = (await session.exec(select(PlannerSettings.user_id).where(PlannerSettings.calendar_token == token))).first()
+    user = await session.get(User, owner) if owner else None
+    if user is None or await free_plan.is_limited(session, user):
+        from app.services.planner_ics import build_calendar
+        body = build_calendar([], owner or 0)
+    return Response(content=body, media_type="text/calendar; charset=utf-8",
+                    headers={"Cache-Control": "private, max-age=900",
+                             "Content-Disposition": 'inline; filename="study-plan.ics"'})

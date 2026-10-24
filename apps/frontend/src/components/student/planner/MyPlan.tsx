@@ -4,6 +4,7 @@ import {
 } from '../../../services/plannerService';
 import { downloadPlanIcs, downloadPlanPdf } from '../../../utils/planExport';
 import { CountRows, Notice, ProTag, btn, card, fmt, h2, sub } from './plannerUi';
+import { CalendarDialog } from './CalendarDialog';
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -19,6 +20,7 @@ export function MyPlan({ version, pro, onChanged, onOpenDay, onUpgrade }: {
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [popup, setPopup] = useState<{ date: string; tasks: PlannerTask[] } | null>(null);
 
   useEffect(() => {
@@ -112,11 +114,13 @@ export function MyPlan({ version, pro, onChanged, onOpenDay, onUpgrade }: {
               Catch up ({ov.missed} missed)
             </button>
           )}
-          <button type="button" style={btn()} onClick={() => (pro ? exportWith('ics') : onUpgrade())}>Add to calendar{!pro && <ProTag />}</button>
+          <button type="button" style={btn()} onClick={() => (pro ? setCalendarOpen(true) : onUpgrade())}>Add to calendar{!pro && <ProTag />}</button>
           <button type="button" style={btn()} onClick={() => (pro ? share() : onUpgrade())}>Share link{!pro && <ProTag />}</button>
           <button type="button" style={btn(true)} onClick={() => (pro ? exportWith('pdf') : onUpgrade())}>Download PDF{!pro && <ProTag />}</button>
         </div>
       )}
+
+      {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} onDownload={() => exportWith('ics')} />}
 
       {popup && (
         <div role="dialog" aria-modal="true" aria-label={`Tasks on ${popup.date}`} onClick={(e) => e.target === e.currentTarget && setPopup(null)}

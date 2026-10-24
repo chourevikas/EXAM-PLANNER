@@ -24,7 +24,7 @@ from app.routers.exam_marking import router as exam_marking_router
 from app.routers.revision import router as revision_router
 from app.routers.mistakes import router as mistakes_router
 from app.routers.admin_planner import router as admin_planner_router
-from app.routers.planner import router as planner_router
+from app.routers.planner import router as planner_router, public_router as public_planner_router
 from app.routers.admin import router as admin_router
 from app.routers.exams import router as exams_router
 from app.routers.questions import router as questions_router
@@ -239,6 +239,7 @@ app.include_router(webhooks_router, prefix=settings.API_V1_STR)
 app.include_router(pipeline_router, prefix=settings.API_V1_STR)
 app.include_router(study_plan_router, prefix=settings.API_V1_STR)
 app.include_router(planner_router, prefix=settings.API_V1_STR)
+app.include_router(public_planner_router, prefix=settings.API_V1_STR)
 app.include_router(attempts_router, prefix=settings.API_V1_STR)
 app.include_router(search_router, prefix=settings.API_V1_STR)
 app.include_router(syllabus_router, prefix=settings.API_V1_STR)
