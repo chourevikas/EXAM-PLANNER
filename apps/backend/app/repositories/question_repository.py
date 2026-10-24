@@ -126,7 +126,7 @@ class QuestionRepository:
             if exam_tokens:
                 exam_clauses = []
                 for tok in exam_tokens:
-                    match_tok = "upsc" if tok == "upsc cse" else tok
+                    match_tok = "upsc" if tok in ("upsc cse", "upsccse") else tok
                     exam_clauses.append(
                         or_(
                             func.lower(Exam.name).contains(match_tok),

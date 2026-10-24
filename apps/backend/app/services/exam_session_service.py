@@ -68,7 +68,7 @@ logger = setup_logger("ExamSessionService")
 BATCH_TRACKER: Dict[str, Dict[str, Any]] = {}
 
 _CANONICAL_EXAM_KEYWORDS = [
-    (("upsc", "civil services", "upse"), "UPSC CSE"),
+    (("upsc", "upsccse", "civil services", "upse"), "UPSC CSE"),
     (("mppsc",), "MPPSC"),
     (("bpsc",), "BPSC"),
     (("uppcs", "uppsc"), "UPPCS"),
@@ -95,12 +95,14 @@ def exam_type_code_label(raw: Optional[str], type_codes: Optional[Set[str]]) -> 
     token = match.group(1).lower()
     for candidate in (token, re.split(r"[-_]", token)[0]):
         if candidate in type_codes:
+            if candidate in ("upsccse", "upsc"):
+                return "UPSC CSE"
             return candidate.upper()
     return None
 
 
 def exam_badge_label(raw: Optional[str], type_codes: Optional[Set[str]]) -> Optional[str]:
-    """Short exam tag for a question card ("UPSC", "MPSC", ...) from its paper name, or None without one."""
+    """Short exam tag for a question card ("UPSC CSE", "MPSC", ...) from its paper name, or None without one."""
     if not raw:
         return None
     type_label = exam_type_code_label(raw, type_codes)
@@ -108,6 +110,8 @@ def exam_badge_label(raw: Optional[str], type_codes: Optional[Set[str]]) -> Opti
         return type_label
     for known in ["MPPSC", "BPSC", "UPPCS", "MPSC", "SSC", "UPSC"]:
         if known.lower() in raw.lower():
+            if known == "UPSC":
+                return "UPSC CSE"
             return known
     return raw.split()[0] if raw.split() else None
 
@@ -122,10 +126,16 @@ def canonical_exam_name(raw: Optional[str], type_codes: Optional[Set[str]] = Non
     """Mirror of the frontend's extractCanonicalExamName, which builds the exam chips on the PYQ page.
 
     With type_codes, a name led by an exam type code is labelled by that code, and the legacy labels
-    below ("UPSC CSE") collapse onto their type code ("UPSC") so old links and defaults still match.
+    below ("UPSC CSE") collapse onto their type code ("UPSC CSE") so old links and defaults still match.
     """
+    clean = str(raw or "").strip().lower()
+    if any(k in clean for k in ("upsc", "upsccse", "civil services", "upse")):
+        return "UPSC CSE"
     legacy = _legacy_exam_name(raw)
-    return exam_type_code_label(raw, type_codes) or exam_type_code_label(legacy, type_codes) or legacy
+    code = exam_type_code_label(raw, type_codes) or exam_type_code_label(legacy, type_codes)
+    if code and code.lower() in ("upsccse", "upsc"):
+        return "UPSC CSE"
+    return code or legacy
 
 
 def _legacy_exam_name(raw: Optional[str]) -> str:

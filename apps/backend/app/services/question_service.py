@@ -370,7 +370,7 @@ class QuestionService:
             exam_obj = exams_map.get(q.exam_id) if q.exam_id else None
             raw_exam_name = exam_obj.name if exam_obj else None
             # Badge by the paper's exam type code, so a renamed code shows up here too
-            clean_exam_badge = exam_badge_label(raw_exam_name, type_codes) or "UPSC"
+            clean_exam_badge = exam_badge_label(raw_exam_name, type_codes) or "UPSC CSE"
 
             results.append({
                 "question_id": str(q.id),
