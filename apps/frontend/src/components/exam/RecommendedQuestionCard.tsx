@@ -4,6 +4,7 @@ import { ChevronDown, Lightbulb, X } from 'lucide-react';
 import { QuestionOut } from '../../types/exam';
 import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { getQuestionText, getOptionText } from './ExamQuestionCard';
+import { extractCanonicalExamName } from '../../utils/formatEnum';
 
 interface RecommendedQuestionCardProps {
   question: QuestionOut;
@@ -228,7 +229,7 @@ export function RecommendedQuestionCard({
                   color: '#7E22CE',
                 }}
               >
-                {(rec as any).exam_name || 'UPSC'}{' '}
+                {extractCanonicalExamName((rec as any).exam_name) || 'UPSC CSE'}{' '}
                 {(rec as any).source_year ? `• ${(rec as any).source_year}` : ''}
               </span>
             )}
