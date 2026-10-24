@@ -633,6 +633,30 @@ async def plan_tasks(session: AsyncSession, user_id: int) -> List[Dict[str, Any]
     return [task_out(t) for t in rows]
 
 
+# ── Calendar subscription ────────────────────────────────────────────────────
+
+async def calendar_links(session: AsyncSession, user_id: int, reset: bool = False) -> Dict[str, str]:
+    """The path of the student's private calendar feed (the app adds its own origin). The secret is made on first
+    use; reset makes a new one, so the old link stops working."""
+    from app.config.settings import settings as app_settings
+    s = await get_settings(session, user_id)
+    if reset or not s.calendar_token:
+        s.calendar_token = secrets.token_urlsafe(24)
+        session.add(s)
+        await session.commit()
+    return {"path": f"{app_settings.API_V1_STR}/public/planner/calendar/{s.calendar_token}.ics"}
+
+
+async def calendar_feed(session: AsyncSession, token: str) -> str:
+    """The iCalendar text for a feed secret: the owner's current plan (empty when they have none)."""
+    from app.services.planner_ics import build_calendar
+    s = (await session.exec(select(PlannerSettings).where(PlannerSettings.calendar_token == token))).first() if token else None
+    if not s:
+        raise PlannerError("Calendar link not found.", 404)
+    info = await _plan_exam_info(session, await active_plan(session, s.user_id))
+    return build_calendar(await plan_tasks(session, s.user_id), s.user_id, info["label"] if info else "")
+
+
 # ── Progress tracker ─────────────────────────────────────────────────────────
 
 def range_dates(kind: str, anchor: date) -> Tuple[date, date]:

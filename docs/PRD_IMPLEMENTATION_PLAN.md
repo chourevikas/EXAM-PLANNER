@@ -330,7 +330,12 @@ The client shared their planner (`examplanner-all-pages-opens-planner.html`, the
 - **Aaj:** a week strip, the day's tasks, Practice, a 25-minute focus timer (logged as study time), Skip to the next day, and Delete.
 - **Finishing a plan topic:** the subtopic is marked covered, and revisions are added at +1, +3, +7 and +21 days, plus +14 and +30 when accuracy on the subtopic is below 60%.
 - **Catch up:** missed topics are spread over the next 5 days. Auto catch-up does this once a day.
-- **My plan:** summary, subject bars and a day list. Clear the plan, download a PDF, add to calendar (`.ics`), and a share link that another student can import.
+- **My plan:** summary, subject bars and a day list. Clear the plan, download a PDF, add to calendar, and a share link that another student can import.
+- **Add to calendar (Pro):** a private calendar subscription link. "Add to Google Calendar" opens Google's subscribe page; Apple Calendar and Outlook use the `webcal://` link.
+  - Calendars then keep up with the plan on their own (skips, catch-ups, new plans); Google can take a few hours to refresh.
+  - The feed is `/api/v1/public/planner/calendar/<secret>.ics` (no login). Students can reset the link to revoke it, and a student who is no longer Pro gets an empty calendar.
+  - A one-time `.ics` download is still offered.
+  - Migration `071_planner_calendar_feed` adds the secret.
 
 ### 8.4 Progress, syllabus coverage and revision plan
 - **Progress:** week or month view: % completed, tasks, hours studied, streak, focus minutes, a daily goal, a month calendar, a bar per subject, and weekly tips ("Is hafte ke tips").
@@ -373,6 +378,10 @@ As of 19 Oct 2026, on `release/0.0.1`.
 - Client to confirm the free limits (8.5) and the MPSC Prelims syllabus (seeded from the client's generic State PCS list; an MPSC-specific one can be entered under Exam Types → Syllabus). MPSC and CDS syllabi appear only once those exam types exist.
 - Admins to link the remaining planner subtopics to the question bank (Exam Types → Syllabus). Each paper has its own copy of the syllabus, so pick the active paper's copy.
 - Remove the unused `/study-plan/generate-weekly-plan` and `/generate-monthly-plan` endpoints.
+- **To do: direct Google Calendar sync** (instead of, or alongside, the subscription link): write the plan into a dedicated "ExamPlanner Study Plan" calendar in the student's Google account, updated instantly with reminders.
+  - **Google:** needs the `calendar.events` permission, which means Google OAuth app verification (privacy policy, demo video, review; can take weeks), so start verification early.
+  - **Clerk:** needs our own Google OAuth client in Clerk with the extra scope, and existing students re-consent once ("Connect Google Calendar").
+  - **Build:** store event IDs and sync on generate, skip, catch-up, complete and clear; handle disconnect and revoked access.
 
 **Not built yet: to prioritise with the client**
 - Notes per question (`QuestionBookmark.notes` exists, unused).

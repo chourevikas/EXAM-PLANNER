@@ -176,6 +176,19 @@ export const fetchTracker = (range: 'week' | 'month', anchor?: string) =>
 export const fetchRevisionPlan = () => call<RevisionPlanData>('/revision-plan', 'Could not load the revision plan');
 export const addRevisionPlan = () => call<{ added: number }>('/revision-plan/add', 'Could not add the revision plan', post());
 
+/** The student's private calendar subscription: feed URL, webcal:// link, and Google Calendar's subscribe page. */
+export interface CalendarLinks { url: string; webcal_url: string; google_url: string }
+
+/** The feed is served under this app's own origin (/api is proxied in dev and by nginx in production). */
+function calendarLinks({ path }: { path: string }): CalendarLinks {
+  const url = `${window.location.origin}${path}`;
+  const webcal = `webcal://${url.replace(/^https?:\/\//, '')}`;
+  return { url, webcal_url: webcal, google_url: `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcal)}` };
+}
+
+export const fetchCalendarLinks = () => call<{ path: string }>('/calendar', 'Could not load your calendar link').then(calendarLinks);
+export const resetCalendarLinks = () => call<{ path: string }>('/calendar/reset', 'Could not reset the link', post()).then(calendarLinks);
+
 export const sharePlan = () => call<{ token: string }>('/share', 'Could not create a share link', post());
 export const fetchShare = (token: string) =>
   call<{ exam_label: string | null; tasks: number; days: number }>(`/share/${encodeURIComponent(token)}`, 'This plan link is not valid');
