@@ -443,12 +443,10 @@ async def get_similar_questions(
             if q_id is not None:
                 r["question"] = by_id.get(int(q_id))
     
-    # Map score to pseudo similarity_score for UI rendering of badges if missing
-    max_score = max((r.get("score", 0) for r in results), default=1) or 1
+    # Map the deterministic score to an absolute percentage (60 points ≈ strong exact match = 99%)
     for r in results:
         if "similarity_score" not in r:
-            # Map deterministic score to a 75-99% range for visual badges
-            r["similarity_score"] = int(min((r.get("score", 0) / max_score) * 24 + 75, 99))
+            r["similarity_score"] = int(max(1, min(round(r.get("score", 0) / 60 * 100), 99)))
             
     data = jsonable_encoder(SimilarQuestionsResponse(question_id=qid_int, results=results))
     await cache.set(cache_key, data, ttl_seconds=600)
