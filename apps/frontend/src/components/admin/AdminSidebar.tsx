@@ -145,7 +145,8 @@ function prefetchAdminView(viewId: string) {
 }
 
   const renderNavItem = (item: { icon: any, label: string, id: string }) => {
-    const isActive = activeView === item.id;
+    // The syllabus page belongs to Exam Types
+    const isActive = activeView === item.id || (item.id === 'exam-types' && activeView === 'exam-syllabus');
     const Icon = item.icon;
 
     return (

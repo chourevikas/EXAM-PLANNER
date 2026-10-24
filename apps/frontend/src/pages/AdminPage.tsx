@@ -23,6 +23,7 @@ const MilestonesView = lazy(() => import('../components/admin/views/MilestonesVi
 const TranslationsView = lazy(() => import('../components/admin/views/TranslationsView').then(m => ({ default: m.TranslationsView })));
 const ReportedQuestionsView = lazy(() => import('../components/admin/views/ReportedQuestionsView').then(m => ({ default: m.ReportedQuestionsView })));
 const TestimonialsView = lazy(() => import('../components/admin/views/TestimonialsView').then(m => ({ default: m.TestimonialsView })));
+const ExamSyllabusPanel = lazy(() => import('../components/admin/syllabus/ExamSyllabusPanel').then(m => ({ default: m.ExamSyllabusPanel })));
 const ThemeSettingsView = lazy(() => import('../components/admin/views/ThemeSettingsView').then(m => ({ default: m.ThemeSettingsView })));
 
 function NoAccessView({ onHome }: { onHome: () => void }) {
@@ -139,7 +140,18 @@ export function AdminPage() {
       case 'questions':
         return <QuestionBankManager onNavigate={handleNavigate} />;
       case 'exam-types':
-        return <ExamTypesManager />;
+        return <ExamTypesManager onOpenSyllabus={(examType) => handleNavigate('exam-syllabus', examType)} />;
+      case 'exam-syllabus':
+        // The exam type comes from Exam Types → Syllabus; without one, go back to the list
+        return selectedExamForReview?.id ? (
+          <ExamSyllabusPanel
+            key={selectedExamForReview.id}
+            examType={{ id: Number(selectedExamForReview.id), type: selectedExamForReview.type, name: selectedExamForReview.name }}
+            onClose={() => handleNavigate('exam-types')}
+          />
+        ) : (
+          <ExamTypesManager onOpenSyllabus={(examType) => handleNavigate('exam-syllabus', examType)} />
+        );
       case 'review':
         return <QuestionReviewView initialExam={selectedExamForReview} onNavigate={handleNavigate} />;
       case 'mock-tests':

@@ -19,7 +19,6 @@ import {
   Loader2,
   BookOpenCheck,
 } from 'lucide-react';
-import { ExamSyllabusPanel } from '../syllabus/ExamSyllabusPanel';
 import { Spinner } from '../../../components/common/Spinner';
 import { ExamType, ExamTypeCreatePayload, ExamTypeUpdatePayload } from '../../../types/examType';
 import {
@@ -30,7 +29,8 @@ import {
 } from '../../../services/examTypeService';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
-export function ExamTypesManager() {
+/** onOpenSyllabus opens an exam type's study syllabus page (Prelims, Mains, optionals). */
+export function ExamTypesManager({ onOpenSyllabus }: { onOpenSyllabus?: (examType: ExamType) => void } = {}) {
   const { isMobile, isTabletOrBelow } = useBreakpoint();
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -45,8 +45,6 @@ export function ExamTypesManager() {
 
   // Delete Confirmation Modal State
   const [deletingExamType, setDeletingExamType] = useState<ExamType | null>(null);
-  // Exam type whose study syllabus (Prelims, Mains, optionals) is open for editing
-  const [syllabusFor, setSyllabusFor] = useState<ExamType | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState<boolean>(false);
 
   // Form State
@@ -151,7 +149,6 @@ export function ExamTypesManager() {
     try {
       await adminDeleteExamType(deletingExamType.id);
       showToast('success', `Exam type '${deletingExamType.name}' deleted successfully.`);
-      if (syllabusFor?.id === deletingExamType.id) setSyllabusFor(null);
       setDeletingExamType(null);
       await loadExamTypes();
     } catch (err: any) {
@@ -194,14 +191,6 @@ export function ExamTypesManager() {
           {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
           <span>{toast.message}</span>
         </div>
-      )}
-
-      {syllabusFor && (
-        <ExamSyllabusPanel
-          key={syllabusFor.id}
-          examType={{ id: Number(syllabusFor.id), type: syllabusFor.type, name: syllabusFor.name }}
-          onClose={() => setSyllabusFor(null)}
-        />
       )}
 
       {/* Hero Header Banner */}
@@ -533,12 +522,11 @@ export function ExamTypesManager() {
                   <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', gap: 8 }}>
                       <button
-                        onClick={() => { setSyllabusFor(item); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        onClick={() => onOpenSyllabus?.(item)}
                         title="Study syllabus students plan from"
-                        aria-pressed={syllabusFor?.id === item.id}
                         style={{
                           padding: '6px 10px',
-                          backgroundColor: syllabusFor?.id === item.id ? '#EFF6FF' : 'var(--bg-card)',
+                          backgroundColor: 'var(--bg-card)',
                           border: '1px solid #BFDBFE',
                           color: '#1D4ED8',
                           fontSize: 12,

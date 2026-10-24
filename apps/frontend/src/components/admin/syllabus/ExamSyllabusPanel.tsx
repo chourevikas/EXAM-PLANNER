@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, ArrowDown, ArrowUp, BookOpenCheck, Plus, Trash2, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, BookOpenCheck, Plus, Trash2, Upload } from 'lucide-react';
 import {
   ExamSyllabusAdmin, PlannerLevel, PlannerSubjectNode, SyllabusStage,
   addPlannerNode, createSyllabus, deletePlannerNode, deleteSyllabus, fetchSyllabusTree, importSyllabus, listSyllabi,
@@ -12,11 +12,12 @@ import {
 const STAGE_LABEL: Record<SyllabusStage, string> = { prelims: 'Prelims', mains: 'Mains', optional: 'Optional' };
 
 /**
- * Exam Types → Syllabus: an exam type's study syllabi (Prelims, Mains, optionals) that students build plans from,
+ * Exam Types → Syllabus (its own admin page): an exam type's study syllabi (Prelims, Mains, optionals) that students build plans from,
  * each a subject → topic → subtopic tree. Subtopics can be linked to this exam type's question bank for Practice.
  */
 export function ExamSyllabusPanel({ examType, onClose }: {
   examType: { id: number; type: string; name: string };
+  /** Back to the Exam Types list. */
   onClose: () => void;
 }) {
   const [syllabi, setSyllabi] = useState<ExamSyllabusAdmin[]>([]);
@@ -112,7 +113,10 @@ export function ExamSyllabusPanel({ examType, onClose }: {
   const bankSearch = useCallback((q: string) => (current ? searchBankSubtopics(current.id, q) : Promise.resolve([])), [current?.id]);
 
   return (
-    <div style={{ ...card, padding: 18, display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16, borderColor: '#BFDBFE' }}>
+    <div style={{ ...card, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <button type="button" onClick={onClose} style={{ ...ghostBtn, alignSelf: 'flex-start', padding: '6px 12px' }}>
+        <ArrowLeft size={14} /> Back to Exam Types
+      </button>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <h2 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -122,7 +126,6 @@ export function ExamSyllabusPanel({ examType, onClose }: {
             The syllabi students build study plans from. Link a subtopic to this exam's question bank so its Practice button opens exactly those questions.
           </p>
         </div>
-        <button type="button" aria-label="Close syllabus" style={iconBtn} onClick={onClose}><X size={16} /></button>
       </div>
 
       {notice && (
@@ -178,14 +181,7 @@ export function ExamSyllabusPanel({ examType, onClose }: {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <label style={{ fontSize: 12.5, display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input type="checkbox" checked={current.answer_writing}
-                  onChange={(e) => patch({ answer_writing: e.target.checked }, e.target.checked ? 'Plans will include answer writing.' : 'Answer writing removed from new plans.')} />
-                Answer writing
-              </label>
-              <button type="button" style={ghostBtn} onClick={() => patch({ is_active: !current.is_active }, current.is_active ? 'Hidden from students.' : 'Visible to students.')}>
-                {current.is_active ? 'Hide from students' : 'Show to students'}
-              </button>
+              {/* Answer writing (on for Mains and optionals) and hide/show stay in the API; not offered here for now */}
               <button type="button" style={ghostBtn} onClick={() => setShowImport((v) => !v)}><Upload size={14} /> Bulk import</button>
               <button type="button" style={{ ...ghostBtn, color: '#B91C1C' }} onClick={remove}><Trash2 size={14} /> Delete</button>
             </div>
