@@ -63,6 +63,12 @@ YOUR MANDATE:
             "precalculated_metrics": precalculated_metrics,
         }
 
+        from app.services.llm_budget import report_llm_allowed
+
+        if not await report_llm_allowed():
+            logger.info(f"LLM daily budget used up: rule-based insight for attempt '{exam_info.get('attempt_id')}'.")
+            return cls._generate_deterministic_fallback(payload)
+
         try:
             from app.llm.factory import get_vision_llm
             from app.config.settings import get_settings

@@ -39,6 +39,7 @@ from app.routers.syllabus import router as syllabus_router
 from app.routers.notifications import router as notifications_router
 from app.routers.testimonials import router as testimonials_router
 from app.routers.question_reports import router as question_reports_router
+from app.routers.feedback import router as feedback_router
 from app.routers.roles import router as roles_router
 from app.routers.teacher import teacher_router, admin_teacher_router
 from app.routers.current_affairs import router as current_affairs_router, public_router as public_current_affairs_router
@@ -152,6 +153,18 @@ async def lifespan(app: FastAPI):
 
 _IS_PRODUCTION = settings.ENVIRONMENT.lower() in ("production", "prod")
 
+# Error tracking: unhandled exceptions (and the stack, request path, release) go to Sentry. Off without a DSN.
+if settings.SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+        # No emails, IPs, cookies or request bodies.
+        send_default_pii=False,
+    )
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     # API docs are for development; do not publish the schema of a production API.
@@ -206,10 +219,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(
         f"Unhandled internal server error on {request.url.path}: {exc}", exc_info=True
     )
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "An internal server error occurred.", "error": str(exc)},
-    )
+    content = {"detail": "An internal server error occurred."}
+    if not _IS_PRODUCTION:
+        # The exception text can hold SQL, paths or data: show it only outside production.
+        content["error"] = str(exc)
+    return JSONResponse(status_code=500, content=content)
 
 
 # Mount uploads directory for static access
@@ -246,6 +260,7 @@ app.include_router(syllabus_router, prefix=settings.API_V1_STR)
 app.include_router(notifications_router, prefix=settings.API_V1_STR)
 app.include_router(testimonials_router, prefix=settings.API_V1_STR)
 app.include_router(question_reports_router, prefix=settings.API_V1_STR)
+app.include_router(feedback_router, prefix=settings.API_V1_STR)
 app.include_router(roles_router, prefix=settings.API_V1_STR)
 app.include_router(teacher_router, prefix=settings.API_V1_STR)
 app.include_router(admin_teacher_router, prefix=settings.API_V1_STR)
@@ -263,6 +278,21 @@ app.include_router(discounts_public_router, prefix=settings.API_V1_STR)
 app.include_router(admin_grants_router, prefix=settings.API_V1_STR)
 app.include_router(public_plans_router, prefix=settings.API_V1_STR)
 
+
+
+@app.get(f"{settings.API_V1_STR}/health")
+async def health():
+    """Uptime check: 200 when the API can reach the database, 503 otherwise."""
+    from sqlalchemy import text
+    from app.db.session import managed_async_session
+
+    try:
+        async with managed_async_session(max_retries=1) as session:
+            await session.exec(text("SELECT 1"))
+    except Exception as err:
+        logger.error(f"Health check: database unreachable: {err}")
+        return JSONResponse(status_code=503, content={"status": "error", "database": "unreachable"})
+    return {"status": "ok", "database": "ok"}
 
 
 @app.get("/")

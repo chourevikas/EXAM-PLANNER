@@ -9,6 +9,7 @@ export const VIEW_PERMISSION: Record<string, string | null> = {
   review: 'admin.review',
   questions: 'admin.question_bank',
   'reported-questions': 'admin.reported_questions',
+  feedback: 'admin.feedback',
   users: 'admin.users',
   'teacher-rewards': 'admin.teacher_rewards',
   'current-affairs': 'admin.current_affairs',

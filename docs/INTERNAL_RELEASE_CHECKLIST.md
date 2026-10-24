@@ -13,15 +13,17 @@ State of the branch on 24 Oct 2026:
 - CI builds images and deploys on push to `release/0.0.1`. It runs no tests, and `alembic upgrade head || true` hides a failed migration.
 - No error tracking, no uptime check, and no database backup found in the repo.
 
-The five things to settle first are in Blockers below.
+The things to settle first are in Blockers below.
 
 ## Blockers (before inviting anyone)
 
-- [ ] **Production DB at migration `071`.** Run `alembic upgrade head` by hand and confirm `alembic current`; the CI step's `|| true` won't tell you if it failed.
+- [ ] **Production DB at the latest migration** (`072` once this branch is merged). Run `alembic upgrade head` by hand and confirm `alembic current`; the CI step's `|| true` won't tell you if it failed.
 - [ ] **Daily database backup** with one test restore. Nothing in the repo does this today.
 - [ ] **Fix or triage the 4 failing backend tests.** Two look stale (a test reads `.total` off a `JSONResponse`); confirm the review-auth and exam-delete ones aren't real permission bugs.
 - [ ] **Host nginx installed** from `deploy/nginx/examplanner.in.conf`, with TLS, and `COOKIE_SECURE=true` in the API `.env` (it defaults to false).
 - [ ] **Smoke test on production** as a free student, a Pro student and an admin, at desktop and phone widths: sign in, practice, take a test, report, planner, leaderboard.
+- [ ] **Production Clerk key.** `apps/frontend/Dockerfile` hardcodes a `pk_test_` key, so the production build signs in through the Clerk development instance. Pass the production publishable key as a build argument.
+- [ ] **Speed at 100 students.** 30 students locally already hit a 9.9 s p95; run the load test on staging (Quality section) and fix the slow calls if staging is close.
 
 ## Infrastructure and deployment
 
@@ -68,19 +70,28 @@ For the public launch later: merge the Cashfree branch with an Alembic merge rev
 
 ## Quality, monitoring and support
 
-- [ ] Error tracking (for example Sentry) on the API and the frontend. Today, a tester's 500 error is only in the server logs.
-- [ ] Uptime check on the site and the API root (`/` returns `status: online`), alerting to email or the existing Discord webhook.
-- [ ] `LOG_LEVEL` set and logs kept long enough to trace a reported bug (at least 14 days).
-- [ ] Email delivery tested from production: weekly summary, reminders, notifications. Check they don't land in spam.
-- [ ] A feedback channel for testers (a form, WhatsApp group or email) and one person triaging it daily.
-- [ ] Rough load check: 100 students starting a test at once against the single API process and the database.
-- [ ] LLM usage capped and watched (`LLM_USAGE_TRACKING_ENABLED`), since Pro testers trigger report insights.
+The code for this section is built and tested on branch `pankajpandey/internal-release-checklist`, not merged yet. What's left is setup on accounts and the server.
+
+- [x] Error tracking in code: Sentry on the API and frontend, off until a DSN is set. A crash now shows a "Something went wrong, reload" screen instead of a blank page, and production 500s no longer return the raw error text.
+- [ ] Create the Sentry project. Set `SENTRY_DSN` in the API `.env`, and the repo variables `SENTRY_FRONTEND_DSN` and `SENTRY_ENVIRONMENT` for the web image.
+- [x] Health check: `GET /api/v1/health` returns 200 when the database answers, 503 when it doesn't.
+- [ ] Point UptimeRobot or Better Stack at `https://examplanner.in/api/v1/health` and the home page, every 5 minutes, alerting by email.
+- [x] Log rotation in `docker-compose.prod.yml`: 50 MB × 10 files per service.
+- [ ] Set `LOG_LEVEL=INFO` in production; after a week, check the logs cover at least 14 days.
+- [x] Test-email script: `python -m app.scripts.send_test_email you@example.com` sends one email through SMTP or SES and fails loudly if neither is set.
+- [ ] Run it in the production container to a Gmail and an Outlook address. Check spam and SPF/DKIM/DMARC, then that a real weekly summary and reminder arrive.
+- [x] "Report a problem" in the student menu: message, optional screenshot, page and browser. Admins see it under Admin → Feedback (permission `admin.feedback`, migration `072`) and get a Discord ping.
+- [ ] Set `DISCORD_ALERT_WEBHOOK_URL` in production and name one person to triage Feedback daily.
+- [x] LLM daily budget: `LLM_DAILY_BUDGET_INR` alerts on Discord at 80%. At 100%, report insights use the rule-based text until midnight IST. The default, 0, means no limit.
+- [ ] Agree the daily budget with the client and set it.
+- [x] Load-test script in `apps/backend/loadtest/` (Locust), with throwaway FREE students from `app.scripts.loadtest_users`.
+- [ ] **Run the load test on a staging copy at 100 students.** A local run with 30 students had no errors but was slow: p95 9.9 s overall, 12 s to start a test, 14 s to load its questions (an 890 KB response).
 
 ## Launch day and after
 
 1. Freeze `release/0.0.1`; only fixes go in until the test ends.
 2. Take a database backup right before the deploy.
-3. Deploy, run migrations by hand, and confirm `alembic current` shows `071`.
+3. Deploy, run migrations by hand, and confirm `alembic current` shows the latest migration.
 4. Run the production smoke test (Blockers) yourselves.
 5. Invite 10 to 20 testers first; open to all 100 after a day with no serious errors.
 6. Send testers a short welcome note: how to sign in, what to try, where to report bugs, and that it's a test build.
