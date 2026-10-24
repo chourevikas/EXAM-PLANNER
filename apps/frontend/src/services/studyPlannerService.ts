@@ -183,16 +183,6 @@ export async function fetchStudyActivitiesSummary(): Promise<StudySummaryRespons
   return await res.json();
 }
 
-export async function generateWeeklyStudyPlan(startDate?: string, overwriteExisting: boolean = false): Promise<any> {
-  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/generate-weekly-plan`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ start_date: startDate, overwrite_existing: overwriteExisting })
-  });
-  if (!res.ok) throw new Error('Failed to generate weekly study plan');
-  return await res.json();
-}
-
 export async function sendPendingTasksEmail(): Promise<any> {
   const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/send-pending-email`, {
     method: 'POST',
@@ -269,39 +259,4 @@ export function invalidateWeeklyInsightsCache(startDate?: string): void {
   } else {
     insightsCache.clear();
   }
-}
-
-
-export interface MonthlyScheduleDay {
-  date: string;
-  is_today: boolean;
-  allocated_minutes: number;
-  completed_tasks_count: number;
-  total_tasks_count: number;
-  tasks: Omit<StudyTaskItem, 'scheduled_date'>[];
-}
-
-export interface MonthlyScheduleResponse {
-  month: string;
-  start_date: string;
-  end_date: string;
-  days: MonthlyScheduleDay[];
-}
-
-export async function fetchMonthlySchedule(month?: string): Promise<MonthlyScheduleResponse> {
-  const url = month ? `${STUDY_PLAN_API_BASE_URL}/monthly-schedule?month=${month}` : `${STUDY_PLAN_API_BASE_URL}/monthly-schedule`;
-  const res = await guardedFetch(url, { headers: getAuthHeaders() });
-  if (!res.ok) throw new Error('Failed to fetch monthly schedule');
-  return await res.json();
-}
-
-export async function generateMonthlyStudyPlan(month?: string): Promise<{ task_count: number; message: string }> {
-  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/generate-monthly-plan`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ month })
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Failed to generate the month plan');
-  return data;
 }

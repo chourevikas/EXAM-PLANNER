@@ -38,6 +38,7 @@ const breadcrumbMap: Record<string, string> = {
   milestones: 'Milestones',
   translations: 'Translations',
   subscriptions: 'Subscriptions & Billing',
+  'exam-syllabus': 'Exam Types › Syllabus',
 };
 
 interface AdminNotificationItem {

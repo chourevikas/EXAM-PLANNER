@@ -5,6 +5,7 @@ export const VIEW_PERMISSION: Record<string, string | null> = {
   upload: 'admin.upload',
   'ai-queue': 'admin.upload',
   'exam-types': 'admin.exam_types',
+  'exam-syllabus': 'admin.exam_types',
   review: 'admin.review',
   questions: 'admin.question_bank',
   'reported-questions': 'admin.reported_questions',

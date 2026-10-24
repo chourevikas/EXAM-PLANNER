@@ -75,7 +75,15 @@ async def complete_study_task(
     # Trigger the Gamification Hook
     gamification_service = GamificationService(session)
     gamification_result = await gamification_service.check_and_update_daily_goal(current_user.id)
-    
+
+    # Study Planner v2: a finished plan topic counts as covered and gets spaced revisions
+    if task.planner_subtopic_id:
+        try:
+            from app.services.planner_service import on_task_completed
+            await on_task_completed(session, task)
+        except Exception:
+            logger.warning("Could not record planner coverage for task %s", task.id, exc_info=True)
+
     return {
         "message": "Task marked as completed",
         "task_id": str(task.id),

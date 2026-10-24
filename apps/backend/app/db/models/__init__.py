@@ -238,3 +238,25 @@ __all__.extend([
 from app.db.models.llm_usage import LlmUsageEvent
 
 __all__.extend(["LlmUsageEvent"])
+
+from app.db.models.planner import (
+    PlannerExam,
+    PlannerSubject,
+    PlannerTopic,
+    PlannerSubtopic,
+    UserSyllabusCoverage,
+    StudyPlan,
+    StudyPlanShare,
+    PlannerSettings,
+)
+
+__all__.extend([
+    "PlannerExam",
+    "PlannerSubject",
+    "PlannerTopic",
+    "PlannerSubtopic",
+    "UserSyllabusCoverage",
+    "StudyPlan",
+    "StudyPlanShare",
+    "PlannerSettings",
+])

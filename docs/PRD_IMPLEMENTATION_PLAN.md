@@ -302,13 +302,64 @@ The Create Challenge form takes one or more exams (chips, like subjects and year
 - Pro students no longer see "Upgrade to PRO" in the sidebar.
 - Questions in a PYQ simulation are tagged with their own paper's exam and year: an MPSC paper showed "UPSC CSE" on every question.
 
+## Phase 8: Study Planner v2, the client's planner (23 Oct) 🚧 in review
+The client shared their planner (`examplanner-all-pages-opens-planner.html`, the Study Planner frame). It ran only in the browser and saved to localStorage. It is now built on the real stack, saved per account. It replaces the one-click week and month plan from 6.7: the student generates the plan from a form.
+
+### 8.1 Study syllabi belong to exam types (admin)
+- **Structure:** each exam type has study syllabi: UPSC has Prelims, Mains and its optionals (Geography, PSIR, Public Administration); MPSC has Prelims, seeded from the client's State PCS list. Each syllabus is a subject → topic → subtopic tree. Students see them as "UPSC Prelims", "UPSC Optional: Geography" and so on.
+- **Seeding:** each syllabus is seeded only if its exam type exists (`upsc`, `mpsc`, `cds`). The others stay in `app/planner/seed/syllabus.json`, ready for bulk import once the exam type is created. CDS waits for a CDS exam type.
+- **Separate from paper syllabi:** these trees are not the per-paper trees built from question tags; those only list what questions cover, and every paper has its own copy. A planner subtopic can link to a question-bank subtopic of the same exam type, which gives Practice an exact filter and feeds weak-topic data. Links are made by name on seeding and import; admins set the rest.
+- **Admin:** **Exam Types → Syllabus** on each exam type. Admins can:
+  - add Prelims, Mains or an optional subject;
+  - reorder, hide and delete syllabi, and turn answer writing on or off;
+  - edit the tree;
+  - bulk import, either as `Subject|Topic:sub,sub;Topic:sub` lines or as JSON, merging into or replacing the syllabus;
+  - link subtopics to that exam type's question bank.
+- **Access:** follows the Exam Types permission.
+- **Deleting an exam type** that still has a syllabus is refused.
+- **Migration:** `070_study_planner_v2`.
+- **Later phase:** make the upload pipeline tag each question against its exam type's syllabus, so Practice filters and weak-topic data are exact without name matching.
+
+### 8.2 Generating a plan
+- **Inputs:** exam, days (up to 365) or an exam date, subjects, days per subject, hours a day, mock day, rest day, a revision tail for the last ~12% of days, subjects per day, daily blocks (current affairs, 10 PYQs, the student's own task; answer writing for Mains-style exams), weak topics first, and auto catch-up.
+- **Layout:** `services/planner_engine.py` is a port of the client's algorithm. It produced the same schedule as the client's JavaScript on 600 random cases.
+- **Topics:** only subtopics the student hasn't covered. Revision questions due each day are added first.
+- **Rebuilding** replaces only open generated tasks. The student's own tasks and completed tasks stay.
+
+### 8.3 Following the plan
+- **Aaj:** a week strip, the day's tasks, Practice, a 25-minute focus timer (logged as study time), Skip to the next day, and Delete.
+- **Finishing a plan topic:** the subtopic is marked covered, and revisions are added at +1, +3, +7 and +21 days, plus +14 and +30 when accuracy on the subtopic is below 60%.
+- **Catch up:** missed topics are spread over the next 5 days. Auto catch-up does this once a day.
+- **My plan:** summary, subject bars and a day list. Clear the plan, download a PDF, add to calendar (`.ics`), and a share link that another student can import.
+
+### 8.4 Progress, syllabus coverage and revision plan
+- **Progress:** week or month view: % completed, tasks, hours studied, streak, focus minutes, a daily goal, a month calendar, a bar per subject, and weekly tips ("Is hafte ke tips").
+- **Syllabus:** tick subtopics off for each exam, with % covered and a weekly target.
+- **Revision plan:** subject strength and repeated mistakes from tests and practice, and a 7-day plan to add to the planner. A sample is shown until the student has results.
+
+### 8.5 Free and Pro (defaults; client to confirm)
+- **Free:** plans up to 7 days. Daily tasks, timer, catch-up, syllabus coverage and the progress tracker.
+- **Pro:** longer plans, weak topics first, days per subject, PDF and calendar downloads, share links and the revision plan. The API answers 403 with code `PRO_STUDY_PLANNER`.
+
+### 8.6 API
+- **Student:** `/planner/*`:
+  - `exams` (exam types with their syllabi, plus the one to preselect: the student's last plan, else their target exam);
+  - `syllabus/{syllabus_id}`, coverage, settings;
+  - estimate, generate, plan, overview, tasks, plan-tasks (plans take a `syllabus_id`);
+  - skip, reopen, catch-up, focus;
+  - tracker, revision-plan, share.
+- **Practice:** `exam` is always set to the syllabus's exam type, and matching only uses that exam type's questions.
+- **Admin:** `/admin/exam-types/{id}/syllabi` and `/admin/syllabi/*`.
+- **Unchanged:** completing a task is still `POST /study-plan/tasks/{id}/complete`.
+- **Still in the API:** `/study-plan/generate-weekly-plan` and `/generate-monthly-plan` stay (their tests cover the month view and cache invalidation), but the app no longer calls them. Remove them in a cleanup.
+
 ---
 
 ## What's left
 As of 19 Oct 2026, on `release/0.0.1`.
 
 **Before or right after deploying**
-- Check the production database is at migration `069`. The deploy runs `alembic upgrade head || true`, so a failed migration doesn't fail the deploy.
+- Check the production database is at migration `070` (Study Planner v2). The Cashfree merge revision now has to join onto `070`. The deploy runs `alembic upgrade head || true`, so a failed migration doesn't fail the deploy.
 - Set the MPSC and BPSC marking schemes (6.1).
 - Production translation credentials, so explanations get translated (5.2).
 - An exam type on every paper (MPSC and BPSC included), so challenges can offer those exams (7.4).
@@ -317,6 +368,11 @@ As of 19 Oct 2026, on `release/0.0.1`.
 - Merge the Cashfree branch with an Alembic merge revision joining its `056`/`060`/`061` to `069`.
 - Run a sandbox payment end to end.
 - Go live with production keys and the dashboard webhooks (including `DISPUTE_*`).
+
+**Study Planner v2 (Phase 8)**
+- Client to confirm the free limits (8.5) and the MPSC Prelims syllabus (seeded from the client's generic State PCS list; an MPSC-specific one can be entered under Exam Types → Syllabus). MPSC and CDS syllabi appear only once those exam types exist.
+- Admins to link the remaining planner subtopics to the question bank (Exam Types → Syllabus). Each paper has its own copy of the syllabus, so pick the active paper's copy.
+- Remove the unused `/study-plan/generate-weekly-plan` and `/generate-monthly-plan` endpoints.
 
 **Not built yet: to prioritise with the client**
 - Notes per question (`QuestionBookmark.notes` exists, unused).

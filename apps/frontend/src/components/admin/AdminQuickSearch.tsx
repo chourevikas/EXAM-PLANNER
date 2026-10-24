@@ -11,7 +11,7 @@ interface Section {
 
 const SECTIONS: Section[] = [
   { id: 'upload', label: 'Upload & Exam Pipeline', keywords: 'upload paper pdf pipeline extraction exam', icon: Upload },
-  { id: 'exam-types', label: 'Exam Types', keywords: 'exam types blueprint syllabus', icon: Sliders },
+  { id: 'exam-types', label: 'Exam Types', keywords: 'exam types blueprint syllabus study planner prelims mains optional', icon: Sliders },
   { id: 'review', label: 'Question & Solution QA', keywords: 'review qa question solution verify approve edit', icon: ClipboardCheck },
   { id: 'questions', label: 'Question Bank Catalog', keywords: 'question bank catalog subject topic', icon: BookOpen },
   { id: 'reported-questions', label: 'Reported Questions', keywords: 'reported reports flagged issues problems', icon: Flag },

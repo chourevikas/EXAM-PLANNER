@@ -17,6 +17,7 @@ import {
   FileText,
   Sliders,
   Loader2,
+  BookOpenCheck,
 } from 'lucide-react';
 import { Spinner } from '../../../components/common/Spinner';
 import { ExamType, ExamTypeCreatePayload, ExamTypeUpdatePayload } from '../../../types/examType';
@@ -28,7 +29,8 @@ import {
 } from '../../../services/examTypeService';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
-export function ExamTypesManager() {
+/** onOpenSyllabus opens an exam type's study syllabus page (Prelims, Mains, optionals). */
+export function ExamTypesManager({ onOpenSyllabus }: { onOpenSyllabus?: (examType: ExamType) => void } = {}) {
   const { isMobile, isTabletOrBelow } = useBreakpoint();
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -519,6 +521,25 @@ export function ExamTypesManager() {
 
                   <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', gap: 8 }}>
+                      <button
+                        onClick={() => onOpenSyllabus?.(item)}
+                        title="Study syllabus students plan from"
+                        style={{
+                          padding: '6px 10px',
+                          backgroundColor: 'var(--bg-card)',
+                          border: '1px solid #BFDBFE',
+                          color: '#1D4ED8',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <BookOpenCheck size={13} />
+                        Syllabus
+                      </button>
                       <button
                         onClick={() => handleOpenEditModal(item)}
                         title="Edit Exam Type Blueprint"

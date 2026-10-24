@@ -1,5 +1,7 @@
 # AI Study Planner & Study Logger — Simple Features Guide
 
+> **Superseded (23 Oct 2026):** the planner was rebuilt from the client's design. See Phase 8 of [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md).
+
 The **AI Adaptive Study Planner & Study Logger** is a personal smart assistant built into ExamPlanner. It helps students turn mock test results into a structured daily study routine, track actual study hours, and stay motivated with daily streaks and automated reminders.
 
 ---
