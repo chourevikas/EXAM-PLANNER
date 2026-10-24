@@ -38,6 +38,7 @@ import {
   mergeRecommendations,
   recommendationCardToQuestion,
   useSimilarQuestions,
+  isSameSubject,
 } from '../services/similarQuestionService';
 import { parseTaxonomyParam, formatTaxonomyParam, parseYearParam } from '../utils/taxonomyParam';
 
@@ -1376,11 +1377,18 @@ export function GuestExamPage() {
 
   // All up to 10 recommended items to display for Guest mode
   const activeRecExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]).map((e) => e.toLowerCase());
+  const activeSubject = activeQuestion?.subject || activeQuestion?.section_code;
   const displayRecs = activeRecExams.length > 0 
     ? mergeRecommendations(similarRecs, recommendedPool).filter((q) => {
         if (!q.exam_name) return true;
         const canonical = extractCanonicalExamName(q.exam_name).toLowerCase();
-        return activeRecExams.includes(canonical) || activeRecExams.includes(q.exam_name.toLowerCase());
+        const matchesExam = activeRecExams.includes(canonical) || activeRecExams.includes(q.exam_name.toLowerCase());
+        if (!matchesExam) return false;
+        if (activeSubject && !activeSubject.toLowerCase().startsWith('all') && activeSubject !== 'General Studies') {
+          const qSubj = q.subject || q.section_code;
+          return isSameSubject(qSubj, activeSubject);
+        }
+        return true;
       }).slice(0, 10)
     : [];
 

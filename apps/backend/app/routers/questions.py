@@ -5,7 +5,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi import HTTPException
 from app.db.session import get_async_session
-from app.db.models import QuestionStatus, QuestionSourceType, DifficultyLevel
+from app.db.models import QuestionStatus, QuestionSourceType, DifficultyLevel, LanguageCode
 from app.db.models.user import User, UserRole
 from app.core.languages import parse_language
 from app.core.deps import require_roles, require_admin_section, get_optional_user, can_see_unpublished, require_question_visible
@@ -329,6 +329,49 @@ async def list_recommended_questions(
     return JSONResponse(content=res)
 
 
+CANONICAL_SUBJECT_MAP = {
+    "polity": ["polity", "indian polity", "indian polity and governance", "governance"],
+    "history": ["history", "modern history", "medieval history", "ancient history", "indian history", "indian history and culture"],
+    "art_culture": ["art and culture", "arts and culture", "indian culture"],
+    "geography": ["geography", "human and economic geography"],
+    "economy": ["economy", "economics", "indian economy"],
+    "environment": ["environment", "environment and ecology", "ecology and environment"],
+    "science": ["science and technology", "science and tech", "general science", "physics", "chemistry", "biology", "computer science"],
+    "social_security": ["social security in india", "insurance and social security principles", "labour laws and industrial relations"],
+}
+
+
+def _norm_tax_str(s: Optional[str]) -> str:
+    if not s:
+        return ""
+    import re
+    s = s.lower().strip().replace("–", "-").replace("—", "-").replace("&", "and")
+    return re.sub(r"\s+", " ", s)
+
+
+def _subject_matches(s1: Optional[str], s2: Optional[str]) -> bool:
+    n1, n2 = _norm_tax_str(s1), _norm_tax_str(s2)
+    if not n1 or not n2:
+        return False
+    if n1 == n2:
+        return True
+    for group in CANONICAL_SUBJECT_MAP.values():
+        if any(n1 == g or g in n1 for g in group) and any(n2 == g or g in n2 for g in group):
+            return True
+    return False
+
+
+def _taxonomy_matches(t1: Optional[str], t2: Optional[str]) -> bool:
+    if not t1 or not t2:
+        return False
+    n1, n2 = _norm_tax_str(t1), _norm_tax_str(t2)
+    if n1 == n2:
+        return True
+    if len(n1) >= 4 and len(n2) >= 4 and (n1 in n2 or n2 in n1):
+        return True
+    return False
+
+
 @router.get(
     "/{question_id}/similar",
     response_model=SimilarQuestionsResponse,
@@ -349,6 +392,7 @@ async def get_similar_questions(
     Published questions most related to this one.
     First tries to use AI Knowledge Tags (Jaccard Similarity).
     If no AI tags exist yet, falls back to deterministic Knowledge Layer (exact entity > concept > taxonomy).
+    Filters candidates so only questions matching the main question's subject, topic, and subtopic are shown.
     """
     try:
         qid_int = int(question_id)
@@ -362,8 +406,8 @@ async def get_similar_questions(
         
     service = QuestionService(session)
 
-    # "Same theme in other years": look wider, then drop matches from this paper or this year
-    fetch_limit = min(50, limit * 4) if other_years_only else limit
+    # Fetch wider pool of candidates so taxonomy filtering has sufficient candidates
+    fetch_limit = max(50, limit * 5)
 
     async def _from_other_years(results: list) -> list:
         if not other_years_only or not results:
@@ -391,11 +435,67 @@ async def get_similar_questions(
                 continue
             r.setdefault("source_year", year)
             kept.append(r)
-        return kept[:limit]
+        return kept
+
+    async def _filter_by_taxonomy(candidates: list) -> list:
+        if not candidates:
+            return []
+
+        from app.db.models.hierarchy import Subtopic, Topic, Subject
+        from sqlmodel import select
+        t_st, t_top, t_sub = None, None, None
+        if target_q.subtopic_id:
+            st_row = (await session.exec(
+                select(Subtopic.name, Topic.name, Subject.name)
+                .select_from(Subtopic)
+                .join(Topic, Topic.id == Subtopic.topic_id, isouter=True)
+                .join(Subject, Subject.id == Topic.subject_id, isouter=True)
+                .where(Subtopic.id == target_q.subtopic_id)
+            )).first()
+            if st_row:
+                t_st, t_top, t_sub = st_row
+        t_sub = t_sub or target_q.subject_raw
+        t_top = t_top or target_q.topic_raw
+        t_st = t_st or target_q.subtopic_raw
+
+        if not t_sub:
+            return candidates[:limit]
+
+        # 1. Subject match is strictly required
+        same_subj = []
+        for c in candidates:
+            c_subj = c.get("subject_name") or (c.get("question") or {}).get("subject_name")
+            if c_subj and _subject_matches(c_subj, t_sub):
+                same_subj.append(c)
+
+        if not same_subj:
+            return []
+
+        # 2. Prefer questions matching subtopic
+        if t_st:
+            st_matches = [
+                c for c in same_subj
+                if _taxonomy_matches(c.get("subtopic_name") or (c.get("question") or {}).get("subtopic_name"), t_st)
+            ]
+            if st_matches:
+                return st_matches[:limit]
+
+        # 3. Prefer questions matching topic
+        if t_top:
+            top_matches = [
+                c for c in same_subj
+                if _taxonomy_matches(c.get("topic_name") or (c.get("question") or {}).get("topic_name"), t_top)
+            ]
+            if top_matches:
+                return top_matches[:limit]
+
+        # 4. Fallback to same subject
+        return same_subj[:limit]
 
     if target_q.knowledge_tags_ai:
         # Use AI Jaccard Similarity; if it finds nothing, fall through to the deterministic layer
-        results = await _from_other_years(await service.get_similar_questions(qid_int, limit=fetch_limit))
+        raw_ai = await service.get_similar_questions(qid_int, limit=fetch_limit)
+        results = await _filter_by_taxonomy(await _from_other_years(raw_ai))
         if results:
             if include_question:
                 from sqlmodel import select, col
@@ -424,9 +524,10 @@ async def get_similar_questions(
         return JSONResponse(content=cached)
 
     from app.knowledge.similarity import SimilarityService
-    results = await _from_other_years(await SimilarityService(session).find_similar(
+    raw_det = await SimilarityService(session).find_similar(
         qid_int, limit=fetch_limit, min_score=min_score, include_related=include_related
-    ))
+    )
+    results = await _filter_by_taxonomy(await _from_other_years(raw_det))
     if include_question and results:
         from sqlmodel import select, col
         q_ids = [int(r["question_id"]) for r in results if r.get("question_id") is not None]

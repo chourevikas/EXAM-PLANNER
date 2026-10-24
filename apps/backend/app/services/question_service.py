@@ -379,9 +379,9 @@ class QuestionService:
                 "text": text,
                 "translations": q_trans_str,
                 "options": opt_list,
-                "subject_name": subject.name if subject else None,
-                "topic_name": topic.name if topic else None,
-                "subtopic_name": subtopic.name if subtopic else None,
+                "subject_name": subject.name if subject else q.subject_raw,
+                "topic_name": topic.name if topic else q.topic_raw,
+                "subtopic_name": subtopic.name if subtopic else q.subtopic_raw,
                 "exam_name": clean_exam_badge,
                 "exam_full_name": raw_exam_name,
                 "source_year": q.source_year or (exam_obj.source_year if exam_obj else None),
@@ -2283,20 +2283,19 @@ class QuestionService:
         if not target_q or not target_q.knowledge_tags_ai:
             return []
 
-        # Find candidates within the same subtopic (or subject) that have AI tags
+        # Find candidates across published questions that have AI tags
         statement = select(Question).where(
             Question.id != question_id,
             Question.knowledge_tags_ai.is_not(None)
         )
-        if target_q.subtopic_id:
-            statement = statement.where(Question.subtopic_id == target_q.subtopic_id)
-        elif target_q.subject_raw:
-            statement = statement.where(Question.subject_raw == target_q.subject_raw)
-            
         candidates = (await self.session.exec(statement)).all()
         
         def _norm(tags):
-            return {str(t).strip().lower() for t in (tags.get("concepts", []) + tags.get("entities", [])) if t}
+            if not isinstance(tags, dict):
+                return set()
+            c = tags.get("concepts") or []
+            e = tags.get("entities") or []
+            return {str(t).strip().lower() for t in (c + e) if t}
 
         target_tags = target_q.knowledge_tags_ai
         target_all = _norm(target_tags)
@@ -2305,10 +2304,11 @@ class QuestionService:
 
         # Original-cased labels, tagged by kind, for human-readable match reasons
         labels = {}
-        for kind, key in (("Entity", "entities"), ("Concept", "concepts")):
-            for t in target_tags.get(key, []) or []:
-                if t:
-                    labels.setdefault(str(t).strip().lower(), (kind, str(t).strip()))
+        if isinstance(target_tags, dict):
+            for kind, key in (("Entity", "entities"), ("Concept", "concepts")):
+                for t in target_tags.get(key, []) or []:
+                    if t:
+                        labels.setdefault(str(t).strip().lower(), (kind, str(t).strip()))
 
         scored_candidates = []
         for c in candidates:
@@ -2321,7 +2321,7 @@ class QuestionService:
             union = len(target_all.union(c_all))
             if union > 0:
                 score = round((intersection / union) * 100, 2)
-                if score >= 20:  # weaker overlaps are noise; the router then falls back to the knowledge layer
+                if score >= 15:  # meaningful overlaps; weak matches fall back to knowledge layer
                     shared = sorted(target_all.intersection(c_all))
                     scored_candidates.append({
                         "question": c,
@@ -2360,8 +2360,12 @@ class QuestionService:
             results.append({
                 "question_id": q.id,
                 "tier": "related", 
+                "score": match["similarity_score"],
                 "similarity_score": match["similarity_score"],
                 "match_reasons": match["match_reasons"],
+                "subject_name": q.subject_raw,
+                "topic_name": q.topic_raw,
+                "subtopic_name": q.subtopic_raw,
                 "question": q_data
             })
 

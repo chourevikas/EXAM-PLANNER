@@ -99,3 +99,40 @@ async def test_subject_wise_paper_set_filter(client):
     both = (await client.get(url, params={"dynamic_sets": "set_a,SET_B"}, headers=_h())).json()["count"]
     assert (set_b, both) == (3, 6) and all_sets >= both  # set codes are case-insensitive; a mixed bank never matches a set
     assert (await client.get(url, params={"dynamic_sets": "SET A!"}, headers=_h())).status_code == 422
+
+
+@pytest.mark.anyio
+async def test_similar_questions_taxonomy_filtering(client, monkeypatch):
+    s = _state
+    # Monkeypatch get_similar_questions to return questions with different taxonomies
+    candidates = [
+        {"question_id": str(s["other_year"]), "similarity_score": 95, "subject_name": "Indian Polity & Governance", "topic_name": "Parliament", "subtopic_name": "Money Bill"},
+        {"question_id": str(s["bank_2022"]), "similarity_score": 90, "subject_name": "Indian Polity", "topic_name": "Parliament", "subtopic_name": "Budget"},
+        {"question_id": str(s["bank_2015"]), "similarity_score": 85, "subject_name": "Modern History", "topic_name": "Revolts", "subtopic_name": "1857"},
+    ]
+
+    async def fake_similar(self, qid, limit=50):
+        return candidates
+
+    monkeypatch.setattr("app.services.question_service.QuestionService.get_similar_questions", fake_similar)
+
+    # Let's mock target question's subject as "Polity", topic as "Parliament", subtopic as "Money Bill"
+    from app.db.models.question import Question
+
+    async with AsyncSession(test_engine) as session:
+        t_q = await session.get(Question, s["target"])
+        t_q.subject_raw = "Polity"
+        t_q.topic_raw = "Parliament"
+        t_q.subtopic_raw = "Money Bill"
+        session.add(t_q)
+        await session.commit()
+
+    url = f"/api/v1/questions/{s['target']}/similar"
+    res = (await client.get(url, params={"limit": 5})).json()["results"]
+
+    # History question must NOT be included; subtopic match must be kept
+    assert len(res) == 1
+    assert int(res[0]["question_id"]) == s["other_year"]
+    assert res[0]["subject_name"] == "Indian Polity & Governance"
+    assert res[0]["subtopic_name"] == "Money Bill"
+

@@ -265,6 +265,7 @@ class SimilarityService:
             select(
                 Question.id, Question.question_number_in_paper, Question.source_year,
                 Exam.name, Exam.source_year, Subject.name, Topic.name, Subtopic.name,
+                Question.subject_raw, Question.topic_raw, Question.subtopic_raw,
             )
             .select_from(Question)
             .join(Exam, Exam.id == Question.exam_id, isouter=True)
@@ -278,9 +279,9 @@ class SimilarityService:
                 "question_number": number,
                 "exam_name": exam_name,
                 "source_year": q_year or exam_year,
-                "subject_name": subject,
-                "topic_name": topic,
-                "subtopic_name": subtopic,
+                "subject_name": subject or q_sub_raw,
+                "topic_name": topic or q_top_raw,
+                "subtopic_name": subtopic or q_st_raw,
             }
-            for qid, number, q_year, exam_name, exam_year, subject, topic, subtopic in rows
+            for qid, number, q_year, exam_name, exam_year, subject, topic, subtopic, q_sub_raw, q_top_raw, q_st_raw in rows
         }
