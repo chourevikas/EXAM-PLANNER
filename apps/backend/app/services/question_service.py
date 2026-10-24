@@ -370,7 +370,7 @@ class QuestionService:
             exam_obj = exams_map.get(q.exam_id) if q.exam_id else None
             raw_exam_name = exam_obj.name if exam_obj else None
             # Badge by the paper's exam type code, so a renamed code shows up here too
-            clean_exam_badge = exam_badge_label(raw_exam_name, type_codes) or "UPSC"
+            clean_exam_badge = exam_badge_label(raw_exam_name, type_codes) or "UPSC CSE"
 
             results.append({
                 "question_id": str(q.id),
@@ -2303,6 +2303,13 @@ class QuestionService:
         if not target_all:
             return []
 
+        # Original-cased labels, tagged by kind, for human-readable match reasons
+        labels = {}
+        for kind, key in (("Entity", "entities"), ("Concept", "concepts")):
+            for t in target_tags.get(key, []) or []:
+                if t:
+                    labels.setdefault(str(t).strip().lower(), (kind, str(t).strip()))
+
         scored_candidates = []
         for c in candidates:
             c_tags = c.knowledge_tags_ai
@@ -2314,10 +2321,14 @@ class QuestionService:
             union = len(target_all.union(c_all))
             if union > 0:
                 score = round((intersection / union) * 100, 2)
-                if score > 0:
+                if score >= 20:  # weaker overlaps are noise; the router then falls back to the knowledge layer
+                    shared = sorted(target_all.intersection(c_all))
                     scored_candidates.append({
                         "question": c,
-                        "similarity_score": score
+                        "similarity_score": score,
+                        "match_reasons": [
+                            f"{labels.get(s, ('Tag', s))[0]}: {labels.get(s, ('Tag', s))[1]}" for s in shared[:2]
+                        ],
                     })
 
         scored_candidates.sort(key=lambda x: x["similarity_score"], reverse=True)
@@ -2350,6 +2361,7 @@ class QuestionService:
                 "question_id": q.id,
                 "tier": "related", 
                 "similarity_score": match["similarity_score"],
+                "match_reasons": match["match_reasons"],
                 "question": q_data
             })
 

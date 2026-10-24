@@ -25,7 +25,11 @@ export interface SimilarQuestionResult {
 }
 
 /** A recommendation card tagged with how closely it matched. */
-export type SimilarQuestionOut = QuestionOut & { similar_tier?: SimilarTier; similarity_score?: number };
+export type SimilarQuestionOut = QuestionOut & {
+  similar_tier?: SimilarTier;
+  similarity_score?: number;
+  match_reasons?: string[];
+};
 
 /** Maps a /questions/recommended-style card (also embedded by /similar) to the QuestionOut used by the panels. */
 export function recommendationCardToQuestion(
@@ -101,7 +105,8 @@ export function useSimilarQuestions(
     if (!key || cache[key]) return;
     let cancelled = false;
     setLoadingKey(key);
-    fetchSimilarQuestions(questionId as number | string, { limit, language, includeQuestion: true, otherYearsOnly })
+    // Over-fetch: the session's own questions are filtered out below and must not consume the limit
+    fetchSimilarQuestions(questionId as number | string, { limit: Math.max(limit * 3, 12), language, includeQuestion: true, otherYearsOnly })
       .then((results) => {
         if (cancelled) return;
         const cards = results
@@ -110,6 +115,7 @@ export function useSimilarQuestions(
             ...recommendationCardToQuestion(r.question, idx),
             similar_tier: r.tier,
             similarity_score: r.similarity_score,
+            match_reasons: r.match_reasons || [],
           }));
         setCache((prev) => ({ ...prev, [key]: cards }));
       })
@@ -124,7 +130,9 @@ export function useSimilarQuestions(
     };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const similar = (key ? cache[key] || [] : []).filter((q) => !excludeIds.has(String(q.question_id)));
+  const similar = (key ? cache[key] || [] : [])
+    .filter((q) => !excludeIds.has(String(q.question_id)))
+    .slice(0, limit);
   return { similar, isLoading: key !== null && loadingKey === key };
 }
 
