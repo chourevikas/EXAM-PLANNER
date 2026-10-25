@@ -155,7 +155,9 @@ _IS_PRODUCTION = settings.ENVIRONMENT.lower() in ("production", "prod")
 
 # Error tracking: unhandled exceptions (and the stack, request path, release) go to Sentry. Off without a DSN.
 if settings.SENTRY_DSN:
+    import logging
     import sentry_sdk
+    from sentry_sdk.integrations.logging import LoggingIntegration, ignore_logger_for_sentry_logs
 
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
@@ -163,7 +165,17 @@ if settings.SENTRY_DSN:
         traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
         # No emails, IPs, cookies or request bodies.
         send_default_pii=False,
+        # Log lines go to Sentry Logs, linked to the request's trace. Every logger is covered (the integration
+        # hooks logging itself), so the setup_logger() loggers need no handler of their own.
+        enable_logs=settings.SENTRY_ENABLE_LOGS,
+        integrations=[
+            LoggingIntegration(
+                sentry_logs_level=getattr(logging, settings.SENTRY_LOGS_LEVEL.upper(), logging.INFO)
+            )
+        ],
     )
+    # One line per request duplicates what the traces already show.
+    ignore_logger_for_sentry_logs("uvicorn.access")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

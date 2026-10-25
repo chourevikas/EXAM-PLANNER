@@ -166,6 +166,12 @@ class Settings(BaseSettings):
     SENTRY_TRACES_SAMPLE_RATE: float = Field(
         default=0.0, description="Share of requests sent as performance traces (0 = errors only)"
     )
+    SENTRY_ENABLE_LOGS: bool = Field(
+        default=False, description="Also send the app's log lines to Sentry Logs (billed by volume)"
+    )
+    SENTRY_LOGS_LEVEL: str = Field(
+        default="INFO", description="Lowest level sent to Sentry Logs: DEBUG, INFO, WARNING or ERROR"
+    )
 
     # LLM Settings & Provider Credentials
     LLM_PROVIDER: str = Field(default="vertexai")  # vertexai, openai, bedrock
