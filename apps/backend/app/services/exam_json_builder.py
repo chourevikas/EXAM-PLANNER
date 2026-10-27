@@ -93,8 +93,9 @@ class ExamJsonBuilder:
 
         # On-Demand Translation for Exam Attempt Questions
         from app.core.languages import normalize_language
+        from app.config.settings import get_settings
         target_iso, target_enum = normalize_language(target_language)
-        if target_enum != "ENGLISH":
+        if target_enum != "ENGLISH" and get_settings().ENABLE_TRANSLATION_PIPELINE:
             try:
                 from app.db.models import LanguageCode
                 from app.services.google_translation_service import GoogleTranslationService

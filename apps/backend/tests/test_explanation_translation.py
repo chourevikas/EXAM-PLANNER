@@ -30,6 +30,12 @@ test_engine = create_async_engine(
 _state: dict = {}
 
 
+@pytest.fixture(autouse=True)
+def enable_translation_for_test(monkeypatch):
+    from app.config.settings import get_settings
+    monkeypatch.setattr(get_settings(), "ENABLE_TRANSLATION_PIPELINE", True)
+
+
 class FakeTranslator:
     """Prefixes the language code; text containing FAIL comes back unchanged, like a failed call."""
 

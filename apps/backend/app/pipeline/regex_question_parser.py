@@ -446,7 +446,8 @@ def parse_question_block(
     # 4. Options Extraction (A)-(D)
     options: Dict[str, str] = {}
     if first_opt_idx is not None:
-        opts_end = ans_idx if ans_idx is not None else (sol_idx if sol_idx is not None else len(lines))
+        valid_opts_ends = [idx for idx in (ans_idx, sol_idx, mistake_idx, reverse_idx) if idx is not None and idx > first_opt_idx]
+        opts_end = min(valid_opts_ends) if valid_opts_ends else len(lines)
         current_opt_label = None
         current_opt_text: List[str] = []
 
@@ -472,7 +473,7 @@ def parse_question_block(
     # 5. Answer Extraction
     answer_label = ""
     answer_text = None
-    if ans_idx is not None:
+    if ans_idx is not None and ans_idx < len(lines):
         ans_match = ANSWER_LINE_PATTERN.match(lines[ans_idx].strip())
         if ans_match:
             answer_label = ans_match.group(1).upper()
@@ -498,45 +499,47 @@ def parse_question_block(
     solution_bullets: List[str] = []
     related_refs: List[str] = []
     if sol_idx is not None:
-        sol_end = mistake_idx if mistake_idx is not None else (reverse_idx if reverse_idx is not None else len(lines))
+        valid_sol_ends = [idx for idx in (mistake_idx, reverse_idx) if idx is not None and idx > sol_idx]
+        sol_end = min(valid_sol_ends) if valid_sol_ends else len(lines)
         sol_raw_lines = lines[sol_idx:sol_end]
-        first_line = sol_raw_lines[0].strip()
-        sh_match = SOLUTION_HEADER_PATTERN.match(first_line)
+        if sol_raw_lines:
+            first_line = sol_raw_lines[0].strip()
+            sh_match = SOLUTION_HEADER_PATTERN.match(first_line)
 
-        # (text, follows_blank_line); blank lines matter for telling wrapped bullets from new paragraphs
-        body_lines: List[Tuple[str, bool]] = []
-        if sh_match and sh_match.group(1).strip():
-            body_lines.append((sh_match.group(1).strip(), True))
-        after_blank = True
-        for l in sol_raw_lines[1:]:
-            if l.strip():
-                body_lines.append((l.strip(), after_blank))
-                after_blank = False
-            else:
-                after_blank = True
+            # (text, follows_blank_line); blank lines matter for telling wrapped bullets from new paragraphs
+            body_lines: List[Tuple[str, bool]] = []
+            if sh_match and sh_match.group(1).strip():
+                body_lines.append((sh_match.group(1).strip(), True))
+            after_blank = True
+            for l in sol_raw_lines[1:]:
+                if l.strip():
+                    body_lines.append((l.strip(), after_blank))
+                    after_blank = False
+                else:
+                    after_blank = True
 
-        in_related_refs = False
-        in_bullet = False
-        for bl, follows_blank in body_lines:
-            if RELATED_REFS_HEADER_PATTERN.match(bl):
-                in_related_refs = True
-            elif in_related_refs:
-                ref = re.sub(r"^[-–—•■*]+\s*", "", bl).strip()
-                if ref:
-                    related_refs.append(ref)
-            bm = SOLUTION_BULLET_PATTERN.match(bl)
-            if bm:
-                solution_bullets.append(bm.group(2).strip())
-                in_bullet = True
-            elif in_bullet and not follows_blank and not in_related_refs and not SOLUTION_NOTE_PATTERN.match(bl):
-                # A bullet wrapped onto the next line ("• SGSY was formed by ... TRYSEM, DWCRA,\nand the ...")
-                solution_bullets[-1] = f"{solution_bullets[-1]} {bl}"
-            else:
-                solution_bullets.append(bl)
-                # A note's wrapped lines join it like a bullet's
-                in_bullet = bool(SOLUTION_NOTE_PATTERN.match(bl))
+            in_related_refs = False
+            in_bullet = False
+            for bl, follows_blank in body_lines:
+                if RELATED_REFS_HEADER_PATTERN.match(bl):
+                    in_related_refs = True
+                elif in_related_refs:
+                    ref = re.sub(r"^[-–—•■*]+\s*", "", bl).strip()
+                    if ref:
+                        related_refs.append(ref)
+                bm = SOLUTION_BULLET_PATTERN.match(bl)
+                if bm:
+                    solution_bullets.append(bm.group(2).strip())
+                    in_bullet = True
+                elif in_bullet and not follows_blank and not in_related_refs and not SOLUTION_NOTE_PATTERN.match(bl):
+                    # A bullet wrapped onto the next line ("• SGSY was formed by ... TRYSEM, DWCRA,\nand the ...")
+                    solution_bullets[-1] = f"{solution_bullets[-1]} {bl}"
+                else:
+                    solution_bullets.append(bl)
+                    # A note's wrapped lines join it like a bullet's
+                    in_bullet = bool(SOLUTION_NOTE_PATTERN.match(bl))
 
-        solution_text = "\n\n".join(solution_bullets).strip()
+            solution_text = "\n\n".join(solution_bullets).strip()
 
     if not solution_text:
         issues.append("EMPTY_SOLUTION")
@@ -545,19 +548,21 @@ def parse_question_block(
     # 7. Common Mistake Extraction
     common_mistake = None
     if mistake_idx is not None:
-        mistake_end = reverse_idx if reverse_idx is not None else len(lines)
-        first_m_line = lines[mistake_idx].strip()
-        mm = COMMON_MISTAKE_HEADER_PATTERN.match(first_m_line)
-        mistake_parts = [mm.group(1).strip()] if mm and mm.group(1).strip() else []
-        for l in lines[mistake_idx + 1 : mistake_end]:
-            if l.strip():
-                mistake_parts.append(l.strip())
-        if mistake_parts:
-            common_mistake = " ".join(mistake_parts).strip()
+        valid_mistake_ends = [idx for idx in (reverse_idx,) if idx is not None and idx > mistake_idx]
+        mistake_end = min(valid_mistake_ends) if valid_mistake_ends else len(lines)
+        if mistake_idx < len(lines):
+            first_m_line = lines[mistake_idx].strip()
+            mm = COMMON_MISTAKE_HEADER_PATTERN.match(first_m_line)
+            mistake_parts = [mm.group(1).strip()] if mm and mm.group(1).strip() else []
+            for l in lines[mistake_idx + 1 : mistake_end]:
+                if l.strip():
+                    mistake_parts.append(l.strip())
+            if mistake_parts:
+                common_mistake = " ".join(mistake_parts).strip()
 
     # 8. Reverse Logic Box Extraction
     reverse_logic: Dict[str, Dict[str, str]] = {}
-    if reverse_idx is not None:
+    if reverse_idx is not None and reverse_idx < len(lines):
         rev_text = "\n".join(lines[reverse_idx:])
         for rm in REVERSE_LOGIC_OPTION_PATTERN.finditer(rev_text):
             opt_letter = rm.group(1).upper()

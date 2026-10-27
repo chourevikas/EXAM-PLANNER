@@ -24,6 +24,11 @@ async def get_translation_coverage(
 
 
 async def _translate_exam(exam_id: int) -> None:
+    from app.config.settings import get_settings
+    if not get_settings().ENABLE_TRANSLATION_PIPELINE:
+        logger.info(f"🚫 [TRANSLATION DISABLED] Skipping _translate_exam for Exam #{exam_id}")
+        return
+
     from app.db.session import async_session_factory
     from app.services.translation_service import QuestionTranslationService
 
@@ -32,6 +37,11 @@ async def _translate_exam(exam_id: int) -> None:
 
 
 async def _translate_all() -> None:
+    from app.config.settings import get_settings
+    if not get_settings().ENABLE_TRANSLATION_PIPELINE:
+        logger.info("🚫 [TRANSLATION DISABLED] Skipping _translate_all")
+        return
+
     from app.db.session import async_session_factory
     from app.services.translation_service import QuestionTranslationService
 

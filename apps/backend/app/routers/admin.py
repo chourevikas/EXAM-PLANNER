@@ -1846,6 +1846,14 @@ async def trigger_exam_translation(
     Manually trigger or retry question translation into all 22 Indian languages for an exam.
     Runs in the background via Celery or BackgroundTasks.
     """
+    from app.config.settings import get_settings
+    if not get_settings().ENABLE_TRANSLATION_PIPELINE:
+        return {
+            "status": "DISABLED",
+            "message": "Translation pipeline is globally disabled.",
+            "exam_id": exam_id,
+        }
+
     from app.db.models import Exam
     from app.tasks.translation_tasks import translate_exam_questions_task
     from app.cache import invalidate_pipeline_status_cache

@@ -111,6 +111,10 @@ class QuestionTranslationService:
         Idempotent: skips any translations already present in the database.
         """
         log = TaskLoggerAdapter(logger, task_id=task_id or str(exam_id))
+        if not getattr(self.settings, "ENABLE_TRANSLATION_PIPELINE", False):
+            log.info(f"🚫 Translation pipeline is disabled. Skipping translate_exam for Exam #{exam_id}.")
+            return {"status": "DISABLED", "message": "Translation pipeline is disabled.", "exam_id": exam_id}
+
         log.info(f"🌐 [TRANSLATION PIPELINE STARTED] Exam ID: {exam_id}")
 
         async def _execute(sess: AsyncSession) -> Dict[str, Any]:
@@ -373,6 +377,10 @@ class QuestionTranslationService:
         Scans all exams in the database, determines if any question, option,
         or passage is missing translations in any of the 22 languages, and backfills them.
         """
+        if not getattr(self.settings, "ENABLE_TRANSLATION_PIPELINE", False):
+            logger.info("🚫 Translation pipeline is disabled. Skipping reconcile_all_missing_translations.")
+            return {"status": "DISABLED", "message": "Translation pipeline is disabled.", "exams_checked": 0}
+
         logger.info("🌙 [MIDNIGHT RECONCILIATION] Starting automated check for missing translations across all exams...")
 
         async def _reconcile(sess: AsyncSession):

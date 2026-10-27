@@ -1627,6 +1627,10 @@ class QuestionService:
         lang_db_enum: Any,
     ) -> None:
         """Background worker to translate large question batches without blocking the caller."""
+        from app.config.settings import get_settings
+        if not get_settings().ENABLE_TRANSLATION_PIPELINE:
+            return
+
         try:
             from app.db.models import QuestionTranslation, OptionTranslation, PassageTranslation
             from app.services.google_translation_service import GoogleTranslationService
@@ -1697,6 +1701,10 @@ class QuestionService:
     ) -> None:
         """Dynamically translates any missing question stems, options, and passages on-the-fly and persists to DB."""
         if target_enum == "ENGLISH":
+            return
+
+        from app.config.settings import get_settings
+        if not get_settings().ENABLE_TRANSLATION_PIPELINE:
             return
 
         try:

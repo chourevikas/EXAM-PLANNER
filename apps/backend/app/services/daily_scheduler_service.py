@@ -200,13 +200,11 @@ async def run_midnight_translation_job() -> Dict[str, Any]:
     """
     Proactively translates all un-translated question stems and options
     into Hindi and Marathi using Google Translate's batch API.
-
-    Detects 'fake' translations where the stored text is identical to the
-    English source (i.e. the translation was never actually done).
-
-    Runs once per night; uses cache deduplication to avoid re-running.
-    Batches texts in chunks of 200 for optimal Google API throughput.
     """
+    if not getattr(settings, "ENABLE_TRANSLATION_PIPELINE", False):
+        logger.info("🚫 Midnight translation job skipped (ENABLE_TRANSLATION_PIPELINE is False).")
+        return {"status": "DISABLED", "message": "Translation pipeline is disabled."}
+
     tz = ZoneInfo("Asia/Kolkata")
     today = datetime.now(tz).date()
     date_str = today.isoformat()
@@ -443,11 +441,12 @@ async def _daily_midnight_scheduler_loop():
             except Exception as exp_err:
                 logger.error(f"⚠️ Subscription expiry error (non-fatal): {exp_err}", exc_info=True)
 
-            # Run proactive translation for Hindi + Marathi (non-blocking — errors don't stop the loop)
-            try:
-                await run_midnight_translation_job()
-            except Exception as trans_err:
-                logger.error(f"⚠️ Midnight translation job error (non-fatal): {trans_err}", exc_info=True)
+            # Run proactive translation for Hindi + Marathi if enabled
+            if getattr(settings, "ENABLE_TRANSLATION_PIPELINE", False):
+                try:
+                    await run_midnight_translation_job()
+                except Exception as trans_err:
+                    logger.error(f"⚠️ Midnight translation job error (non-fatal): {trans_err}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("🛑 Daily Midnight Scheduler loop cancelled.")
             break

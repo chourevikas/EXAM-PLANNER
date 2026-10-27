@@ -440,3 +440,25 @@ def test_prompt_after_numbered_statements_is_not_folded_into_last_item():
     # Markdown would otherwise read the prompt as a lazy continuation of item 2
     assert rec.stem.endswith("under Shahu\n\nSelect the correct answer from the codes given below:")
     assert "1. Raghunath Rao (Raghoba)\n2. Balaji" in rec.stem
+
+
+def test_out_of_order_headers_and_empty_solution_slice_no_index_error():
+    """Verify that inverted headers (e.g. Common Mistake before Solution) or empty solution does not raise IndexError."""
+    text = (
+        "Q1. [Subject: Polity]\n"
+        "Which article deals with financial emergency?\n"
+        "Common Mistake: Thinking it is Article 356.\n"
+        "(A) Article 352\n"
+        "(B) Article 356\n"
+        "(C) Article 360\n"
+        "(D) Article 365\n"
+        "Answer: (C)\n"
+        "Solution:\n"
+    )
+    blocks = split_into_question_blocks(text)
+    assert len(blocks) == 1
+    # Must not raise IndexError
+    rec = parse_question_block(blocks[0])
+    assert rec.question_number == 1
+    assert rec.answer_label == "C"
+

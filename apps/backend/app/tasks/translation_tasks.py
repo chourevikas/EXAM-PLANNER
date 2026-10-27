@@ -42,6 +42,12 @@ async def async_translate_exam(
     """Async runner for exam question translation."""
     t_id = task_id or str(uuid.uuid4())
     log = TaskLoggerAdapter(logger, task_id=t_id)
+
+    from app.config.settings import get_settings
+    if not get_settings().ENABLE_TRANSLATION_PIPELINE:
+        log.info(f"🚫 [TRANSLATION DISABLED] Skipping translation for Exam '{exam_id_str}'")
+        return {"status": "DISABLED", "message": "Translation pipeline is disabled."}
+
     exam_id = int(exam_id_str)
 
     log.info("=" * 70)
@@ -77,6 +83,12 @@ async def async_reconcile_missing_translations(
     """Async runner for midnight reconciliation."""
     t_id = task_id or str(uuid.uuid4())
     log = TaskLoggerAdapter(logger, task_id=t_id)
+
+    from app.config.settings import get_settings
+    if not get_settings().ENABLE_TRANSLATION_PIPELINE:
+        log.info("🚫 [MIDNIGHT RECONCILIATION DISABLED] Skipping reconciliation task.")
+        return {"status": "DISABLED", "message": "Translation pipeline is disabled."}
+
     log.info(f"🌙 [MIDNIGHT RECONCILIATION STARTED] Engine: {execution_engine} (Task ID: {t_id})")
 
     service = QuestionTranslationService()
