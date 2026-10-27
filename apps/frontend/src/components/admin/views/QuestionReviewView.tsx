@@ -95,6 +95,8 @@ interface QuestionDetailItem {
   exam_code?: string;
   question_number_in_paper: number;
   question_type: string;
+  question_type_tag?: string | null;
+  cognitive_skill?: string | null;
   difficulty: string;
   marks: number;
   negative_marks?: number;
@@ -418,6 +420,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           exam_code: q.exam_code,
           question_number_in_paper: q.question_number_in_paper,
           question_type: q.question_type || 'SINGLE_CHOICE',
+          question_type_tag: q.question_type_tag || q.metadata?.cognitive_skill || null,
+          cognitive_skill: q.metadata?.cognitive_skill || q.question_type_tag || null,
           difficulty: q.difficulty || 'MEDIUM',
           marks: q.marks !== undefined ? q.marks : 2.0,
           negative_marks: q.negative_marks !== undefined ? q.negative_marks : 0.66,

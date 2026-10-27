@@ -99,6 +99,36 @@ def difficulty_breakdown(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]
         })
     return rows
 
+
+def question_type_breakdown(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Per question type (e.g. Chronology, Factual, Conceptual, Match-the-following):
+    questions, attempted, correct, wrong, unattempted, accuracy_pct, and avg time.
+    """
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for q in questions:
+        q_type = q.get("question_type_tag") or q.get("cognitive_skill")
+        if not q_type or str(q_type).strip().lower() in ("conceptual reasoning", "extraction stage initialized", "none", ""):
+            continue
+        clean_type = str(q_type).strip()
+        groups.setdefault(clean_type, []).append(q)
+
+    rows = []
+    for q_type, qs in sorted(groups.items(), key=lambda x: len(x[1]), reverse=True):
+        attempted = [q for q in qs if q.get("is_attempted")]
+        correct = sum(1 for q in attempted if q.get("is_correct"))
+        times = [float(q.get("time_taken_seconds") or 0.0) for q in attempted]
+        rows.append({
+            "question_type": q_type,
+            "total": len(qs),
+            "attempted": len(attempted),
+            "correct": correct,
+            "incorrect": len(attempted) - correct,
+            "unattempted": len(qs) - len(attempted),
+            "accuracy_pct": round(correct * 100.0 / len(attempted), 1) if attempted else None,
+            "avg_time_seconds": round(sum(times) / len(times), 1) if times else None,
+        })
+    return rows
+
 class MatrixOrchestrator:
     """
     Mode-Aware Psychometric Engine Orchestrator.
@@ -345,6 +375,8 @@ class MatrixOrchestrator:
                     "subtopic": sub_name,
                     "blooms_level": blooms_lbl,
                     "cognitive_thinking_level": blooms_friendly,
+                    "cognitive_skill": r.get("cognitive_skill") or sol.get("cognitive_skill"),
+                    "question_type_tag": r.get("question_type_tag") or sol.get("question_type_tag") or r.get("cognitive_skill"),
                     "difficulty": r.get("difficulty", "MEDIUM"),
                     "selected_option_id": r.get("selected_option_id"),
                     "user_selected_option": r.get("user_selected_label", "Unattempted"),
@@ -889,6 +921,7 @@ class MatrixOrchestrator:
             "unattempted_summary": unattempted_summary,
             "unattempted_analysis": unattempted_summary,
             "difficulty_breakdown": difficulty_breakdown(part_1_questions),
+            "question_type_breakdown": question_type_breakdown(part_1_questions),
             "confidence_calibration": confidence_eval,
             "answer_rounds": answer_rounds,
             "mentorship_insight": instant_mentorship_insight,

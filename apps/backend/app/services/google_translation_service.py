@@ -195,6 +195,10 @@ class GoogleTranslationService:
         if not texts:
             return []
 
+        if not getattr(self.settings, "ENABLE_TRANSLATION_PIPELINE", False):
+            logger.info("🚫 Translation pipeline is globally disabled. Skipping translation API/LLM calls.")
+            return texts
+
         target_iso, target_enum = normalize_language(target_language)
         source_iso, _ = normalize_language(source_language)
 

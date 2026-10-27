@@ -69,6 +69,13 @@ def set_cached_solutions_data(exam_code: str, data: Dict[str, Any]) -> None:
     }
 
 
+def clear_cached_solutions_data(exam_code: Optional[str] = None) -> None:
+    if exam_code:
+        EXAM_SOLUTIONS_SLIDING_CACHE.pop(str(exam_code), None)
+    else:
+        EXAM_SOLUTIONS_SLIDING_CACHE.clear()
+
+
 async def get_cached_solutions_data_async(exam_code: str, exam_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
     """Checks in-memory cache first, then Redis app cache."""
     # 1. Memory cache check
@@ -373,9 +380,15 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
     except Exception as sol_err:
         logger.warning(f"DB solutions cache load failed for exam '{exam.code}': {sol_err}")
 
+    # Preload questions map so question records (knowledge_tags_raw, difficulty, marks) are always available
+    q_ids = [r.question_id for r in responses_db if r.question_id]
+    q_map: Dict[Any, Question] = {}
+    if q_ids:
+        q_res = await session.exec(select(Question).where(col(Question.id).in_(q_ids)))
+        q_map = {q.id: q for q in q_res.all()}
+
     # Lazy Database Fallback Cache (only populated if cache is missing data for any question)
     db_loaded = False
-    q_map: Dict[Any, Question] = {}
     opt_map: Dict[Any, QuestionOption] = {}
     opts_by_qid: Dict[Any, List[QuestionOption]] = {}
     expl_map: Dict[Any, QuestionExplanation] = {}
@@ -395,12 +408,12 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
             return
         db_loaded = True
         logger.info(f"Triggering lazy database fallback lookup for attempt '{attempt.id}'...")
-        q_ids = [r.question_id for r in responses_db if r.question_id]
-        if q_ids:
+        if q_ids and not q_map:
             q_res = await session.exec(select(Question).where(col(Question.id).in_(q_ids)))
             q_rows = q_res.all()
             q_map = {q.id: q for q in q_rows}
 
+        if q_ids:
             opt_res = await session.exec(
                 select(QuestionOption)
                 .where(col(QuestionOption.question_id).in_(q_ids))
@@ -490,7 +503,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
         if not sol_data or not sol_data.get("options") or not sol_data.get("explanation"):
             await _ensure_db_fallback_loaded()
 
-        q_model = q_map.get(r.question_id) if db_loaded else None
+        q_model = q_map.get(r.question_id)
         selected_opt = opt_map.get(r.selected_option_id) if (db_loaded and r.selected_option_id) else None
 
         # Taxonomy resolution
@@ -593,8 +606,16 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
         sol_irt = sol_data.get("irt_params") if (sol_data and isinstance(sol_data.get("irt_params"), dict)) else None
         sol_diff = sol_data.get("difficulty") if sol_data else None
 
+        raw_q_type = (
+            (q_model.knowledge_tags_raw.get("question_type") if (q_model and q_model.knowledge_tags_raw and isinstance(q_model.knowledge_tags_raw, dict)) else None)
+            or (sol_data.get("question_type_tag") if sol_data else None)
+            or (sol_data.get("question_type") if (sol_data and str(sol_data.get("question_type")).strip() not in ("MCQ_SINGLE", "MCQ_MULTIPLE")) else None)
+            or (sol_data.get("cognitive_skill") if (sol_data and str(sol_data.get("cognitive_skill")).strip().lower() not in ("extraction stage initialized", "conceptual reasoning")) else None)
+            or (qm_record.cognitive_skill if qm_record and qm_record.cognitive_skill and str(qm_record.cognitive_skill).strip().lower() not in ("extraction stage initialized", "conceptual reasoning") else None)
+        )
+
         blooms_val = sol_blooms or ((qm_record.blooms_level.value if hasattr(qm_record.blooms_level, "value") else str(qm_record.blooms_level)) if (qm_record and qm_record.blooms_level) else "ANALYZE")
-        cognitive_skill = sol_cognitive or (qm_record.cognitive_skill if (qm_record and qm_record.cognitive_skill) else "Conceptual Reasoning")
+        cognitive_skill = raw_q_type or (sol_cognitive if (sol_cognitive and str(sol_cognitive).strip().lower() not in ("extraction stage initialized", "conceptual reasoning")) else None) or (qm_record.cognitive_skill if (qm_record and qm_record.cognitive_skill) else "Conceptual Reasoning")
 
         if sol_irt:
             irt_params = {
@@ -634,6 +655,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
             "difficulty": diff_val,
             "blooms_level": blooms_val,
             "cognitive_skill": cognitive_skill,
+            "question_type_tag": raw_q_type,
             "selected_option_id": str(r.selected_option_id) if r.selected_option_id else None,
             "user_selected_label": user_sel_label,
             "is_correct": r.is_correct,

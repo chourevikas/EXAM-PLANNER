@@ -288,11 +288,18 @@ class HumanReviewService:
                     "is_primary": True,
                 })
 
+        raw_type_tag = None
+        if question.knowledge_tags_raw and isinstance(question.knowledge_tags_raw, dict):
+            raw_type_tag = question.knowledge_tags_raw.get("question_type")
+        if not raw_type_tag and qm and qm.cognitive_skill:
+            raw_type_tag = qm.cognitive_skill
+
         return {
             "question_id": str(question.id),
             "exam_id": str(question.exam_id),
             "section_code": question.section_code,
             "question_number": question.question_number_in_paper,
+            "question_type_tag": raw_type_tag,
             "status": question.status.value,
             "difficulty": question.difficulty.value if hasattr(question.difficulty, "value") else str(question.difficulty),
             "marks": question.marks,

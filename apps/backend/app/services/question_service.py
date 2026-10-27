@@ -761,15 +761,22 @@ class QuestionService:
                 )
                 self.session.add(new_expl)
 
-        # Update Metadata
-        if any([payload.blooms_level, payload.cognitive_skill, payload.primary_concept_tag]):
+        # Update Metadata and Question Type Tag
+        target_skill = payload.question_type_tag or payload.cognitive_skill
+        if target_skill:
+            kt = dict(q.knowledge_tags_raw) if (q.knowledge_tags_raw and isinstance(q.knowledge_tags_raw, dict)) else {}
+            kt["question_type"] = target_skill
+            q.knowledge_tags_raw = kt
+            self.session.add(q)
+
+        if any([payload.blooms_level, target_skill, payload.primary_concept_tag]):
             meta_stmt = select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
             qm = (await self.session.exec(meta_stmt)).first()
             if qm:
                 if payload.blooms_level:
                     qm.blooms_level = payload.blooms_level
-                if payload.cognitive_skill:
-                    qm.cognitive_skill = payload.cognitive_skill
+                if target_skill:
+                    qm.cognitive_skill = target_skill
                 if payload.primary_concept_tag:
                     qm.primary_concept_tag = payload.primary_concept_tag
                 self.session.add(qm)
@@ -777,7 +784,7 @@ class QuestionService:
                 new_qm = QuestionMetadata(
                     question_id=q.id,
                     blooms_level=payload.blooms_level or BloomsLevel.ANALYZE,
-                    cognitive_skill=payload.cognitive_skill or "Conceptual Reasoning",
+                    cognitive_skill=target_skill or "Conceptual Reasoning",
                     primary_concept_tag=payload.primary_concept_tag or "GENERAL",
                 )
                 self.session.add(new_qm)
@@ -1567,6 +1574,15 @@ class QuestionService:
         assets = (await self.session.exec(asset_stmt)).all()
         assets_list = [serialize_question_asset(a) for a in assets]
 
+        # Resolve question type tag from knowledge_tags_raw or cognitive_skill
+        raw_type_tag = None
+        if q.knowledge_tags_raw and isinstance(q.knowledge_tags_raw, dict):
+            raw_type_tag = q.knowledge_tags_raw.get("question_type")
+        if not raw_type_tag and qm and qm.cognitive_skill and qm.cognitive_skill != "Conceptual Reasoning":
+            raw_type_tag = qm.cognitive_skill
+        if not raw_type_tag and qm and qm.cognitive_skill:
+            raw_type_tag = qm.cognitive_skill
+
         return QuestionDetailResponse(
             question_id=str(q.id),
             exam_id=str(q.exam_id) if q.exam_id else None,
@@ -1579,6 +1595,7 @@ class QuestionService:
             section_code=q.section_code,
             question_number_in_paper=q.question_number_in_paper,
             question_type=q.question_type,
+            question_type_tag=raw_type_tag,
             difficulty=q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
             marks=q.marks,
             negative_marks=q.negative_marks,
@@ -1610,6 +1627,10 @@ class QuestionService:
         lang_db_enum: Any,
     ) -> None:
         """Background worker to translate large question batches without blocking the caller."""
+        from app.config.settings import get_settings
+        if not get_settings().ENABLE_TRANSLATION_PIPELINE:
+            return
+
         try:
             from app.db.models import QuestionTranslation, OptionTranslation, PassageTranslation
             from app.services.google_translation_service import GoogleTranslationService
@@ -1680,6 +1701,10 @@ class QuestionService:
     ) -> None:
         """Dynamically translates any missing question stems, options, and passages on-the-fly and persists to DB."""
         if target_enum == "ENGLISH":
+            return
+
+        from app.config.settings import get_settings
+        if not get_settings().ENABLE_TRANSLATION_PIPELINE:
             return
 
         try:
@@ -2206,6 +2231,15 @@ class QuestionService:
                         )
                     )
 
+            # Resolve question type tag from knowledge_tags_raw or cognitive_skill
+            raw_type_tag = None
+            if q.knowledge_tags_raw and isinstance(q.knowledge_tags_raw, dict):
+                raw_type_tag = q.knowledge_tags_raw.get("question_type")
+            if not raw_type_tag and qm and qm.cognitive_skill and qm.cognitive_skill != "Conceptual Reasoning":
+                raw_type_tag = qm.cognitive_skill
+            if not raw_type_tag and qm and qm.cognitive_skill:
+                raw_type_tag = qm.cognitive_skill
+
             results.append(
                 QuestionDetailResponse(
                     question_id=str(q.id),
@@ -2219,6 +2253,7 @@ class QuestionService:
                     section_code=q.section_code,
                     question_number_in_paper=q.question_number_in_paper,
                     question_type=q.question_type,
+                    question_type_tag=raw_type_tag,
                     difficulty=q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
                     marks=q.marks,
                     negative_marks=q.negative_marks,

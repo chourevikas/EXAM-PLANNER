@@ -192,6 +192,10 @@ class Settings(BaseSettings):
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(
         default="gcp-service-account.json"
     )
+    ENABLE_TRANSLATION_PIPELINE: bool = Field(
+        default=False,
+        description="Master switch for Translation API and background translation workers. When False, all Translation API and LLM translation calls are blocked.",
+    )
     OPENAI_API_KEY: Optional[str] = Field(default=None)
     OPENAI_MODEL_NAME: str = Field(default="gpt-4.1")
     VISION_LLM_RATE_LIMIT_RPS: float = Field(default=0.5)

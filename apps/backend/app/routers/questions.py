@@ -1,4 +1,5 @@
 from typing import Optional
+import re
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.encoders import jsonable_encoder
@@ -17,6 +18,8 @@ from app.schemas.question import (
 )
 from app.services.question_service import QuestionService
 from app.schemas.knowledge import SimilarQuestionsResponse, QuestionKnowledgeResponse
+from app.pipeline.patterns import extract_option_analysis_from_text, clean_correct_option_text
+
 
 
 router = APIRouter(prefix="/questions", tags=["Questions & Formatted Outputs"])
@@ -827,6 +830,19 @@ async def get_question_solution(
         if qr and not opt_data[opt.id]["qr"]:
             opt_data[opt.id]["qr"] = qr
 
+    # Collect full reverse logic source from explanation or option translations
+    full_rl_source = (expl.reverse_logic or "").strip() if expl else ""
+    if not full_rl_source and expl and expl.detailed_solution and ("Reverse Logic" in expl.detailed_solution or "Why the other options" in expl.detailed_solution):
+        full_rl_source = expl.detailed_solution
+    if not full_rl_source:
+        for entry in opt_data.values():
+            for o in entry["ots"]:
+                if o.distractor_analysis and ("Reverse Logic" in o.distractor_analysis or "Why the other options" in o.distractor_analysis or "Option (B)" in o.distractor_analysis or "रिवर्स लॉजिक" in o.distractor_analysis):
+                    full_rl_source = o.distractor_analysis
+                    break
+            if full_rl_source:
+                break
+
     for opt_id, entry in opt_data.items():
         opt = entry["opt"]
         qr = entry["qr"]
@@ -849,9 +865,14 @@ async def get_question_solution(
             elif why_t:
                 analysis_text = why_t
 
+        if not analysis_text and not opt.is_correct and full_rl_source:
+            analysis_text = extract_option_analysis_from_text(full_rl_source, opt.option_label)
+
         if opt.is_correct:
             correct_option_id = str(opt.id)
             correct_option_label = opt.option_label
+            if analysis_text:
+                analysis_text = clean_correct_option_text(analysis_text)
 
         c_score = opt.closeness_score if opt.closeness_score is not None else (1.0 if opt.is_correct else 0.0)
 

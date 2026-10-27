@@ -57,6 +57,9 @@ async def translate_explanations(
     """
     targets = _target_languages(target_languages)
     totals = {"explanations_added": 0, "analyses_added": 0, "failed": 0}
+    from app.config.settings import get_settings
+    if not get_settings().ENABLE_TRANSLATION_PIPELINE:
+        return totals
     if not targets:
         return totals
 

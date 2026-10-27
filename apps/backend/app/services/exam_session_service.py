@@ -58,6 +58,7 @@ from app.services.scoring import UPSC_MARKS, UPSC_NEGATIVE, awarded, question_ma
 from app.engine.matrices.time_tiered_scoring import TimeTieredScoringStrategy
 from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
 from app.engine.matrices.guessing_tendency import GuessingTendencyStrategy
+from app.pipeline.patterns import extract_option_analysis_from_text, clean_correct_option_text
 from app.engine.post_submission_pipeline import load_exam_solutions_data
 from app.storage.factory import get_storage_provider
 from app.config.logger import setup_logger
@@ -1349,6 +1350,17 @@ class ExamSessionService:
                 "key_takeaway": key_takeaways[0] if key_takeaways else (db_expl.common_mistake or ""),
             }
 
+            # Collect full reverse logic source across explanation and options if present
+            full_rl_source = (db_expl.reverse_logic or "").strip() if db_expl else ""
+            if not full_rl_source and detailed_sol and ("Reverse Logic" in detailed_sol or "Why the other options" in detailed_sol):
+                full_rl_source = detailed_sol
+            if not full_rl_source:
+                for o in db_opts:
+                    t = trans_by_opt.get(o.id)
+                    if t and t.distractor_analysis and ("Reverse Logic" in t.distractor_analysis or "Why the other options" in t.distractor_analysis or "Option (B)" in t.distractor_analysis or "रिवर्स लॉजिक" in t.distractor_analysis):
+                        full_rl_source = t.distractor_analysis
+                        break
+
             distractor_map = {}
             for o in db_opts:
                 t = trans_by_opt.get(o.id)
@@ -1365,6 +1377,12 @@ class ExamSessionService:
                         da = whats_t
                     elif why_t:
                         da = why_t
+
+                if not da and not o.is_correct and full_rl_source:
+                    da = extract_option_analysis_from_text(full_rl_source, o.option_label)
+
+                if o.is_correct and da:
+                    da = clean_correct_option_text(da)
 
                 c_score = o.closeness_score if o.closeness_score is not None else (1.0 if o.is_correct else 0.0)
                 opt_text = t.option_text if t else f"Option {o.option_label}"

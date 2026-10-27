@@ -44,22 +44,26 @@ ARROW_LINE_PATTERN = re.compile(r"^\s*[➤►▶➢]\s*(.*)$")
 ANSWER_OPTIONS_LABEL_PATTERN = re.compile(r"(?i)^\s*answer\s+options?\s*:?\s*$")
 
 # Header Tag Extractors (tolerant of [, (, {, <, missing brackets, line breaks, extra spaces)
-# Example: [Subject: History & Culture] [Topic: Ancient Indian Literature] [Sub-topic: Sanskrit Dramatists] [Difficulty: Tough]
-# Also supports: [Microtheme: ...] as Topic, [Nano Theme: ...] as Subtopic
+# Example: [Subject: History & Culture] [Topic: Ancient Indian Literature] [Sub-topic: Sanskrit Dramatists] [Difficulty: Tough] [Type: Chronology]
+# Also supports: [Microtheme: ...] as Topic, [Nano Theme: ...] as Subtopic, [Question Type: ...] as Type
 SUBJECT_TAG_PATTERN = re.compile(
-    r"(?i)[\[\(\{<]?\s*Subject\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Topic|Micro[-\s]?theme|Sub[-\s]?topic|Nano[-\s]?theme|Difficulty)\s*:|$)",
+    r"(?i)[\[\(\{<]?\s*Subject\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Topic|Micro[-\s]?theme|Sub[-\s]?topic|Nano[-\s]?theme|Difficulty|Question\s*Type|Question\s*Nature|Type)\s*:|$)",
     re.UNICODE,
 )
 TOPIC_TAG_PATTERN = re.compile(
-    r"(?i)[\[\(\{<]?\s*(?:Topic|Micro[-\s]?theme)\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Sub[-\s]?topic|Nano[-\s]?theme|Difficulty|Subject)\s*:|$)",
+    r"(?i)[\[\(\{<]?\s*(?:Topic|Micro[-\s]?theme)\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Sub[-\s]?topic|Nano[-\s]?theme|Difficulty|Subject|Question\s*Type|Question\s*Nature|Type)\s*:|$)",
     re.UNICODE,
 )
 SUBTOPIC_TAG_PATTERN = re.compile(
-    r"(?i)[\[\(\{<]?\s*(?:Sub[-\s]?topic|Nano[-\s]?theme)\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Difficulty|Subject|Topic|Micro[-\s]?theme)\s*:|$)",
+    r"(?i)[\[\(\{<]?\s*(?:Sub[-\s]?topic|Nano[-\s]?theme)\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Difficulty|Subject|Topic|Micro[-\s]?theme|Question\s*Type|Question\s*Nature|Type)\s*:|$)",
     re.UNICODE,
 )
 DIFFICULTY_TAG_PATTERN = re.compile(
-    r"(?i)[\[\(\{<]?\s*Difficulty\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Subject|Topic|Micro[-\s]?theme|Sub[-\s]?topic|Nano[-\s]?theme)\s*:|$)",
+    r"(?i)[\[\(\{<]?\s*Difficulty\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Subject|Topic|Micro[-\s]?theme|Sub[-\s]?topic|Nano[-\s]?theme|Question\s*Type|Question\s*Nature|Type)\s*:|$)",
+    re.UNICODE,
+)
+TYPE_TAG_PATTERN = re.compile(
+    r"(?i)[\[\(\{<]?\s*(?:Question\s*Type|Question\s*Nature|Type)\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Subject|Topic|Micro[-\s]?theme|Sub[-\s]?topic|Nano[-\s]?theme|Difficulty)\s*:|$)",
     re.UNICODE,
 )
 
@@ -159,11 +163,12 @@ STATEMENT_LINE_PATTERN = re.compile(
 
 
 def extract_header_tags(header_line: str) -> dict:
-    """Extracts Subject, Topic, Subtopic, and Difficulty from a Q_HEADER line."""
+    """Extracts Subject, Topic, Subtopic, Difficulty, and Type from a Q_HEADER line."""
     subject = None
     topic = None
     subtopic = None
     difficulty = None
+    type_raw = None
 
     sm = SUBJECT_TAG_PATTERN.search(header_line)
     if sm:
@@ -181,9 +186,48 @@ def extract_header_tags(header_line: str) -> dict:
     if dm:
         difficulty = dm.group(1).strip()
 
+    tym = TYPE_TAG_PATTERN.search(header_line)
+    if tym:
+        type_raw = tym.group(1).strip()
+
     return {
         "subject_raw": subject,
         "topic_raw": topic,
         "subtopic_raw": subtopic,
         "difficulty_raw": difficulty,
+        "type_raw": type_raw,
     }
+
+
+def extract_option_analysis_from_text(raw_text: str, label: str) -> str | None:
+    """Extracts a specific option's distractor/tempting analysis from a combined Reverse Logic block."""
+    if not raw_text:
+        return None
+    clean = re.sub(r'[\(\)\.\s]', '', label).upper()
+    label_map = {
+        'A': r'(?:A|ए|अ)',
+        'B': r'(?:B|बी|ब)',
+        'C': r'(?:C|सी|स)',
+        'D': r'(?:D|डी|द)',
+    }
+    lbl_re = label_map.get(clean, clean)
+    all_re = r'(?:[A-D]|ए|बी|सी|डी|अ|ब|स|द)'
+    pat = rf'(?:(?:^|\n|\s|—|–|-)(?:(?:Option|विकल्प|पर्याय)\s*\(?{lbl_re}\)?|\({lbl_re}\)|\*\*(?:Option|विकल्प|पर्याय)\s*\(?{lbl_re}\)?\*\*)\s*[:\-\—–]?\s*)([\s\S]*?)(?=(?:(?:^|\n|\s{{2,}}|\.\s+|—\s*|–\s*|;\s*)(?:(?:Option|विकल्प|पर्याय)\s*\(?{all_re}\)?|\({all_re}\)\s*[:\-\—–]|\*\*(?:Option|विकल्प|पर्याय)\s*\(?{all_re}\)?\*\*)|$))'
+    m = re.search(pat, raw_text, re.IGNORECASE)
+    if m:
+        val = m.group(1).strip()
+        val = re.sub(rf'^(?:(?:Option|विकल्प|पर्याय)\s*\(?{lbl_re}\)?|\(?{lbl_re}\)|\*\*(?:Option|विकल्प|पर्याय)\s*\(?{lbl_re}\)?\*\*)\s*[:\-\—–]?\s*', '', val, flags=re.IGNORECASE).strip()
+        if len(val) > 5:
+            return val
+    return None
+
+
+def clean_correct_option_text(text: str) -> str:
+    """Removes the Reverse Logic Box / other options breakdown from the correct option's explanation."""
+    if not text:
+        return ''
+    rl_match = re.search(r'(?:[◆■•·*#-]*\s*(?:Reverse\s+Logic(?:\s+Box)?|Why\s+(?:the\s+)?other\s+options\s+are\s+wrong|रिवर्स\s+लॉजिक|रिव्हर्स\s+लॉजिक)|\b(?:Option|विकल्प|पर्याय)\s*\(?(?:[B-D]|बी|सी|डी|ब|स|द)\)?\s*[:\-\—–])', text, re.IGNORECASE)
+    if rl_match:
+        return text[:rl_match.start()].strip()
+    return text.strip()
+

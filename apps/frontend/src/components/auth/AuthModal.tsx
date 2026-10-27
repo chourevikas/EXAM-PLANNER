@@ -60,10 +60,11 @@ export function AuthModal({
 
   useEffect(() => {
     if (isSignedIn && isOpen) {
-      onClose();
       if (onSuccess) {
+        onClose();
         onSuccess();
       } else {
+        // onClose can mean "leave to the marketing home" (AuthPage); a successful sign-in must not do that
         navigate(redirectUrl || '/dashboard');
       }
     }
@@ -107,8 +108,8 @@ export function AuthModal({
         const res = await loginUser(email, password);
         setSuccessMsg('Signed in successfully! Loading your dashboard...');
         setTimeout(() => {
-          onClose();
           if (onSuccess) {
+            onClose();
             onSuccess();
           } else {
             navigate(redirectUrl || res.redirect_url || '/dashboard');
@@ -130,8 +131,8 @@ export function AuthModal({
         } else {
           setSuccessMsg('🎉 Account created! Opening your dashboard...');
           setTimeout(() => {
-            onClose();
             if (onSuccess) {
+              onClose();
               onSuccess();
             } else {
               navigate(redirectUrl || res.redirect_url || '/dashboard');

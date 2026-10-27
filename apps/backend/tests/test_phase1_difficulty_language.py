@@ -15,7 +15,7 @@ from app.db.models.question import Question, QuestionOption
 from app.db.models.explanation import QuestionExplanation
 from app.db.models.enums import QuestionStatus, DifficultyLevel, LanguageCode
 from app.core.security import create_access_token, get_password_hash
-from app.engine.matrix_orchestrator import difficulty_breakdown
+from app.engine.matrix_orchestrator import difficulty_breakdown, question_type_breakdown
 
 test_engine = create_async_engine(
     "sqlite+aiosqlite:///:memory:",
@@ -97,6 +97,35 @@ def test_difficulty_breakdown_counts_each_level():
          "accuracy_pct": None, "avg_time_seconds": None},
     ]
     assert difficulty_breakdown([]) == []
+
+
+def test_question_type_breakdown_counts_each_type():
+    rows = question_type_breakdown([
+        {"question_type_tag": "Chronology", "is_attempted": True, "is_correct": True, "time_taken_seconds": 30},
+        {"question_type_tag": "Chronology", "is_attempted": True, "is_correct": False, "time_taken_seconds": 50},
+        {"question_type_tag": "Chronology", "is_attempted": False, "time_taken_seconds": 4},
+        {"question_type_tag": "Assertion-Reason", "is_attempted": True, "is_correct": True, "time_taken_seconds": 25},
+        {"question_type_tag": "Assertion-Reason", "is_attempted": False},
+        {"question_type_tag": "Conceptual Reasoning", "is_attempted": True, "is_correct": True},  # Ignored as generic fallback
+        {"question_type_tag": None, "is_attempted": True},
+    ])
+    assert len(rows) == 2
+    chron = next(r for r in rows if r["question_type"] == "Chronology")
+    assert chron["total"] == 3
+    assert chron["attempted"] == 2
+    assert chron["correct"] == 1
+    assert chron["incorrect"] == 1
+    assert chron["unattempted"] == 1
+    assert chron["accuracy_pct"] == 50.0
+    assert chron["avg_time_seconds"] == 40.0
+
+    ar = next(r for r in rows if r["question_type"] == "Assertion-Reason")
+    assert ar["total"] == 2
+    assert ar["attempted"] == 1
+    assert ar["correct"] == 1
+    assert ar["accuracy_pct"] == 100.0
+
+    assert question_type_breakdown([]) == []
 
 
 @pytest.mark.anyio
