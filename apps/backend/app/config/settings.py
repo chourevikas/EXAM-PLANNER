@@ -193,8 +193,8 @@ class Settings(BaseSettings):
         default="gcp-service-account.json"
     )
     ENABLE_TRANSLATION_PIPELINE: bool = Field(
-        default=False,
-        description="Master switch for Translation API and background translation workers. When False, all Translation API and LLM translation calls are blocked.",
+        default=True,
+        description="Master switch for Translation pipeline and background translation workers. Defaults to True with open_source engine.",
     )
     TRANSLATION_ENGINE: str = Field(
         default="open_source",
