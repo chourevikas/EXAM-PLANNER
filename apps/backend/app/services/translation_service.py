@@ -40,11 +40,17 @@ class QuestionTranslationService:
     def __init__(
         self,
         session: Optional[AsyncSession] = None,
-        translation_service: Optional[GoogleTranslationService] = None,
+        translation_service: Optional[Any] = None,
     ):
         self.session = session
         self.settings = get_settings()
-        self.translator = translation_service or GoogleTranslationService()
+        if translation_service:
+            self.translator = translation_service
+        elif getattr(self.settings, "TRANSLATION_ENGINE", "open_source") == "open_source":
+            from app.services.open_source_translation_service import OpenSourceTranslationService
+            self.translator = OpenSourceTranslationService()
+        else:
+            self.translator = GoogleTranslationService()
 
     async def _get_or_create_pipeline_run(
         self, sess: AsyncSession, exam_id: int

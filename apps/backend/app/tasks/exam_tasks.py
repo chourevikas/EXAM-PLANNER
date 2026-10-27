@@ -200,8 +200,7 @@ async def async_process_exam_pdf(
             await pm.on_pipeline_1_completed(exam_id)
 
         # Trigger background question translation pipeline (English, Hindi, Marathi only) if enabled
-        from app.config.settings import get_settings
-        if get_settings().ENABLE_TRANSLATION_PIPELINE:
+        if settings.ENABLE_TRANSLATION_PIPELINE:
             try:
                 from app.tasks.celery_app import has_active_celery_workers
                 from app.tasks.translation_tasks import translate_exam_questions_task, async_translate_exam

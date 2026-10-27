@@ -196,6 +196,10 @@ class Settings(BaseSettings):
         default=False,
         description="Master switch for Translation API and background translation workers. When False, all Translation API and LLM translation calls are blocked.",
     )
+    TRANSLATION_ENGINE: str = Field(
+        default="open_source",
+        description="Translation engine to use: 'open_source' (local offline MarianMT models) or 'google' (Google Cloud Translation API).",
+    )
     OPENAI_API_KEY: Optional[str] = Field(default=None)
     OPENAI_MODEL_NAME: str = Field(default="gpt-4.1")
     VISION_LLM_RATE_LIMIT_RPS: float = Field(default=0.5)
