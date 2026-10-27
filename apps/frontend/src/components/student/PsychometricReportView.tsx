@@ -63,6 +63,7 @@ import {
 import { formatEnum } from '../../utils/formatEnum';
 import { SimilarQuestionsSection } from '../exam/SimilarQuestionsSection';
 import { ReportSummary, LockedSummary } from './ReportSummary';
+import { cleanOptionAnalysisText } from '../exam/QuestionSolutionMarkdownCard';
 
 interface PsychometricReportViewProps {
   report: PsychometricReport;
@@ -3548,6 +3549,11 @@ export function PsychometricReportView({
                     // Chosen and correct option labels
                     const userOptLabel = q.user_selected_option || q.user_selected_label || 'Unattempted';
                     const correctOptLabel = q.correct_option || q.correct_option_label || 'A';
+                    const qTypeTag =
+                      q.question_type_tag ||
+                      (q.cognitive_skill && !['conceptual reasoning', 'none', ''].includes(String(q.cognitive_skill).toLowerCase())
+                        ? q.cognitive_skill
+                        : null);
 
                     const cardBorderColor = state.isCorr
                       ? '#3A8B53'
@@ -3601,8 +3607,16 @@ export function PsychometricReportView({
                               >
                                 {q.topic || q.topic_name || q.meaningful_name || `Question #${qNum}`}
                               </div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                Time Spent: {q.time_taken_seconds || 60}s
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                                <span>Time Spent: {q.time_taken_seconds || 60}s</span>
+                                {qTypeTag && (
+                                  <>
+                                    <span>·</span>
+                                    <span style={{ color: '#1D4ED8', fontWeight: 700 }}>
+                                      {qTypeTag}
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -3679,6 +3693,28 @@ export function PsychometricReportView({
                                 border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'var(--border-color)'}`,
                               }}
                             >
+                              {/* Question Type Tag */}
+                              {qTypeTag && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>🏷️ Question Type</span>
+                                  <div>
+                                    <span
+                                      style={{
+                                        padding: '2px 8px',
+                                        borderRadius: 'var(--radius)',
+                                        fontSize: 11,
+                                        fontWeight: 800,
+                                        backgroundColor: '#EFF6FF',
+                                        color: '#1D4ED8',
+                                        border: '1px solid #BFDBFE',
+                                      }}
+                                    >
+                                      {qTypeTag}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
                               {/* 0. Self-reported confidence vs outcome */}
                               {q.confidence_level && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -3986,7 +4022,7 @@ export function PsychometricReportView({
                                           }}
                                         >
                                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {optDistAnalysis}
+                                            {cleanOptionAnalysisText(optDistAnalysis, isOptCorrect, optLabel)}
                                           </ReactMarkdown>
                                         </div>
                                       )}
@@ -4019,6 +4055,10 @@ export function PsychometricReportView({
                                     }
                                   }
                                 }
+                              }
+
+                              if (chosenFeedback) {
+                                chosenFeedback = cleanOptionAnalysisText(chosenFeedback, Boolean(q.is_correct), userOptLabel);
                               }
 
                               const optionsList = q.options || [];

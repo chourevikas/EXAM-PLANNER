@@ -2,6 +2,7 @@ import React from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DifficultyAnalysisCard, computeDifficultyBreakdown } from './DifficultyAnalysisCard';
+import { QuestionTypeAnalysisCard, computeQuestionTypeBreakdown } from './QuestionTypeAnalysisCard';
 
 /**
  * Plain-language summary shown at the top of both the exam-wise and cumulative reports.
@@ -300,6 +301,12 @@ function ExamSummary({ report }: { report: AnyRecord }) {
       {/* Stored on new reports; computed from the per-question rows for older ones */}
       <DifficultyAnalysisCard
         rows={p2.difficulty_breakdown || computeDifficultyBreakdown(report.part_1_per_question_analysis || [])}
+        cardStyle={card}
+        titleStyle={sectionTitle}
+      />
+
+      <QuestionTypeAnalysisCard
+        rows={p2.question_type_breakdown || computeQuestionTypeBreakdown(report.part_1_per_question_analysis || [])}
         cardStyle={card}
         titleStyle={sectionTitle}
       />

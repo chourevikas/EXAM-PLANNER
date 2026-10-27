@@ -36,6 +36,7 @@ export interface QuestionSolutionData {
   difficulty?: string;
   blooms_level?: string;
   cognitive_skill?: string;
+  question_type_tag?: string;
   primary_concept_tag?: string;
   subject?: string;
   topic?: string;
@@ -88,19 +89,81 @@ interface QuestionSolutionMarkdownCardProps {
 function extractOptionAnalysisFromText(text: string, label: string): string | null {
   if (!text) return null;
   const cleanLabel = label.replace(/[\(\)\.\s]/g, '').toUpperCase();
-  const patterns = [
-    new RegExp(`(?:Option\\s*\\(?${cleanLabel}\\)?|\\(?${cleanLabel}\\)|\\*\\*Option\\s*\\(?${cleanLabel}\\)?\\*\\*)\\s*[:\\-\\—–]\\s*([^\\n]+(?:\\n(?!\\s*(?:Option\\s*\\(?[A-D]\\)?|\\(?[A-D]\\)|\\*\\*Option|Statement\\s*\\d|\\d+\\.))[^\\n]+)*)`, 'i'),
-    new RegExp(`(?:Option\\s*\\(?${cleanLabel}\\)?|\\(?${cleanLabel}\\))\\s+(is\\s+[^\\n]+(?:\\n(?!\\s*(?:Option\\s*\\(?[A-D]\\)?|\\(?[A-D]\\)))[^\\n]+)*)`, 'i'),
-    new RegExp(`(?:Statement|Pair)\\s*${cleanLabel === 'A' ? '1' : cleanLabel === 'B' ? '2' : cleanLabel === 'C' ? '3' : '4'}\\s*[:\\-\\—–]\\s*([^\\n]+(?:\\n(?!\\s*(?:Statement|Pair|Option|\\(?[A-D]\\)))[^\\n]+)*)`, 'i'),
-  ];
+  const labelMap: Record<string, string> = {
+    A: '(?:A|ए|अ)',
+    B: '(?:B|बी|ब)',
+    C: '(?:C|सी|स)',
+    D: '(?:D|डी|द)',
+  };
+  const lblRe = labelMap[cleanLabel] || cleanLabel;
+  const allRe = '(?:[A-D]|ए|बी|सी|डी|अ|ब|स|द)';
 
-  for (const regex of patterns) {
-    const match = text.match(regex);
-    if (match && match[1] && match[1].trim().length > 10) {
-      return match[1].trim();
+  // 1. Look for explicit Option (X) block, stopping before any next Option (Y) or end of string
+  const optRegex = new RegExp(
+    `(?:(?:^|\\n|\\s|\\.|—|–|-)(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?|\\(${lblRe}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*)([\\s\\S]*?)(?=(?:(?:^|\\n|\\s{2,}|\\.\\s+|—\\s*|–\\s*|;\\s*)(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${allRe}\\)?|\\(${allRe}\\)\\s*[:\\-\\—–]|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${allRe}\\)?\\*\\*)|$)`,
+    'i'
+  );
+  const match = text.match(optRegex);
+  if (match && match[1] && match[1].trim().length > 10) {
+    let val = match[1].trim();
+    val = val.replace(new RegExp(`^(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?|\\(?${lblRe}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*`, 'i'), '').trim();
+    return val;
+  }
+
+  // 2. Statement or Pair 1/2/3/4
+  const numLabel = cleanLabel === 'A' ? '1' : cleanLabel === 'B' ? '2' : cleanLabel === 'C' ? '3' : '4';
+  const stmtRegex = new RegExp(
+    `(?:Statement|Pair)\\s*${numLabel}\\s*[:\\-\\—–]\\s*([\\s\\S]*?)(?=(?:(?:^|\\n|\\s{2,}|\\.\\s*)(?:Statement|Pair|Option|\\(?[A-D]\\))|$))`,
+    'i'
+  );
+  const stmtMatch = text.match(stmtRegex);
+  if (stmtMatch && stmtMatch[1] && stmtMatch[1].trim().length > 10) {
+    return stmtMatch[1].trim();
+  }
+
+  return null;
+}
+
+/**
+ * Cleans an option's individual analysis/summary text so it doesn't leak or duplicate
+ * other options' descriptions (e.g. Reverse Logic Box or subsequent Option B/C/D breakdowns).
+ */
+export function cleanOptionAnalysisText(text: string, isCorrect: boolean, currentLabel?: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+
+  // 1. For the correct option: cut off at Reverse Logic Box header or "Why the other options are wrong"
+  // so it does NOT duplicate the other options' reasoning. (Distractors keep their tempting/true text).
+  if (isCorrect) {
+    const rlMatch = cleaned.search(/(?:[◆■•·*#-]*\s*(?:Reverse\s+Logic(?:\s+Box)?|Why\s+(?:the\s+)?other\s+options\s+are\s+wrong|Why\s+other\s+options\s+are\s+incorrect|Incorrect\s+options?|Other\s+options?|Distractor\s+analysis|रिवर्स\s+लॉजिक|रिव्हर्स\s+लॉजिक)|\b(?:Option|विकल्प|पर्याय)\s*\(?(?:[B-D]|बी|सी|डी|ब|स|द)\)?\s*[:\-\—–])/i);
+    if (rlMatch !== -1) {
+      cleaned = cleaned.slice(0, rlMatch).trim();
     }
   }
-  return null;
+
+  // 2. Cut off before any subsequent/other option breakdowns (e.g. "Option (C):" when inside Option B)
+  const curr = (currentLabel || '').replace(/[\(\)\.\s]/g, '').toUpperCase();
+  const otherOptPattern = /(?:^|\n|\s{2,}|\.\s+|;\s*|—\s*|–\s*)(?:(?:Option|विकल्प|पर्याय)\s*\(?([A-D]|ए|बी|सी|डी|अ|ब|स|द)\)?|\(([A-D]|ए|बी|सी|डी|अ|ब|स|द)\))\s*[:\-\—–]/gi;
+  let match: RegExpExecArray | null;
+  while ((match = otherOptPattern.exec(cleaned)) !== null) {
+    const matchedLetter = (match[1] || match[2] || '').toUpperCase();
+    if (matchedLetter && matchedLetter !== curr) {
+      if (match.index > 10) {
+        cleaned = cleaned.slice(0, match.index).trim();
+        break;
+      }
+    }
+  }
+
+  // 3. Remove leading Option (X): or (X) prefix matching currentLabel to avoid duplicate stutter with the row's header
+  if (curr) {
+    cleaned = cleaned.replace(new RegExp(`^(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${curr}\\)?|\\(?${curr}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${curr}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*`, 'i'), '').trim();
+  }
+
+  // 4. Remove leading bullets, icons, dashes
+  cleaned = cleaned.replace(/^[\s✓✔✗✘×•·*\-–—:]+/, '').trim();
+
+  return cleaned;
 }
 
 // A block that markdown must keep separate: heading, list item, table, quote, code fence or rule.
@@ -170,11 +233,42 @@ export function QuestionSolutionMarkdownCard({
   const difficulty = solution.difficulty || 'MEDIUM';
 
   const explObj = typeof solution.explanation === 'object' && solution.explanation !== null ? solution.explanation : null;
-  const detailedMarkdown = reflowBrokenParagraphs(
+  const rawFullExplanation =
     explObj?.detailed_solution ||
     explObj?.detailed_text ||
     explObj?.text ||
-    (typeof solution.explanation === 'string' ? solution.explanation : 'Detailed explanation is available.'));
+    (typeof solution.explanation === 'string' ? solution.explanation : 'Detailed explanation is available.');
+
+  // Extract reverseLogic source text: either explicit reverse_logic field, or the Reverse Logic Box inside rawFullExplanation
+  const explicitReverseLogic = (explObj?.reverse_logic || '').trim();
+  const rlBoxMatch = rawFullExplanation.match(/(?:[◆■•·*#-]*\s*(?:Reverse\s+Logic(?:\s+Box)?|Why\s+(?:the\s+)?other\s+options\s+are\s+wrong)[^\n]*)([\s\S]*)/i);
+  const embeddedReverseLogic = rlBoxMatch ? rlBoxMatch[1].trim() : '';
+
+  // Also inspect options or distractor_scores if they contain Reverse Logic Box
+  let optsReverseLogicSource = '';
+  const allOptCandidates = [
+    ...(options || []),
+    ...((Array.isArray(solution.distractor_scores) ? solution.distractor_scores : solution.distractor_scores ? Object.values(solution.distractor_scores) : []))
+  ];
+  for (const o of allOptCandidates) {
+    const da = (o as any)?.distractor_analysis || (o as any)?.analysis || '';
+    if (da && /(?:Reverse\s+Logic|Why\s+(?:the\s+)?other\s+options|Option\s*\(?[B-D]\)?\s*[:\-\—–]|रिवर्स\s+लॉजिक|रिव्हर्स\s+लॉजिक)/i.test(da)) {
+      optsReverseLogicSource = da;
+      break;
+    }
+  }
+
+  const fullReverseLogicSource = explicitReverseLogic || embeddedReverseLogic || optsReverseLogicSource;
+
+  // detailedMarkdown for Section 1 (Detailed Explanation & Reference):
+  // Strip out the Reverse Logic Box so Section 1 contains ONLY the core explanation/reference
+  let rawDetailed = rawFullExplanation;
+  const rlIdx = rawDetailed.search(/(?:[◆■•·*#-]*\s*(?:Reverse\s+Logic(?:\s+Box)?|Why\s+(?:the\s+)?other\s+options\s+are\s+wrong))/i);
+  if (rlIdx !== -1) {
+    rawDetailed = rawDetailed.slice(0, rlIdx).trim();
+  }
+
+  const detailedMarkdown = reflowBrokenParagraphs(rawDetailed);
 
   // Extract all takeaways and points to remember safely
   const keyTakeaways: string[] = Array.isArray(explObj?.key_takeaways)
@@ -188,7 +282,7 @@ export function QuestionSolutionMarkdownCard({
   // Combined option-by-option reasoning, written by the admin as one block.
   // Falls back to the per-option distractor list below only when a question
   // hasn't been re-saved through the new Reverse Logic Box yet.
-  const reverseLogic = reflowBrokenParagraphs((explObj?.reverse_logic || '').trim());
+  const reverseLogic = reflowBrokenParagraphs(explicitReverseLogic);
 
   // Extract common traps
   const commonTraps: string[] = Array.isArray(explObj?.common_traps)
@@ -235,23 +329,25 @@ export function QuestionSolutionMarkdownCard({
 
     let analysis = item.distractor_analysis || (item as any).analysis || matchedOpt?.distractor_analysis || (matchedOpt as any)?.analysis || '';
 
-    // If analysis is still missing, try extracting from detailed markdown
-    if (!analysis && detailedMarkdown) {
-      const extracted = extractOptionAnalysisFromText(detailedMarkdown, itemLabel);
-      if (extracted) {
-        analysis = extracted;
+    // If analysis is still missing, try extracting from fullReverseLogicSource or rawFullExplanation
+    if (!analysis) {
+      if (fullReverseLogicSource) {
+        const extracted = extractOptionAnalysisFromText(fullReverseLogicSource, itemLabel);
+        if (extracted) analysis = extracted;
+      }
+      if (!analysis && rawFullExplanation) {
+        const extracted = extractOptionAnalysisFromText(rawFullExplanation, itemLabel);
+        if (extracted) analysis = extracted;
       }
     }
 
-    // Leading tick/cross marks, bullets and dashes duplicate the row's own icon and badge
-    analysis = String(analysis).replace(/^[\s✓✔✗✘×•·*\-–—:]+/, '').trim();
+    // Clean up analysis text so other options' descriptions don't leak into this option's summary
+    analysis = cleanOptionAnalysisText(analysis, isOptionCorrect, itemLabel);
 
     // Fallback if still empty. The option text is already in the row header, so don't repeat it.
     if (!analysis) {
       if (isOptionCorrect) {
-        analysis = explObj?.core_concept
-          ? `This is the correct answer. ${explObj.core_concept}`
-          : 'This is the correct answer.';
+        analysis = rawDetailed || (explObj?.core_concept ? `This is the correct answer. ${explObj.core_concept}` : 'This is the correct answer.');
       } else {
         const trapHint = commonTraps.length > 0 ? ` Common trap: ${commonTraps[0]}` : '';
         analysis = `This option is incorrect.${trapHint}`;
@@ -406,6 +502,25 @@ export function QuestionSolutionMarkdownCard({
               {formatEnum(solution.topic)}
             </span>
           )}
+          {(solution.question_type_tag || (solution.cognitive_skill && !['conceptual reasoning', 'none', ''].includes(solution.cognitive_skill.toLowerCase()))) && (
+            <span
+              style={{
+                padding: '4px 10px',
+                borderRadius: 'var(--radius)',
+                fontSize: 11,
+                fontWeight: 600,
+                backgroundColor: '#EFF6FF',
+                color: '#1D4ED8',
+                border: '1px solid #BFDBFE',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <BrainCircuit size={12} />
+              {solution.question_type_tag || solution.cognitive_skill}
+            </span>
+          )}
         </div>
       </div>
 
@@ -450,34 +565,7 @@ export function QuestionSolutionMarkdownCard({
               </ReactMarkdown>
             </div>
 
-            {reverseLogic ? (
-              <div
-                style={{
-                  borderTop: '1px solid #E2E8F0',
-                  padding: '4px 18px 16px',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    padding: '10px 0 8px',
-                  }}
-                >
-                  <Target size={13} style={{ color: 'var(--primary-red)' }} />
-                  {t('optionReasoning')}
-                </div>
-                <div className="prose prose-slate max-w-none text-slate-800" style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{reverseLogic}</ReactMarkdown>
-                </div>
-              </div>
-            ) : distractorsList.length > 0 && (
+            {distractorsList.length > 0 ? (
               <div
                 style={{
                   borderTop: '1px solid #E2E8F0',
@@ -592,7 +680,34 @@ export function QuestionSolutionMarkdownCard({
                   );
                 })}
               </div>
-            )}
+            ) : reverseLogic ? (
+              <div
+                style={{
+                  borderTop: '1px solid #E2E8F0',
+                  padding: '4px 18px 16px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    padding: '10px 0 8px',
+                  }}
+                >
+                  <Target size={13} style={{ color: 'var(--primary-red)' }} />
+                  {t('optionReasoning')}
+                </div>
+                <div className="prose prose-slate max-w-none text-slate-800" style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{reverseLogic}</ReactMarkdown>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 

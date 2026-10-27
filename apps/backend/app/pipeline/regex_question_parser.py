@@ -51,6 +51,7 @@ from app.pipeline.patterns import (
     TOPIC_TAG_PATTERN,
     SUBTOPIC_TAG_PATTERN,
     DIFFICULTY_TAG_PATTERN,
+    TYPE_TAG_PATTERN,
     RELATED_REFS_HEADER_PATTERN,
     extract_header_tags,
 )
@@ -66,6 +67,7 @@ class QuestionRecord(BaseModel):
     topic_raw: Optional[str] = None
     subtopic_raw: Optional[str] = None
     difficulty_raw: Optional[str] = None
+    type_raw: Optional[str] = None
     difficulty: DifficultyLevel = Field(default=DifficultyLevel.MEDIUM)
 
     stem: str
@@ -381,7 +383,7 @@ def parse_question_block(
         # Check if line contains metadata tags (a table cell is always stem content)
         has_tag = not TABLE_ROW_PATTERN.match(l_str) and any(
             p.search(l_str)
-            for p in (SUBJECT_TAG_PATTERN, TOPIC_TAG_PATTERN, SUBTOPIC_TAG_PATTERN, DIFFICULTY_TAG_PATTERN)
+            for p in (SUBJECT_TAG_PATTERN, TOPIC_TAG_PATTERN, SUBTOPIC_TAG_PATTERN, DIFFICULTY_TAG_PATTERN, TYPE_TAG_PATTERN)
         )
         # A header wrapped inside a tag ("[Difficulty:" / "Moderate]") continues on this line
         header_so_far = " ".join(header_block)
@@ -397,6 +399,11 @@ def parse_question_block(
     topic_raw = tags["topic_raw"]
     subtopic_raw = tags["subtopic_raw"]
     difficulty_raw = tags["difficulty_raw"]
+    type_raw = tags.get("type_raw")
+    if not type_raw:
+        type_match = TYPE_TAG_PATTERN.search(clean_text)
+        if type_match:
+            type_raw = type_match.group(1).strip()
     difficulty = map_difficulty(difficulty_raw)
 
     # 3. Stem Extraction
@@ -620,6 +627,7 @@ def parse_question_block(
         topic_raw=topic_raw,
         subtopic_raw=subtopic_raw,
         difficulty_raw=difficulty_raw,
+        type_raw=type_raw,
         difficulty=difficulty,
         stem=stem,
         statement_lines=statement_lines,

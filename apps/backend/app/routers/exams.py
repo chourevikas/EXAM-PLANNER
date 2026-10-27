@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 from typing import Optional, List, Union
 from fastapi import APIRouter, UploadFile, File, Form, Depends, BackgroundTasks, Query
@@ -25,6 +26,8 @@ from app.services.exam_service import ExamService
 from app.services.exam_export_service import ExamExportService
 from app.services.question_service import QuestionService
 from app.services.syllabus_service import SyllabusService
+from app.pipeline.patterns import extract_option_analysis_from_text, clean_correct_option_text
+
 
 
 
@@ -504,6 +507,15 @@ async def get_solution_from_db_fallback(
     )
     q_meta = meta_res.first()
 
+    full_rl_source = (expl_model.reverse_logic or "").strip() if expl_model else ""
+    if not full_rl_source and expl_model and expl_model.detailed_solution and ("Reverse Logic" in expl_model.detailed_solution or "Why the other options" in expl_model.detailed_solution):
+        full_rl_source = expl_model.detailed_solution
+    if not full_rl_source:
+        for trans in opt_trans_map.values():
+            if trans and trans.distractor_analysis and ("Reverse Logic" in trans.distractor_analysis or "Why the other options" in trans.distractor_analysis or "Option (B)" in trans.distractor_analysis or "रिवर्स लॉजिक" in trans.distractor_analysis):
+                full_rl_source = trans.distractor_analysis
+                break
+
     distractor_map = {}
     for o in db_opts:
         trans = opt_trans_map.get(o.id)
@@ -518,6 +530,12 @@ async def get_solution_from_db_fallback(
                 da = whats_t
             elif why_t:
                 da = why_t
+
+        if not da and not o.is_correct and full_rl_source:
+            da = extract_option_analysis_from_text(full_rl_source, o.option_label)
+
+        if o.is_correct and da:
+            da = clean_correct_option_text(da)
 
         closeness = getattr(o, "distractor_closeness_score", 0.0) or (1.0 if o.is_correct else 0.0)
         cls_tier = ClosenessEvaluator.classify_option(closeness)
