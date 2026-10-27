@@ -44,6 +44,9 @@ dependencies = [
     "onnxruntime>=1.29.0",
     "pdfplumber>=0.11.10",
     "sentry-sdk[fastapi]>=2.40.0",
+    "transformers>=4.40.0",
+    "sentencepiece>=0.2.0",
+    "sacremoses>=0.1.1",
 ]
 
 [dependency-groups]
