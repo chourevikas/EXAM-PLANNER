@@ -521,7 +521,9 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
             stage1_status = "IN_PROGRESS"
         elif p1:
             p1_status_upper = str(p1.status).upper()
-            if p1_status_upper in (
+            if q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp):
+                stage1_status = "COMPLETED"
+            elif p1_status_upper in (
                 "RUNNING",
                 "PROCESSING",
                 "INITIALIZING",
@@ -531,7 +533,7 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
                 "COMPLETED",
                 "WAITING_FOR_ANSWER_KEY",
                 "WAITING_FOR_HITL",
-            ) or (q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp)):
+            ):
                 stage1_status = "COMPLETED"
             elif p1_status_upper in ("FAILED", "STOPPED", "CANCELLED"):
                 stage1_status = "FAILED"
