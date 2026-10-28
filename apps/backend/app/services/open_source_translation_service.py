@@ -102,6 +102,11 @@ class OpenSourceTranslationService:
         if not non_empty_indices:
             return texts
 
+        logger.info(
+            f"🆓 [FREE OPEN-SOURCE TRANSLATION] Translating batch of {len(non_empty_indices)} texts into '{target_iso}' "
+            f"using local MarianMT model {self.MODEL_MAPPING.get(target_iso)} (Zero GCP / Zero Gemini API calls)..."
+        )
+
         loop = asyncio.get_event_loop()
 
         def _infer():

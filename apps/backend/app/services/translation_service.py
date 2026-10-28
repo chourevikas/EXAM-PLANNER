@@ -110,6 +110,7 @@ class QuestionTranslationService:
         exam_id: int,
         target_languages: Optional[List[str]] = None,
         task_id: Optional[str] = None,
+        force_retranslate: bool = False,
     ) -> Dict[str, Any]:
         """
         Translates all questions, options, and passages for the specified exam
@@ -252,9 +253,9 @@ class QuestionTranslationService:
                     lang_db_enum = target_enum
 
                 # Check missing question stems, options, and passages
-                missing_qs = [q for q in questions if (q.id, target_enum) not in q_trans_set]
-                missing_opts = [o for o in options if (o.id, target_enum) not in opt_trans_set]
-                missing_passes = [p for p in passages if (p.id, target_enum) not in pass_trans_set and p.id in pass_eng_text]
+                missing_qs = [q for q in questions if force_retranslate or (q.id, target_enum) not in q_trans_set]
+                missing_opts = [o for o in options if force_retranslate or (o.id, target_enum) not in opt_trans_set]
+                missing_passes = [p for p in passages if (force_retranslate or (p.id, target_enum) not in pass_trans_set) and p.id in pass_eng_text]
 
                 all_raw_texts = (
                     [q_eng_text.get(q.id, "") for q in missing_qs]
@@ -305,19 +306,31 @@ class QuestionTranslationService:
                     pass_trans_set.add((p.id, target_enum))
                     total_added += 1
 
-                from app.db.upsert import bulk_insert_on_conflict_do_nothing
-                if to_insert_qt:
-                    await bulk_insert_on_conflict_do_nothing(
-                        sess, QuestionTranslation, to_insert_qt, ["question_id", "language"]
-                    )
-                if to_insert_ot:
-                    await bulk_insert_on_conflict_do_nothing(
-                        sess, OptionTranslation, to_insert_ot, ["option_id", "language"]
-                    )
-                if to_insert_pt:
-                    await bulk_insert_on_conflict_do_nothing(
-                        sess, PassageTranslation, to_insert_pt, ["passage_id", "language"]
-                    )
+                if force_retranslate:
+                    for qt in to_insert_qt:
+                        existing = next((t for t in existing_q_trans if t.question_id == qt.question_id and (t.language.value if hasattr(t.language, "value") else str(t.language)) == target_enum), None)
+                        if existing:
+                            existing.question_text = qt.question_text
+                            sess.add(existing)
+                    for ot in to_insert_ot:
+                        existing_o = next((t for t in existing_opt_trans if t.option_id == ot.option_id and (t.language.value if hasattr(t.language, "value") else str(t.language)) == target_enum), None)
+                        if existing_o:
+                            existing_o.option_text = ot.option_text
+                            sess.add(existing_o)
+                else:
+                    from app.db.upsert import bulk_insert_on_conflict_do_nothing
+                    if to_insert_qt:
+                        await bulk_insert_on_conflict_do_nothing(
+                            sess, QuestionTranslation, to_insert_qt, ["question_id", "language"]
+                        )
+                    if to_insert_ot:
+                        await bulk_insert_on_conflict_do_nothing(
+                            sess, OptionTranslation, to_insert_ot, ["option_id", "language"]
+                        )
+                    if to_insert_pt:
+                        await bulk_insert_on_conflict_do_nothing(
+                            sess, PassageTranslation, to_insert_pt, ["passage_id", "language"]
+                        )
 
                 # Commit batch for this language safely with retries
                 await sess.commit()

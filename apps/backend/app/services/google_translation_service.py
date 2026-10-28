@@ -192,8 +192,9 @@ class GoogleTranslationService:
         falls back smoothly to Gemini Vertex AI.
         Optimized with Domain 24 Translation Memory Cache (TTL: 30 days).
         """
-        if not texts:
-            return []
+        if getattr(self.settings, "TRANSLATION_ENGINE", "open_source") == "open_source":
+            logger.info("🚫 [GCP/VERTEX AI BLOCKED] TRANSLATION_ENGINE is set to 'open_source'. Google Cloud Translation and Vertex AI calls are completely blocked ($0.00 cost).")
+            return texts
 
         if not getattr(self.settings, "ENABLE_TRANSLATION_PIPELINE", False):
             logger.info("🚫 Translation pipeline is globally disabled. Skipping translation API/LLM calls.")

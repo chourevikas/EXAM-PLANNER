@@ -23,7 +23,7 @@ async def get_translation_coverage(
     return await translation_coverage_service.coverage(session)
 
 
-async def _translate_exam(exam_id: int) -> None:
+async def _translate_exam(exam_id: int, force: bool = False) -> None:
     from app.config.settings import get_settings
     if not get_settings().ENABLE_TRANSLATION_PIPELINE:
         logger.info(f"🚫 [TRANSLATION DISABLED] Skipping _translate_exam for Exam #{exam_id}")
@@ -33,7 +33,7 @@ async def _translate_exam(exam_id: int) -> None:
     from app.services.translation_service import QuestionTranslationService
 
     async with async_session_factory() as s:
-        await QuestionTranslationService(s).translate_exam(exam_id)
+        await QuestionTranslationService(s).translate_exam(exam_id, force_retranslate=force)
 
 
 async def _translate_all() -> None:
@@ -53,6 +53,7 @@ async def _translate_all() -> None:
 async def translate_exam_now(
     exam_id: int,
     background_tasks: BackgroundTasks,
+    force: bool = False,
     _admin: User = Depends(admin_only),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -60,7 +61,7 @@ async def translate_exam_now(
     exam = await session.get(Exam, exam_id)
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
-    if await translation_coverage_service.is_translating(session, exam_id):
+    if not force and await translation_coverage_service.is_translating(session, exam_id):
         raise HTTPException(status_code=409, detail="This exam is already being translated.")
     try:
         from app.tasks.celery_app import has_active_celery_workers
@@ -69,11 +70,11 @@ async def translate_exam_now(
         if has_active_celery_workers():
             translate_exam_questions_task.delay(exam_id)
         else:
-            background_tasks.add_task(_translate_exam, exam_id)
+            background_tasks.add_task(_translate_exam, exam_id, force)
     except Exception as err:
         logger.warning(f"Celery dispatch failed ({err}); translating exam {exam_id} in the background")
-        background_tasks.add_task(_translate_exam, exam_id)
-    return {"status": "QUEUED", "exam_id": exam_id}
+        background_tasks.add_task(_translate_exam, exam_id, force)
+    return {"status": "QUEUED", "exam_id": exam_id, "force": force}
 
 
 @router.post("/run-all", status_code=status.HTTP_202_ACCEPTED, summary="Translate what's missing for every exam")
