@@ -1572,7 +1572,13 @@ export function GuestExamPage() {
       return clean.length === 1 ? clean : String.fromCharCode(65 + index);
     };
 
-    const responsesPayload = allQuestions.map((q, idx) => {
+    // Filter to only questions the student actually attempted/revealed in this session
+    const attemptedQuestions = allQuestions.filter(
+      (q) => userResponses[q.question_id] || rMap[q.question_id],
+    );
+    const questionsToScore = attemptedQuestions.length > 0 ? attemptedQuestions : allQuestions;
+
+    const responsesPayload = questionsToScore.map((q, idx) => {
       const userResp = userResponses[q.question_id];
       const rev = rMap[q.question_id];
       let isCorr = false;
@@ -1609,10 +1615,11 @@ export function GuestExamPage() {
       };
     });
 
-    const totalMarksPossible = numQuestions;
-    const unattemptedCount = Math.max(0, numQuestions - attemptedCount);
+    const totalQuestionsCount = attemptedCount > 0 ? attemptedCount : 0;
+    const totalMarksPossible = totalQuestionsCount;
+    const unattemptedCount = Math.max(0, totalQuestionsCount - attemptedCount);
     const accuracy = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
-    const totalAllotted = Math.max(1, numQuestions) * 120;
+    const totalAllotted = Math.max(1, totalQuestionsCount) * 120;
     const elapsedSeconds = Math.max(10, totalAllotted - timeLeft);
 
     const scorePayload = {
@@ -1622,7 +1629,7 @@ export function GuestExamPage() {
       incorrectCount,
       unattemptedCount,
       accuracy,
-      totalQuestions: numQuestions,
+      totalQuestions: totalQuestionsCount,
       topicName:
         selectedTopicsList.length > 0
           ? selectedTopicsList.join(', ')
