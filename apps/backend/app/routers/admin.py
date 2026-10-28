@@ -856,12 +856,13 @@ async def _compute_stuck_pipelines(session: AsyncSession) -> list:
         elif (
             q_count > 0
             and exp_count < q_count
-            and (p3 is None or p3.status != "COMPLETED")
+            and p3 is not None
+            and p3.status in ("INTERRUPTED", "FAILED", "RUNNING")
         ):
             is_stuck = True
             stuck_stage = "EXPLANATION_INDEXING"
-            stuck_step = f"INCOMPLETE_EXPLANATIONS_({exp_count}/{q_count})"
-            stuck_progress = round((exp_count / max(1, q_count)) * 100.0, 1)
+            stuck_step = p3.current_step or f"INCOMPLETE_EXPLANATIONS_({exp_count}/{q_count})"
+            stuck_progress = p3.progress_percent
         elif (
             q_count > 0
             and key_count < q_count
@@ -1057,14 +1058,26 @@ async def dismiss_stuck_pipeline(
 
     runs = (
         await session.exec(
-            select(PipelineRun).where(
-                PipelineRun.exam_id == exam_id_int, PipelineRun.status == "INTERRUPTED"
-            )
+            select(PipelineRun).where(PipelineRun.exam_id == exam_id_int)
         )
     ).all()
     for r in runs:
-        r.status = "DISMISSED"
-        session.add(r)
+        if str(r.status).upper() in ("INTERRUPTED", "RUNNING", "FAILED", "WAITING_FOR_HITL", "WAITING_FOR_ANSWER_KEY"):
+            r.status = "DISMISSED"
+            session.add(r)
+
+    # Ensure a DISMISSED marker exists for explanation indexing
+    p3_run = next((r for r in runs if r.pipeline_type in ("EXPLANATION_INDEXING", "EXPLANATION_GENERATION")), None)
+    if not p3_run:
+        new_p3 = PipelineRun(
+            exam_id=exam_id_int,
+            pipeline_type="EXPLANATION_INDEXING",
+            status="DISMISSED",
+            current_step="DISMISSED_BY_ADMIN",
+            progress_percent=100.0,
+        )
+        session.add(new_p3)
+
     await session.commit()
     from app.cache import invalidate_pipeline_status_cache
     await invalidate_pipeline_status_cache()
