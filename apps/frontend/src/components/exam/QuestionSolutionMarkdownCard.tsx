@@ -86,42 +86,51 @@ interface QuestionSolutionMarkdownCardProps {
   }>;
 }
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function extractOptionAnalysisFromText(text: string, label: string): string | null {
-  if (!text) return null;
-  const cleanLabel = label.replace(/[\(\)\.\s]/g, '').toUpperCase();
-  const labelMap: Record<string, string> = {
-    A: '(?:A|ए|अ)',
-    B: '(?:B|बी|ब)',
-    C: '(?:C|सी|स)',
-    D: '(?:D|डी|द)',
-  };
-  const lblRe = labelMap[cleanLabel] || cleanLabel;
-  const allRe = '(?:[A-D]|ए|बी|सी|डी|अ|ब|स|द)';
+  if (!text || !label) return null;
+  try {
+    const cleanLabel = label.replace(/[\(\)\.\s]/g, '').toUpperCase();
+    const labelMap: Record<string, string> = {
+      A: '(?:A|ए|अ)',
+      B: '(?:B|बी|ब)',
+      C: '(?:C|सी|स)',
+      D: '(?:D|डी|द)',
+    };
+    const lblRe = labelMap[cleanLabel] || escapeRegExp(cleanLabel);
+    const allRe = '(?:[A-D]|ए|बी|सी|डी|अ|ब|स|द)';
 
-  // 1. Look for explicit Option (X) block, stopping before any next Option (Y) or end of string
-  const optRegex = new RegExp(
-    `(?:(?:^|\\n|\\s|\\.|—|–|-)(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?|\\(${lblRe}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*)([\\s\\S]*?)(?=(?:(?:^|\\n|\\s{2,}|\\.\\s+|—\\s*|–\\s*|;\\s*)(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${allRe}\\)?|\\(${allRe}\\)\\s*[:\\-\\—–]|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${allRe}\\)?\\*\\*)|$)`,
-    'i'
-  );
-  const match = text.match(optRegex);
-  if (match && match[1] && match[1].trim().length > 10) {
-    let val = match[1].trim();
-    val = val.replace(new RegExp(`^(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?|\\(?${lblRe}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*`, 'i'), '').trim();
-    return val;
+    // 1. Look for explicit Option (X) block, stopping before any next Option (Y) or end of string
+    const optRegex = new RegExp(
+      `(?:(?:^|\\n|\\s|\\.|—|–|-)(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?|\\(${lblRe}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*)([\\s\\S]*?)(?=(?:(?:^|\\n|\\s{2,}|\\.\\s+|—\\s*|–\\s*|;\\s*)(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${allRe}\\)?|\\(${allRe}\\)\\s*[:\\-\\—–]|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${allRe}\\)?\\*\\*))|$)`,
+      'i'
+    );
+    const match = text.match(optRegex);
+    if (match && match[1] && match[1].trim().length > 10) {
+      let val = match[1].trim();
+      val = val.replace(new RegExp(`^(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?|\\(?${lblRe}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*`, 'i'), '').trim();
+      return val;
+    }
+
+    // 2. Statement or Pair 1/2/3/4
+    const numLabel = cleanLabel === 'A' ? '1' : cleanLabel === 'B' ? '2' : cleanLabel === 'C' ? '3' : '4';
+    const stmtRegex = new RegExp(
+      `(?:Statement|Pair)\\s*${numLabel}\\s*[:\\-\\—–]\\s*([\\s\\S]*?)(?=(?:(?:^|\\n|\\s{2,}|\\.\\s*)(?:Statement|Pair|Option|\\(?[A-D]\\))|$))`,
+      'i'
+    );
+    const stmtMatch = text.match(stmtRegex);
+    if (stmtMatch && stmtMatch[1] && stmtMatch[1].trim().length > 10) {
+      return stmtMatch[1].trim();
+    }
+
+    return null;
+  } catch (err) {
+    console.warn('extractOptionAnalysisFromText failed:', err);
+    return null;
   }
-
-  // 2. Statement or Pair 1/2/3/4
-  const numLabel = cleanLabel === 'A' ? '1' : cleanLabel === 'B' ? '2' : cleanLabel === 'C' ? '3' : '4';
-  const stmtRegex = new RegExp(
-    `(?:Statement|Pair)\\s*${numLabel}\\s*[:\\-\\—–]\\s*([\\s\\S]*?)(?=(?:(?:^|\\n|\\s{2,}|\\.\\s*)(?:Statement|Pair|Option|\\(?[A-D]\\))|$))`,
-    'i'
-  );
-  const stmtMatch = text.match(stmtRegex);
-  if (stmtMatch && stmtMatch[1] && stmtMatch[1].trim().length > 10) {
-    return stmtMatch[1].trim();
-  }
-
-  return null;
 }
 
 /**
@@ -130,40 +139,46 @@ function extractOptionAnalysisFromText(text: string, label: string): string | nu
  */
 export function cleanOptionAnalysisText(text: string, isCorrect: boolean, currentLabel?: string): string {
   if (!text) return '';
-  let cleaned = text.trim();
+  try {
+    let cleaned = text.trim();
 
-  // 1. For the correct option: cut off at Reverse Logic Box header or "Why the other options are wrong"
-  // so it does NOT duplicate the other options' reasoning. (Distractors keep their tempting/true text).
-  if (isCorrect) {
-    const rlMatch = cleaned.search(/(?:[◆■•·*#-]*\s*(?:Reverse\s+Logic(?:\s+Box)?|Why\s+(?:the\s+)?other\s+options\s+are\s+wrong|Why\s+other\s+options\s+are\s+incorrect|Incorrect\s+options?|Other\s+options?|Distractor\s+analysis|रिवर्स\s+लॉजिक|रिव्हर्स\s+लॉजिक)|\b(?:Option|विकल्प|पर्याय)\s*\(?(?:[B-D]|बी|सी|डी|ब|स|द)\)?\s*[:\-\—–])/i);
-    if (rlMatch !== -1) {
-      cleaned = cleaned.slice(0, rlMatch).trim();
-    }
-  }
-
-  // 2. Cut off before any subsequent/other option breakdowns (e.g. "Option (C):" when inside Option B)
-  const curr = (currentLabel || '').replace(/[\(\)\.\s]/g, '').toUpperCase();
-  const otherOptPattern = /(?:^|\n|\s{2,}|\.\s+|;\s*|—\s*|–\s*)(?:(?:Option|विकल्प|पर्याय)\s*\(?([A-D]|ए|बी|सी|डी|अ|ब|स|द)\)?|\(([A-D]|ए|बी|सी|डी|अ|ब|स|द)\))\s*[:\-\—–]/gi;
-  let match: RegExpExecArray | null;
-  while ((match = otherOptPattern.exec(cleaned)) !== null) {
-    const matchedLetter = (match[1] || match[2] || '').toUpperCase();
-    if (matchedLetter && matchedLetter !== curr) {
-      if (match.index > 10) {
-        cleaned = cleaned.slice(0, match.index).trim();
-        break;
+    // 1. For the correct option: cut off at Reverse Logic Box header or "Why the other options are wrong"
+    // so it does NOT duplicate the other options' reasoning. (Distractors keep their tempting/true text).
+    if (isCorrect) {
+      const rlMatch = cleaned.search(/(?:[◆■•·*#-]*\s*(?:Reverse\s+Logic(?:\s+Box)?|Why\s+(?:the\s+)?other\s+options\s+are\s+wrong|Why\s+other\s+options\s+are\s+incorrect|Incorrect\s+options?|Other\s+options?|Distractor\s+analysis|रिवर्स\s+लॉजिक|रिव्हर्स\s+लॉजिक)|\b(?:Option|विकल्प|पर्याय)\s*\(?(?:[B-D]|बी|सी|डी|ब|स|द)\)?\s*[:\-\—–])/i);
+      if (rlMatch !== -1) {
+        cleaned = cleaned.slice(0, rlMatch).trim();
       }
     }
+
+    // 2. Cut off before any subsequent/other option breakdowns (e.g. "Option (C):" when inside Option B)
+    const curr = (currentLabel || '').replace(/[\(\)\.\s]/g, '').toUpperCase();
+    const otherOptPattern = /(?:^|\n|\s{2,}|\.\s+|;\s*|—\s*|–\s*)(?:(?:Option|विकल्प|पर्याय)\s*\(?([A-D]|ए|बी|सी|डी|अ|ब|स|द)\)?|\(([A-D]|ए|बी|सी|डी|अ|ब|स|द)\))\s*[:\-\—–]/gi;
+    let match: RegExpExecArray | null;
+    while ((match = otherOptPattern.exec(cleaned)) !== null) {
+      const matchedLetter = (match[1] || match[2] || '').toUpperCase();
+      if (matchedLetter && matchedLetter !== curr) {
+        if (match.index > 10) {
+          cleaned = cleaned.slice(0, match.index).trim();
+          break;
+        }
+      }
+    }
+
+    // 3. Remove leading Option (X): or (X) prefix matching currentLabel to avoid duplicate stutter with the row's header
+    if (curr) {
+      const escapedCurr = escapeRegExp(curr);
+      cleaned = cleaned.replace(new RegExp(`^(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${escapedCurr}\\)?|\\(?${escapedCurr}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${escapedCurr}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*`, 'i'), '').trim();
+    }
+
+    // 4. Remove leading bullets, icons, dashes
+    cleaned = cleaned.replace(/^[\s✓✔✗✘×•·*\-–—:]+/, '').trim();
+
+    return cleaned;
+  } catch (err) {
+    console.warn('cleanOptionAnalysisText error:', err);
+    return text;
   }
-
-  // 3. Remove leading Option (X): or (X) prefix matching currentLabel to avoid duplicate stutter with the row's header
-  if (curr) {
-    cleaned = cleaned.replace(new RegExp(`^(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${curr}\\)?|\\(?${curr}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${curr}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*`, 'i'), '').trim();
-  }
-
-  // 4. Remove leading bullets, icons, dashes
-  cleaned = cleaned.replace(/^[\s✓✔✗✘×•·*\-–—:]+/, '').trim();
-
-  return cleaned;
 }
 
 // A block that markdown must keep separate: heading, list item, table, quote, code fence or rule.
