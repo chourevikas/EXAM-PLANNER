@@ -165,10 +165,11 @@ export function cleanOptionAnalysisText(text: string, isCorrect: boolean, curren
       }
     }
 
-    // 3. Remove leading Option (X): or (X) prefix matching currentLabel to avoid duplicate stutter with the row's header
+    // 3. Remove leading Option (X): or (X) prefix, or "Option (X) is correct." prefix
     if (curr) {
       const escapedCurr = escapeRegExp(curr);
-      cleaned = cleaned.replace(new RegExp(`^(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${escapedCurr}\\)?|\\(?${escapedCurr}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${escapedCurr}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*`, 'i'), '').trim();
+      cleaned = cleaned.replace(new RegExp(`^(?:\\*\\*)?(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${escapedCurr}\\)?|\\(?${escapedCurr}\\))(?:\\s+is\\s+correct\\.?)?(?:\\*\\*)?\\s*[:\\-\\—–]?\\s*`, 'i'), '').trim();
+      cleaned = cleaned.replace(/^(?:is\\s+correct\\.?|सही\\s+उत्तर\\s+है\\.?)(?:\\*\\*)?\\s*/i, '').trim();
     }
 
     // 4. Remove leading bullets, icons, dashes
@@ -359,14 +360,27 @@ export function QuestionSolutionMarkdownCard({
     // Clean up analysis text so other options' descriptions don't leak into this option's summary
     analysis = cleanOptionAnalysisText(analysis, isOptionCorrect, itemLabel);
 
-    // Fallback if still empty. The option text is already in the row header, so don't repeat it.
-    if (!analysis) {
-      if (isOptionCorrect) {
-        analysis = rawDetailed || (explObj?.core_concept ? `This is the correct answer. ${explObj.core_concept}` : 'This is the correct answer.');
-      } else {
-        const trapHint = commonTraps.length > 0 ? ` Common trap: ${commonTraps[0]}` : '';
-        analysis = `This option is incorrect.${trapHint}`;
-      }
+    // For the correct option, NEVER duplicate the Detailed Explanation & Reference text
+    // which is already displayed right above in the main explanation section.
+    const isDuplicateOfMain = isOptionCorrect && Boolean(
+      analysis && (
+        analysis.trim() === rawDetailed.trim() ||
+        analysis.trim() === detailedMarkdown.trim() ||
+        (rawDetailed.length > 25 && analysis.includes(rawDetailed.slice(0, 40))) ||
+        (analysis.length > 25 && rawDetailed.includes(analysis.slice(0, 40))) ||
+        /evaluates core conceptual mastery/i.test(analysis)
+      )
+    );
+
+    if (isOptionCorrect && (isDuplicateOfMain || !analysis)) {
+      // In Option-by-Option Analysis, the card header already clearly shows "Correct Key".
+      // Show concise confirmation or unique concept note without repeating the main explanation.
+      analysis = explObj?.core_concept && !rawDetailed.includes(explObj.core_concept)
+        ? `${t('thisIsCorrect')} ${explObj.core_concept}`
+        : t('thisIsCorrect');
+    } else if (!analysis) {
+      const trapHint = commonTraps.length > 0 ? ` Common trap: ${commonTraps[0]}` : '';
+      analysis = `${t('thisIsIncorrect')}${trapHint}`;
     }
 
     return {
