@@ -580,32 +580,31 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
             else:
                 stage2_status = "QUEUED"
 
-        # Stage 3: Explanations Status
+        # Stage 3: Explanations Status (PDF authentic; no LLM explanation indexing required)
         if p3:
             p3_status_upper = str(p3.status).upper()
             if (
-                p3_status_upper == "COMPLETED"
+                p3_status_upper in ("COMPLETED", "DISMISSED", "SKIPPED")
                 or status_str == "PUBLISHED"
                 or (exp_count >= q_count and q_count > 0)
+                or (stage1_status == "COMPLETED" and stage2_status == "COMPLETED")
             ):
                 stage3_status = "COMPLETED"
-            elif p3_status_upper in ("RUNNING", "PROCESSING") or exp_count > 0:
+            elif p3_status_upper in ("RUNNING", "PROCESSING") and not (stage1_status == "COMPLETED" and stage2_status == "COMPLETED"):
                 stage3_status = "IN_PROGRESS"
             elif p3_status_upper in ("FAILED", "CANCELLED"):
                 stage3_status = "FAILED"
             elif stage1_status != "COMPLETED" or stage2_status != "COMPLETED":
                 stage3_status = "WAITING_INPUTS"
             else:
-                stage3_status = "QUEUED"
-        else:
-            if status_str == "PUBLISHED" or (exp_count > 0 and exp_count >= q_count):
                 stage3_status = "COMPLETED"
-            elif exp_count > 0:
-                stage3_status = "IN_PROGRESS"
+        else:
+            if status_str == "PUBLISHED" or (stage1_status == "COMPLETED" and stage2_status == "COMPLETED"):
+                stage3_status = "COMPLETED"
             elif stage1_status != "COMPLETED" or stage2_status != "COMPLETED":
                 stage3_status = "WAITING_INPUTS"
             else:
-                stage3_status = "QUEUED"
+                stage3_status = "COMPLETED"
         # Stage 4: Question Translation Status
         translation_status = "NOT_STARTED"
         if p_trans:
@@ -853,16 +852,6 @@ async def _compute_stuck_pipelines(session: AsyncSession) -> list:
             stuck_stage = "QUESTION_EXTRACTION"
             stuck_step = p1.current_step
             stuck_progress = p1.progress_percent
-        elif (
-            q_count > 0
-            and exp_count < q_count
-            and p3 is not None
-            and p3.status in ("INTERRUPTED", "FAILED", "RUNNING")
-        ):
-            is_stuck = True
-            stuck_stage = "EXPLANATION_INDEXING"
-            stuck_step = p3.current_step or f"INCOMPLETE_EXPLANATIONS_({exp_count}/{q_count})"
-            stuck_progress = p3.progress_percent
         elif (
             q_count > 0
             and key_count < q_count

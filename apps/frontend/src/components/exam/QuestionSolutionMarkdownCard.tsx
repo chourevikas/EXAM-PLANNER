@@ -253,7 +253,7 @@ export function QuestionSolutionMarkdownCard({
     explObj?.detailed_solution ||
     explObj?.detailed_text ||
     explObj?.text ||
-    (typeof solution.explanation === 'string' ? solution.explanation : 'Detailed explanation is available.');
+    (typeof solution.explanation === 'string' ? solution.explanation : '');
 
   // Extract reverseLogic source text: either explicit reverse_logic field, or the Reverse Logic Box inside rawFullExplanation
   const explicitReverseLogic = (explObj?.reverse_logic || '').trim();
@@ -285,6 +285,15 @@ export function QuestionSolutionMarkdownCard({
   }
 
   const detailedMarkdown = reflowBrokenParagraphs(rawDetailed);
+
+  // Determine whether the source actually had authored explanation in the PDF
+  const hasAuthoredExplanation = Boolean(
+    rawDetailed &&
+    rawDetailed.trim() &&
+    !/^Detailed explanation is available\.?$/i.test(rawDetailed.trim()) &&
+    !/evaluates core conceptual mastery/i.test(rawDetailed) &&
+    !new RegExp(`^(?:\\*\\*)?(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${correctLabel}\\)?|\\(?${correctLabel}\\))(?:\\s+is\\s+correct\\.?)?(?:\\*\\*)?\\.?$`, 'i').test(rawDetailed.trim())
+  );
 
   // Extract all takeaways and points to remember safely
   const keyTakeaways: string[] = Array.isArray(explObj?.key_takeaways)
@@ -326,6 +335,18 @@ export function QuestionSolutionMarkdownCard({
       distractor_analysis: opt.distractor_analysis || opt.analysis || '',
     }));
   }
+
+  // Determine whether any distractor has genuine authored analysis from the source PDF
+  const hasRealDistractorAnalysis = rawDistractors.some((item) => {
+    const matchedOpt = (options || []).find((opt, oIdx) => {
+      const optId = String(opt.option_id ?? opt.id ?? '');
+      const oLbl = (opt.option_label || opt.label || String.fromCharCode(65 + oIdx)).replace(/[\(\)\.\s]/g, '').toUpperCase();
+      const itemLabel = (item.label || String.fromCharCode(65 + oIdx)).replace(/[\(\)\.\s]/g, '').toUpperCase();
+      return (item.option_id && optId && optId === String(item.option_id)) || oLbl === itemLabel;
+    });
+    const da = (item.distractor_analysis || (item as any).analysis || matchedOpt?.distractor_analysis || (matchedOpt as any)?.analysis || '').trim();
+    return !item.is_correct && !matchedOpt?.is_correct && da.length > 0 && !/^This option is incorrect/i.test(da);
+  }) || Boolean(fullReverseLogicSource && fullReverseLogicSource.trim().length > 10);
 
   // Enrich each distractor item with matching option data & extracted analysis
   const distractorsList: DistractorItem[] = rawDistractors.map((item, idx) => {
@@ -374,13 +395,16 @@ export function QuestionSolutionMarkdownCard({
 
     if (isOptionCorrect && (isDuplicateOfMain || !analysis)) {
       // In Option-by-Option Analysis, the card header already clearly shows "Correct Key".
-      // Show concise confirmation or unique concept note without repeating the main explanation.
       analysis = explObj?.core_concept && !rawDetailed.includes(explObj.core_concept)
         ? `${t('thisIsCorrect')} ${explObj.core_concept}`
-        : t('thisIsCorrect');
+        : (hasRealDistractorAnalysis ? t('thisIsCorrect') : '');
     } else if (!analysis) {
-      const trapHint = commonTraps.length > 0 ? ` Common trap: ${commonTraps[0]}` : '';
-      analysis = `${t('thisIsIncorrect')}${trapHint}`;
+      if (hasRealDistractorAnalysis) {
+        const trapHint = commonTraps.length > 0 ? ` Common trap: ${commonTraps[0]}` : '';
+        analysis = `${t('thisIsIncorrect')}${trapHint}`;
+      } else {
+        analysis = '';
+      }
     }
 
     return {
@@ -390,8 +414,10 @@ export function QuestionSolutionMarkdownCard({
       is_correct: isOptionCorrect,
       distractor_analysis: analysis,
       classification: isOptionCorrect
-        ? 'Correct Key'
-        : item.classification || `Distractor (${item.closeness_score ?? 0})`,
+        ? t('correctKey')
+        : hasRealDistractorAnalysis
+        ? (item.classification && !item.classification.includes('Weak Alignment') && !item.classification.includes('(0)') ? item.classification : t('distractor'))
+        : '',
     };
   });
 
@@ -580,19 +606,37 @@ export function QuestionSolutionMarkdownCard({
               overflow: 'hidden',
             }}
           >
-            <div
-              className="prose prose-slate max-w-none text-slate-800"
-              style={{
-                fontSize: 14,
-                lineHeight: 1.7,
-                color: 'var(--deep-navy)',
-                padding: '16px 18px',
-              }}
-            >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {detailedMarkdown}
-              </ReactMarkdown>
-            </div>
+            {hasAuthoredExplanation ? (
+              <div
+                className="prose prose-slate max-w-none text-slate-800"
+                style={{
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  color: 'var(--deep-navy)',
+                  padding: '16px 18px',
+                }}
+              >
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {detailedMarkdown}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 13.5,
+                  color: 'var(--text-secondary)',
+                  padding: '16px 18px',
+                }}
+              >
+                <CheckCircle2 size={18} style={{ color: 'var(--status-success)', flexShrink: 0 }} />
+                <span>
+                  <strong>{t('optionIsCorrect', { label: correctLabel })}</strong> — {t('officialAnswerKeyConfirmed')}
+                </span>
+              </div>
+            )}
 
             {distractorsList.length > 0 ? (
               <div
@@ -635,7 +679,7 @@ export function QuestionSolutionMarkdownCard({
                           flexWrap: 'wrap',
                           alignItems: 'flex-start',
                           justifyContent: 'space-between',
-                          marginBottom: 6,
+                          marginBottom: item.distractor_analysis ? 6 : 0,
                           gap: '6px 10px',
                         }}
                       >
@@ -675,36 +719,30 @@ export function QuestionSolutionMarkdownCard({
                           </span>
                         </div>
 
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            lineHeight: 1.3,
-                            padding: '3px 8px',
-                            borderRadius: 'var(--radius)',
-                            backgroundColor: isOptionCorrect ? 'var(--status-success-bg)' : 'var(--bg-hover)',
-                            color: isOptionCorrect ? '#15803D' : 'var(--text-muted)',
-                            maxWidth: '100%',
-                            marginLeft: 30,
-                          }}
-                        >
-                          {isOptionCorrect
-                            ? t('correctKey')
-                            : item.classification === 'Distractor'
-                              ? t('distractor')
-                              : item.classification || `${t('distractor')} (${item.closeness_score ?? 0})`}
-                        </span>
+                        {item.classification ? (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              lineHeight: 1.3,
+                              padding: '3px 8px',
+                              borderRadius: 'var(--radius)',
+                              backgroundColor: isOptionCorrect ? 'var(--status-success-bg)' : 'var(--bg-hover)',
+                              color: isOptionCorrect ? '#15803D' : 'var(--text-muted)',
+                              maxWidth: '100%',
+                              marginLeft: 30,
+                            }}
+                          >
+                            {item.classification}
+                          </span>
+                        ) : null}
                       </div>
 
                       {item.distractor_analysis ? (
                         <p style={{ margin: '0 0 0 30px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, overflowWrap: 'anywhere' }}>
                           {item.distractor_analysis}
                         </p>
-                      ) : (
-                        <p style={{ margin: '0 0 0 30px', fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          {isOptionCorrect ? t('thisIsCorrect') : t('thisIsIncorrect')}
-                        </p>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })}

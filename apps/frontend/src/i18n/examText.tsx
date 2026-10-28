@@ -84,6 +84,7 @@ const EN = {
   distractor: 'Distractor',
   thisIsCorrect: 'This is the correct answer.',
   thisIsIncorrect: 'This option is incorrect.',
+  officialAnswerKeyConfirmed: 'Official answer key confirmed from source question paper.',
   commonTraps: 'Common Exam Traps & Pitfalls',
   cognitiveSkill: 'Cognitive Skill',
   // Pages
@@ -161,6 +162,7 @@ const HI: Partial<Record<ExamTextKey, string>> = {
   distractor: 'भ्रामक विकल्प',
   thisIsCorrect: 'यह सही उत्तर है।',
   thisIsIncorrect: 'यह विकल्प गलत है।',
+  officialAnswerKeyConfirmed: 'मूल प्रश्नपत्रिका से आधिकारिक उत्तर कुंजी की पुष्टि।',
   commonTraps: 'परीक्षा में होने वाली आम गलतियाँ',
   cognitiveSkill: 'संज्ञानात्मक कौशल',
   freePlanLeft: 'फ़्री प्लान: आज {limit} में से {remaining} प्रश्न बाकी',
@@ -235,6 +237,7 @@ const MR: Partial<Record<ExamTextKey, string>> = {
   distractor: 'दिशाभूल करणारा पर्याय',
   thisIsCorrect: 'हे बरोबर उत्तर आहे.',
   thisIsIncorrect: 'हा पर्याय चुकीचा आहे.',
+  officialAnswerKeyConfirmed: 'मूळ प्रश्नपत्रिकेवरून अधिकृत उत्तरसूचीची पुष्टी.',
   commonTraps: 'परीक्षेतील नेहमीच्या चुका',
   cognitiveSkill: 'बौद्धिक कौशल्य',
   freePlanLeft: 'फ्री प्लॅन: आज {limit} पैकी {remaining} प्रश्न बाकी',

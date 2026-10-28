@@ -769,7 +769,9 @@ async def get_question_solution(
     cache_key = build_cache_key("questions:solution", str(qid_int), lang_str)
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
-        return JSONResponse(content=jsonable_encoder(cached_data))
+        detail = cached_data.get("explanation", {}).get("detailed_solution", "") if isinstance(cached_data, dict) else ""
+        if not detail or "evaluates core conceptual mastery" not in detail:
+            return JSONResponse(content=jsonable_encoder(cached_data))
 
     # Single optimized SQL join query: fetches Question, Explanation, Options, Translations, and Distractor Reasonings
     stmt = (
@@ -882,15 +884,13 @@ async def get_question_solution(
             "text": ot.option_text if ot else f"Option {opt.option_label}",
             "closeness_score": c_score,
             "is_correct": opt.is_correct,
-            "classification": ClosenessEvaluator.classify_option(c_score),
+            "classification": "Correct Key" if opt.is_correct else (ClosenessEvaluator.classify_option(c_score) if (opt.closeness_score is not None and analysis_text) else "Distractor"),
             "distractor_analysis": analysis_text or "",
             "analysis": analysis_text or "",
         }
 
     detailed_solution = (
-        expl.detailed_solution if (expl and expl.detailed_solution) else (
-            f"**Option ({correct_option_label}) is correct.**\n\nThis question evaluates core conceptual mastery under standard syllabus guidelines."
-        )
+        expl.detailed_solution.strip() if (expl and expl.detailed_solution and expl.detailed_solution.strip()) else ""
     )
 
     common_traps = (
