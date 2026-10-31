@@ -5,11 +5,12 @@ const ANALYTICS_API_BASE_URL = '/api/v1/analytics';
 export interface PredictedRankResponse {
   exam_code: string;
   exam_name: string;
-  moving_average_score: number;
-  predicted_percentile: number;
-  top_percentage: number;
-  predicted_rank: number;
-  confidence_level: 'HIGH' | 'MEDIUM' | 'PROVISIONAL';
+  /** All null when the student hasn't answered anything yet (confidence_level INSUFFICIENT_DATA). */
+  moving_average_score: number | null;
+  predicted_percentile: number | null;
+  top_percentage: number | null;
+  predicted_rank: number | null;
+  confidence_level: 'HIGH' | 'MEDIUM' | 'PROVISIONAL' | 'INSUFFICIENT_DATA';
   total_candidates: number;
   attempts_analyzed: number;
 }
@@ -31,30 +32,35 @@ export async function fetchPredictedRank(): Promise<PredictedRankResponse> {
 
 export interface GrowthCurvePoint {
   month: string;
-  percentile: number;
-  readiness_index: number;
+  /** null for a month without submitted tests. */
+  percentile: number | null;
+  readiness_index: number | null;
+  tests: number;
 }
 
 export interface SubjectBenchmark {
   subject: string;
   user_accuracy: number;
-  national_avg_accuracy: number;
+  /** Average across all students; null until the subject has enough answers platform-wide. */
+  national_avg_accuracy: number | null;
   total_attempted: number;
 }
 
 export interface MonthlyBenchmarkResponse {
   period: string;
-  predicted_rank: number;
-  top_percentage: number;
+  predicted_rank: number | null;
+  top_percentage: number | null;
+  /** Students who started a test in the last 30 days. */
   active_aspirants: number;
-  overall_percentile: number;
-  previous_month_percentile: number;
-  percentile_delta: number;
-  readiness_index: number;
+  overall_percentile: number | null;
+  /** Both null unless this month and last month each have tests. */
+  previous_month_percentile: number | null;
+  percentile_delta: number | null;
+  readiness_index: number | null;
   readiness_status: string;
-  confidence_level: 'HIGH' | 'MEDIUM' | 'PROVISIONAL';
+  confidence_level: 'HIGH' | 'MEDIUM' | 'PROVISIONAL' | 'INSUFFICIENT_DATA';
   attempts_analyzed: number;
-  overall_accuracy: number;
+  overall_accuracy: number | null;
   monthly_growth_curve: GrowthCurvePoint[];
   subject_benchmark: SubjectBenchmark[];
 }

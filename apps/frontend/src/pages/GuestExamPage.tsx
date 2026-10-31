@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ExamLanguageProvider } from '../i18n/examText';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
@@ -23,7 +24,8 @@ import {
   Minimize2,
   Globe,
 } from 'lucide-react';
-import { SUPPORTED_LANGUAGES } from '../constants/languages';
+import { SUPPORTED_LANGUAGES, getLanguageOption } from '../constants/languages';
+import { ExamLanguagePicker } from '../components/common/ExamLanguagePicker';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode, listExams } from '../services/examService';
@@ -36,6 +38,7 @@ import {
   mergeRecommendations,
   recommendationCardToQuestion,
   useSimilarQuestions,
+  isSameSubject,
 } from '../services/similarQuestionService';
 import { parseTaxonomyParam, formatTaxonomyParam, parseYearParam } from '../utils/taxonomyParam';
 
@@ -531,9 +534,11 @@ export function GuestExamPage() {
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(gCount);
   const [timeLeft, setTimeLeft] = useState(gCount * 120);
-  const [language, setLanguage] = useState<string>(() => {
-    return localStorage.getItem('preferred_language') || 'en';
-  });
+  // The session's language lives in ?lang= (en / hi / mr): chosen before practice starts, kept by
+  // filter changes (they copy the URL) and reloads, so it stays fixed for the session
+  const urlLang = searchParams.get('lang');
+  const hasSessionLanguage = SUPPORTED_LANGUAGES.some((l) => l.code === urlLang);
+  const language = hasSessionLanguage ? (urlLang as string) : 'en';
 
   const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'marked' | 'unanswered'>(
     'all',
@@ -678,19 +683,19 @@ export function GuestExamPage() {
     [],
   );
 
-  const handleLanguageChange = (newLang: string) => {
-    setLanguage(newLang);
-    localStorage.setItem('preferred_language', newLang);
-
-    // Priority translate active question if missing in newLang
-    if (activeQuestion) {
-      ensureQuestionTranslation(activeQuestion, newLang);
-    }
-    // Background prefetch next question if present
-    if (allQuestions[currentQIndex + 1]) {
-      ensureQuestionTranslation(allQuestions[currentQIndex + 1], newLang);
-    }
+  const handleSessionLanguagePicked = (chosenLang: string) => {
+    const current = new URLSearchParams(searchParams);
+    current.set('lang', chosenLang);
+    navigate(`/guest-exam?${current.toString()}`, { replace: true });
   };
+
+  // The opening question (and the next) in the session's language, fetched if it isn't stored yet
+  useEffect(() => {
+    if (language === 'en' || !activeQuestion) return;
+    ensureQuestionTranslation(activeQuestion, language);
+    if (allQuestions[currentQIndex + 1]) ensureQuestionTranslation(allQuestions[currentQIndex + 1], language);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, activeQuestion?.question_id]);
 
   // Dynamic Recommended Questions Pool
   const [recommendedPool, setRecommendedPool] = useState<QuestionOut[]>([]);
@@ -943,6 +948,8 @@ export function GuestExamPage() {
 
   // Fetch Guest Questions strictly from DB
   useEffect(() => {
+    // Questions and their solutions load once the session's language is chosen
+    if (!hasSessionLanguage) return;
     async function loadGuestQuestions() {
       if (isInitialLoadRef.current) {
         setIsLoading(true);
@@ -1234,7 +1241,7 @@ export function GuestExamPage() {
     }
 
     loadGuestQuestions();
-  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, hasSessionLanguage]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -1302,7 +1309,7 @@ export function GuestExamPage() {
     if (recSolutions[qId] || recSolutionLoading[qId]) return;
     setRecSolutionLoading((prev) => ({ ...prev, [qId]: true }));
     try {
-      const res = await fetch(`/api/v1/questions/${qId}/solution`);
+      const res = await fetch(`/api/v1/questions/${qId}/solution?language=${encodeURIComponent(language)}`);
       if (res.ok) {
         const data = await res.json();
         setRecSolutions((prev) => ({ ...prev, [qId]: data }));
@@ -1323,7 +1330,7 @@ export function GuestExamPage() {
       setIsSolutionLoading(true);
     }
     try {
-      const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
+      const solRes = await fetch(`/api/v1/questions/${targetId}/solution?language=${encodeURIComponent(language)}`);
       if (solRes.ok) {
         const solPayload: QuestionSolutionData = await solRes.json();
         setPracticeSolutions((prev) => ({
@@ -1370,11 +1377,18 @@ export function GuestExamPage() {
 
   // All up to 10 recommended items to display for Guest mode
   const activeRecExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]).map((e) => e.toLowerCase());
+  const activeSubject = activeQuestion?.subject || activeQuestion?.section_code;
   const displayRecs = activeRecExams.length > 0 
     ? mergeRecommendations(similarRecs, recommendedPool).filter((q) => {
         if (!q.exam_name) return true;
         const canonical = extractCanonicalExamName(q.exam_name).toLowerCase();
-        return activeRecExams.includes(canonical) || activeRecExams.includes(q.exam_name.toLowerCase());
+        const matchesExam = activeRecExams.includes(canonical) || activeRecExams.includes(q.exam_name.toLowerCase());
+        if (!matchesExam) return false;
+        if (activeSubject && !activeSubject.toLowerCase().startsWith('all') && activeSubject !== 'General Studies') {
+          const qSubj = q.subject || q.section_code;
+          return isSameSubject(qSubj, activeSubject);
+        }
+        return true;
       }).slice(0, 10)
     : [];
 
@@ -1558,7 +1572,13 @@ export function GuestExamPage() {
       return clean.length === 1 ? clean : String.fromCharCode(65 + index);
     };
 
-    const responsesPayload = allQuestions.map((q, idx) => {
+    // Filter to only questions the student actually attempted/revealed in this session
+    const attemptedQuestions = allQuestions.filter(
+      (q) => userResponses[q.question_id] || rMap[q.question_id],
+    );
+    const questionsToScore = attemptedQuestions.length > 0 ? attemptedQuestions : allQuestions;
+
+    const responsesPayload = questionsToScore.map((q, idx) => {
       const userResp = userResponses[q.question_id];
       const rev = rMap[q.question_id];
       let isCorr = false;
@@ -1595,10 +1615,11 @@ export function GuestExamPage() {
       };
     });
 
-    const totalMarksPossible = numQuestions;
-    const unattemptedCount = Math.max(0, numQuestions - attemptedCount);
+    const totalQuestionsCount = attemptedCount > 0 ? attemptedCount : 0;
+    const totalMarksPossible = totalQuestionsCount;
+    const unattemptedCount = Math.max(0, totalQuestionsCount - attemptedCount);
     const accuracy = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
-    const totalAllotted = Math.max(1, numQuestions) * 120;
+    const totalAllotted = Math.max(1, totalQuestionsCount) * 120;
     const elapsedSeconds = Math.max(10, totalAllotted - timeLeft);
 
     const scorePayload = {
@@ -1608,7 +1629,7 @@ export function GuestExamPage() {
       incorrectCount,
       unattemptedCount,
       accuracy,
-      totalQuestions: numQuestions,
+      totalQuestions: totalQuestionsCount,
       topicName:
         selectedTopicsList.length > 0
           ? selectedTopicsList.join(', ')
@@ -1695,6 +1716,20 @@ export function GuestExamPage() {
       }),
     );
   };
+
+  // Nothing loads until the guest picks the session's language
+  if (!hasSessionLanguage) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-subtle)' }}>
+        <ExamLanguagePicker
+          open
+          kind="practice"
+          onStart={handleSessionLanguagePicked}
+          onCancel={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+        />
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -1834,6 +1869,7 @@ export function GuestExamPage() {
   const unattemptedCount = Math.max(0, currentTotalQuestions - answeredCount);
 
   return (
+    <ExamLanguageProvider language={language}>
     <div
       style={{
         display: 'flex',
@@ -1997,34 +2033,15 @@ export function GuestExamPage() {
               {!!displayRecs.length && <span>{displayRecs.length}</span>}
             </button>
           )}
-          {/* Language Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          {/* The session's language: chosen before starting, fixed until it ends */}
+          <div
+            data-testid="exam-language"
+            title="Language for this session. It was chosen before starting and can't be changed now."
+            style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, color: '#FFFFFF', fontSize: 12.5, fontWeight: 600 }}
+          >
             {!isTabletOrBelow && <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)' }} />}
-            <select
-              value={language}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-              aria-label="Select Language"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#FFFFFF',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                borderRadius: 'var(--radius)',
-                padding: '0 8px',
-                height: 36,
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: 'pointer',
-                outline: 'none',
-                maxWidth: isTabletOrBelow ? 96 : undefined,
-              }}
-            >
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code} style={{ backgroundColor: '#1E293B', color: '#FFFFFF' }}>
-                  {/* Phones only have room for the short native name */}
-                  {isTabletOrBelow ? lang.nativeName : `${lang.nativeName} (${lang.name})`}
-                </option>
-              ))}
-            </select>
+            {/* Phones only have room for the short native name */}
+            <span>{isTabletOrBelow ? getLanguageOption(language).nativeName : `${getLanguageOption(language).nativeName} (${getLanguageOption(language).name})`}</span>
           </div>
 
           <button
@@ -4632,5 +4649,6 @@ export function GuestExamPage() {
         </div>
       )}
     </div>
+    </ExamLanguageProvider>
   );
 }

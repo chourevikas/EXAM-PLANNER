@@ -6,6 +6,7 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 import { Spinner } from '../components/common/Spinner';
 import { canAccessView, canOpenView } from '../constants/adminAccess';
 import { fetchReportedSummary } from '../services/questionReportService';
+import { fetchFeedbackSummary } from '../services/feedbackService';
 
 /* Lazy-loaded View Components for instant initial load & smooth switching */
 const AdminOverviewView = lazy(() => import('../components/admin/AdminOverviewView').then(m => ({ default: m.AdminOverviewView })));
@@ -19,8 +20,12 @@ const TeacherRewardsView = lazy(() => import('../components/admin/views/TeacherR
 const CurrentAffairsManager = lazy(() => import('../components/admin/views/CurrentAffairsManager').then(m => ({ default: m.CurrentAffairsManager })));
 const ExamTypesManager = lazy(() => import('../components/admin/views/ExamTypesManager').then(m => ({ default: m.ExamTypesManager })));
 const NotificationsView = lazy(() => import('../components/admin/views/NotificationsView').then(m => ({ default: m.NotificationsView })));
+const MilestonesView = lazy(() => import('../components/admin/views/MilestonesView').then(m => ({ default: m.MilestonesView })));
+const TranslationsView = lazy(() => import('../components/admin/views/TranslationsView').then(m => ({ default: m.TranslationsView })));
+const FeedbackView = lazy(() => import('../components/admin/views/FeedbackView').then(m => ({ default: m.FeedbackView })));
 const ReportedQuestionsView = lazy(() => import('../components/admin/views/ReportedQuestionsView').then(m => ({ default: m.ReportedQuestionsView })));
 const TestimonialsView = lazy(() => import('../components/admin/views/TestimonialsView').then(m => ({ default: m.TestimonialsView })));
+const ExamSyllabusPanel = lazy(() => import('../components/admin/syllabus/ExamSyllabusPanel').then(m => ({ default: m.ExamSyllabusPanel })));
 const ThemeSettingsView = lazy(() => import('../components/admin/views/ThemeSettingsView').then(m => ({ default: m.ThemeSettingsView })));
 
 function NoAccessView({ onHome }: { onHome: () => void }) {
@@ -99,8 +104,16 @@ export function AdminPage() {
       .then((s) => setReportedCount(s.open_questions))
       .catch(() => {});
   };
+  const [feedbackCount, setFeedbackCount] = useState(0);
+  const refreshFeedbackCount = () => {
+    if (!canAccessView(permissions, 'feedback')) return;
+    fetchFeedbackSummary()
+      .then((s) => setFeedbackCount(s.open))
+      .catch(() => {});
+  };
   useEffect(() => {
     refreshReportedCount();
+    refreshFeedbackCount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, JSON.stringify(permissions)]);
 
@@ -137,7 +150,18 @@ export function AdminPage() {
       case 'questions':
         return <QuestionBankManager onNavigate={handleNavigate} />;
       case 'exam-types':
-        return <ExamTypesManager />;
+        return <ExamTypesManager onOpenSyllabus={(examType) => handleNavigate('exam-syllabus', examType)} />;
+      case 'exam-syllabus':
+        // The exam type comes from Exam Types → Syllabus; without one, go back to the list
+        return selectedExamForReview?.id ? (
+          <ExamSyllabusPanel
+            key={selectedExamForReview.id}
+            examType={{ id: Number(selectedExamForReview.id), type: selectedExamForReview.type, name: selectedExamForReview.name }}
+            onClose={() => handleNavigate('exam-types')}
+          />
+        ) : (
+          <ExamTypesManager onOpenSyllabus={(examType) => handleNavigate('exam-syllabus', examType)} />
+        );
       case 'review':
         return <QuestionReviewView initialExam={selectedExamForReview} onNavigate={handleNavigate} />;
       case 'mock-tests':
@@ -150,12 +174,18 @@ export function AdminPage() {
         return <AnalyticsView />;
       case 'current-affairs':
         return <CurrentAffairsManager />;
+      case 'milestones':
+        return <MilestonesView />;
+      case 'translations':
+        return <TranslationsView />;
       case 'notifications':
         return <NotificationsView />;
       case 'testimonials':
         return <TestimonialsView />;
       case 'reported-questions':
         return <ReportedQuestionsView onNavigate={handleNavigate} onChanged={refreshReportedCount} />;
+      case 'feedback':
+        return <FeedbackView onChanged={refreshFeedbackCount} />;
       case 'theme':
         return <ThemeSettingsView />;
       default:
@@ -186,6 +216,7 @@ export function AdminPage() {
           onCloseMobile={() => setMobileOpen(false)}
           permissions={permissions}
           reportedCount={reportedCount}
+          feedbackCount={feedbackCount}
         />
 
         {/* Main Content Area */}

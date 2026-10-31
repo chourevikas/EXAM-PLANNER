@@ -56,8 +56,84 @@ export function RecommendedQuestionsPanel({
   const examList = (availableExams && availableExams.length > 0) ? availableExams : DEFAULT_REC_EXAMS;
   const anyExamActive = Object.values(activeToggles).some(Boolean);
 
+  // Exam Recommendation Filter Toggles Bar (UPSC, MPPSC, BPSC, UPPCS); shown under the title, or on
+  // its own when the host draws the title itself (the phone sheet)
+  const examToggles = toggleHandler ? (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        flexWrap: 'wrap',
+        padding: '6px 8px',
+        backgroundColor: 'var(--bg-subtle)',
+        border: '1px solid #E2E8F0',
+        borderRadius: 4,
+        marginTop: 6,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 2 }}>
+        <SlidersHorizontal size={11} color="var(--text-muted)" />
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+          }}
+        >
+          Exams:
+        </span>
+      </div>
+      {examList.map((examName) => {
+        const isActive = !!activeToggles[examName];
+        return (
+          <button
+            key={examName}
+            type="button"
+            onClick={() => toggleHandler(examName)}
+            title={`Toggle ${examName} questions ${isActive ? '(ON)' : '(OFF)'}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '3px 8px',
+              borderRadius: 4,
+              border: isActive ? '1px solid var(--primary-red)' : '1px solid #CBD5E1',
+              backgroundColor: isActive ? '#EFF6FF' : '#FFFFFF',
+              color: isActive ? 'var(--primary-red)' : '#64748B',
+              fontSize: 10.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              boxShadow: isActive ? '0 1px 2px rgba(var(--primary-red-rgb), 0.08)' : 'none',
+            }}
+          >
+            <span>{examName}</span>
+            <span
+              style={{
+                fontSize: 9,
+                fontWeight: 800,
+                padding: '1px 5px',
+                borderRadius: 3,
+                backgroundColor: isActive ? 'var(--primary-red)' : '#94A3B8',
+                color: '#FFFFFF',
+                letterSpacing: '0.04em',
+                lineHeight: 1.2,
+              }}
+            >
+              {isActive ? 'ON' : 'OFF'}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
   return (
     <>
+      {title === null && examToggles && <div style={{ marginBottom: 10 }}>{examToggles}</div>}
       {title !== null && (
         <div style={{ marginBottom: 10 }}>
           <div
@@ -101,79 +177,7 @@ export function RecommendedQuestionsPanel({
             </p>
           )}
 
-          {/* Exam Recommendation Filter Toggles Bar (UPSC, MPPSC, BPSC, UPPCS) */}
-          {toggleHandler && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                flexWrap: 'wrap',
-                padding: '6px 8px',
-                backgroundColor: 'var(--bg-subtle)',
-                border: '1px solid #E2E8F0',
-                borderRadius: 4,
-                marginTop: 6,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 2 }}>
-                <SlidersHorizontal size={11} color="var(--text-muted)" />
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                  }}
-                >
-                  Exams:
-                </span>
-              </div>
-              {examList.map((examName) => {
-                const isActive = !!activeToggles[examName];
-                return (
-                  <button
-                    key={examName}
-                    type="button"
-                    onClick={() => toggleHandler(examName)}
-                    title={`Toggle ${examName} questions ${isActive ? '(ON)' : '(OFF)'}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      padding: '3px 8px',
-                      borderRadius: 4,
-                      border: isActive ? '1px solid var(--primary-red)' : '1px solid #CBD5E1',
-                      backgroundColor: isActive ? '#EFF6FF' : '#FFFFFF',
-                      color: isActive ? 'var(--primary-red)' : '#64748B',
-                      fontSize: 10.5,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: isActive ? '0 1px 2px rgba(var(--primary-red-rgb), 0.08)' : 'none',
-                    }}
-                  >
-                    <span>{examName}</span>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 800,
-                        padding: '1px 5px',
-                        borderRadius: 3,
-                        backgroundColor: isActive ? 'var(--primary-red)' : '#94A3B8',
-                        color: '#FFFFFF',
-                        letterSpacing: '0.04em',
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {isActive ? 'ON' : 'OFF'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {examToggles}
         </div>
       )}
 

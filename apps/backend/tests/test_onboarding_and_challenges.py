@@ -13,7 +13,8 @@ from app.db.models.user import User, UserRole, StudentProfile, SubscriptionTier
 from app.db.models.exam_type import ExamType
 from app.db.models.hierarchy import Exam, SyllabusVersion, Subject, Topic, Subtopic
 from app.db.models.question import Question, QuestionTranslation
-from app.db.models.challenge import ChallengeQuestion
+from app.db.models.challenge import Challenge, ChallengeQuestion
+from app.db.models.notification import UserNotification
 from app.db.models.enums import QuestionStatus, LanguageCode
 from app.core.security import create_access_token, get_password_hash
 
@@ -170,7 +171,7 @@ ONBOARDING = {
 # ── Onboarding ───────────────────────────────────────────────────────────────
 
 @pytest.mark.anyio
-async def test_new_student_must_onboard_and_target_is_then_locked(client):
+async def test_new_student_must_onboard_and_only_optional_subject_is_then_locked(client):
     me = (await client.get("/api/v1/auth/me", headers=_h("alice"))).json()
     assert me["onboarding_completed"] is False
 
@@ -191,11 +192,18 @@ async def test_new_student_must_onboard_and_target_is_then_locked(client):
     again = await client.post("/api/v1/auth/me/onboarding", json={**ONBOARDING, "target_year": "2028"}, headers=_h("alice"))
     assert again.status_code == 409
 
-    # primary target fields can't be edited afterwards…
-    for field, value in (("target_exam", "Other"), ("target_year", "2028"), ("optional_subject", "History")):
-        r = await client.patch("/api/v1/auth/me", json={field: value}, headers=_h("alice"))
-        assert r.status_code == 403, (field, r.text)
-    # …re-sending the stored values is harmless, and the weekly goal stays editable
+    # the optional subject can't be edited afterwards…
+    r = await client.patch("/api/v1/auth/me", json={"optional_subject": "History"}, headers=_h("alice"))
+    assert r.status_code == 403, r.text
+    # …target exam and year can, but not to empty
+    for field in ("target_exam", "target_year"):
+        r = await client.patch("/api/v1/auth/me", json={field: "  "}, headers=_h("alice"))
+        assert r.status_code == 400, (field, r.text)
+    moved = await client.patch("/api/v1/auth/me", json={"target_exam": "MPSC Rajyaseva", "target_year": "2028"}, headers=_h("alice"))
+    assert moved.status_code == 200, moved.text
+    me = (await client.get("/api/v1/auth/me", headers=_h("alice"))).json()
+    assert (me["target_exam"], me["target_year"], me["optional_subject"]) == ("MPSC Rajyaseva", "2028", "Geography")
+    # re-sending the stored optional subject is harmless, and the weekly goal stays editable
     ok = await client.patch(
         "/api/v1/auth/me",
         json={"target_exam": "UPSC CSE", "target_year": "2027", "optional_subject": "Geography", "weekly_hours": "45"},
@@ -203,7 +211,7 @@ async def test_new_student_must_onboard_and_target_is_then_locked(client):
     )
     assert ok.status_code == 200, ok.text
     me = (await client.get("/api/v1/auth/me", headers=_h("alice"))).json()
-    assert (me["target_year"], me["weekly_hours"]) == ("2027", "45")
+    assert (me["target_exam"], me["target_year"], me["weekly_hours"]) == ("UPSC CSE", "2027", "45")
 
     # admins see the answers
     detail = (await client.get(f"/api/v1/users/{_state['users']['alice'][0]}", headers=_h("admin"))).json()
@@ -258,9 +266,9 @@ async def test_ratings_are_optional_at_onboarding_and_editable_later(client):
     assert bad.status_code == 422
     assert (await client.get("/api/v1/auth/me", headers=_h("bob"))).json()["subject_proficiency"] == {"Economy": 3}
 
-    # editing ratings doesn't unlock the primary target
+    # editing ratings doesn't unlock the optional subject
     locked = await client.patch(
-        "/api/v1/auth/me", json={"subject_proficiency": {"Economy": 2}, "target_year": "2030"}, headers=_h("bob")
+        "/api/v1/auth/me", json={"subject_proficiency": {"Economy": 2}, "optional_subject": "Sociology"}, headers=_h("bob")
     )
     assert locked.status_code == 403
 
@@ -333,6 +341,35 @@ async def test_challenge_questions_follow_exam_and_year_filters(client):
 
 
 @pytest.mark.anyio
+async def test_challenge_can_draw_from_several_exams(client):
+    q = _state["qids"]  # created as dave (Pro): alice's free challenges are needed by later tests
+
+    async def stored(challenge_id):
+        async with AsyncSession(test_engine) as s:
+            ids = set((await s.exec(select(ChallengeQuestion.question_id).where(ChallengeQuestion.challenge_id == challenge_id))).all())
+            return ids, await s.get(Challenge, challenge_id)
+
+    both = await _create(client, "dave", exam_type_ids=[_state["upsc_type"], _state["mpsc_type"]])
+    assert both.status_code == 200, both.text
+    assert both.json()["exam_name"] == "UPSC Civil Services Examination, MPSC Rajyaseva"
+    ids, row = await stored(both.json()["id"])
+    assert ids == set(q["upsc2023"] + q["upsc2024"] + q["mpsc2023"])
+    assert row.exam_type_id is None  # several exams: the names say which
+
+    # Years narrow every chosen exam; 2024 only exists for UPSC
+    both_2024 = await _create(client, "dave", exam_type_ids=[_state["upsc_type"], _state["mpsc_type"]], years=[2024])
+    assert (await stored(both_2024.json()["id"]))[0] == set(q["upsc2024"])
+
+    # One exam in the list behaves like the legacy single exam_type_id; duplicates are ignored
+    one = await _create(client, "dave", exam_type_ids=[_state["mpsc_type"], _state["mpsc_type"]])
+    ids, row = await stored(one.json()["id"])
+    assert (ids, row.exam_type_id, one.json()["exam_name"]) == (set(q["mpsc2023"]), _state["mpsc_type"], "MPSC Rajyaseva")
+
+    # Any unknown exam in the list is rejected
+    assert (await _create(client, "dave", exam_type_ids=[_state["upsc_type"], 99999])).status_code == 400
+
+
+@pytest.mark.anyio
 async def test_each_user_gets_only_one_attempt_per_challenge(client):
     cid = (await _create(client, "alice", exam_type_id=_state["upsc_type"], years=[2024])).json()["id"]
 
@@ -356,9 +393,9 @@ async def test_each_user_gets_only_one_attempt_per_challenge(client):
 
     done = (await client.get(f"/api/v1/challenges/{cid}", headers=_h("bob"))).json()
     assert (done["has_attempted"], done["has_in_progress"]) == (True, False)
-    # the list flag (challenges appear in your list once you created or were invited to them)
+    # the list flag (taking a public challenge from its link puts it in your list)
     invite = await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "bob@ob.test"}, headers=_h("alice"))
-    assert invite.status_code == 204, invite.text
+    assert invite.status_code == 200, invite.text
     listed = next(c for c in (await client.get("/api/v1/challenges", headers=_h("bob"))).json() if c["id"] == cid)
     assert listed["has_attempted"] is True
 
@@ -369,6 +406,59 @@ async def test_each_user_gets_only_one_attempt_per_challenge(client):
     # …and the flags are per user
     carol_view = (await client.get(f"/api/v1/challenges/{cid}", headers=_h("carol"))).json()
     assert carol_view["has_attempted"] is False
+
+
+@pytest.mark.anyio
+async def test_invite_only_challenges_invites_and_where_they_show_up(client):
+    from datetime import datetime, timedelta, timezone
+
+    # dave (Pro) makes an invite-only challenge; its link says so before anyone signs in
+    made = await _create(client, "dave", exam_type_id=_state["upsc_type"], visibility="INVITE_ONLY")
+    assert made.status_code == 200, made.text
+    cid, token = made.json()["id"], made.json()["share_token"]
+    assert (await client.get(f"/api/v1/challenges/public/{token}")).json()["visibility"] == "INVITE_ONLY"
+    assert (await client.get(f"/api/v1/challenges/{cid}", headers=_h("bob"))).status_code == 403
+
+    # invite by email in any case; it rings their bell once, even if invited twice
+    invited = await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": " BOB@OB.test "}, headers=_h("dave"))
+    assert invited.status_code == 200, invited.text
+    assert (invited.json()["name"], invited.json()["has_attempted"]) == ("Bob", False)
+    assert (await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "bob@ob.test"}, headers=_h("dave"))).status_code == 200
+    async with AsyncSession(test_engine) as s:
+        notes = (await s.exec(select(UserNotification).where(
+            UserNotification.notification_type == "CHALLENGE_INVITE", UserNotification.action_url == f"/challenges/{cid}"
+        ))).all()
+    assert [(n.user_id, n.title) for n in notes] == [(_state["users"]["bob"][0], "Dave challenged you")]
+
+    assert (await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "dave@ob.test"}, headers=_h("dave"))).status_code == 400
+    assert (await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "nobody@ob.test"}, headers=_h("dave"))).status_code == 404
+    assert (await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "carol@ob.test"}, headers=_h("bob"))).status_code == 403
+    assert (await client.get(f"/api/v1/challenges/{cid}/invites", headers=_h("bob"))).status_code == 403
+
+    # bob now sees it as invited, takes it, and dave's invite list shows his score
+    assert (await client.get(f"/api/v1/challenges/{cid}", headers=_h("bob"))).json()["relation"] == "INVITED"
+    start = await client.post(f"/api/v1/challenges/{cid}/attempts/start", headers=_h("bob"))
+    assert (await client.post(f"/api/v1/challenges/attempts/{start.json()['attempt_id']}/submit", headers=_h("bob"))).status_code == 200
+    invitees = (await client.get(f"/api/v1/challenges/{cid}/invites", headers=_h("dave"))).json()
+    assert [(i["name"], i["has_attempted"], i["score"]) for i in invitees] == [("Bob", True, 0.0)]
+    assert next(c for c in (await client.get("/api/v1/challenges", headers=_h("dave"))).json() if c["id"] == cid)["relation"] == "CREATED"
+
+    # a public challenge: carol is just viewing until she takes it, then it's in her list as joined
+    pub = (await _create(client, "dave", exam_type_id=_state["upsc_type"])).json()
+    assert (await client.get(f"/api/v1/challenges/{pub['id']}", headers=_h("carol"))).json()["relation"] == "VIEWING"
+    assert pub["id"] not in [c["id"] for c in (await client.get("/api/v1/challenges", headers=_h("carol"))).json()]
+    assert (await client.post(f"/api/v1/challenges/{pub['share_token']}/attempts/start", headers=_h("carol"))).status_code == 200
+    joined = next(c for c in (await client.get("/api/v1/challenges", headers=_h("carol"))).json() if c["id"] == pub["id"])
+    assert joined["relation"] == "JOINED"
+
+    # nobody new can be invited once it has closed
+    async with AsyncSession(test_engine) as s:
+        row = await s.get(Challenge, cid)
+        row.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        s.add(row)
+        await s.commit()
+    closed = await client.post(f"/api/v1/challenges/{cid}/invite", json={"email": "carol@ob.test"}, headers=_h("dave"))
+    assert closed.status_code == 400 and "closed" in closed.json()["detail"]
 
 
 @pytest.mark.anyio

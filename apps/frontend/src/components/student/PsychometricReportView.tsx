@@ -62,7 +62,8 @@ import {
 } from 'recharts';
 import { formatEnum } from '../../utils/formatEnum';
 import { SimilarQuestionsSection } from '../exam/SimilarQuestionsSection';
-import { ReportSummary } from './ReportSummary';
+import { ReportSummary, LockedSummary } from './ReportSummary';
+import { cleanOptionAnalysisText } from '../exam/QuestionSolutionMarkdownCard';
 
 interface PsychometricReportViewProps {
   report: PsychometricReport;
@@ -101,6 +102,8 @@ export function PsychometricReportView({
 
   const [activeTab, setActiveTab] = useState<'summary' | 'questions' | 'ai-insights' | 'topics'>('summary');
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
+  // Free plan: the API sends only the score and per-question review
+  const analysisLocked = Boolean((report as any)?.analysis_locked);
 
   useEffect(() => {
     if (isCumulative && activeTab === 'questions') {
@@ -533,6 +536,11 @@ export function PsychometricReportView({
         const tName = q.topic || q.topic_name || 'Core Concepts';
         const subName = q.subtopic || 'Foundations';
         const state = getQuestionState(q);
+        // Marks this answer got under its paper's scheme; UPSC +2 / -2/3 for older reports without it
+        const awardedRaw = (q as any).marks_awarded;
+        const hasAwarded = typeof awardedRaw === 'number';
+        const gained = state.isAtt && state.isCorr ? (hasAwarded && awardedRaw > 0 ? awardedRaw : 2.0) : 0;
+        const lost = state.isAtt && !state.isCorr ? (hasAwarded && awardedRaw <= 0 ? -awardedRaw : 0.6667) : 0;
         const qNum = Number(q.question_number || idx + 1);
         const timeTaken = Number(q.time_taken_seconds || 60);
         const expTime = Number(q.expected_time_seconds || 60);
@@ -641,12 +649,17 @@ export function PsychometricReportView({
         } else {
           subObj.unattempted += 1;
         }
+
+        for (const node of [sObj, tObj, subObj]) {
+          node.marks_gained = (node.marks_gained || 0) + gained;
+          node.marks_lost = (node.marks_lost || 0) + lost;
+        }
       });
 
       const finalizeNode = (node: any) => {
         const acc = node.attempted > 0 ? Math.round((node.correct / node.attempted) * 100) : 0;
-        const posMarks = Math.round(node.correct * 2.0 * 100) / 100;
-        const negMarks = Math.round(node.incorrect * 0.6667 * 100) / 100;
+        const posMarks = Math.round((node.marks_gained ?? node.correct * 2.0) * 100) / 100;
+        const negMarks = Math.round((node.marks_lost ?? node.incorrect * 0.6667) * 100) / 100;
         const netMarks = Math.round((posMarks - negMarks) * 100) / 100;
         const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
         const meanScore = Math.round((netMarks / numExams) * 100) / 100;
@@ -1066,7 +1079,12 @@ export function PsychometricReportView({
           overflowX: 'auto',
         }}
       >
-        {(isCumulative
+        {(analysisLocked
+          ? [
+              { id: 'summary', label: 'Summary', icon: Zap },
+              { id: 'questions', label: 'Questions', icon: Target },
+            ]
+          : isCumulative
           ? [
               { id: 'summary', label: 'Summary', icon: TrendingUp },
               { id: 'topics', label: 'Topics', icon: BookOpen },
@@ -1103,7 +1121,7 @@ export function PsychometricReportView({
             >
               <IconComp size={16} />
               <span>{tab.label}</span>
-              {tab.id === 'ai-insights' && !hasAiInsight && (
+              {tab.id === 'ai-insights' && !hasAiInsight && !analysisLocked && (
                 <span
                   style={{
                     fontSize: 10,
@@ -1129,7 +1147,8 @@ export function PsychometricReportView({
       {/* ──────────────────────────────────────────────────────────────────────────
           PLACE 1: EXAM SCORECARD PERFORMANCE (Tab 1)
       ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'summary' && (
+      {activeTab === 'summary' && analysisLocked && <LockedSummary report={report as any} />}
+      {activeTab === 'summary' && !analysisLocked && (
         <>
           <ReportSummary report={report as any} isCumulative={Boolean(isCumulative)} />
           <button
@@ -1314,7 +1333,7 @@ export function PsychometricReportView({
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--primary-red)' }}>
-                    {icrs?.icrs_score !== undefined ? icrs.icrs_score : 75} <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/ 100</span>
+                    {icrs?.icrs_score != null ? icrs.icrs_score : '—'} <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/ 100</span>
                   </div>
                   {(() => {
                     const b = getBadgeStyle(icrs?.readiness_label || icrs?.classification || 'Competitive Benchmark Ready');
@@ -2320,34 +2339,37 @@ export function PsychometricReportView({
             (report as any)?.part_3_aggregated_user_report?.mentorship_insight ||
             {};
 
-          const execSummary =
-            insightObj.executive_summary ||
-            'Candidate demonstrates strong foundational grasp across core subjects with disciplined pacing and strategic question selection.';
-          const benchmarkVerdict =
-            insightObj.benchmark_verdict ||
-            'COMPETITIVE QUALIFYING ZONE: Performance clears the expected prelims threshold with solid conceptual accuracy.';
-          const strengths: string[] =
-            insightObj.tactical_strengths ||
-            insightObj.strengths || [
-              'High accuracy on conceptual elimination questions.',
-              'Controlled guessing tendency on high-uncertainty items.',
-            ];
-          const weaknesses: string[] =
-            insightObj.critical_vulnerabilities ||
-            insightObj.weaknesses || [
-              'Susceptibility to extreme qualifier statement traps.',
-              'Negative switch regret on revised answers in final section.',
-            ];
-          const pacingDiag =
-            insightObj.pacing_and_unattempted_diagnosis ||
-            'Time allocation remained balanced with efficient velocity throughout the first two quartiles.';
-          const distractorCritique =
-            insightObj.distractor_trap_critique ||
-            'Moderate vulnerability to high-closeness distractors featuring inverted factual clauses.';
-          const closingAdvice =
-            insightObj.closing_mentorship_advice ||
-            insightObj.closing ||
-            'Focus on targeted topic drills for flagged weak syllabus areas while maintaining current pacing discipline.';
+          // No made-up text: missing fields say so, and with no written summary at all we show a notice instead.
+          const NOT_AVAILABLE = 'Not available for this test.';
+          const execSummary = insightObj.executive_summary || '';
+          const benchmarkVerdict = insightObj.benchmark_verdict || '';
+          const strengths: string[] = insightObj.tactical_strengths || insightObj.strengths || [];
+          const weaknesses: string[] = insightObj.critical_vulnerabilities || insightObj.weaknesses || [];
+          const pacingDiag = insightObj.pacing_and_unattempted_diagnosis || NOT_AVAILABLE;
+          const distractorCritique = insightObj.distractor_trap_critique || NOT_AVAILABLE;
+          const closingAdvice = insightObj.closing_mentorship_advice || insightObj.closing || '';
+          const hasInsight = Boolean(
+            execSummary || benchmarkVerdict || strengths.length || weaknesses.length ||
+            insightObj.pacing_and_unattempted_diagnosis || insightObj.distractor_trap_critique || closingAdvice,
+          );
+
+          if (!hasInsight) {
+            return (
+              <div
+                style={{
+                  padding: 16,
+                  borderRadius: 'var(--radius)',
+                  border: '1px dashed var(--border-color)',
+                  fontSize: 13,
+                  color: 'var(--text-muted)',
+                  lineHeight: 1.55,
+                }}
+              >
+                The written summary for this test isn&apos;t available. Your scores and the metrics in this report are
+                complete.
+              </div>
+            );
+          }
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -2383,7 +2405,7 @@ export function PsychometricReportView({
                     lineHeight: 1.45,
                   }}
                 >
-                  {benchmarkVerdict}
+                  {benchmarkVerdict || NOT_AVAILABLE}
                 </div>
                 <div
                   style={{
@@ -2435,6 +2457,7 @@ export function PsychometricReportView({
                       lineHeight: 1.55,
                     }}
                   >
+                    {strengths.length === 0 && <li style={{ margin: '4px 0' }}>{NOT_AVAILABLE}</li>}
                     {strengths.map((s: string, sIdx: number) => (
                       <li key={sIdx} style={{ margin: '4px 0' }}>
                         {s}
@@ -2474,6 +2497,7 @@ export function PsychometricReportView({
                       lineHeight: 1.55,
                     }}
                   >
+                    {weaknesses.length === 0 && <li style={{ margin: '4px 0' }}>{NOT_AVAILABLE}</li>}
                     {weaknesses.map((w: string, wIdx: number) => (
                       <li key={wIdx} style={{ margin: '4px 0' }}>
                         {w}
@@ -3525,6 +3549,11 @@ export function PsychometricReportView({
                     // Chosen and correct option labels
                     const userOptLabel = q.user_selected_option || q.user_selected_label || 'Unattempted';
                     const correctOptLabel = q.correct_option || q.correct_option_label || 'A';
+                    const qTypeTag =
+                      q.question_type_tag ||
+                      (q.cognitive_skill && !['conceptual reasoning', 'none', ''].includes(String(q.cognitive_skill).toLowerCase())
+                        ? q.cognitive_skill
+                        : null);
 
                     const cardBorderColor = state.isCorr
                       ? '#3A8B53'
@@ -3578,8 +3607,16 @@ export function PsychometricReportView({
                               >
                                 {q.topic || q.topic_name || q.meaningful_name || `Question #${qNum}`}
                               </div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                Time Spent: {q.time_taken_seconds || 60}s
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                                <span>Time Spent: {q.time_taken_seconds || 60}s</span>
+                                {qTypeTag && (
+                                  <>
+                                    <span>·</span>
+                                    <span style={{ color: '#1D4ED8', fontWeight: 700 }}>
+                                      {qTypeTag}
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -3656,6 +3693,28 @@ export function PsychometricReportView({
                                 border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'var(--border-color)'}`,
                               }}
                             >
+                              {/* Question Type Tag */}
+                              {qTypeTag && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>🏷️ Question Type</span>
+                                  <div>
+                                    <span
+                                      style={{
+                                        padding: '2px 8px',
+                                        borderRadius: 'var(--radius)',
+                                        fontSize: 11,
+                                        fontWeight: 800,
+                                        backgroundColor: '#EFF6FF',
+                                        color: '#1D4ED8',
+                                        border: '1px solid #BFDBFE',
+                                      }}
+                                    >
+                                      {qTypeTag}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
                               {/* 0. Self-reported confidence vs outcome */}
                               {q.confidence_level && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -3963,7 +4022,7 @@ export function PsychometricReportView({
                                           }}
                                         >
                                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {optDistAnalysis}
+                                            {cleanOptionAnalysisText(optDistAnalysis, isOptCorrect, optLabel)}
                                           </ReactMarkdown>
                                         </div>
                                       )}
@@ -3996,6 +4055,10 @@ export function PsychometricReportView({
                                     }
                                   }
                                 }
+                              }
+
+                              if (chosenFeedback) {
+                                chosenFeedback = cleanOptionAnalysisText(chosenFeedback, Boolean(q.is_correct), userOptLabel);
                               }
 
                               const optionsList = q.options || [];

@@ -1,6 +1,7 @@
 from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, Query, status, HTTPException, Response, Request
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, col, and_, func
 
@@ -117,6 +118,40 @@ async def list_bookmarks(
     out = {"items": items, "total": int(total or 0)}
     await cache.set(cache_key, out, ttl_seconds=300)
     return out
+
+
+@router.get("/me/bookmarks/practice")
+async def bookmarked_questions_for_practice(
+    language: str = Query(default="en", description="Session language: en, hi or mr"),
+    difficulty: Optional[DifficultyLevel] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """The student's bookmarked questions (newest bookmark first) with solutions, for untimed practice.
+
+    Same item shape as GET /questions, so the practice screen can use them directly.
+    """
+    from app.core.languages import parse_language
+    from app.db.models.enums import QuestionStatus
+    from app.services.question_service import QuestionService
+
+    filters = [col(QuestionBookmark.user_id) == current_user.id, col(Question.status) == QuestionStatus.PUBLISHED]
+    if difficulty:
+        filters.append(col(Question.difficulty) == difficulty)
+    rows = (await session.exec(
+        select(Question)
+        .join(QuestionBookmark, col(QuestionBookmark.question_id) == col(Question.id))
+        .where(*filters)
+        .order_by(col(QuestionBookmark.created_at).desc())
+        .limit(limit)
+    )).all()
+    seen: set = set()
+    questions = [q for q in rows if not (q.id in seen or seen.add(q.id))]  # a question bookmarked twice appears once
+    items = await QuestionService(session)._build_batch_question_detail_responses(
+        questions, target_lang=parse_language(language), include_solutions=True
+    )
+    return JSONResponse(content=jsonable_encoder({"items": items, "total": len(items)}))
 
 
 @router.post("/me/bookmarks/{question_id}")

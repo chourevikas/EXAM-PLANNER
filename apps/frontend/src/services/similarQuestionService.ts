@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { QuestionOut } from '../types/exam';
+import type { QuestionOut } from '../types/exam';
 import { guardedFetch } from '../utils/apiGuard';
 
 /**
@@ -25,7 +25,11 @@ export interface SimilarQuestionResult {
 }
 
 /** A recommendation card tagged with how closely it matched. */
-export type SimilarQuestionOut = QuestionOut & { similar_tier?: SimilarTier; similarity_score?: number };
+export type SimilarQuestionOut = QuestionOut & {
+  similar_tier?: SimilarTier;
+  similarity_score?: number;
+  match_reasons?: string[];
+};
 
 /** Maps a /questions/recommended-style card (also embedded by /similar) to the QuestionOut used by the panels. */
 export function recommendationCardToQuestion(
@@ -64,10 +68,11 @@ export function recommendationCardToQuestion(
 
 export async function fetchSimilarQuestions(
   questionId: number | string,
-  options: { limit?: number; language?: string; includeQuestion?: boolean } = {},
+  options: { limit?: number; language?: string; includeQuestion?: boolean; otherYearsOnly?: boolean } = {},
 ): Promise<SimilarQuestionResult[]> {
   const params = new URLSearchParams({ limit: String(options.limit ?? 5) });
   if (options.includeQuestion) params.append('include_question', 'true');
+  if (options.otherYearsOnly) params.append('other_years_only', 'true');
   if (options.language) params.append('language', options.language);
   const res = await guardedFetch(`/api/v1/questions/${questionId}/similar?${params.toString()}`);
   if (!res.ok) return [];
@@ -89,16 +94,19 @@ export function useSimilarQuestions(
   language: string | undefined,
   excludeIds: Set<string>,
   limit = 6,
+  /** Only questions from other years (the post-test "same theme in other years" section) */
+  otherYearsOnly = false,
 ): { similar: SimilarQuestionOut[]; isLoading: boolean } {
   const [cache, setCache] = useState<Record<string, SimilarQuestionOut[]>>({});
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
-  const key = isRealQuestionId(questionId) ? `${questionId}:${language || 'en'}` : null;
+  const key = isRealQuestionId(questionId) ? `${questionId}:${language || 'en'}${otherYearsOnly ? ':other-years' : ''}` : null;
 
   useEffect(() => {
     if (!key || cache[key]) return;
     let cancelled = false;
     setLoadingKey(key);
-    fetchSimilarQuestions(questionId as number | string, { limit, language, includeQuestion: true })
+    // Over-fetch: the session's own questions are filtered out below and must not consume the limit
+    fetchSimilarQuestions(questionId as number | string, { limit: Math.max(limit * 3, 12), language, includeQuestion: true, otherYearsOnly })
       .then((results) => {
         if (cancelled) return;
         const cards = results
@@ -107,6 +115,7 @@ export function useSimilarQuestions(
             ...recommendationCardToQuestion(r.question, idx),
             similar_tier: r.tier,
             similarity_score: r.similarity_score,
+            match_reasons: r.match_reasons || [],
           }));
         setCache((prev) => ({ ...prev, [key]: cards }));
       })
@@ -121,7 +130,9 @@ export function useSimilarQuestions(
     };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const similar = (key ? cache[key] || [] : []).filter((q) => !excludeIds.has(String(q.question_id)));
+  const similar = (key ? cache[key] || [] : [])
+    .filter((q) => !excludeIds.has(String(q.question_id)))
+    .slice(0, limit);
   return { similar, isLoading: key !== null && loadingKey === key };
 }
 
@@ -129,4 +140,29 @@ export function useSimilarQuestions(
 export function mergeRecommendations<T extends QuestionOut>(similar: T[], pool: T[]): T[] {
   const seen = new Set(similar.map((q) => String(q.question_id)));
   return [...similar, ...pool.filter((q) => !seen.has(String(q.question_id)))];
+}
+
+export const CANONICAL_SUBJECT_GROUPS: string[][] = [
+  ['polity', 'indian polity', 'indian polity and governance', 'governance'],
+  ['history', 'modern history', 'medieval history', 'ancient history', 'indian history', 'indian history and culture'],
+  ['art and culture', 'arts and culture', 'indian culture'],
+  ['geography', 'human and economic geography'],
+  ['economy', 'economics', 'indian economy'],
+  ['environment', 'environment and ecology', 'ecology and environment'],
+  ['science and technology', 'science and tech', 'general science'],
+  ['social security in india', 'insurance and social security principles', 'labour laws and industrial relations'],
+];
+
+export function isSameSubject(s1?: string | null, s2?: string | null): boolean {
+  if (!s1 || !s2) return false;
+  const n1 = s1.toLowerCase().replace(/[–—]/g, '-').replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
+  const n2 = s2.toLowerCase().replace(/[–—]/g, '-').replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
+  if (n1 === n2) return true;
+  for (const group of CANONICAL_SUBJECT_GROUPS) {
+    if (group.some((g) => n1 === g || g.includes(n1) || n1.includes(g)) &&
+        group.some((g) => n2 === g || g.includes(n2) || n2.includes(g))) {
+      return true;
+    }
+  }
+  return false;
 }

@@ -357,7 +357,9 @@ function TableRowItem({
               <Loader2 size={11} className="animate-spin text-amber-600" />
               In Extraction
             </button>
-          ) : isPipelineComplete ? (
+          ) : isPipelineComplete || s1Completed ? (
+            // Once the questions are extracted they can be reviewed, even while answer-key mapping or
+            // explanations still show as running (a partial key otherwise left the row with no action)
             <button
               onClick={() => {
                 if (onNavigate) {
@@ -609,7 +611,7 @@ function MobilePipelineCard({
             <Loader2 size={12} className="animate-spin text-amber-600" />
             In Extraction
           </button>
-        ) : isPipelineComplete ? (
+        ) : isPipelineComplete || s1Completed ? (
           <button
             type="button"
             onClick={() => {
@@ -682,6 +684,10 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
     setSetCode,
     paperType,
     setPaperType,
+    marksPerQuestion,
+    setMarksPerQuestion,
+    negativeMarks,
+    setNegativeMarks,
     selectedFile,
     setSelectedFile,
     isUploading,
@@ -866,7 +872,8 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
   }, []);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
-    await handleHookSubmit(e);
+    // Keep the dialog open when the upload was refused, so its message stays visible
+    if (!(await handleHookSubmit(e))) return;
     setTimeout(() => {
       pollerRef.current?.resetCurve();
       loadRealTimeQueue(true);
@@ -1404,7 +1411,7 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                   Upload Question Paper PDF
                 </h2>
               </div>
-              <button
+              <button aria-label="Close"
                 onClick={() => setIsUploadModalOpen(false)}
                 style={{
                   background: 'transparent',
@@ -1619,6 +1626,50 @@ export function UploadReviewView({ onNavigate, initialTab = 'PIPELINE_ONLY' }: U
                 </select>
               </div>
             </div>
+
+            {/* Marking scheme: asked for every paper and used for every score and report */}
+            <fieldset
+              style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '12px 14px 14px', margin: '0 0 20px' }}
+            >
+              <legend style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', padding: '0 6px' }}>
+                Marking scheme
+              </legend>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                <div>
+                  <label htmlFor="marks-per-question" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    Marks for a correct answer
+                  </label>
+                  <input
+                    id="marks-per-question"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    required
+                    value={marksPerQuestion}
+                    onChange={(e) => setMarksPerQuestion(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius)', border: '1px solid #CBD5E1', fontSize: 13, backgroundColor: 'var(--bg-card)', color: 'var(--deep-navy)', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="negative-marks" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    Marks deducted for a wrong answer
+                  </label>
+                  <input
+                    id="negative-marks"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    required
+                    value={negativeMarks}
+                    onChange={(e) => setNegativeMarks(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius)', border: '1px solid #CBD5E1', fontSize: 13, backgroundColor: 'var(--bg-card)', color: 'var(--deep-navy)', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                Prefilled from the exam type. Use 0 when there is no negative marking (e.g. 0.67 is a third of 2 marks).
+              </p>
+            </fieldset>
 
             {/* Drag & Drop Upload Zone */}
             <div

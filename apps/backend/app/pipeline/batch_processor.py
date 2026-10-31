@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import uuid
 from typing import Dict, List, Optional, Tuple, Any
 from sqlmodel import select, col
@@ -33,6 +34,7 @@ from app.pipeline.batch_schema import BatchProcessingSummary
 from app.pipeline.dsu_stitcher import async_crop_and_save_asset
 from app.pipeline.knowledge_tags import knowledge_tags_from_record
 from app.pipeline.regex_question_parser import QuestionRecord
+from app.pipeline.patterns import extract_option_analysis_from_text, clean_correct_option_text
 from app.pipeline.state import PageExtractionPayload
 from app.storage.base import BaseStorageProvider
 
@@ -331,16 +333,9 @@ class BatchQuestionRegistrar:
                             et_obj = None
                             if exam and getattr(exam, "exam_type_id", None):
                                 et_obj = await session.get(ExamType, exam.exam_type_id)
-                            if et_obj:
-                                marks = float(et_obj.positive_marks)
-                                neg_marks = float(et_obj.negative_marks)
-                            else:
-                                marks = 2.0
-                                neg_rate = getattr(exam, "negative_marking_rate", None) if exam else None
-                                if neg_rate is not None and isinstance(neg_rate, (int, float)):
-                                    neg_marks = round(marks * float(neg_rate), 2)
-                                else:
-                                    neg_marks = round(marks / 3.0, 2)
+                            # The exam's own marking scheme (asked on upload), else its type's, else UPSC's
+                            from app.services.scoring import exam_marking_scheme
+                            marks, neg_marks = exam_marking_scheme(exam, et_obj)
 
                             expected_time = calculate_question_expected_time(
                                 q_data["question_type"],
@@ -564,7 +559,6 @@ class BatchQuestionRegistrar:
                 # A mixed bank's year is a placeholder: untagged questions get no year rather than a wrong one
                 source_year = exam.source_year if exam and not getattr(exam, "is_mixed_bank", False) else None
                 paper_set_code = exam.paper_set_code if exam else "SET_A"
-                neg_rate = getattr(exam, "negative_marking_rate", None) if exam else None
 
                 s_ver_res = await session.exec(
                     select(SyllabusVersion).where(
@@ -607,15 +601,9 @@ class BatchQuestionRegistrar:
             if exam and getattr(exam, "exam_type_id", None):
                 async with _get_session() as s_et:
                     et_obj = await s_et.get(ExamType, exam.exam_type_id)
-            if et_obj:
-                marks = float(et_obj.positive_marks)
-                neg_marks = float(et_obj.negative_marks)
-            else:
-                marks = 2.0
-                if neg_rate is not None and isinstance(neg_rate, (int, float)):
-                    neg_marks = round(marks * float(neg_rate), 2)
-                else:
-                    neg_marks = round(marks / 3.0, 2)
+            # The exam's own marking scheme (asked on upload), else its type's, else UPSC's
+            from app.services.scoring import exam_marking_scheme
+            marks, neg_marks = exam_marking_scheme(exam, et_obj)
 
             for i in range(0, len(records), self.batch_size):
                 batch = records[i : i + self.batch_size]
@@ -902,13 +890,16 @@ class BatchQuestionRegistrar:
 
                                 # Format Distractor Analysis
                                 if is_correct:
-                                    distractor_text = rec.solution_text or ""
+                                    raw_sol = rec.solution_text or ""
+                                    distractor_text = clean_correct_option_text(raw_sol)
                                 else:
                                     rl_data = rec.reverse_logic.get(norm_label)
                                     if rl_data:
                                         why_t = rl_data.get("why_tempting", "").strip()
                                         whats_t = rl_data.get("whats_actually_true", "").strip()
                                         distractor_text = f"Why it seems tempting — {why_t}\n\nWhat's actually true — {whats_t}"
+                                    elif rec.solution_text:
+                                        distractor_text = extract_option_analysis_from_text(rec.solution_text, norm_label)
                                     else:
                                         distractor_text = None
 
@@ -1008,6 +999,25 @@ class BatchQuestionRegistrar:
                                     bounding_box_json=tbl.get("bbox"),
                                 )
                                 session.add(q_tbl_asset)
+
+                            # QuestionMetadata baseline & cognitive_skill tag
+                            meta_stmt = select(QuestionMetadata).where(QuestionMetadata.question_id == question_id)
+                            q_meta = (await session.exec(meta_stmt)).first()
+                            cog_skill = rec.type_raw or "Conceptual Reasoning"
+                            if not q_meta:
+                                q_meta = QuestionMetadata(
+                                    question_id=question_id,
+                                    blooms_level=BloomsLevel.ANALYZE,
+                                    cognitive_skill=cog_skill,
+                                    primary_concept_tag="GENERAL",
+                                    irt_discrimination_a=1.50,
+                                    irt_difficulty_b=0.00,
+                                    irt_pseudo_guessing_c=0.25,
+                                )
+                                session.add(q_meta)
+                            elif rec.type_raw:
+                                q_meta.cognitive_skill = rec.type_raw
+                                session.add(q_meta)
 
                             # Human Review Task
                             if rec.extraction_confidence < 0.8 or rec.extraction_issues:

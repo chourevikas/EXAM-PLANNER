@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useClerk, useUser } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import {
-  Search,
   Bell,
   User,
   CreditCard,
@@ -11,16 +10,17 @@ import {
   LogOut,
   CheckCheck,
   Check,
-  BookOpen,
-  Target,
-  Trophy,
   Menu,
   Zap,
-  X
+  Flame,
+  X,
+  MessageSquareWarning
 } from 'lucide-react';
 import { UserAvatar } from '../common/UserAvatar';
+import { ReportProblemModal } from './ReportProblemModal';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { guardedFetch } from '../../utils/apiGuard';
+import { HeaderSearch } from './HeaderSearch';
 
 interface StudentTopHeaderProps {
   user: any;
@@ -39,19 +39,15 @@ function getUserInitials(name?: string): string {
 export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTopHeaderProps) {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(user);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showReportProblem, setShowReportProblem] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
   const [removingNotifIds, setRemovingNotifIds] = useState<Set<string>>(new Set());
-  const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchExpanded, setSearchExpanded] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const clerk = useClerk();
   const { user: clerkUser } = useUser();
@@ -128,26 +124,14 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
       if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
         setShowNotifications(false);
         setShowProfileMenu(false);
-        setSearchResults(null);
-        setSearchExpanded(false);
       }
     }
 
+    // Search has its own ⌘K and Escape handling (HeaderSearch)
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        if (isMobile) {
-          setSearchExpanded(true);
-          setTimeout(() => searchInputRef.current?.focus(), 100);
-        } else {
-          searchInputRef.current?.focus();
-        }
-      }
       if (e.key === 'Escape') {
         setShowNotifications(false);
         setShowProfileMenu(false);
-        setSearchExpanded(false);
-        setSearchResults(null);
       }
     };
 
@@ -159,56 +143,6 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     };
   }, [isMobile]);
 
-  useEffect(() => {
-    if (searchQuery.trim().length === 0) {
-      setSearchResults(null);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        const headers: Record<string, string> = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const res = await fetch(`/api/v1/search?q=${encodeURIComponent(searchQuery)}`, { headers });
-        if (res.ok) {
-          const data = await res.json();
-          setSearchResults({
-            mocks: data.mocks || [],
-            pyqs: data.pyqs || [],
-            topics: data.topics || []
-          });
-        } else {
-          throw new Error('Fallback search');
-        }
-      } catch (err) {
-        const q = searchQuery.toLowerCase();
-        const mockResults = [
-          { id: 'm1', title: 'UPSC Prelims Practice Test #12', type: 'Practice Test', url: '/mocks' },
-          { id: 'm2', title: 'GS Paper I Topic Test - Polity', type: 'Sectional', url: '/mocks' }
-        ].filter(m => m.title.toLowerCase().includes(q));
-
-        const pyqResults = [
-          { id: 'p1', title: 'UPSC CSE 2023 GS Paper I', type: 'PYQ Paper', url: '/pyq' },
-          { id: 'p2', title: 'UPSC CSE 2022 GS Paper I', type: 'PYQ Paper', url: '/pyq' }
-        ].filter(p => p.title.toLowerCase().includes(q));
-
-        const topicResults = [
-          { id: 't1', title: 'Fundamental Rights & Preamble', type: 'Polity', url: '/study-planner' },
-          { id: 't2', title: 'Monetary Policy & RBI Guidelines', type: 'Economy', url: '/study-planner' }
-        ].filter(t => t.title.toLowerCase().includes(q));
-
-        setSearchResults({ mocks: mockResults, pyqs: pyqResults, topics: topicResults });
-      } finally {
-        setIsSearching(false);
-      }
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   const handleMarkAsRead = async (noti: any, e?: React.MouseEvent) => {
     if (e) {
@@ -294,7 +228,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     }
   };
 
-  // Show search bar inline on desktop/tablet landscape, or as an icon-only on mobile
+  // Search bar inline on desktop/tablet landscape, an icon that opens a bar on phones
   const showInlineSearch = !isMobile;
 
   return (
@@ -365,9 +299,37 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
         )}
       </div>
 
-      {/* Right Controls: Notification Bell, User Avatar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16, position: 'relative', flexShrink: 0 }}>
+      {/* Center: search (questions, papers, topics) */}
+      {showInlineSearch && <HeaderSearch />}
 
+      {/* Right Controls: Search (phones), Streak, Notification Bell, User Avatar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16, position: 'relative', flexShrink: 0 }}>
+        {!showInlineSearch && <HeaderSearch compact />}
+
+        {/* Current study streak */}
+        {typeof currentUser?.current_streak === 'number' && (
+          <div
+            title={`Current streak: ${currentUser.current_streak} day${currentUser.current_streak === 1 ? '' : 's'}`}
+            aria-label={`Current streak: ${currentUser.current_streak} day${currentUser.current_streak === 1 ? '' : 's'}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 10px',
+              borderRadius: 999,
+              backgroundColor: 'rgba(249, 115, 22, 0.15)',
+              border: '1px solid rgba(249, 115, 22, 0.4)',
+              color: 'var(--bg-card)',
+              fontSize: 13,
+              fontWeight: 700,
+              lineHeight: 1,
+            }}
+          >
+            <Flame size={16} color="#F97316" fill={currentUser.current_streak > 0 ? '#F97316' : 'none'} />
+            <span>{currentUser.current_streak}</span>
+            {!isMobile && <span style={{ fontWeight: 500, opacity: 0.8 }}>day{currentUser.current_streak === 1 ? '' : 's'}</span>}
+          </div>
+        )}
 
         {/* Notification Bell */}
         <div style={{ position: 'relative' }}>
@@ -638,6 +600,13 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               <Link to="/billing" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
                 <CreditCard size={15} /> Subscription Plan
               </Link>
+              <button
+                type="button"
+                onClick={() => { setShowProfileMenu(false); setShowReportProblem(true); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: 'var(--text-secondary)', background: 'none', border: 'none', width: '100%', cursor: 'pointer', fontSize: 13, fontWeight: 500, textAlign: 'left', minHeight: 44 }}
+              >
+                <MessageSquareWarning size={15} /> Report a problem
+              </button>
               <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 4, paddingTop: 4 }}>
                 <button
                   type="button"
@@ -677,6 +646,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
         </div>
 
       </div>
+      {showReportProblem && <ReportProblemModal onClose={() => setShowReportProblem(false)} />}
     </header>
   );
 }

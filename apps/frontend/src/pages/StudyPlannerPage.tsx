@@ -3,273 +3,28 @@ import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { LogStudyModal } from '../components/student/LogStudyModal';
 import { CreateTaskModal } from '../components/student/CreateTaskModal';
-import { SubjectRatingPrompt } from '../components/student/SubjectRatingPrompt';
-import { fetchCurrentUser } from '../services/authService';
+import { StudyPlannerV2, PlannerTab } from '../components/student/planner/StudyPlannerV2';
 import {
-  fetchWeeklySchedule,
   fetchStudyTasks,
   fetchStudyActivities,
   fetchStudyActivitiesSummary,
-  completeStudyTask,
-  deleteStudyTask,
-  generateWeeklyStudyPlan,
-  WeeklyScheduleResponse,
   StudyTaskItem,
   StudyActivityItem,
   StudySummaryResponse,
   deleteStudyActivity,
-  sendPendingTasksEmail
 } from '../services/studyPlannerService';
-import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
-import { StudyPlannerSkeleton } from '../components/student/StudyPlannerSkeleton';
 import { formatEnum } from '../utils/formatEnum';
 
-const ratingPromptSkipKey = (userId: string) => `ep_skip_rating_prompt_${userId}`;
-
-/** True when a student has no subject ratings and hasn't already dismissed the prompt. */
-function shouldAskForRatings(): boolean {
-  try {
-    const stored = JSON.parse(localStorage.getItem('user') || '{}');
-    if (stored.role && stored.role !== 'STUDENT') return false;
-    if (Object.keys(stored.subject_proficiency || {}).length > 0) return false;
-    return !(stored.id && localStorage.getItem(ratingPromptSkipKey(String(stored.id))));
-  } catch {
-    return false;
-  }
-}
-
-function rememberRatingPromptSkipped() {
-  try {
-    const stored = JSON.parse(localStorage.getItem('user') || '{}');
-    if (stored.id) localStorage.setItem(ratingPromptSkipKey(String(stored.id)), '1');
-  } catch {
-    // Storage unavailable: the prompt may show again next time, which is harmless.
-  }
-}
-
-function getActivityTypeBadge(activityType?: string, title?: string) {
-  const act = (activityType || '').toUpperCase();
-  const titleLower = (title || '').toLowerCase();
-
-  if (act === 'NEW_TOPIC' || (!act && !titleLower.includes('revision') && !titleLower.includes('mcq') && !titleLower.includes('test'))) {
-    return { label: '📘 New Topic', bg: 'rgba(var(--primary-red-rgb), 0.12)', color: 'var(--primary-red)', border: 'rgba(var(--primary-red-rgb), 0.25)' };
-  }
-  if (act === 'PRACTICE_MCQS' || act === 'MOCK_TEST' || act === 'PYQ_SOLVING' || titleLower.includes('mcq') || titleLower.includes('test') || titleLower.includes('pyq')) {
-    return { label: '✍️ Practice MCQs / PYQs', bg: 'rgba(16, 185, 129, 0.12)', color: '#3A8B53', border: 'rgba(16, 185, 129, 0.25)' };
-  }
-  return { label: '🔁 Weak Area Revision', bg: 'rgba(245, 158, 11, 0.12)', color: '#F2B623', border: 'rgba(245, 158, 11, 0.25)' };
-}
-
-function renderActivityCategoryDropdowns(
-  tasksList: StudyTaskItem[],
-  onToggleComplete: (id: string, e: React.MouseEvent) => void,
-  onDeleteTask: (id: string, e: React.MouseEvent) => void,
-  onOpenLog: (subject: string, topic: string) => void,
-  getSubjectBadgeStyle: (subject?: string) => { bg: string; color: string; border: string },
-  selectedDayDate?: string
-) {
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  const newTopics = tasksList.filter(t => {
-    const act = (t.activity_type || '').toUpperCase();
-    if (act === 'NEW_TOPIC') return true;
-    if (act === 'CONCEPT_REVISION' || act === 'NOTES_REVIEW' || act === 'PRACTICE_MCQS' || act === 'PYQ_SOLVING' || act === 'MOCK_TEST') return false;
-    const titleLower = (t.title || '').toLowerCase();
-    return !titleLower.includes('revision') && !titleLower.includes('review') &&
-      !titleLower.includes('mcq') && !titleLower.includes('test') &&
-      !titleLower.includes('quiz') && !titleLower.includes('pyq') && !titleLower.includes('practice');
-  });
-
-  const revisions = tasksList.filter(t => {
-    if (newTopics.includes(t)) return false;
-    const act = (t.activity_type || '').toUpperCase();
-    if (act === 'CONCEPT_REVISION' || act === 'NOTES_REVIEW') return true;
-    if (act === 'PRACTICE_MCQS' || act === 'PYQ_SOLVING' || act === 'MOCK_TEST') return false;
-    const titleLower = (t.title || '').toLowerCase();
-    return titleLower.includes('revision') || titleLower.includes('review');
-  });
-
-  const practices = tasksList.filter(t => !newTopics.includes(t) && !revisions.includes(t));
-
-  const categories = [
-    {
-      id: 'new_topic',
-      title: '📘 New Topics',
-      tasks: newTopics,
-      bg: 'rgba(var(--primary-red-rgb), 0.04)',
-      borderColor: 'rgba(var(--primary-red-rgb), 0.25)',
-      badgeBg: 'rgba(var(--primary-red-rgb), 0.12)',
-      badgeColor: 'var(--primary-red)',
-    },
-    {
-      id: 'revision',
-      title: '🔁 Concept Revisions',
-      tasks: revisions,
-      bg: 'rgba(245, 158, 11, 0.04)',
-      borderColor: 'rgba(245, 158, 11, 0.25)',
-      badgeBg: 'rgba(245, 158, 11, 0.12)',
-      badgeColor: '#F2B623',
-    },
-    {
-      id: 'practice',
-      title: '✍️ Practice & PYQs',
-      tasks: practices,
-      bg: 'rgba(16, 185, 129, 0.04)',
-      borderColor: 'rgba(16, 185, 129, 0.25)',
-      badgeBg: 'rgba(16, 185, 129, 0.12)',
-      badgeColor: '#3A8B53',
-    }
-  ];
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {categories.map(cat => (
-        <details
-          key={cat.id}
-          open
-          style={{
-            backgroundColor: 'var(--bg-card)',
-            border: `1.5px solid ${cat.borderColor}`,
-            borderRadius: 'var(--radius)',
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
-          }}
-        >
-          <summary
-            style={{
-              padding: '14px 18px',
-              backgroundColor: cat.bg,
-              cursor: 'pointer',
-              fontWeight: 800,
-              fontSize: 14,
-              color: 'var(--text-primary)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              userSelect: 'none',
-              listStyle: 'none'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span>{cat.title}</span>
-              <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 10px', borderRadius: 'var(--radius)', backgroundColor: cat.badgeBg, color: cat.badgeColor }}>
-                {cat.tasks.length} Sub-topics
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Ico.ChevronDown size={18} style={{ color: 'var(--text-muted)' }} />
-            </div>
-          </summary>
-
-          <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10, backgroundColor: 'var(--bg-subtle)' }}>
-            {cat.tasks.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 4px' }}>
-                No sub-topics currently scheduled under this activity type.
-              </div>
-            ) : (
-              cat.tasks.map(t => {
-                const taskDateStr = selectedDayDate || (t.scheduled_date ? String(t.scheduled_date) : todayStr);
-                const isFuture = taskDateStr > todayStr;
-                const badge = getSubjectBadgeStyle(t.subject);
-                return (
-                  <div
-                    key={t.id}
-                    style={{
-                      padding: 14, borderRadius: 'var(--radius)',
-                      backgroundColor: t.is_completed ? 'var(--bg-subtle)' : 'var(--bg-card)',
-                      border: '1px solid var(--border-default)',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-                      opacity: isFuture ? 0.85 : 1
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 220 }}>
-                      <button
-                        disabled={isFuture}
-                        onClick={(e) => {
-                          if (isFuture) return;
-                          onToggleComplete(t.id, e);
-                        }}
-                        title={isFuture ? "Upcoming task: Can only be completed on or after its scheduled date" : undefined}
-                        style={{
-                          width: 22, height: 22, borderRadius: 'var(--radius)',
-                          border: isFuture ? '2px dashed var(--border-disabled)' : (t.is_completed ? 'none' : '2px solid var(--border-disabled)'),
-                          backgroundColor: isFuture ? 'var(--bg-subtle)' : (t.is_completed ? 'var(--success-primary)' : 'transparent'),
-                          color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          cursor: isFuture ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: isFuture ? 0.6 : 1
-                        }}
-                      >
-                        {isFuture ? <Ico.Lock size={11} style={{ color: 'var(--text-muted)' }} /> : (t.is_completed && <Ico.Check size={12} />)}
-                      </button>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: t.is_completed ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: t.is_completed ? 'line-through' : 'none' }}>
-                          {t.title}
-                        </div>
-                        {t.description && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t.description}</div>}
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {t.is_ai_recommended === false && (
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 'var(--radius)', backgroundColor: 'rgba(168, 85, 247, 0.12)', color: '#9333EA', border: '1px solid rgba(168, 85, 247, 0.25)' }}>
-                          📌 Custom Task
-                        </span>
-                      )}
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius)', backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>
-                        {t.subject || 'General'}
-                      </span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        ⏱️ {t.allocated_time_minutes}m
-                      </span>
-                      <button
-                        disabled={isFuture}
-                        onClick={(e) => {
-                          if (isFuture) return;
-                          onToggleComplete(t.id, e);
-                        }}
-                        title={isFuture ? "Upcoming task: Can only be completed on or after its scheduled date" : undefined}
-                        style={{
-                          padding: '5px 12px', borderRadius: 'var(--radius)',
-                          border: isFuture ? '1px solid var(--border-default)' : (t.is_completed ? '1px solid var(--border-default)' : 'none'),
-                          backgroundColor: isFuture ? 'var(--bg-subtle)' : (t.is_completed ? 'var(--bg-subtle)' : 'var(--accent-primary)'),
-                          color: isFuture ? 'var(--text-muted)' : (t.is_completed ? 'var(--text-muted)' : '#FFF'),
-                          fontSize: 11, fontWeight: 700,
-                          cursor: isFuture ? 'not-allowed' : 'pointer',
-                          opacity: isFuture ? 0.7 : 1,
-                          boxShadow: (isFuture || t.is_completed) ? 'none' : '0 2px 6px var(--shadow-color-accent)',
-                          display: 'flex', alignItems: 'center', gap: 4
-                        }}
-                      >
-                        {isFuture ? (
-                          <>
-                            <Ico.Lock size={12} /> Upcoming
-                          </>
-                        ) : t.is_completed ? (
-                          <>
-                            <Ico.Check size={12} /> Completed
-                          </>
-                        ) : (
-                          'Mark Complete'
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </details>
-      ))}
-    </div>
-  );
-}
+type Tab = PlannerTab | 'logs' | 'history';
+const PLANNER_TABS: PlannerTab[] = ['aaj', 'plan', 'progress', 'syllabus', 'revision'];
 
 export function StudyPlannerPage() {
-  const [activeTab, setActiveTab] = useState<'weekly' | 'daily' | 'logs' | 'history'>('weekly');
-  const [schedule, setSchedule] = useState<WeeklyScheduleResponse | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>(() => (new URLSearchParams(window.location.search).get('plan') ? 'plan' : 'aaj'));
   const [tasks, setTasks] = useState<StudyTaskItem[]>([]);
   const [activities, setActivities] = useState<StudyActivityItem[]>([]);
   const [summary, setSummary] = useState<StudySummaryResponse | null>(null);
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
+  const [plannerVersion, setPlannerVersion] = useState(0);
 
   useEffect(() => {
     const handleUserUpdate = () => {
@@ -283,191 +38,34 @@ export function StudyPlannerPage() {
     };
   }, []);
 
-  const [loading, setLoading] = useState(true);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [logModalInitialSubject, setLogModalInitialSubject] = useState('');
   const [logModalInitialTopic, setLogModalInitialTopic] = useState('');
-  const [filterSubject, setFilterSubject] = useState<string>('ALL');
   const [historyTopicFilter, setHistoryTopicFilter] = useState<string>('');
   const [historyTimeWindow, setHistoryTimeWindow] = useState<string>('1_day');
   const [historyTimeOffset, setHistoryTimeOffset] = useState<number>(0);
-  const [selectedDayDate, setSelectedDayDate] = useState<string>('');
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
-  const [showRatingPrompt, setShowRatingPrompt] = useState(false);
-  const [planError, setPlanError] = useState<string | null>(null);
 
-  const handleSendPendingEmail = async () => {
-    setIsSendingEmail(true);
-    setEmailFeedback(null);
-    try {
-      const res = await sendPendingTasksEmail();
-      setEmailFeedback(res.message || 'Pending tasks email dispatched successfully!');
-    } catch (err: any) {
-      setEmailFeedback(err.message || 'Failed to send pending tasks email. Please try again.');
-    } finally {
-      setIsSendingEmail(false);
-      setTimeout(() => setEmailFeedback(null), 6000);
-    }
-  };
-
-  const generatePlan = async () => {
-    await generateWeeklyStudyPlan(undefined, true);
-    const [newSch, newTasks] = await Promise.all([
-      fetchWeeklySchedule(),
-      fetchStudyTasks()
+  /** Logged sessions, their summary, and tasks for the History tab. */
+  const loadActivity = async () => {
+    const [tasksRes, actRes, sumRes] = await Promise.allSettled([
+      fetchStudyTasks(),
+      fetchStudyActivities(),
+      fetchStudyActivitiesSummary(),
     ]);
-    return { schedule: newSch, tasks: newTasks };
-  };
-
-  const handleRatingPromptDone = async (saved: boolean) => {
-    if (!saved) rememberRatingPromptSkipped();
-    setShowRatingPrompt(false);
-    setPlanError(null);
-    setLoading(true);
-    try {
-      const generated = await generatePlan();
-      if (generated.schedule) setSchedule(generated.schedule);
-      setTasks(generated.tasks);
-    } catch (err) {
-      console.error('Error generating study plan:', err);
-      setPlanError("We couldn't generate your study plan. Please refresh the page to try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [schRes, tasksRes, actRes, sumRes] = await Promise.allSettled([
-        fetchWeeklySchedule(),
-        fetchStudyTasks(),
-        fetchStudyActivities(),
-        fetchStudyActivitiesSummary()
-      ]);
-
-      let schData = schRes.status === 'fulfilled' ? schRes.value : null;
-      let tasksData = tasksRes.status === 'fulfilled' ? tasksRes.value : [];
-      let actData = actRes.status === 'fulfilled' ? actRes.value : [];
-      let sumData = sumRes.status === 'fulfilled' ? sumRes.value : null;
-
-      // Auto-generate full 7-day weekly plan if schedule is empty for the current week.
-      // Students without subject ratings are asked for them first; generation resumes from the prompt.
-      const totalWeekTasks = schData?.days?.reduce((acc: any, d: any) => acc + (d.tasks?.length || 0), 0) || 0;
-      if (schData && schData.days && totalWeekTasks === 0) {
-        // The cached user may be stale (ratings saved on another device), so confirm before asking.
-        let ask = shouldAskForRatings();
-        if (ask) {
-          await fetchCurrentUser().catch(() => {});
-          ask = shouldAskForRatings();
-        }
-        if (ask) {
-          setShowRatingPrompt(true);
-        } else {
-          const generated = await generatePlan();
-          schData = generated.schedule;
-          tasksData = generated.tasks;
-        }
-      }
-
-      if (schData) setSchedule(schData);
-      setTasks(tasksData);
-      setActivities(actData);
-      if (sumData) setSummary(sumData);
-    } catch (err) {
-      console.error('Error loading study planner data:', err);
-    } finally {
-      setLoading(false);
-    }
+    if (tasksRes.status === 'fulfilled') setTasks(tasksRes.value);
+    if (actRes.status === 'fulfilled') setActivities(actRes.value);
+    if (sumRes.status === 'fulfilled') setSummary(sumRes.value);
   };
 
   useEffect(() => {
-    loadData();
+    loadActivity();
   }, []);
 
-  const handleToggleComplete = async (taskId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-
-    // Check if task is already completed - completion is permanent
-    const currentTask = tasks.find(t => t.id === taskId);
-    if (currentTask?.is_completed) {
-      return; // Do nothing if already completed
-    }
-
-    // 1. Optimistically set is_completed = true in local UI state immediately
-    setSchedule(prevSchedule => {
-      if (!prevSchedule || !prevSchedule.days) return prevSchedule;
-      return {
-        ...prevSchedule,
-        days: prevSchedule.days.map(day => {
-          const hasTask = day.tasks.some(t => t.id === taskId);
-          if (!hasTask) return day;
-          const updatedTasks = day.tasks.map(t =>
-            t.id === taskId ? { ...t, is_completed: true } : t
-          );
-          const completedCount = updatedTasks.filter(t => t.is_completed).length;
-          return {
-            ...day,
-            completed_tasks_count: completedCount,
-            tasks: updatedTasks,
-          };
-        }),
-      };
-    });
-
-    setTasks(prevTasks =>
-      prevTasks.map(t => (t.id === taskId ? { ...t, is_completed: true } : t))
-    );
-
-    // 2. Perform DB write operation to persist completion in database
-    try {
-      await completeStudyTask(taskId);
-      const [sumData, actData] = await Promise.all([
-        fetchStudyActivitiesSummary(),
-        fetchStudyActivities()
-      ]);
-      setSummary(sumData);
-      setActivities(actData);
-    } catch (err) {
-      console.error('Failed to complete task:', err);
-      // Revert state on network failure
-      loadData();
-    }
-  };
-
-  const handleDeleteTask = async (taskId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (!window.confirm('Are you sure you want to remove this task?')) return;
-
-    // Optimistically remove task from UI state immediately
-    setSchedule(prevSchedule => {
-      if (!prevSchedule || !prevSchedule.days) return prevSchedule;
-      return {
-        ...prevSchedule,
-        days: prevSchedule.days.map(day => {
-          const updatedTasks = day.tasks.filter(t => t.id !== taskId);
-          return {
-            ...day,
-            total_tasks_count: updatedTasks.length,
-            completed_tasks_count: updatedTasks.filter(t => t.is_completed).length,
-            tasks: updatedTasks,
-          };
-        }),
-      };
-    });
-
-    setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
-
-    try {
-      await deleteStudyTask(taskId);
-    } catch (err) {
-      console.error('Failed to delete task:', err);
-      loadData();
-    }
+  /** Something in the planner changed: refresh the planner views and the logs/history. */
+  const plannerChanged = () => {
+    setPlannerVersion((v) => v + 1);
+    loadActivity();
   };
 
   const handleDeleteActivity = async (activityId: string, e: React.MouseEvent) => {
@@ -483,14 +81,8 @@ export function StudyPlannerPage() {
       setSummary(sumData);
     } catch (err) {
       console.error('Failed to delete activity log:', err);
-      loadData();
+      loadActivity();
     }
-  };
-
-  const openLogForTask = (subject?: string, topic?: string) => {
-    setLogModalInitialSubject(subject || 'Indian Polity & Governance');
-    setLogModalInitialTopic(topic || '');
-    setIsLogModalOpen(true);
   };
 
   // Color helper for subjects
@@ -504,14 +96,6 @@ export function StudyPlannerPage() {
     if (s.includes('science') || s.includes('tech')) return { bg: '#F5F3FF', color: '#7C3AED', border: 'rgba(124,58,237,0.2)' };
     return { bg: 'var(--accent-bg)', color: 'var(--accent-primary)', border: 'var(--accent-border)' };
   };
-
-  // Today's tasks helper
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayTasks = tasks.filter(t => t.scheduled_date === todayStr);
-
-  const filteredTasks = filterSubject === 'ALL'
-    ? tasks
-    : tasks.filter(t => (t.subject || '').toLowerCase().includes(filterSubject.toLowerCase()));
 
   const getFilterDateRange = () => {
     if (historyTimeWindow === 'all') return null;
@@ -569,21 +153,21 @@ export function StudyPlannerPage() {
     return true;
   });
 
+
   return (
     <StudentLayout pageTitle="Study Planner">
       {/* Modals */}
-      <SubjectRatingPrompt isOpen={showRatingPrompt} onDone={handleRatingPromptDone} />
       <LogStudyModal
         isOpen={isLogModalOpen}
         onClose={() => setIsLogModalOpen(false)}
-        onSuccess={loadData}
+        onSuccess={plannerChanged}
         initialSubject={logModalInitialSubject}
         initialTopic={logModalInitialTopic}
       />
       <CreateTaskModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={loadData}
+        onSuccess={plannerChanged}
       />
 
       {/* Header Hero Banner */}
@@ -597,10 +181,10 @@ export function StudyPlannerPage() {
         <div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 'var(--radius)', marginBottom: 10, border: '1px solid var(--accent-border)' }}>
             <Ico.Cal size={14} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Weekly Schedule & Logger</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Plan · Track · Revise</span>
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Adaptive Study Planner</h1>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Structure your weekly targets and log actual study hours.</p>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Study Planner</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Generate a day-by-day plan from your exam syllabus, tick tasks off as you go, and track your coverage.</p>
         </div>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -620,18 +204,6 @@ export function StudyPlannerPage() {
           </button>
         </div>
       </section>
-
-      {planError && (
-        <div
-          role="alert"
-          style={{
-            padding: '12px 16px', borderRadius: 'var(--radius)', marginBottom: 16, fontSize: 14, fontWeight: 600,
-            backgroundColor: 'var(--danger-bg)', color: 'var(--danger-primary)', border: '1px solid rgba(var(--primary-red-rgb), 0.2)'
-          }}
-        >
-          {planError}
-        </div>
-      )}
 
       {/* Top Summary Stat Cards */}
       <div style={{
@@ -666,20 +238,24 @@ export function StudyPlannerPage() {
           )}
         </div>
       </div>
-
       {/* Main Tabs Navigation */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 28, borderBottom: '1px solid var(--border-default)', paddingBottom: 12, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        {[
-          { key: 'weekly', label: '7-Day Weekly Board', icon: Ico.Cal },
-          { key: 'daily', label: `Today's Focus (${todayTasks.length})`, icon: Ico.Check },
-          { key: 'logs', label: `Study Session Logs (${activities.length})`, icon: Ico.Clock },
-          { key: 'history', label: `Study History (${completedTasks.length})`, icon: Ico.Check }
-        ].map(tab => (
+      <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--border-default)', paddingBottom: 12, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        {([
+          { key: 'aaj', label: 'Aaj', icon: Ico.Check },
+          { key: 'plan', label: 'Plan', icon: Ico.Cal },
+          { key: 'progress', label: 'Progress', icon: Ico.Cal },
+          { key: 'syllabus', label: 'Syllabus', icon: Ico.Check },
+          { key: 'revision', label: 'Revision', icon: Ico.Clock },
+          { key: 'logs', label: `Study Logs (${activities.length})`, icon: Ico.Clock },
+          { key: 'history', label: `History (${completedTasks.length})`, icon: Ico.Check },
+        ] as { key: Tab; label: string; icon: typeof Ico.Cal }[]).map(tab => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
+            role="tab"
+            aria-selected={activeTab === tab.key}
+            onClick={() => setActiveTab(tab.key)}
             style={{
-              padding: '10px 18px', borderRadius: 'var(--radius)', border: 'none',
+              padding: '10px 16px', borderRadius: 'var(--radius)', border: 'none',
               backgroundColor: activeTab === tab.key ? 'var(--accent-bg)' : 'transparent',
               color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)',
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -692,284 +268,16 @@ export function StudyPlannerPage() {
         ))}
       </div>
 
-      {/* Content Area */}
-      {loading ? (
-        <div style={{ width: '100%' }}>
-          <StudyPlannerSkeleton />
-        </div>
-      ) : (
-        <div style={{ width: '100%' }}>
-
-          {/* Main Tab Views */}
-          <div>
-
-            {/* TAB 1: 7-DAY WEEKLY BOARD */}
-            {activeTab === 'weekly' && schedule && (() => {
-              const todayDay = schedule.days.find(d => d.is_today) || schedule.days[0];
-              const todayIdx = schedule.days.findIndex(d => d.date === todayDay.date);
-              const tomorrowDay = schedule.days[(todayIdx + 1) % schedule.days.length];
-              const currentSelectedDate = selectedDayDate || todayDay.date;
-              const selectedDayData = schedule.days.find(d => d.date === currentSelectedDate) || todayDay;
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-                  {/* Top Bar info */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                    <div>
-                      <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-                        Weekly Schedule ({schedule.start_date} to {schedule.end_date})
-                      </h3>
-                      <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
-                        Total Weekly Target: <strong>{Math.round(schedule.days.reduce((acc, d) => acc + d.allocated_minutes, 0) / 60)} hours</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  {schedule.days.every(d => d.tasks.length === 0) && (
-                    <div style={{
-                      padding: 24, borderRadius: 'var(--radius)',
-                      backgroundColor: 'rgba(91,92,235,0.05)', border: '1px solid var(--accent-border)',
-                      textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
-                    }}>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Setting Up Your Weekly Study Targets...</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 500 }}>
-                        Your 7-day target plan across Polity, History, Economy, Geography, Environment, CSAT & Mocks is automatically initialized.
-                      </div>
-                    </div>
-                  )}
-
-                  {/* UNIFIED DYNAMIC DAY SCHEDULE EXPLORER CARD */}
-                  <div style={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '2px solid var(--accent-primary)',
-                    borderRadius: 'var(--radius)', padding: 'clamp(14px, 4vw, 24px)', minWidth: 0,
-                    boxShadow: '0 10px 30px rgba(79, 70, 229, 0.10)',
-                    backgroundImage: 'linear-gradient(135deg, rgba(79, 70, 229, 0.03) 0%, rgba(34, 197, 94, 0.02) 100%)'
-                  }}>
-                    {/* Header & Day Dropdown Selector */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
-                      <div>
-                        <h4 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>
-                          📅 Schedule Explorer by Day
-                        </h4>
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                          Select any day of the week from the dropdown to review, modify, or complete tasks.
-                        </div>
-                      </div>
-
-                      {/* Dropdown Day Selector */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
-                        <label htmlFor="planner-day-select" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Select Day:</label>
-                        <select
-                          id="planner-day-select"
-                          value={currentSelectedDate}
-                          onChange={(e) => setSelectedDayDate(e.target.value)}
-                          style={{
-                            padding: '10px 16px', borderRadius: 'var(--radius)',
-                            backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)',
-                            border: '1px solid var(--border-default)', fontSize: 13, fontWeight: 700,
-                            cursor: 'pointer', outline: 'none',
-                            // Long option labels must not push the card wider than a phone screen.
-                            flex: '1 1 220px', minWidth: 0, maxWidth: '100%', textOverflow: 'ellipsis'
-                          }}
-                        >
-                          {schedule.days.map(d => (
-                            <option key={d.date} value={d.date}>
-                              {d.day_name} ({d.date}) {d.is_today ? '— Today' : ''} [{d.tasks.length} Tasks]
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Quick Day Selector Pills (Mon, Tue, Wed, Thu, Fri NOW, Sat, Sun) */}
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 20, overflowX: 'auto', paddingBottom: 6 }}>
-                      {schedule.days.map(d => {
-                        const isSelected = d.date === currentSelectedDate;
-                        return (
-                          <button
-                            key={d.date}
-                            onClick={() => setSelectedDayDate(d.date)}
-                            style={{
-                              padding: '8px 14px', borderRadius: 'var(--radius)',
-                              border: isSelected ? '2px solid var(--accent-primary)' : '1px solid var(--border-default)',
-                              backgroundColor: isSelected ? 'var(--accent-bg)' : 'var(--bg-subtle)',
-                              color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                              fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-                              display: 'flex', alignItems: 'center', gap: 6
-                            }}
-                          >
-                            <span>{d.day_name.slice(0, 3)}</span>
-                            {d.is_today && <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 'var(--radius)', backgroundColor: 'var(--accent-primary)', color: '#FFF' }}>NOW</span>}
-                            <span style={{ opacity: 0.7 }}>({d.tasks.length})</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Selected Day Header & Summary Bar */}
-                    <div style={{
-                      padding: '14px 18px', borderRadius: 'var(--radius)',
-                      backgroundColor: 'var(--bg-subtle)',
-                      border: '1px solid var(--border-default)',
-                      marginBottom: 16,
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: 'var(--radius)', backgroundColor: selectedDayData.is_today ? '#22C55E' : 'var(--accent-primary)' }} />
-                        <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
-                          {selectedDayData.day_name}'s Schedule <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({selectedDayData.date})</span>
-                        </span>
-                        {selectedDayData.is_today && (
-                          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 'var(--radius)', backgroundColor: 'rgba(34, 197, 94, 0.12)', color: 'var(--status-success)' }}>
-                            TODAY
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-primary)' }}>
-                        {selectedDayData.tasks.filter(t => t.is_completed).length} / {selectedDayData.tasks.length} Completed ({Math.round(selectedDayData.logged_minutes / 60 * 10) / 10} / {Math.round(selectedDayData.allocated_minutes / 60 * 10) / 10} hrs)
-                      </div>
-                    </div>
-
-                    {/* Selected Day Tasks Categorized into 3 Activity Categories */}
-                    {selectedDayData.tasks.length === 0 ? (
-                      <div style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '24px 0' }}>
-                        No targets scheduled for {selectedDayData.day_name}.
-                      </div>
-                    ) : (
-                      renderActivityCategoryDropdowns(
-                        selectedDayData.tasks,
-                        handleToggleComplete,
-                        handleDeleteTask,
-                        openLogForTask,
-                        getSubjectBadgeStyle,
-                        selectedDayData.date
-                      )
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* TAB 2: TODAY'S FOCUS CHECKLIST */}
-            {activeTab === 'daily' && (
-              <div style={{ backgroundColor: 'var(--bg-card)', padding: 'clamp(16px, 3vw, 28px)', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-                <div style={{ marginBottom: 20 }}>
-                  <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Today's Scheduled Targets</h3>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Date: {todayStr}</div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {todayTasks.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No targets scheduled for today!
-                    </div>
-                  ) : (
-                    todayTasks.map(t => {
-                      const badge = getSubjectBadgeStyle(t.subject);
-                      return (
-                        <div
-                          key={t.id}
-                          style={{
-                            padding: 'clamp(12px, 2.5vw, 18px)',
-                            borderRadius: 'var(--radius)',
-                            border: '1px solid var(--border-default)',
-                            backgroundColor: t.is_completed ? 'var(--bg-subtle)' : 'var(--bg-card)',
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: 14,
-                            boxSizing: 'border-box',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flex: '1 1 240px', minWidth: 0 }}>
-                            <button
-                              type="button"
-                              onClick={(e) => handleToggleComplete(t.id, e)}
-                              className="touch-target center-content"
-                              style={{
-                                width: 24,
-                                height: 24,
-                                minWidth: 24,
-                                minHeight: 24,
-                                borderRadius: 'var(--radius)',
-                                border: t.is_completed ? 'none' : '2px solid var(--border-disabled)',
-                                backgroundColor: t.is_completed ? 'var(--success-primary)' : 'transparent',
-                                color: '#FFF',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                flexShrink: 0,
-                                marginTop: 2,
-                              }}
-                              aria-label={t.is_completed ? 'Mark incomplete' : 'Mark complete'}
-                            >
-                              {t.is_completed && <Ico.Check size={14} />}
-                            </button>
-
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius)', backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>
-                                  {t.subject || 'General'}
-                                </span>
-                                <span style={{
-                                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius)',
-                                  backgroundColor: t.priority === 'HIGH' ? 'var(--danger-bg)' : 'var(--warning-bg)',
-                                  color: t.priority === 'HIGH' ? 'var(--danger-primary)' : 'var(--warning-primary)'
-                                }}>
-                                  {t.priority || 'MEDIUM'} PRIORITY
-                                </span>
-                              </div>
-                              <div style={{ fontSize: 14.5, fontWeight: 700, color: t.is_completed ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: t.is_completed ? 'line-through' : 'none', lineHeight: 1.4 }}>
-                                {t.title}
-                              </div>
-                              {t.description && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>{t.description}</div>}
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t.allocated_time_minutes} mins</span>
-                            <button
-                              type="button"
-                              onClick={(e) => handleToggleComplete(t.id, e)}
-                              className="touch-target center-content"
-                              style={{
-                                padding: '8px 16px',
-                                borderRadius: 'var(--radius)',
-                                border: t.is_completed ? '1px solid var(--border-default)' : 'none',
-                                backgroundColor: t.is_completed ? 'var(--bg-subtle)' : 'var(--accent-primary)',
-                                color: t.is_completed ? 'var(--text-muted)' : '#FFF',
-                                fontSize: 13,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                boxShadow: t.is_completed ? 'none' : '0 2px 6px var(--shadow-color-accent)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 6,
-                                minHeight: 38,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {t.is_completed ? (
-                                <>
-                                  <Ico.Check size={14} /> Completed
-                                </>
-                              ) : (
-                                'Mark Complete'
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            )}
+      <div style={{ width: '100%' }}>
+        {PLANNER_TABS.includes(activeTab as PlannerTab) && (
+          <StudyPlannerV2
+            tab={activeTab as PlannerTab}
+            setTab={setActiveTab}
+            version={plannerVersion}
+            onChanged={plannerChanged}
+            onAddTask={() => setIsCreateModalOpen(true)}
+          />
+        )}
 
             {/* TAB 3: STUDY SESSION LOGS TABLE */}
             {activeTab === 'logs' && (
@@ -1048,6 +356,7 @@ export function StudyPlannerPage() {
                 )}
               </div>
             )}
+
 
             {/* TAB 4: STUDY HISTORY (COMPLETED TASKS) */}
             {activeTab === 'history' && (
@@ -1195,10 +504,7 @@ export function StudyPlannerPage() {
               </div>
             )}
 
-          </div>
-
-        </div>
-      )}
+      </div>
     </StudentLayout>
   );
 }

@@ -877,3 +877,30 @@ export async function fetchPlatformAnalytics(timeRange: string = '30d', examFilt
   }
   return await res.json();
 }
+
+export interface ExamMarkingScheme {
+  exam_id: number;
+  marks_per_question: number;
+  negative_marks_per_question: number;
+  total_marks: number | null;
+  questions: number;
+  is_set: boolean;
+}
+
+/** An exam's marking scheme (marks for a correct answer, marks deducted for a wrong one). */
+export async function fetchExamMarkingScheme(examId: number | string): Promise<ExamMarkingScheme> {
+  const res = await guardedFetch(`${API_BASE_URL}/exams/${examId}/marking-scheme`, { headers: getAuthHeader() });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.detail || 'Could not load the marking scheme');
+  return res.json();
+}
+
+/** Changes it for tests taken from now on; tests already taken keep their scores. */
+export async function saveExamMarkingScheme(examId: number | string, marks: number, negative: number): Promise<ExamMarkingScheme> {
+  const res = await guardedFetch(`${API_BASE_URL}/exams/${examId}/marking-scheme`, {
+    method: 'PUT',
+    headers: getAuthHeader(),
+    body: JSON.stringify({ marks_per_question: marks, negative_marks_per_question: negative }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.detail || 'Could not save the marking scheme');
+  return res.json();
+}

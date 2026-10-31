@@ -7,12 +7,14 @@ import {
   Brain,
   BarChart2,
   Trophy,
+  Medal,
   Crown,
   X,
   Bookmark,
   Globe,
   Bell,
   Swords,
+  NotebookPen,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { prefetchRoute } from '../../utils/routePrefetch';
@@ -70,10 +72,12 @@ export function StudentSidebar({
     { icon: Globe, label: 'Current Affairs', to: '/learn/current-affairs' },
     { icon: Bell, label: 'Announcements', to: '/notifications' },
     { icon: Bookmark, label: 'Bookmarks', to: '/bookmarks' },
+    { icon: NotebookPen, label: 'Mistake Notebook', to: '/mistakes' },
   ];
 
   const reportItems = [
     { icon: BarChart2, label: 'Weekly Insights', to: '/reports/weekly' },
+    { icon: Medal, label: 'Leaderboard', to: '/leaderboard' },
     { icon: Trophy, label: 'Performance Rank', to: '/reports/monthly' },
   ];
 
@@ -240,8 +244,8 @@ export function StudentSidebar({
           </div>
         </nav>
 
-        {/* Upgrade to PRO Box preserved at bottom */}
-        {!isCollapsedDesktop && (
+        {/* Upgrade to PRO Box preserved at bottom — hidden for students already on Premium */}
+        {!isCollapsedDesktop && user?.subscription_tier !== 'PREMIUM' && (
           <div style={{ padding: 12 }}>
             <div
               style={{

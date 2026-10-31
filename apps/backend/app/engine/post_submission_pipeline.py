@@ -35,6 +35,7 @@ from app.engine.matrices.fsrs_retention import FSRSEngine
 from app.storage.factory import get_storage_provider
 from app.db.session import managed_async_session
 from app.config.logger import setup_logger
+from app.services.scoring import question_marks
 
 logger = setup_logger("PostSubmissionPipeline")
 
@@ -66,6 +67,13 @@ def set_cached_solutions_data(exam_code: str, data: Dict[str, Any]) -> None:
         "last_accessed": now,
         "data": data,
     }
+
+
+def clear_cached_solutions_data(exam_code: Optional[str] = None) -> None:
+    if exam_code:
+        EXAM_SOLUTIONS_SLIDING_CACHE.pop(str(exam_code), None)
+    else:
+        EXAM_SOLUTIONS_SLIDING_CACHE.clear()
 
 
 async def get_cached_solutions_data_async(exam_code: str, exam_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
@@ -372,9 +380,15 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
     except Exception as sol_err:
         logger.warning(f"DB solutions cache load failed for exam '{exam.code}': {sol_err}")
 
+    # Preload questions map so question records (knowledge_tags_raw, difficulty, marks) are always available
+    q_ids = [r.question_id for r in responses_db if r.question_id]
+    q_map: Dict[Any, Question] = {}
+    if q_ids:
+        q_res = await session.exec(select(Question).where(col(Question.id).in_(q_ids)))
+        q_map = {q.id: q for q in q_res.all()}
+
     # Lazy Database Fallback Cache (only populated if cache is missing data for any question)
     db_loaded = False
-    q_map: Dict[Any, Question] = {}
     opt_map: Dict[Any, QuestionOption] = {}
     opts_by_qid: Dict[Any, List[QuestionOption]] = {}
     expl_map: Dict[Any, QuestionExplanation] = {}
@@ -394,12 +408,12 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
             return
         db_loaded = True
         logger.info(f"Triggering lazy database fallback lookup for attempt '{attempt.id}'...")
-        q_ids = [r.question_id for r in responses_db if r.question_id]
-        if q_ids:
+        if q_ids and not q_map:
             q_res = await session.exec(select(Question).where(col(Question.id).in_(q_ids)))
             q_rows = q_res.all()
             q_map = {q.id: q for q in q_rows}
 
+        if q_ids:
             opt_res = await session.exec(
                 select(QuestionOption)
                 .where(col(QuestionOption.question_id).in_(q_ids))
@@ -489,7 +503,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
         if not sol_data or not sol_data.get("options") or not sol_data.get("explanation"):
             await _ensure_db_fallback_loaded()
 
-        q_model = q_map.get(r.question_id) if db_loaded else None
+        q_model = q_map.get(r.question_id)
         selected_opt = opt_map.get(r.selected_option_id) if (db_loaded and r.selected_option_id) else None
 
         # Taxonomy resolution
@@ -592,8 +606,16 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
         sol_irt = sol_data.get("irt_params") if (sol_data and isinstance(sol_data.get("irt_params"), dict)) else None
         sol_diff = sol_data.get("difficulty") if sol_data else None
 
+        raw_q_type = (
+            (q_model.knowledge_tags_raw.get("question_type") if (q_model and q_model.knowledge_tags_raw and isinstance(q_model.knowledge_tags_raw, dict)) else None)
+            or (sol_data.get("question_type_tag") if sol_data else None)
+            or (sol_data.get("question_type") if (sol_data and str(sol_data.get("question_type")).strip() not in ("MCQ_SINGLE", "MCQ_MULTIPLE")) else None)
+            or (sol_data.get("cognitive_skill") if (sol_data and str(sol_data.get("cognitive_skill")).strip().lower() not in ("extraction stage initialized", "conceptual reasoning")) else None)
+            or (qm_record.cognitive_skill if qm_record and qm_record.cognitive_skill and str(qm_record.cognitive_skill).strip().lower() not in ("extraction stage initialized", "conceptual reasoning") else None)
+        )
+
         blooms_val = sol_blooms or ((qm_record.blooms_level.value if hasattr(qm_record.blooms_level, "value") else str(qm_record.blooms_level)) if (qm_record and qm_record.blooms_level) else "ANALYZE")
-        cognitive_skill = sol_cognitive or (qm_record.cognitive_skill if (qm_record and qm_record.cognitive_skill) else "Conceptual Reasoning")
+        cognitive_skill = raw_q_type or (sol_cognitive if (sol_cognitive and str(sol_cognitive).strip().lower() not in ("extraction stage initialized", "conceptual reasoning")) else None) or (qm_record.cognitive_skill if (qm_record and qm_record.cognitive_skill) else "Conceptual Reasoning")
 
         if sol_irt:
             irt_params = {
@@ -633,11 +655,15 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
             "difficulty": diff_val,
             "blooms_level": blooms_val,
             "cognitive_skill": cognitive_skill,
+            "question_type_tag": raw_q_type,
             "selected_option_id": str(r.selected_option_id) if r.selected_option_id else None,
             "user_selected_label": user_sel_label,
             "is_correct": r.is_correct,
             "closeness_score_awarded": r.closeness_score_awarded,
             "final_score": r.final_score,
+            # The paper's own marking scheme for this question
+            "marks": question_marks(getattr(q_model, "marks", None), getattr(q_model, "negative_marks", None))[0],
+            "negative_marks": question_marks(getattr(q_model, "marks", None), getattr(q_model, "negative_marks", None))[1],
             "time_taken_seconds": float(r.time_taken_seconds or 0.0),
             "expected_time_seconds": float(r.expected_time_seconds if (r.expected_time_seconds and r.expected_time_seconds > 0) else 60.0),
             "is_switched": r.is_switched,
@@ -1079,6 +1105,27 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
         except Exception as badge_err:
             logger.warning(f"Gamification processing warning: {badge_err}")
 
+        # 7d. XP for this test (+50, +10 per correct, +20 for the day); keyed by attempt, so never paid twice
+        try:
+            from app.services import xp_service
+            async with session.begin_nested():
+                if user.id is not None:
+                    correct = sum(1 for r in responses_db if r.selected_option_id is not None and r.is_correct)
+                    await xp_service.award_test_completion(
+                        session, int(user.id), int(attempt.id), correct, attempt.submitted_at, commit=False
+                    )
+        except Exception as xp_err:
+            logger.warning(f"XP award warning for attempt '{attempt.id}': {xp_err}")
+
+        # 7e. Milestones reached with this test (badge, XP, notification)
+        try:
+            from app.services import milestone_service
+            async with session.begin_nested():
+                if user.id is not None:
+                    await milestone_service.check(session, int(user.id), commit=False)
+        except Exception as ms_err:
+            logger.warning(f"Milestone check warning for attempt '{attempt.id}': {ms_err}")
+
     elif profile is None:
         profile = UserSkillProfile(user_id=user.id, **profile_dict)
 
@@ -1233,18 +1280,28 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
     logger.info(f"⚡ [PHASE_1_DONE] Math results persisted for attempt '{attempt.id}'. Starting LLM synthesis...")
 
     # ─── Phase 2: AI synthesis (with rule-based fallback) ────────────────────
-    try:
-        mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
-            candidate_info=candidate_dict,
-            exam_info=exam_dict,
-            precalculated_metrics=precalc_payload,
-        )
-    except Exception as llm_err:
-        logger.warning(f"LLM diagnostic insight generation failed for attempt '{attempt.id}': {llm_err}. Using rule-based insight fallback.")
+    # The free plan has no AI analysis: skip the LLM call and keep the rule-based insight, so the
+    # report is complete if the student upgrades later.
+    from app.services.free_plan import is_limited
+    if user is not None and await is_limited(session, user):
+        logger.info(f"[PHASE_2] Free plan: rule-based insight only for attempt '{attempt.id}' (no LLM call).")
         mentorship_insight = _generate_rule_based_insight(
             part_3=report.get("part_3_aggregated_user_report", {}),
             taxonomy=report.get("part_2_taxonomy_analysis", {}),
         )
+    else:
+        try:
+            mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
+                candidate_info=candidate_dict,
+                exam_info=exam_dict,
+                precalculated_metrics=precalc_payload,
+            )
+        except Exception as llm_err:
+            logger.warning(f"LLM diagnostic insight generation failed for attempt '{attempt.id}': {llm_err}. Using rule-based insight fallback.")
+            mentorship_insight = _generate_rule_based_insight(
+                part_3=report.get("part_3_aggregated_user_report", {}),
+                taxonomy=report.get("part_2_taxonomy_analysis", {}),
+            )
 
     # Sync AI insights into report
     ai_tasks = mentorship_insight.get("study_plan_tasks", [])

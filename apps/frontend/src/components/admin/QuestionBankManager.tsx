@@ -1464,6 +1464,7 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                         passage_text: selectedQuestion.passage_text,
                         difficulty: selectedQuestion.difficulty,
                         marks: selectedQuestion.marks,
+                        question_type_tag: (selectedQuestion as any).question_type_tag || (selectedQuestion as any).cognitive_skill || (selectedQuestion as any).metadata?.cognitive_skill || null,
                         subject_name: selectedQuestion.subject_name,
                         topic_name: selectedQuestion.topic_name,
                         subtopic_name: selectedQuestion.subtopic_name,

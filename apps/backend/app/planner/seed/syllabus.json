@@ -1,0 +1,1103 @@
+{
+ "_comment": "Study Planner syllabi from the client's planner, by question-bank exam type code. 'source' is the client's name for it (State PCS is seeded as MPSC Prelims).",
+ "syllabi": [
+  {
+   "exam_type": "upsc",
+   "stage": "prelims",
+   "name": "Prelims",
+   "answer_writing": false,
+   "source": "UPSC Prelims",
+   "subjects": [
+    {
+     "name": "Polity and Governance",
+     "topics": [
+      {
+       "name": "Constitution",
+       "subtopics": [
+        "Historical Background and Making",
+        "Preamble",
+        "Salient Features",
+        "Union and its Territory",
+        "Citizenship",
+        "Fundamental Rights",
+        "Directive Principles and Fundamental Duties",
+        "Amendment of the Constitution",
+        "Basic Structure Doctrine"
+       ]
+      },
+      {
+       "name": "Union Government",
+       "subtopics": [
+        "President and Vice-President",
+        "Prime Minister and Council of Ministers",
+        "Parliament",
+        "Parliamentary Committees",
+        "Supreme Court"
+       ]
+      },
+      {
+       "name": "State Government",
+       "subtopics": [
+        "Governor",
+        "Chief Minister and State Council of Ministers",
+        "State Legislature",
+        "High Courts and Subordinate Courts"
+       ]
+      },
+      {
+       "name": "Local Government",
+       "subtopics": [
+        "Panchayati Raj (73rd Amendment)",
+        "Municipalities (74th Amendment)"
+       ]
+      },
+      {
+       "name": "Constitutional and Non-Constitutional Bodies",
+       "subtopics": [
+        "Election Commission",
+        "UPSC and State PSCs",
+        "CAG",
+        "Finance Commission",
+        "NITI Aayog, NHRC, CIC, CVC"
+       ]
+      },
+      {
+       "name": "Governance",
+       "subtopics": [
+        "Government Policies and Interventions",
+        "Citizen Charters and E-Governance",
+        "Federalism and Centre-State Relations"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Indian Economy",
+     "topics": [
+      {
+       "name": "Basics",
+       "subtopics": [
+        "National Income and Growth Measurement",
+        "Inflation (CPI, WPI) and Deflation",
+        "Poverty, Unemployment and Inclusive Growth"
+       ]
+      },
+      {
+       "name": "Money and Banking",
+       "subtopics": [
+        "RBI and Monetary Policy",
+        "Banking Sector Reforms and NPAs",
+        "Financial Inclusion and Insurance",
+        "Capital Market (SEBI, Stock Exchanges)"
+       ]
+      },
+      {
+       "name": "Public Finance",
+       "subtopics": [
+        "Budget and Fiscal Policy",
+        "Taxation (GST, Direct Taxes)",
+        "Subsidies and Public Debt"
+       ]
+      },
+      {
+       "name": "External Sector",
+       "subtopics": [
+        "Balance of Payments and Forex",
+        "WTO, IMF, World Bank",
+        "Trade Policy and FDI"
+       ]
+      },
+      {
+       "name": "Sectors",
+       "subtopics": [
+        "Agriculture and Food Security",
+        "Industry and Infrastructure",
+        "Services Sector"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Geography",
+     "topics": [
+      {
+       "name": "Physical Geography",
+       "subtopics": [
+        "Geomorphology and Landforms",
+        "Climatology and Atmosphere",
+        "Oceanography",
+        "Biogeography and Soils"
+       ]
+      },
+      {
+       "name": "Indian Geography",
+       "subtopics": [
+        "Physiography",
+        "Rivers and Drainage",
+        "Monsoon and Climate",
+        "Natural Vegetation and Soils",
+        "Agriculture and Irrigation",
+        "Minerals, Energy and Industries",
+        "Transport and Population"
+       ]
+      },
+      {
+       "name": "World Geography",
+       "subtopics": [
+        "Continents and Major Features",
+        "Resources and Industries",
+        "Important Places in News"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Indian History",
+     "topics": [
+      {
+       "name": "Ancient India",
+       "subtopics": [
+        "Prehistoric and Indus Valley Civilization",
+        "Vedic Age and Mahajanapadas",
+        "Mauryan and Gupta Empires",
+        "Post-Gupta and South Indian Kingdoms"
+       ]
+      },
+      {
+       "name": "Medieval India",
+       "subtopics": [
+        "Delhi Sultanate",
+        "Mughal Empire",
+        "Vijayanagara, Bahmani and Marathas",
+        "Bhakti and Sufi Movements"
+       ]
+      },
+      {
+       "name": "Modern India",
+       "subtopics": [
+        "Advent of Europeans and British Expansion",
+        "Revolt of 1857",
+        "Socio-Religious Reform Movements",
+        "Moderates and Extremists",
+        "Gandhian Phase",
+        "Constitutional Developments",
+        "Partition and Independence"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Art and Culture",
+     "topics": [
+      {
+       "name": "Architecture",
+       "subtopics": [
+        "Temple Architecture",
+        "Indo-Islamic Architecture"
+       ]
+      },
+      {
+       "name": "Visual and Performing Arts",
+       "subtopics": [
+        "Painting",
+        "Classical Dance and Music",
+        "Theatre and Puppetry"
+       ]
+      },
+      {
+       "name": "Heritage",
+       "subtopics": [
+        "UNESCO World Heritage Sites",
+        "Languages and Literature",
+        "Religion and Philosophy"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Environment and Ecology",
+     "topics": [
+      {
+       "name": "Ecology Basics",
+       "subtopics": [
+        "Ecosystems and Food Chains",
+        "Biodiversity and Hotspots"
+       ]
+      },
+      {
+       "name": "Conservation",
+       "subtopics": [
+        "Protected Areas and Species",
+        "Wildlife Acts and Conventions"
+       ]
+      },
+      {
+       "name": "Climate and Pollution",
+       "subtopics": [
+        "Climate Change and Global Warming",
+        "International Conventions and Protocols",
+        "Pollution and Waste Management",
+        "Environmental Laws and EIA"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Science and Technology",
+     "topics": [
+      {
+       "name": "General Science",
+       "subtopics": [
+        "Physics Basics",
+        "Chemistry Basics",
+        "Biology and Human Health"
+       ]
+      },
+      {
+       "name": "Applied Science",
+       "subtopics": [
+        "Space Technology and ISRO",
+        "Defence Technology",
+        "IT, AI and Cyber Security",
+        "Biotechnology and Nanotechnology",
+        "Energy and Nuclear Technology"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "International Relations",
+     "topics": [
+      {
+       "name": "India and the World",
+       "subtopics": [
+        "India and Neighbours",
+        "India and Major Powers",
+        "Indian Diaspora"
+       ]
+      },
+      {
+       "name": "Global Bodies",
+       "subtopics": [
+        "UN and its Agencies",
+        "Regional Groupings (BRICS, SCO, ASEAN, QUAD)",
+        "Important Treaties and Summits"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Current Affairs",
+     "topics": [
+      {
+       "name": "Recent Developments",
+       "subtopics": [
+        "National Affairs",
+        "International Affairs",
+        "Schemes and Reports",
+        "Awards, Sports and Persons in News"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "exam_type": "upsc",
+   "stage": "mains",
+   "name": "Mains",
+   "answer_writing": true,
+   "source": "UPSC Mains",
+   "subjects": [
+    {
+     "name": "GS-1 Heritage, History and Geography",
+     "topics": [
+      {
+       "name": "Art and Culture",
+       "subtopics": [
+        "Architecture",
+        "Sculpture and Painting",
+        "Performing Arts",
+        "Literature"
+       ]
+      },
+      {
+       "name": "Modern History",
+       "subtopics": [
+        "1857 and After",
+        "Freedom Struggle",
+        "Post-Independence Consolidation"
+       ]
+      },
+      {
+       "name": "World History",
+       "subtopics": [
+        "Industrial Revolution",
+        "World Wars",
+        "Decolonisation"
+       ]
+      },
+      {
+       "name": "Indian Society",
+       "subtopics": [
+        "Salient Features",
+        "Women and Population",
+        "Globalisation",
+        "Communalism and Secularism"
+       ]
+      },
+      {
+       "name": "Geography",
+       "subtopics": [
+        "Geomorphology",
+        "Climatology",
+        "Oceanography",
+        "Resources and Industries",
+        "Natural Disasters"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "GS-2 Polity, Governance and IR",
+     "topics": [
+      {
+       "name": "Polity",
+       "subtopics": [
+        "Constitution and Federalism",
+        "Parliament and Legislatures",
+        "Judiciary",
+        "Separation of Powers"
+       ]
+      },
+      {
+       "name": "Governance",
+       "subtopics": [
+        "Government Policies",
+        "Transparency and e-Governance",
+        "Civil Services",
+        "SHGs and NGOs"
+       ]
+      },
+      {
+       "name": "Social Justice",
+       "subtopics": [
+        "Welfare Schemes",
+        "Health",
+        "Education",
+        "Poverty and Hunger"
+       ]
+      },
+      {
+       "name": "International Relations",
+       "subtopics": [
+        "India and Neighbours",
+        "Bilateral Groupings",
+        "Diaspora",
+        "International Institutions"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "GS-3 Economy, Environment and Security",
+     "topics": [
+      {
+       "name": "Economy",
+       "subtopics": [
+        "Planning and Growth",
+        "Inclusive Growth",
+        "Budgeting",
+        "Agriculture and Food Security",
+        "Infrastructure",
+        "Investment Models"
+       ]
+      },
+      {
+       "name": "Science and Tech",
+       "subtopics": [
+        "Developments and Applications",
+        "Space",
+        "IT and Biotech",
+        "IPR"
+       ]
+      },
+      {
+       "name": "Environment",
+       "subtopics": [
+        "Conservation",
+        "EIA",
+        "Climate Change",
+        "Disaster Management"
+       ]
+      },
+      {
+       "name": "Internal Security",
+       "subtopics": [
+        "Extremism",
+        "Border Management",
+        "Cyber Security",
+        "Money Laundering"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "GS-4 Ethics, Integrity and Aptitude",
+     "topics": [
+      {
+       "name": "Ethics and Human Interface",
+       "subtopics": [
+        "Essence of Ethics",
+        "Determinants",
+        "Attitude",
+        "Moral Thinkers"
+       ]
+      },
+      {
+       "name": "Aptitude and Integrity",
+       "subtopics": [
+        "Emotional Intelligence",
+        "Civil Service Values",
+        "Probity in Governance",
+        "Case Studies"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Essay",
+     "topics": [
+      {
+       "name": "Essay Writing",
+       "subtopics": [
+        "Structure and Introductions",
+        "Philosophical Themes",
+        "Socio-Economic Themes",
+        "Practice Essays"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "exam_type": "upsc",
+   "stage": "optional",
+   "name": "Geography",
+   "answer_writing": true,
+   "source": "Optional: Geography",
+   "subjects": [
+    {
+     "name": "Paper I: Physical Geography",
+     "topics": [
+      {
+       "name": "Geomorphology",
+       "subtopics": [
+        "Earth Interior",
+        "Plate Tectonics",
+        "Landforms",
+        "Denudation"
+       ]
+      },
+      {
+       "name": "Climatology",
+       "subtopics": [
+        "Atmosphere",
+        "Cyclones",
+        "Climate Classification"
+       ]
+      },
+      {
+       "name": "Oceanography",
+       "subtopics": [
+        "Relief",
+        "Currents and Tides",
+        "Marine Resources"
+       ]
+      },
+      {
+       "name": "Biogeography and Environment",
+       "subtopics": [
+        "Soils",
+        "Biomes",
+        "Environmental Issues"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Paper I: Human Geography",
+     "topics": [
+      {
+       "name": "Perspectives and Models",
+       "subtopics": [
+        "Paradigms",
+        "Location Models"
+       ]
+      },
+      {
+       "name": "Economic and Population",
+       "subtopics": [
+        "Resources",
+        "Agriculture",
+        "Industry",
+        "Migration"
+       ]
+      },
+      {
+       "name": "Settlements and Regional Planning",
+       "subtopics": [
+        "Rural-Urban",
+        "Regional Development"
+       ]
+      },
+      {
+       "name": "Political Geography",
+       "subtopics": [
+        "Boundaries",
+        "Geopolitics"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Paper II: Geography of India",
+     "topics": [
+      {
+       "name": "Physical Setting and Resources",
+       "subtopics": [
+        "Structure",
+        "Drainage",
+        "Climate",
+        "Minerals",
+        "Energy"
+       ]
+      },
+      {
+       "name": "Agriculture and Industry",
+       "subtopics": [
+        "Green Revolution",
+        "Industrial Regions"
+       ]
+      },
+      {
+       "name": "Transport, Trade and Culture",
+       "subtopics": [
+        "Networks",
+        "Tribes",
+        "Social Regions"
+       ]
+      },
+      {
+       "name": "Contemporary Issues",
+       "subtopics": [
+        "Regional Disparity",
+        "Environmental Concerns"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "exam_type": "upsc",
+   "stage": "optional",
+   "name": "Political Science & IR",
+   "answer_writing": true,
+   "source": "Optional: Political Science & IR",
+   "subjects": [
+    {
+     "name": "Paper I: Political Theory",
+     "topics": [
+      {
+       "name": "Concepts",
+       "subtopics": [
+        "Liberty",
+        "Equality",
+        "Justice",
+        "Rights"
+       ]
+      },
+      {
+       "name": "Theories",
+       "subtopics": [
+        "Liberalism",
+        "Marxism",
+        "Feminism"
+       ]
+      },
+      {
+       "name": "Indian Political Thought",
+       "subtopics": [
+        "Kautilya",
+        "Gandhi",
+        "Ambedkar",
+        "Nehru"
+       ]
+      },
+      {
+       "name": "Western Political Thought",
+       "subtopics": [
+        "Plato",
+        "Aristotle",
+        "Hobbes",
+        "Marx"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Paper I: Indian Government and Politics",
+     "topics": [
+      {
+       "name": "Freedom Struggle and Constitution",
+       "subtopics": [
+        "Nationalism",
+        "Making of Constitution"
+       ]
+      },
+      {
+       "name": "Federalism and Institutions",
+       "subtopics": [
+        "Union-State Relations",
+        "Judiciary"
+       ]
+      },
+      {
+       "name": "Parties and Movements",
+       "subtopics": [
+        "Party System",
+        "Social Movements"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Paper II: Comparative Politics and IR",
+     "topics": [
+      {
+       "name": "Approaches",
+       "subtopics": [
+        "Realism",
+        "Liberalism",
+        "Systems"
+       ]
+      },
+      {
+       "name": "Global Order",
+       "subtopics": [
+        "Cold War",
+        "Post Cold War",
+        "UN and Regional Bodies"
+       ]
+      },
+      {
+       "name": "Contemporary Issues",
+       "subtopics": [
+        "Nuclear Politics",
+        "Terrorism",
+        "Globalisation"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Paper II: India and the World",
+     "topics": [
+      {
+       "name": "Foreign Policy",
+       "subtopics": [
+        "Determinants",
+        "Non-Alignment"
+       ]
+      },
+      {
+       "name": "Neighbourhood and Powers",
+       "subtopics": [
+        "South Asia",
+        "USA",
+        "China",
+        "Russia"
+       ]
+      },
+      {
+       "name": "Groupings",
+       "subtopics": [
+        "BRICS",
+        "SCO",
+        "Quad",
+        "G20"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "exam_type": "upsc",
+   "stage": "optional",
+   "name": "Public Administration",
+   "answer_writing": true,
+   "source": "Optional: Public Administration",
+   "subjects": [
+    {
+     "name": "Paper I: Administrative Theory",
+     "topics": [
+      {
+       "name": "Introduction",
+       "subtopics": [
+        "Meaning and Scope",
+        "Evolution",
+        "New Public Administration"
+       ]
+      },
+      {
+       "name": "Theories",
+       "subtopics": [
+        "Scientific Management",
+        "Bureaucracy",
+        "Human Relations"
+       ]
+      },
+      {
+       "name": "Organisation and Personnel",
+       "subtopics": [
+        "Hierarchy",
+        "Leadership",
+        "Recruitment and Training"
+       ]
+      },
+      {
+       "name": "Accountability",
+       "subtopics": [
+        "Control",
+        "Ombudsman",
+        "Citizen Charters"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Paper II: Indian Administration",
+     "topics": [
+      {
+       "name": "Evolution and Framework",
+       "subtopics": [
+        "Kautilya",
+        "Mughal",
+        "British Legacy",
+        "Constitution"
+       ]
+      },
+      {
+       "name": "Union and State",
+       "subtopics": [
+        "Cabinet Secretariat",
+        "Secretariat",
+        "Governor"
+       ]
+      },
+      {
+       "name": "District and Local",
+       "subtopics": [
+        "Collector",
+        "Panchayati Raj",
+        "Urban Bodies"
+       ]
+      },
+      {
+       "name": "Policy and Planning",
+       "subtopics": [
+        "NITI Aayog",
+        "Welfare Administration",
+        "Social Sector"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "exam_type": "mpsc",
+   "stage": "prelims",
+   "name": "Prelims",
+   "answer_writing": false,
+   "source": "State PCS",
+   "subjects": [
+    {
+     "name": "Polity and Administration",
+     "topics": [
+      {
+       "name": "Indian Constitution",
+       "subtopics": [
+        "Fundamental Rights and DPSP",
+        "Union Government and Parliament",
+        "Judiciary"
+       ]
+      },
+      {
+       "name": "State Administration",
+       "subtopics": [
+        "Governor and Chief Minister",
+        "State Legislature",
+        "District Administration",
+        "Panchayati Raj and Urban Local Bodies",
+        "State Public Service Commission"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Economy",
+     "topics": [
+      {
+       "name": "Indian Economy",
+       "subtopics": [
+        "Planning and NITI Aayog",
+        "Banking and Inflation",
+        "Budget and Taxation"
+       ]
+      },
+      {
+       "name": "State Economy",
+       "subtopics": [
+        "State Budget and Finances",
+        "Agriculture and Allied Sector",
+        "Industry and Infrastructure in the State",
+        "State Schemes and Policies"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Geography",
+     "topics": [
+      {
+       "name": "Indian Geography",
+       "subtopics": [
+        "Physiography and Rivers",
+        "Climate and Soils",
+        "Resources"
+       ]
+      },
+      {
+       "name": "State Geography",
+       "subtopics": [
+        "Physical Features and Rivers",
+        "Climate and Agriculture",
+        "Minerals and Industries",
+        "Districts and Regions"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "History",
+     "topics": [
+      {
+       "name": "Indian History",
+       "subtopics": [
+        "Ancient India",
+        "Medieval India",
+        "Modern India and Freedom Movement"
+       ]
+      },
+      {
+       "name": "State History",
+       "subtopics": [
+        "Regional Dynasties",
+        "Social Reformers of the State",
+        "Freedom Movement in the State"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Science and Technology",
+     "topics": [
+      {
+       "name": "General Science",
+       "subtopics": [
+        "Physics, Chemistry and Biology Basics",
+        "Health and Diseases"
+       ]
+      },
+      {
+       "name": "Technology",
+       "subtopics": [
+        "Space and Defence",
+        "IT and Biotechnology"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Environment",
+     "topics": [
+      {
+       "name": "Ecology and Environment",
+       "subtopics": [
+        "Biodiversity and Conservation",
+        "Climate Change",
+        "Environmental Issues of the State"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "State GK and Culture",
+     "topics": [
+      {
+       "name": "Culture and Heritage",
+       "subtopics": [
+        "Art, Festivals and Literature",
+        "Tourism and Heritage Sites"
+       ]
+      },
+      {
+       "name": "General Awareness",
+       "subtopics": [
+        "State Schemes and Policies",
+        "Current Affairs"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "CSAT and Reasoning",
+     "topics": [
+      {
+       "name": "Aptitude",
+       "subtopics": [
+        "Comprehension",
+        "Basic Numeracy and Data Interpretation",
+        "Logical Reasoning and Analytical Ability"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "exam_type": "cds",
+   "stage": "prelims",
+   "name": "Prelims",
+   "answer_writing": false,
+   "source": "CDS",
+   "subjects": [
+    {
+     "name": "General Knowledge",
+     "topics": [
+      {
+       "name": "History and Culture",
+       "subtopics": [
+        "Ancient, Medieval and Modern India",
+        "Freedom Struggle"
+       ]
+      },
+      {
+       "name": "Geography",
+       "subtopics": [
+        "Physical and Indian Geography",
+        "World Geography"
+       ]
+      },
+      {
+       "name": "Polity and Economy",
+       "subtopics": [
+        "Constitution and Governance",
+        "Basic Economic Concepts"
+       ]
+      },
+      {
+       "name": "General Science",
+       "subtopics": [
+        "Physics",
+        "Chemistry",
+        "Biology"
+       ]
+      },
+      {
+       "name": "Current Affairs",
+       "subtopics": [
+        "National",
+        "International",
+        "Defence and Armed Forces",
+        "Sports and Awards"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Elementary Mathematics",
+     "topics": [
+      {
+       "name": "Arithmetic",
+       "subtopics": [
+        "Number System",
+        "HCF and LCM",
+        "Percentage and Ratio",
+        "Average, Profit and Loss",
+        "Time, Work and Distance",
+        "Simple and Compound Interest"
+       ]
+      },
+      {
+       "name": "Algebra",
+       "subtopics": [
+        "Basic Equations",
+        "Quadratic Equations"
+       ]
+      },
+      {
+       "name": "Geometry and Trigonometry",
+       "subtopics": [
+        "Lines, Angles and Triangles",
+        "Circles and Quadrilaterals",
+        "Trigonometric Ratios and Heights and Distances"
+       ]
+      },
+      {
+       "name": "Mensuration and Statistics",
+       "subtopics": [
+        "Area and Volume",
+        "Mean, Median and Mode"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "English",
+     "topics": [
+      {
+       "name": "Grammar",
+       "subtopics": [
+        "Tenses",
+        "Articles and Prepositions",
+        "Subject-Verb Agreement",
+        "Sentence Correction"
+       ]
+      },
+      {
+       "name": "Vocabulary",
+       "subtopics": [
+        "Synonyms and Antonyms",
+        "Idioms and Phrases",
+        "One-word Substitution"
+       ]
+      },
+      {
+       "name": "Comprehension",
+       "subtopics": [
+        "Reading Passages",
+        "Para Jumbles",
+        "Spotting Errors"
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

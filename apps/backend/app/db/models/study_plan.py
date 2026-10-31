@@ -42,6 +42,12 @@ class StudyTask(SQLModel, table=True):
     is_ai_recommended: bool = Field(default=False)
     source_attempt_id: Optional[int] = Field(default=None, index=True)
 
+    # Study Planner v2: the plan that made this task, the syllabus subtopic it covers, and its daily block
+    # (ca | pyq | custom | aw | mock | rev | auto_rev). All empty on the student's own tasks.
+    plan_id: Optional[int] = Field(default=None, foreign_key="study_plans.id", ondelete="SET NULL", index=True)
+    planner_subtopic_id: Optional[int] = Field(default=None, foreign_key="planner_subtopics.id", ondelete="SET NULL")
+    block: Optional[str] = Field(default=None, max_length=20)
+
     user: Optional["User"] = Relationship(back_populates="study_tasks")
 
 class StudyActivity(SQLModel, table=True):

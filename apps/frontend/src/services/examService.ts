@@ -39,6 +39,8 @@ export async function uploadExamPaper({
   exam_type_id,
   conflict_resolution,
   paper_mode = 'EXAM_WISE',
+  marks_per_question,
+  negative_marks_per_question,
   file,
 }: UploadExamPayload & { set_code?: string }): Promise<UploadExamResponse> {
   const token = localStorage.getItem('access_token');
@@ -59,6 +61,8 @@ export async function uploadExamPaper({
     if (exam_type_id) formData.append('exam_type_id', String(exam_type_id));
   }
   if (conflict_resolution) formData.append('conflict_resolution', conflict_resolution);
+  if (marks_per_question !== undefined) formData.append('marks_per_question', String(marks_per_question));
+  if (negative_marks_per_question !== undefined) formData.append('negative_marks_per_question', String(negative_marks_per_question));
   formData.append('file', file);
 
   const response = await guardedFetch(`${API_BASE_URL}/exams/upload`, {
@@ -243,6 +247,7 @@ export interface ExamItem {
   paper_set_code?: string;
   total_duration_minutes?: number;
   total_marks?: number;
+  total_questions?: number;
   description?: string;
   is_active: boolean;
   status?: string;
@@ -391,6 +396,10 @@ export interface DynamicTestFilters {
   dynamic_subject?: string;
   dynamic_topic?: string;
   dynamic_subtopic?: string;
+  /** Comma separated EASY / MEDIUM / HARD; omitted for all levels. */
+  dynamic_difficulty?: string;
+  /** Comma separated paper sets, e.g. SET_A,SET_B; omitted for all sets. */
+  dynamic_sets?: string;
 }
 
 /** How many questions a Subject-wise test with these filters can draw from. */
@@ -413,6 +422,9 @@ export interface ExamAttemptStatusEntry {
   completed_attempt_id?: number | string;
   total_score?: number;
   max_possible_score?: number;
+  /** For an in-progress attempt: questions answered so far, and the attempt's question count. */
+  in_progress_answered?: number;
+  in_progress_total?: number;
 }
 
 /** Lightweight per-exam attempt status map, for catalog/listing pages (e.g. PYQ list)
@@ -619,6 +631,11 @@ export async function getUserCumulativeAggregateReport(userId?: number | string)
       method: 'GET',
       headers: getAuthHeaders(),
     });
+    if (response.status === 403) {
+      // Free plan: the all-tests analysis is part of Pro
+      const body = await response.json().catch(() => null);
+      if (body?.detail?.code === 'FREE_PLAN_ANALYSIS_LOCKED') return { analysis_locked: true };
+    }
     if (!response.ok) return null;
     return await response.json();
   } catch (err) {
@@ -764,3 +781,18 @@ export async function getAttemptScheduledTasksStatus(attemptId: string): Promise
 }
 
 
+
+/** The in-progress attempt that opening this exam would resume (and its language), if any. */
+export async function getInProgressAttempt(
+  examId: string | number
+): Promise<{ attempt_id: string | null; language: string | null }> {
+  const response = await guardedFetch(
+    `${API_BASE_URL}/attempts/in-progress?exam_id=${encodeURIComponent(String(examId))}`,
+    { method: 'GET', headers: getAuthHeaders() }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to check for an in-progress attempt.');
+  }
+  return data;
+}

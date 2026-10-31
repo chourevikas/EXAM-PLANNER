@@ -22,6 +22,9 @@ export function useExamUpload() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [setCode, setSetCode] = useState('SET_A');
   const [paperType, setPaperType] = useState('previous_year_question');
+  // Marking scheme, prefilled from the exam type and editable for this paper
+  const [marksPerQuestion, setMarksPerQuestion] = useState('2');
+  const [negativeMarks, setNegativeMarks] = useState('0.67');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [isUploading, setIsUploading] = useState(false);
@@ -42,6 +45,8 @@ export function useExamUpload() {
           types[0];
         setExamName(defaultType.type);
         setSelectedExamTypeId(defaultType.id);
+        setMarksPerQuestion(String(defaultType.positive_marks ?? 2));
+        setNegativeMarks(String(defaultType.negative_marks ?? 0.67));
       }
     }).catch((err) => {
       console.warn('Failed to load active exam types:', err);
@@ -53,6 +58,8 @@ export function useExamUpload() {
     const matched = availableExamTypes.find((t) => t.type.toLowerCase() === typeCode.toLowerCase());
     if (matched) {
       setSelectedExamTypeId(matched.id);
+      setMarksPerQuestion(String(matched.positive_marks ?? 2));
+      setNegativeMarks(String(matched.negative_marks ?? 0.67));
     }
   };
 
@@ -87,15 +94,27 @@ export function useExamUpload() {
     }
   };
 
-  const executeUpload = async (conflictResolution: string = 'CHECK') => {
+  /** True when the paper was uploaded; false when it was refused or needs a conflict decision. */
+  const executeUpload = async (conflictResolution: string = 'CHECK'): Promise<boolean> => {
     if (!selectedFile) {
       setStatusMessage({ text: 'Please select a PDF file to upload.', isError: true });
-      return;
+      return false;
     }
 
     if (paperMode === 'EXAM_WISE' && (!setCode || !setCode.trim())) {
       setStatusMessage({ text: 'Target Paper Set Code (e.g. SET_A, SET_B, SET_C, SET_D) is required.', isError: true });
-      return;
+      return false;
+    }
+
+    const marks = Number(marksPerQuestion);
+    const negative = Number(negativeMarks);
+    if (!marksPerQuestion.trim() || !(marks > 0)) {
+      setStatusMessage({ text: 'Enter the marks for a correct answer (more than 0).', isError: true });
+      return false;
+    }
+    if (!negativeMarks.trim() || !(negative >= 0) || negative > marks) {
+      setStatusMessage({ text: 'Enter the marks deducted for a wrong answer: 0 or more, and not more than the marks for a correct one.', isError: true });
+      return false;
     }
 
     setIsUploading(true);
@@ -112,6 +131,8 @@ export function useExamUpload() {
         file: selectedFile,
         conflict_resolution: conflictResolution,
         paper_mode: paperMode,
+        marks_per_question: marks,
+        negative_marks_per_question: negative,
       });
       clearExamIntegrityCache();
       invalidateExamReviewCache();
@@ -126,6 +147,7 @@ export function useExamUpload() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      return true;
     } catch (err: any) {
       if (err.status === 409 && err.payload && err.payload.requires_confirmation) {
         setConflictModal({
@@ -143,11 +165,12 @@ export function useExamUpload() {
     } finally {
       setIsUploading(false);
     }
+    return false;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<boolean> => {
     e.preventDefault();
-    await executeUpload('CHECK');
+    return executeUpload('CHECK');
   };
 
   const handleConflictResolve = async (chosenOption: string) => {
@@ -174,6 +197,10 @@ export function useExamUpload() {
     setSetCode,
     paperType,
     setPaperType,
+    marksPerQuestion,
+    setMarksPerQuestion,
+    negativeMarks,
+    setNegativeMarks,
     selectedFile,
     setSelectedFile,
     isUploading,

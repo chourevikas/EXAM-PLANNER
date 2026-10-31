@@ -31,11 +31,15 @@ const breadcrumbMap: Record<string, string> = {
   'mock-tests': 'Mock Tests',
   testimonials: 'Testimonial Approvals',
   'reported-questions': 'Reported Questions',
+  feedback: 'Feedback',
   resources: 'Learning Resources',
   users: 'Users Management',
   'teacher-rewards': 'Teacher Rewards',
   analytics: 'Reports & Analytics',
+  milestones: 'Milestones',
+  translations: 'Translations',
   subscriptions: 'Subscriptions & Billing',
+  'exam-syllabus': 'Exam Types › Syllabus',
 };
 
 interface AdminNotificationItem {

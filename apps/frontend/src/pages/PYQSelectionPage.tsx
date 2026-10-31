@@ -18,6 +18,7 @@ import { StatusBadge } from '../components/common/StatusBadge';
 import { extractCanonicalExamName, sortExamLabels, defaultExamLabel } from '../utils/formatEnum';
 import { fetchActiveExamTypes } from '../services/examTypeService';
 import { formatTaxonomyParam } from '../utils/taxonomyParam';
+import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import {
   PlayCircle, BarChart2, RotateCcw, BookOpen, Target,
   ChevronDown, ArrowRight, ArrowLeft, Search, Check, X,
@@ -33,6 +34,8 @@ interface DisplayExam {
   id: number | string;
   code: string;
   year: number | string;
+  /** Paper set, e.g. SET_A */
+  paperSet: string;
   title: string;
   totalQuestions: number;
   duration: string;
@@ -78,7 +81,7 @@ function usePublishedExams() {
             if (att?.in_progress_attempt_id) status = 'IN_PROGRESS';
             else if (att?.completed_attempt_id) status = 'COMPLETED';
             return {
-              id: e.id, code: e.code, year: e.source_year || 2025,
+              id: e.id, code: e.code, year: e.source_year || 2025, paperSet: (e.paper_set_code || 'SET_A').toUpperCase(),
               title: formatCanonicalExamTitle(e),
               totalQuestions: 100, duration: `${e.total_duration_minutes || 120} mins`,
               status,
@@ -270,7 +273,10 @@ function YearWiseScreen({ onBack }: { onBack: () => void }) {
   const [hoveredExam, setHoveredExam] = useState<number | string | null>(null);
   const [yearFilter, setYearFilter] = useState('All Years');
   const [examFilter, setExamFilter] = useState('All Exams');
+  const [setFilter, setSetFilter] = useState('All Sets');
   const [searchQuery, setSearchQuery] = useState('');
+  // Paper sets present in the catalogue; the filter only shows when there is more than one
+  const archiveSetOptions = useMemo(() => ['All Sets', ...Array.from(new Set(examsList.map((e) => e.paperSet))).sort()], [examsList]);
 
   const archiveYearOptions = useMemo(() => ['All Years', ...Array.from(new Set(examsList.map((e) => String(e.year)))).sort((a, b) => Number(b) - Number(a))], [examsList]);
   const archiveExamOptions = useMemo(() => {
@@ -281,10 +287,11 @@ function YearWiseScreen({ onBack }: { onBack: () => void }) {
     return examsList.filter((e) => {
       if (yearFilter !== 'All Years' && String(e.year) !== yearFilter) return false;
       if (examFilter !== 'All Exams' && extractCanonicalExamName(e.title) !== examFilter) return false;
+      if (setFilter !== 'All Sets' && e.paperSet !== setFilter) return false;
       if (q && !e.title.toLowerCase().includes(q) && !String(e.code || '').toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [examsList, yearFilter, examFilter, searchQuery]);
+  }, [examsList, yearFilter, examFilter, setFilter, searchQuery]);
 
   return (
     <>
@@ -319,6 +326,14 @@ function YearWiseScreen({ onBack }: { onBack: () => void }) {
             {archiveYearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
+        {archiveSetOptions.length > 2 && (
+          <div style={{ minWidth: 110 }}>
+            <label htmlFor="pyq-set-filter" style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Paper set</label>
+            <select id="pyq-set-filter" value={setFilter} onChange={(e) => setSetFilter(e.target.value)} style={{ width: '100%', height: 36, padding: '0 10px', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, outline: 'none' }}>
+              {archiveSetOptions.map((o) => <option key={o} value={o}>{o === 'All Sets' ? o : o.replace('SET_', 'Set ')}</option>)}
+            </select>
+          </div>
+        )}
         <div style={{ flex: 1, minWidth: 180 }}>
           <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Search</label>
           <div style={{ position: 'relative' }}>
@@ -554,6 +569,11 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   const [selSubject, setSelSubject] = useState('all');
   const [selTopic, setSelTopic] = useState('all');
   const [selSubtopic, setSelSubtopic] = useState('all');
+  const [selDifficulty, setSelDifficulty] = useState<string[]>(['all']);
+  const [selSets, setSelSets] = useState<string[]>(['all']);
+  const [availableSets, setAvailableSets] = useState<string[]>([]);
+  // The test's language, fixed once it starts; English unless the student picks another
+  const [testLanguage, setTestLanguage] = useState('en');
   const [qSize, setQSize] = useState('all');
   const [customCount, setCustomCount] = useState('');
   
@@ -561,7 +581,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
   const [startError, setStartError] = useState<string | null>(null);
 
   // A warning about the previous filters no longer applies once they change
-  useEffect(() => { setStartError(null); }, [selExams, selYears, selSubject, selTopic, selSubtopic, qSize, customCount]);
+  useEffect(() => { setStartError(null); }, [selExams, selYears, selSubject, selTopic, selSubtopic, selDifficulty, selSets, qSize, customCount]);
 
   const dynamicFilters = useMemo<DynamicTestFilters>(() => {
     const exs = selExams.filter((x) => x !== 'all');
@@ -572,8 +592,10 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
       dynamic_subject: selSubject !== 'all' ? selSubject : undefined,
       dynamic_topic: selTopic !== 'all' ? selTopic : undefined,
       dynamic_subtopic: selSubtopic !== 'all' ? selSubtopic : undefined,
+      dynamic_difficulty: selDifficulty.includes('all') ? undefined : selDifficulty.join(','),
+      dynamic_sets: selSets.includes('all') ? undefined : selSets.join(','),
     };
-  }, [selExams, selYears, selSubject, selTopic, selSubtopic]);
+  }, [selExams, selYears, selSubject, selTopic, selSubtopic, selDifficulty, selSets]);
 
   // Questions the current filters match (null while counting or when the count failed)
   const [matchCount, setMatchCount] = useState<number | null>(null);
@@ -603,9 +625,11 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
         
         const names: string[] = [];
         const mapping: Record<string, Set<number>> = {};
+        const sets = new Set<string>();
         
         if (Array.isArray(publishedExams)) {
           publishedExams.forEach((e: any) => {
+            if (!e.code?.startsWith('DYN_') && !e.is_mixed_bank && e.paper_set_code) sets.add(String(e.paper_set_code).toUpperCase());
             const nameToExtract = e.name || e.title || e.exam_name || e.code || '';
             const lowerName = nameToExtract.toLowerCase();
             
@@ -631,6 +655,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
           finalMapping[ex] = Array.from(mapping[ex]).sort((a, b) => b - a);
         }
         setExamToYears(finalMapping);
+        setAvailableSets(Array.from(sets).sort());
         
         const distinct = sortExamLabels(names);
         setAvailableExams(distinct.length > 0 ? distinct : [defaultExamLabel()]);
@@ -663,6 +688,13 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
     setSelYears(next.includes(v) ? next.filter((x) => x !== v) || ['all'] : [...next, v]);
   };
 
+  const toggleDifficulty = (v: string) => {
+    if (v === 'all') { setSelDifficulty(['all']); return; }
+    const next = selDifficulty.filter((x) => x !== 'all');
+    const updated = next.includes(v) ? next.filter((x) => x !== v) : [...next, v];
+    setSelDifficulty(updated.length ? updated : ['all']);
+  };
+
   // A test never has more questions than the filters match
   const requestedCount = qSize === 'all' ? matchCount : (qSize === 'custom' ? Number(customCount) || 0 : Number(qSize));
   const testCount = requestedCount !== null && matchCount !== null ? Math.min(requestedCount, matchCount) : requestedCount;
@@ -687,6 +719,7 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
       const payload: any = {
         exam_id: 'dynamic',
         force_new: true,
+        language: testLanguage,
         dynamic_limit: qLimit || 100,
         ...dynamicFilters,
       };
@@ -809,6 +842,53 @@ function SubjectWiseScreen({ onBack }: { onBack: () => void }) {
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 6 }}>Pick one or more years, or leave on "All years"</div>
                 </div>
+              </div>
+
+              {/* Difficulty */}
+              <div>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Difficulty (optional)</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <button type="button" onClick={() => toggleDifficulty('all')} style={chipStyle(selDifficulty.includes('all'))}>All levels</button>
+                  {[['EASY', 'Easy'], ['MEDIUM', 'Medium'], ['HARD', 'Hard']].map(([value, label]) => (
+                    <button type="button" key={value} onClick={() => toggleDifficulty(value)} style={chipStyle(selDifficulty.includes(value))}>{label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Paper set (only when papers come in more than one set) */}
+              {availableSets.length > 1 && (
+                <div>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Paper set (optional)</span>
+                  <div role="group" aria-label="Paper set" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <button type="button" onClick={() => setSelSets(['all'])} style={chipStyle(selSets.includes('all'))}>All sets</button>
+                    {availableSets.map((code) => (
+                      <button
+                        type="button"
+                        key={code}
+                        data-set={code}
+                        onClick={() => {
+                          const next = selSets.filter((x) => x !== 'all');
+                          const updated = next.includes(code) ? next.filter((x) => x !== code) : [...next, code];
+                          setSelSets(updated.length ? updated : ['all']);
+                        }}
+                        style={chipStyle(selSets.includes(code))}
+                      >
+                        {code.replace('SET_', 'Set ')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Language */}
+              <div>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Test language</span>
+                <div role="radiogroup" aria-label="Test language" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <button type="button" role="radio" aria-checked={testLanguage === lang.code} key={lang.code} data-lang={lang.code} onClick={() => setTestLanguage(lang.code)} style={chipStyle(testLanguage === lang.code)}>{lang.nativeName}</button>
+                  ))}
+                </div>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>All questions are shown in this language until you submit.</span>
               </div>
 
               {/* Number of questions */}

@@ -51,6 +51,7 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
     logger.info(f"🚀 Starting daily midnight email digest run for {date_str} (cutoff: {cutoff_date})...")
 
     user_tasks_map: Dict[int, Dict[str, Any]] = {}
+    no_email: set = set()
 
     try:
         async with async_session_factory() as session:
@@ -81,9 +82,16 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
                         "allocated_time_minutes": task.allocated_time_minutes or 30
                     })
 
+            # Students who turned these reminders off on the Notifications tab
+            from app.services.reminder_service import opted_out
+            no_in_app = await opted_out(session, "notify_pending_tasks")
+            no_email = await opted_out(session, "notify_task_email")
+
             # Also create in-app notification in batch if not already present
             today_start = datetime.now(ZoneInfo("Asia/Kolkata")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
             for uid, data in user_tasks_map.items():
+                if uid in no_in_app:
+                    continue
                 user = data["user"]
                 tasks_list = data["tasks"]
                 pending_count = len(tasks_list)
@@ -153,7 +161,7 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
                 logger.error(f"Failed sending midnight digest to {user.email}: {e}")
                 failed_count += 1
 
-    tasks = [_send_single_user_digest(uid, data) for uid, data in user_tasks_map.items()]
+    tasks = [_send_single_user_digest(uid, data) for uid, data in user_tasks_map.items() if uid not in no_email]
     await asyncio.gather(*tasks, return_exceptions=True)
 
     # Mark as dispatched for today in cache
@@ -192,13 +200,11 @@ async def run_midnight_translation_job() -> Dict[str, Any]:
     """
     Proactively translates all un-translated question stems and options
     into Hindi and Marathi using Google Translate's batch API.
-
-    Detects 'fake' translations where the stored text is identical to the
-    English source (i.e. the translation was never actually done).
-
-    Runs once per night; uses cache deduplication to avoid re-running.
-    Batches texts in chunks of 200 for optimal Google API throughput.
     """
+    if not getattr(settings, "ENABLE_TRANSLATION_PIPELINE", False):
+        logger.info("🚫 Midnight translation job skipped (ENABLE_TRANSLATION_PIPELINE is False).")
+        return {"status": "DISABLED", "message": "Translation pipeline is disabled."}
+
     tz = ZoneInfo("Asia/Kolkata")
     today = datetime.now(tz).date()
     date_str = today.isoformat()
@@ -368,11 +374,25 @@ async def run_midnight_translation_job() -> Dict[str, Any]:
         logger.error(f"❌ Midnight translation job failed: {err}", exc_info=True)
         return {"status": "ERROR", "error": str(err)}
 
+    # Explanations and option analyses: backfills whatever is still missing in Hindi/Marathi
+    # (only missing rows are added, so a finished backfill costs one query a night)
+    explanation_counts: Dict[str, int] = {}
+    try:
+        from app.services.explanation_translation_service import translate_explanations
+        async with async_session_factory() as session:
+            explanation_counts = await translate_explanations(
+                session, translator, target_languages=[iso for iso, _ in _MIDNIGHT_TRANSLATE_LANGUAGES],
+            )
+    except Exception as expl_err:
+        logger.error(f"⚠️ Midnight explanation translation failed (retried tomorrow): {expl_err}", exc_info=True)
+
     logger.info(f"🌙✅ Midnight translation job complete: {total_q_translated} Q + {total_opt_translated} opt translated.")
     return {
         "status": "SUCCESS",
         "q_translated": total_q_translated,
         "opt_translated": total_opt_translated,
+        "explanations_translated": explanation_counts.get("explanations_added", 0),
+        "analyses_translated": explanation_counts.get("analyses_added", 0),
     }
 
 
@@ -404,11 +424,29 @@ async def _daily_midnight_scheduler_loop():
 
             await run_daily_midnight_dispatch(force=False)
 
-            # Run proactive translation for Hindi + Marathi (non-blocking — errors don't stop the loop)
+            # Recalculate today's leaderboards (idempotent: replaces the day's rows)
             try:
-                await run_midnight_translation_job()
-            except Exception as trans_err:
-                logger.error(f"⚠️ Midnight translation job error (non-fatal): {trans_err}", exc_info=True)
+                from app.db.session import async_session_factory
+                from app.services import leaderboard_service
+                async with async_session_factory() as lb_session:
+                    ranked = await leaderboard_service.refresh(lb_session)
+                logger.info(f"🏆 Leaderboards recalculated: {ranked} students ranked.")
+            except Exception as lb_err:
+                logger.error(f"⚠️ Leaderboard refresh error (non-fatal): {lb_err}", exc_info=True)
+
+            # End subscriptions whose period is over (paid, admin grants, launch promo) -> back to Free
+            try:
+                from app.services.subscription_expiry_service import run_expiry_job
+                await run_expiry_job()
+            except Exception as exp_err:
+                logger.error(f"⚠️ Subscription expiry error (non-fatal): {exp_err}", exc_info=True)
+
+            # Run proactive translation for Hindi + Marathi if enabled
+            if getattr(settings, "ENABLE_TRANSLATION_PIPELINE", False):
+                try:
+                    await run_midnight_translation_job()
+                except Exception as trans_err:
+                    logger.error(f"⚠️ Midnight translation job error (non-fatal): {trans_err}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("🛑 Daily Midnight Scheduler loop cancelled.")
             break

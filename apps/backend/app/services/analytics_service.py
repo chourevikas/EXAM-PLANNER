@@ -1,9 +1,9 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 from fastapi import HTTPException
 from fastapi.responses import Response
-from sqlmodel import select, col
+from sqlmodel import select, col, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.engine.report_compiler import compile_comprehensive_psychometric_report
@@ -26,6 +26,70 @@ logger = setup_logger("AnalyticsService")
 
 # Track attempts that have been auto-retriggered in this worker to prevent concurrent duplicate pipelines
 _RETRIGGERED_ATTEMPTS = set()
+
+
+STANDARD_SUBJECTS = ['History', 'Polity', 'Geography', 'Economy', 'Science & Tech', 'Environment', 'CSAT']
+# Fewest answers a subject needs before its platform-wide accuracy is shown as a benchmark
+PLATFORM_MIN_ANSWERS = 20
+
+
+# UPSC GS Paper 1: score out of 200 -> percentile, interpolated between historical cut-off brackets
+UPSC_SCORE_PERCENTILE_BRACKETS = [
+    (0.0, 0.0),
+    (60.0, 40.0),
+    (80.0, 75.0),
+    (95.0, 95.0),
+    (110.0, 99.0),
+    (200.0, 99.99),
+]
+
+
+def _upsc_percentile(score_out_of_200: float) -> float:
+    brackets = UPSC_SCORE_PERCENTILE_BRACKETS
+    if score_out_of_200 <= brackets[0][0]:
+        return brackets[0][1]
+    if score_out_of_200 >= brackets[-1][0]:
+        return brackets[-1][1]
+    for (s_low, p_low), (s_high, p_high) in zip(brackets, brackets[1:]):
+        if s_low <= score_out_of_200 <= s_high:
+            ratio = (score_out_of_200 - s_low) / (s_high - s_low) if s_high > s_low else 0
+            return round(p_low + ratio * (p_high - p_low), 2)
+    return 0.0
+
+
+def _readiness_index(
+    accuracy: Optional[float], answered: int, attempts: int, icrs: Optional[float]
+) -> Optional[int]:
+    """0-100 readiness: 35% accuracy, 25% volume (100 answers = full), 20% tests (5 = full), 20% ICRS.
+
+    None when nothing has been answered. Without an ICRS profile the other three are re-weighted to 100%.
+    """
+    if accuracy is None or answered <= 0:
+        return None
+    parts = [
+        (0.35, accuracy),
+        (0.25, min(answered / 100.0, 1.0) * 100),
+        (0.20, min(attempts / 5.0, 1.0) * 100),
+    ]
+    if icrs is not None:
+        parts.append((0.20, icrs))
+    weight = sum(w for w, _ in parts)
+    return max(0, min(100, int(round(sum(w * v for w, v in parts) / weight))))
+
+
+def _bucket_subject(stats: Dict[str, Dict[str, Any]], resolved_subject: str) -> str:
+    """Stats key for a resolved subject name: one of the standard subjects when it matches, else its own bucket."""
+    sub_key = resolved_subject.lower().strip()
+    for std in STANDARD_SUBJECTS:
+        std_k = std.lower()
+        if std_k in sub_key or sub_key in std_k or ('science' in std_k and 'science' in sub_key):
+            stats.setdefault(std_k, {'subject': std, 'total_attempted': 0, 'total_correct': 0})
+            return std_k
+    formatted_name = resolved_subject.replace('_', ' ').replace('-', ' ').title()
+    key = formatted_name.lower()
+    stats.setdefault(key, {'subject': formatted_name, 'total_attempted': 0, 'total_correct': 0})
+    return key
+
 
 class AnalyticsService:
     """Service compiling and formatting psychometric diagnostic analytics reports."""
@@ -603,6 +667,103 @@ class AnalyticsService:
         md_content = rep.get("markdown_audit") or "# Cumulative Psychometric Audit Report"
         return Response(content=md_content, media_type="text/markdown")
 
+    async def _resolve_question_subjects(
+        self, questions: List[tuple]
+    ) -> Dict[int, Optional[str]]:
+        """Subject name per question id from the syllabus, for (question_id, subtopic_id, section_code, _) tuples.
+
+        Order: primary hierarchy link → subtopic's topic's subject → question section code. None when none
+        applies; callers then fall back to the paper's subject code for that row.
+        """
+        from app.db.models.hierarchy import Subject, Topic, Subtopic
+        from app.db.models.hierarchy_link import QuestionHierarchyLink
+
+        question_ids = list({q[0] for q in questions if q[0]})
+        subtopic_ids = list({q[1] for q in questions if q[1]})
+
+        q_to_subject: Dict[int, str] = {}
+        if question_ids:
+            links_stmt = (
+                select(QuestionHierarchyLink.question_id, Subject.name)
+                .join(Subject, col(QuestionHierarchyLink.subject_id) == col(Subject.id))
+                .where(col(QuestionHierarchyLink.question_id).in_(question_ids))
+                .order_by(col(QuestionHierarchyLink.is_primary).desc())
+            )
+            for q_id, subj_name in (await self.session.exec(links_stmt)).all():
+                if q_id not in q_to_subject:
+                    q_to_subject[q_id] = subj_name
+
+        subt_to_subject: Dict[int, str] = {}
+        if subtopic_ids:
+            subt_stmt = (
+                select(Subtopic.id, Subject.name)
+                .join(Topic, col(Subtopic.topic_id) == col(Topic.id))
+                .join(Subject, col(Topic.subject_id) == col(Subject.id))
+                .where(col(Subtopic.id).in_(subtopic_ids))
+            )
+            for s_id, subj_name in (await self.session.exec(subt_stmt)).all():
+                subt_to_subject[s_id] = subj_name
+
+        resolved: Dict[int, Optional[str]] = {}
+        for q_id, subtopic_id, section_code, _ in questions:
+            name = q_to_subject.get(q_id) or (subt_to_subject.get(subtopic_id) if subtopic_id else None)
+            if not name and section_code and section_code not in ("DEFAULT", "GS-I", "GS1"):
+                name = section_code
+            resolved[q_id] = name
+        return resolved
+
+    async def get_platform_subject_accuracy(self) -> Dict[str, Dict[str, Any]]:
+        """Accuracy per subject across all students' answered exam questions, keyed by subject display name.
+
+        Only subjects with at least PLATFORM_MIN_ANSWERS answers are included, so a handful of
+        responses doesn't pose as a platform average. Cached for an hour (shared by all users).
+        """
+        from app.cache import get_cache, build_cache_key
+        from sqlmodel import func, case
+        from app.db.models.analytics import ExamQuestionResponse
+        from app.db.models.hierarchy import Exam
+        from app.db.models.question import Question
+
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:platform_subject_accuracy")
+        cached_val = await cache.get(cache_key)
+        if cached_val is not None:
+            return cached_val
+
+        stmt = (
+            select(
+                Question.id,
+                Question.subtopic_id,
+                Question.section_code,
+                Exam.subject_code,
+                func.count(ExamQuestionResponse.id),
+                func.sum(case((col(ExamQuestionResponse.is_correct).is_(True), 1), else_=0)),
+            )
+            .join(Question, col(ExamQuestionResponse.question_id) == col(Question.id))
+            .join(Exam, col(Question.exam_id) == col(Exam.id), isouter=True)
+            .where(col(ExamQuestionResponse.selected_option_id).is_not(None))
+            .group_by(Question.id, Question.subtopic_id, Question.section_code, Exam.subject_code)
+        )
+        rows = (await self.session.exec(stmt)).all()
+        resolved = await self._resolve_question_subjects([(r[0], r[1], r[2], r[3]) for r in rows])
+
+        stats: Dict[str, Dict[str, Any]] = {}
+        for q_id, _, _, exam_subject, answered, correct in rows:
+            key = _bucket_subject(stats, resolved.get(q_id) or exam_subject or "General Studies")
+            stats[key]["total_attempted"] += int(answered or 0)
+            stats[key]["total_correct"] += int(correct or 0)
+
+        result = {
+            v["subject"]: {
+                "accuracy": round(v["total_correct"] * 100 / v["total_attempted"]),
+                "total_attempted": v["total_attempted"],
+            }
+            for v in stats.values()
+            if v["total_attempted"] >= PLATFORM_MIN_ANSWERS
+        }
+        await cache.set(cache_key, result, ttl_seconds=3600)
+        return result
+
     async def get_user_subject_performance(self, user_id: int) -> list[dict]:
         """Calculates subject accuracy percentages for a user from study activities and exam responses."""
         from app.cache import get_cache, build_cache_key
@@ -615,11 +776,10 @@ class AnalyticsService:
 
         from app.db.models.study_plan import StudyActivity
         from app.db.models.analytics import ExamAttempt, ExamQuestionResponse
-        from app.db.models.hierarchy import Exam, Subject, Topic, Subtopic
+        from app.db.models.hierarchy import Exam
         from app.db.models.question import Question
-        from app.db.models.hierarchy_link import QuestionHierarchyLink
 
-        standard_subjects = ['History', 'Polity', 'Geography', 'Economy', 'Science & Tech', 'Environment', 'CSAT']
+        standard_subjects = STANDARD_SUBJECTS
         stats: dict[str, dict] = {}
         for s in standard_subjects:
             stats[s.lower()] = {'subject': s, 'total_attempted': 0, 'total_correct': 0}
@@ -656,68 +816,11 @@ class AnalyticsService:
         )
         eq_results = (await self.session.exec(eq_stmt)).all()
 
-        # Batch pre-fetch all hierarchy links and subtopics to eliminate N+1 DB queries in loop
-        question_ids = list({q.id for _, q, _ in eq_results if q and q.id})
-        subtopic_ids = list({q.subtopic_id for _, q, _ in eq_results if q and q.subtopic_id})
-
-        q_to_subject: dict[int, str] = {}
-        if question_ids:
-            links_stmt = (
-                select(QuestionHierarchyLink.question_id, Subject.name)
-                .join(Subject, col(QuestionHierarchyLink.subject_id) == col(Subject.id))
-                .where(col(QuestionHierarchyLink.question_id).in_(question_ids))
-                .order_by(col(QuestionHierarchyLink.is_primary).desc())
-            )
-            link_rows = (await self.session.exec(links_stmt)).all()
-            for q_id, subj_name in link_rows:
-                if q_id not in q_to_subject:
-                    q_to_subject[q_id] = subj_name
-
-        subt_to_subject: dict[int, str] = {}
-        if subtopic_ids:
-            subt_stmt = (
-                select(Subtopic.id, Subject.name)
-                .join(Topic, col(Subtopic.topic_id) == col(Topic.id))
-                .join(Subject, col(Topic.subject_id) == col(Subject.id))
-                .where(col(Subtopic.id).in_(subtopic_ids))
-            )
-            subt_rows = (await self.session.exec(subt_stmt)).all()
-            for s_id, subj_name in subt_rows:
-                subt_to_subject[s_id] = subj_name
-
+        resolved = await self._resolve_question_subjects(
+            [(q.id, q.subtopic_id, q.section_code, exam_subject) for _, q, exam_subject in eq_results if q]
+        )
         for eq_resp, question, exam_subject in eq_results:
-            resolved_subject = None
-
-            # a) Try QuestionHierarchyLink pre-fetched map
-            if question.id in q_to_subject:
-                resolved_subject = q_to_subject[question.id]
-
-            # b) Try Question -> Subtopic -> Topic -> Subject pre-fetched map
-            if not resolved_subject and question.subtopic_id and question.subtopic_id in subt_to_subject:
-                resolved_subject = subt_to_subject[question.subtopic_id]
-
-            # c) Try Section Code on Question
-            if not resolved_subject and question.section_code and question.section_code not in ("DEFAULT", "GS-I", "GS1"):
-                resolved_subject = question.section_code
-
-            # d) Fallback to Exam.subject_code
-            if not resolved_subject:
-                resolved_subject = exam_subject or "General Studies"
-
-            sub_key = resolved_subject.lower().strip()
-            matched_key = None
-            for std in standard_subjects:
-                std_k = std.lower()
-                if std_k in sub_key or sub_key in std_k or ('science' in std_k and 'science' in sub_key):
-                    matched_key = std_k
-                    break
-
-            if not matched_key:
-                formatted_name = resolved_subject.replace('_', ' ').replace('-', ' ').title()
-                matched_key = formatted_name.lower()
-                if matched_key not in stats:
-                    stats[matched_key] = {'subject': formatted_name, 'total_attempted': 0, 'total_correct': 0}
-
+            matched_key = _bucket_subject(stats, resolved.get(question.id) or exam_subject or "General Studies")
             stats[matched_key]['total_attempted'] += 1
             if eq_resp.is_correct:
                 stats[matched_key]['total_correct'] += 1
@@ -789,34 +892,22 @@ class AnalyticsService:
                 wma_score = round(acc_pct * 160.0, 2)
                 confidence = "MEDIUM"
             else:
-                wma_score = 75.0
-                confidence = "PROVISIONAL"
+                # Nothing answered yet: no projection rather than an invented score
+                result = {
+                    "exam_code": "UPSC_CSE",
+                    "exam_name": "UPSC CSE Prelims",
+                    "moving_average_score": None,
+                    "predicted_percentile": None,
+                    "top_percentage": None,
+                    "predicted_rank": None,
+                    "confidence_level": "INSUFFICIENT_DATA",
+                    "total_candidates": total_candidates,
+                    "attempts_analyzed": 0,
+                }
+                await cache.set(cache_key, result, ttl_seconds=900)
+                return result
 
-        # Linear Piecewise Interpolation for UPSC GS Paper 1 Curve
-        brackets = [
-            (0.0, 0.0),
-            (60.0, 40.0),
-            (80.0, 75.0),
-            (95.0, 95.0),
-            (110.0, 99.0),
-            (200.0, 99.99),
-        ]
-
-        predicted_percentile = 0.0
-        if wma_score <= brackets[0][0]:
-            predicted_percentile = brackets[0][1]
-        elif wma_score >= brackets[-1][0]:
-            predicted_percentile = brackets[-1][1]
-        else:
-            for idx in range(len(brackets) - 1):
-                s_low, p_low = brackets[idx]
-                s_high, p_high = brackets[idx + 1]
-                if s_low <= wma_score <= s_high:
-                    ratio = (wma_score - s_low) / (s_high - s_low) if s_high > s_low else 0
-                    predicted_percentile = p_low + ratio * (p_high - p_low)
-                    break
-
-        predicted_percentile = round(predicted_percentile, 2)
+        predicted_percentile = _upsc_percentile(wma_score)
         top_percentage = round(max(0.01, 100.0 - predicted_percentile), 1)
         predicted_rank = max(1, int(total_candidates * (top_percentage / 100.0)))
 
@@ -865,113 +956,107 @@ class AnalyticsService:
         overall_percentile = rank_data["predicted_percentile"]
         predicted_rank = rank_data["predicted_rank"]
         top_percentage = rank_data["top_percentage"]
-        active_aspirants = 24000  # Benchmark active monthly aspirants pool
 
-        # 2. Derive subject performance & overall accuracy
+        # Real platform activity: students with a test started in the last 30 days
+        now_dt = datetime.now(timezone.utc)
+        active_stmt = select(func.count(func.distinct(ExamAttempt.user_id))).where(
+            col(ExamAttempt.started_at) >= now_dt - timedelta(days=30)
+        )
+        active_aspirants = int((await self.session.exec(active_stmt)).one() or 0)
+
+        # Overall accuracy from what the student actually answered (None when nothing yet)
         tot_att = sum(s["total_attempted"] for s in subj_perf)
         tot_corr = sum(s["total_correct"] for s in subj_perf)
-        overall_accuracy = round((tot_corr / tot_att) * 100, 1) if tot_att > 0 else 60.0
+        overall_accuracy = round((tot_corr / tot_att) * 100, 1) if tot_att > 0 else None
 
-        # 3. User skill profile for cognitive ICRS
         profile = prof_res.first()
-        icrs_score = profile.cumulative_icrs if profile else 65.0
+        icrs_score = profile.cumulative_icrs if (profile and profile.cumulative_icrs is not None) else None
 
-        # 4. Calculate Exam Readiness Index (0 - 100)
-        volume_factor = min(tot_att / 100.0, 1.0) * 100
-        readiness_index = int(round(
-            (0.35 * overall_accuracy) +
-            (0.25 * volume_factor) +
-            (0.20 * min(rank_data["attempts_analyzed"] / 5.0, 1.0) * 100) +
-            (0.20 * icrs_score)
-        ))
-        readiness_index = max(15, min(99, readiness_index))
-
-        # 5. Readiness Status Text
-        if readiness_index >= 80:
+        readiness_index = _readiness_index(overall_accuracy, tot_att, rank_data["attempts_analyzed"], icrs_score)
+        if readiness_index is None:
+            readiness_status = "Take a test to see your exam readiness"
+        elif readiness_index >= 80:
             readiness_status = "High probability of clearing Prelims cutoff"
         elif readiness_index >= 65:
             readiness_status = "Moderate probability - Focus on weak subtopics"
         else:
             readiness_status = "Revision required - Below projected Prelims cutoff threshold"
 
-        # 6. Determine Signup Date & Build Month Range Dynamically
-        now_dt = datetime.now(timezone.utc)
-
+        # Month range: signup month .. current month, last 6 at most
         signup_dt = user_obj.created_at if (user_obj and user_obj.created_at) else now_dt
         if signup_dt.tzinfo is None:
             signup_dt = signup_dt.replace(tzinfo=timezone.utc)
-
-        # Build list of month tuples starting from user signup month up to current month
         month_tuples = []
         y, m = signup_dt.year, signup_dt.month
-        curr_y, curr_m = now_dt.year, now_dt.month
-
-        while (y < curr_y) or (y == curr_y and m <= curr_m):
+        while (y, m) <= (now_dt.year, now_dt.month):
             month_tuples.append((y, m))
-            m += 1
-            if m > 12:
-                m = 1
-                y += 1
+            y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+        month_tuples = month_tuples[-6:]
 
-        # Keep at most last 6 months for clean visualization
-        if len(month_tuples) > 6:
-            month_tuples = month_tuples[-6:]
+        # Each month's figures come from that month's submitted tests only; a month without tests stays empty
+        first_month = datetime(month_tuples[0][0], month_tuples[0][1], 1, tzinfo=timezone.utc)
+        month_attempts_stmt = select(
+            ExamAttempt.submitted_at, ExamAttempt.total_score, ExamAttempt.max_possible_score,
+            ExamAttempt.total_correct, ExamAttempt.total_incorrect,
+        ).where(
+            ExamAttempt.user_id == user_id,
+            col(ExamAttempt.status).in_([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED]),
+            col(ExamAttempt.submitted_at) >= first_month,
+        )
+        by_month: Dict[tuple, Dict[str, float]] = {}
+        for submitted_at, score, max_p, correct, incorrect in (await self.session.exec(month_attempts_stmt)).all():
+            if not submitted_at:
+                continue
+            bucket = by_month.setdefault((submitted_at.year, submitted_at.month), {"norm": 0.0, "n": 0, "correct": 0, "answered": 0})
+            max_p = max_p or 200.0
+            bucket["norm"] += ((score or 0.0) / max_p) * 200.0 if max_p > 0 else 0.0
+            bucket["n"] += 1
+            bucket["correct"] += correct or 0
+            bucket["answered"] += (correct or 0) + (incorrect or 0)
 
-        # 7. Dynamically generate growth curve for user's active months
         monthly_growth_curve = []
         for y, m in month_tuples:
-            m_dt = datetime(y, m, 1, tzinfo=timezone.utc)
-            m_name = m_dt.strftime("%b %Y")
-
-            # Is this current month?
-            if y == curr_y and m == curr_m:
+            b = by_month.get((y, m))
+            if b and b["n"]:
+                month_acc = round(b["correct"] * 100.0 / b["answered"], 1) if b["answered"] else None
                 monthly_growth_curve.append({
-                    "month": m_name,
-                    "percentile": overall_percentile,
-                    "readiness_index": readiness_index
+                    "month": datetime(y, m, 1).strftime("%b %Y"),
+                    "percentile": _upsc_percentile(b["norm"] / b["n"]),
+                    "readiness_index": _readiness_index(month_acc, b["answered"], b["n"], icrs_score),
+                    "tests": b["n"],
                 })
             else:
-                # Historical month after user signup: compute proportional baseline
-                month_diff = (curr_y * 12 + curr_m) - (y * 12 + m)
-                past_pct = round(max(0.0, overall_percentile - month_diff * 3.5), 1)
-                past_readiness = max(10, readiness_index - month_diff * 5)
                 monthly_growth_curve.append({
-                    "month": m_name,
-                    "percentile": past_pct,
-                    "readiness_index": past_readiness
+                    "month": datetime(y, m, 1).strftime("%b %Y"),
+                    "percentile": None,
+                    "readiness_index": None,
+                    "tests": 0,
                 })
 
-        # Calculate Previous Month Percentile & Delta based on real curve
+        # Change since last calendar month, only when both months have tests
+        prev_month_percentile = None
+        percentile_delta = None
         if len(monthly_growth_curve) > 1:
-            prev_month_percentile = monthly_growth_curve[-2]["percentile"]
-            percentile_delta = round(overall_percentile - prev_month_percentile, 1)
-        else:
-            prev_month_percentile = 0.0
-            percentile_delta = 0.0
+            cur_pt, prev_pt = monthly_growth_curve[-1], monthly_growth_curve[-2]
+            if cur_pt["percentile"] is not None and prev_pt["percentile"] is not None:
+                prev_month_percentile = prev_pt["percentile"]
+                percentile_delta = round(cur_pt["percentile"] - prev_pt["percentile"], 1)
 
-        # 8. Subject Benchmark vs National Average
-        national_averages = {
-            'Polity': 65,
-            'Economy': 60,
-            'History': 58,
-            'Geography': 62,
-            'Science & Tech': 55,
-            'Environment': 63,
-            'CSAT': 68
-        }
-        subject_benchmark = []
-        for s in subj_perf:
-            name = s['subject']
-            national_avg = national_averages.get(name, 60)
-            subject_benchmark.append({
-                "subject": name,
-                "user_accuracy": s['accuracy'],
-                "national_avg_accuracy": national_avg,
-                "total_attempted": s['total_attempted']
-            })
+        # Subject accuracy vs the average of all students on the platform (None until enough answers)
+        platform = await self.get_platform_subject_accuracy()
+        subject_benchmark = [
+            {
+                "subject": s["subject"],
+                "user_accuracy": s["accuracy"],
+                "national_avg_accuracy": (platform.get(s["subject"]) or {}).get("accuracy"),
+                "total_attempted": s["total_attempted"],
+            }
+            for s in subj_perf
+            if s["total_attempted"] > 0
+        ]
 
         result = {
-            "period": "August 2026",
+            "period": now_dt.strftime("%B %Y"),
             "predicted_rank": predicted_rank,
             "top_percentage": top_percentage,
             "active_aspirants": active_aspirants,

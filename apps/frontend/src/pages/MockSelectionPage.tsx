@@ -207,7 +207,9 @@ export function MockSelectionPage() {
 
             if (attemptStatus?.in_progress_attempt_id) {
               status = 'IN_PROGRESS';
-              progressPercent = 65;
+              const answered = attemptStatus.in_progress_answered ?? 0;
+              const total = attemptStatus.in_progress_total ?? 0;
+              progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
             } else if (attemptStatus?.completed_attempt_id) {
               status = 'COMPLETED';
               scoreText = `${attemptStatus.total_score || 0} / ${attemptStatus.max_possible_score || 200}`;
@@ -216,8 +218,8 @@ export function MockSelectionPage() {
             return {
               id: e.id,
               title: formatCanonicalExamTitle(e),
-              category: 'PRELIMS',
-              totalQuestions: 100,
+              category: e.stage || 'PRELIMS',
+              totalQuestions: e.total_questions || 0,
               duration: `${e.total_duration_minutes || 120} mins`,
               status,
               completedAttemptId: attemptStatus?.completed_attempt_id,

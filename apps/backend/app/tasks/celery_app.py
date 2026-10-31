@@ -29,12 +29,7 @@ celery_app.conf.update(
     task_time_limit=3600,
     task_always_eager=settings.CELERY_TASK_ALWAYS_EAGER,
     task_eager_propagates=True,
-    beat_schedule={
-        "reconcile_missing_translations_midnight": {
-            "task": "reconcile_missing_translations_task",
-            "schedule": crontab(hour=0, minute=0),  # Runs daily at midnight UTC
-        },
-    },
+    beat_schedule={},
 )
 
 if settings.CELERY_TASK_ALWAYS_EAGER:

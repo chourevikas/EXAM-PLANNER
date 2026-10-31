@@ -521,7 +521,9 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
             stage1_status = "IN_PROGRESS"
         elif p1:
             p1_status_upper = str(p1.status).upper()
-            if p1_status_upper in (
+            if q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp):
+                stage1_status = "COMPLETED"
+            elif p1_status_upper in (
                 "RUNNING",
                 "PROCESSING",
                 "INITIALIZING",
@@ -531,7 +533,7 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
                 "COMPLETED",
                 "WAITING_FOR_ANSWER_KEY",
                 "WAITING_FOR_HITL",
-            ) or (q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp)):
+            ):
                 stage1_status = "COMPLETED"
             elif p1_status_upper in ("FAILED", "STOPPED", "CANCELLED"):
                 stage1_status = "FAILED"
@@ -578,32 +580,31 @@ async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
             else:
                 stage2_status = "QUEUED"
 
-        # Stage 3: Explanations Status
+        # Stage 3: Explanations Status (PDF authentic; no LLM explanation indexing required)
         if p3:
             p3_status_upper = str(p3.status).upper()
             if (
-                p3_status_upper == "COMPLETED"
+                p3_status_upper in ("COMPLETED", "DISMISSED", "SKIPPED")
                 or status_str == "PUBLISHED"
                 or (exp_count >= q_count and q_count > 0)
+                or (stage1_status == "COMPLETED" and stage2_status == "COMPLETED")
             ):
                 stage3_status = "COMPLETED"
-            elif p3_status_upper in ("RUNNING", "PROCESSING") or exp_count > 0:
+            elif p3_status_upper in ("RUNNING", "PROCESSING") and not (stage1_status == "COMPLETED" and stage2_status == "COMPLETED"):
                 stage3_status = "IN_PROGRESS"
             elif p3_status_upper in ("FAILED", "CANCELLED"):
                 stage3_status = "FAILED"
             elif stage1_status != "COMPLETED" or stage2_status != "COMPLETED":
                 stage3_status = "WAITING_INPUTS"
             else:
-                stage3_status = "QUEUED"
-        else:
-            if status_str == "PUBLISHED" or (exp_count > 0 and exp_count >= q_count):
                 stage3_status = "COMPLETED"
-            elif exp_count > 0:
-                stage3_status = "IN_PROGRESS"
+        else:
+            if status_str == "PUBLISHED" or (stage1_status == "COMPLETED" and stage2_status == "COMPLETED"):
+                stage3_status = "COMPLETED"
             elif stage1_status != "COMPLETED" or stage2_status != "COMPLETED":
                 stage3_status = "WAITING_INPUTS"
             else:
-                stage3_status = "QUEUED"
+                stage3_status = "COMPLETED"
         # Stage 4: Question Translation Status
         translation_status = "NOT_STARTED"
         if p_trans:
@@ -853,15 +854,6 @@ async def _compute_stuck_pipelines(session: AsyncSession) -> list:
             stuck_progress = p1.progress_percent
         elif (
             q_count > 0
-            and exp_count < q_count
-            and (p3 is None or p3.status != "COMPLETED")
-        ):
-            is_stuck = True
-            stuck_stage = "EXPLANATION_INDEXING"
-            stuck_step = f"INCOMPLETE_EXPLANATIONS_({exp_count}/{q_count})"
-            stuck_progress = round((exp_count / max(1, q_count)) * 100.0, 1)
-        elif (
-            q_count > 0
             and key_count < q_count
             and exam.answer_key_pdf_path
             and (p2 is None or p2.status != "COMPLETED")
@@ -1055,14 +1047,26 @@ async def dismiss_stuck_pipeline(
 
     runs = (
         await session.exec(
-            select(PipelineRun).where(
-                PipelineRun.exam_id == exam_id_int, PipelineRun.status == "INTERRUPTED"
-            )
+            select(PipelineRun).where(PipelineRun.exam_id == exam_id_int)
         )
     ).all()
     for r in runs:
-        r.status = "DISMISSED"
-        session.add(r)
+        if str(r.status).upper() in ("INTERRUPTED", "RUNNING", "FAILED", "WAITING_FOR_HITL", "WAITING_FOR_ANSWER_KEY"):
+            r.status = "DISMISSED"
+            session.add(r)
+
+    # Ensure a DISMISSED marker exists for explanation indexing
+    p3_run = next((r for r in runs if r.pipeline_type in ("EXPLANATION_INDEXING", "EXPLANATION_GENERATION")), None)
+    if not p3_run:
+        new_p3 = PipelineRun(
+            exam_id=exam_id_int,
+            pipeline_type="EXPLANATION_INDEXING",
+            status="DISMISSED",
+            current_step="DISMISSED_BY_ADMIN",
+            progress_percent=100.0,
+        )
+        session.add(new_p3)
+
     await session.commit()
     from app.cache import invalidate_pipeline_status_cache
     await invalidate_pipeline_status_cache()
@@ -1846,6 +1850,14 @@ async def trigger_exam_translation(
     Manually trigger or retry question translation into all 22 Indian languages for an exam.
     Runs in the background via Celery or BackgroundTasks.
     """
+    from app.config.settings import get_settings
+    if not get_settings().ENABLE_TRANSLATION_PIPELINE:
+        return {
+            "status": "DISABLED",
+            "message": "Translation pipeline is globally disabled.",
+            "exam_id": exam_id,
+        }
+
     from app.db.models import Exam
     from app.tasks.translation_tasks import translate_exam_questions_task
     from app.cache import invalidate_pipeline_status_cache

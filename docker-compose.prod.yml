@@ -1,3 +1,11 @@
+# Logs rotate at 50 MB x 10 files per service (~2-4 weeks at internal-release traffic). Read them with
+# `docker compose -f docker-compose.prod.yml logs --since 24h api`.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "10"
+
 services:
   api:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/examplanner-backend:latest
@@ -12,6 +20,7 @@ services:
       - app-network
 
     restart: unless-stopped
+    logging: *default-logging
 
   web:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/examplanner-frontend:latest
@@ -21,6 +30,7 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    logging: *default-logging
 
   # Public marketing site (Astro SSR). Host nginx routes the marketing paths here and the rest to `web`;
   # see deploy/nginx/examplanner.in.conf.
@@ -35,6 +45,7 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    logging: *default-logging
 
   # Super Admin app (its own origin). Bound to loopback: put a TLS-terminating reverse proxy for the
   # Super Admin host in front of it, and restrict that host (VPN / IP allowlist).
@@ -47,6 +58,7 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    logging: *default-logging
 
 
 networks:

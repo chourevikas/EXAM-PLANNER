@@ -1,14 +1,15 @@
 import type { ConfidenceLevel } from '../../types/exam';
+import { useExamText, ExamTextKey } from '../../i18n/examText';
 
 /**
  * "How sure are you?" — Sure / 50-50 / Guess. Enabled once an option is selected;
  * clicking the active choice again clears it.
  */
 
-const CHOICES: { value: ConfidenceLevel; label: string; color: string; bg: string }[] = [
-  { value: 'SURE', label: 'Sure', color: '#047857', bg: '#ECFDF5' },
-  { value: 'FIFTY_FIFTY', label: '50-50', color: '#B45309', bg: '#FFFBEB' },
-  { value: 'GUESS', label: 'Guess', color: '#B91C1C', bg: '#FEF2F2' },
+const CHOICES: { value: ConfidenceLevel; label: ExamTextKey; color: string; bg: string }[] = [
+  { value: 'SURE', label: 'sure', color: '#047857', bg: '#ECFDF5' },
+  { value: 'FIFTY_FIFTY', label: 'fiftyFifty', color: '#B45309', bg: '#FFFBEB' },
+  { value: 'GUESS', label: 'guess', color: '#B91C1C', bg: '#FEF2F2' },
 ];
 
 interface ConfidenceSelectorProps {
@@ -19,16 +20,17 @@ interface ConfidenceSelectorProps {
 }
 
 export function ConfidenceSelector({ value, onChange, disabled = false, compact = false }: ConfidenceSelectorProps) {
+  const { t } = useExamText();
   return (
     <div
       role="radiogroup"
-      aria-label="How sure are you about this answer?"
-      title={disabled ? 'Select an option first' : 'How sure are you about this answer?'}
+      aria-label={t('howSureLong')}
+      title={disabled ? t('selectOptionFirst') : t('howSureLong')}
       style={{ display: 'flex', alignItems: 'center', gap: compact ? 4 : 6 }}
     >
       {!compact && (
         <span style={{ fontSize: 12, fontWeight: 600, color: disabled ? 'var(--text-disabled)' : 'var(--text-secondary)' }}>
-          How sure?
+          {t('howSure')}
         </span>
       )}
       {CHOICES.map((c) => {
@@ -55,7 +57,7 @@ export function ConfidenceSelector({ value, onChange, disabled = false, compact 
               whiteSpace: 'nowrap',
             }}
           >
-            {c.label}
+            {t(c.label)}
           </button>
         );
       })}

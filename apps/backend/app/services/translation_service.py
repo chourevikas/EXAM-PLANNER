@@ -40,11 +40,17 @@ class QuestionTranslationService:
     def __init__(
         self,
         session: Optional[AsyncSession] = None,
-        translation_service: Optional[GoogleTranslationService] = None,
+        translation_service: Optional[Any] = None,
     ):
         self.session = session
         self.settings = get_settings()
-        self.translator = translation_service or GoogleTranslationService()
+        if translation_service:
+            self.translator = translation_service
+        elif getattr(self.settings, "TRANSLATION_ENGINE", "open_source") == "open_source":
+            from app.services.open_source_translation_service import OpenSourceTranslationService
+            self.translator = OpenSourceTranslationService()
+        else:
+            self.translator = GoogleTranslationService()
 
     async def _get_or_create_pipeline_run(
         self, sess: AsyncSession, exam_id: int
@@ -104,6 +110,7 @@ class QuestionTranslationService:
         exam_id: int,
         target_languages: Optional[List[str]] = None,
         task_id: Optional[str] = None,
+        force_retranslate: bool = False,
     ) -> Dict[str, Any]:
         """
         Translates all questions, options, and passages for the specified exam
@@ -111,6 +118,10 @@ class QuestionTranslationService:
         Idempotent: skips any translations already present in the database.
         """
         log = TaskLoggerAdapter(logger, task_id=task_id or str(exam_id))
+        if not getattr(self.settings, "ENABLE_TRANSLATION_PIPELINE", False):
+            log.info(f"🚫 Translation pipeline is disabled. Skipping translate_exam for Exam #{exam_id}.")
+            return {"status": "DISABLED", "message": "Translation pipeline is disabled.", "exam_id": exam_id}
+
         log.info(f"🌐 [TRANSLATION PIPELINE STARTED] Exam ID: {exam_id}")
 
         async def _execute(sess: AsyncSession) -> Dict[str, Any]:
@@ -242,9 +253,9 @@ class QuestionTranslationService:
                     lang_db_enum = target_enum
 
                 # Check missing question stems, options, and passages
-                missing_qs = [q for q in questions if (q.id, target_enum) not in q_trans_set]
-                missing_opts = [o for o in options if (o.id, target_enum) not in opt_trans_set]
-                missing_passes = [p for p in passages if (p.id, target_enum) not in pass_trans_set and p.id in pass_eng_text]
+                missing_qs = [q for q in questions if force_retranslate or (q.id, target_enum) not in q_trans_set]
+                missing_opts = [o for o in options if force_retranslate or (o.id, target_enum) not in opt_trans_set]
+                missing_passes = [p for p in passages if (force_retranslate or (p.id, target_enum) not in pass_trans_set) and p.id in pass_eng_text]
 
                 all_raw_texts = (
                     [q_eng_text.get(q.id, "") for q in missing_qs]
@@ -295,24 +306,50 @@ class QuestionTranslationService:
                     pass_trans_set.add((p.id, target_enum))
                     total_added += 1
 
-                from app.db.upsert import bulk_insert_on_conflict_do_nothing
-                if to_insert_qt:
-                    await bulk_insert_on_conflict_do_nothing(
-                        sess, QuestionTranslation, to_insert_qt, ["question_id", "language"]
-                    )
-                if to_insert_ot:
-                    await bulk_insert_on_conflict_do_nothing(
-                        sess, OptionTranslation, to_insert_ot, ["option_id", "language"]
-                    )
-                if to_insert_pt:
-                    await bulk_insert_on_conflict_do_nothing(
-                        sess, PassageTranslation, to_insert_pt, ["passage_id", "language"]
-                    )
+                if force_retranslate:
+                    for qt in to_insert_qt:
+                        existing = next((t for t in existing_q_trans if t.question_id == qt.question_id and (t.language.value if hasattr(t.language, "value") else str(t.language)) == target_enum), None)
+                        if existing:
+                            existing.question_text = qt.question_text
+                            sess.add(existing)
+                    for ot in to_insert_ot:
+                        existing_o = next((t for t in existing_opt_trans if t.option_id == ot.option_id and (t.language.value if hasattr(t.language, "value") else str(t.language)) == target_enum), None)
+                        if existing_o:
+                            existing_o.option_text = ot.option_text
+                            sess.add(existing_o)
+                else:
+                    from app.db.upsert import bulk_insert_on_conflict_do_nothing
+                    if to_insert_qt:
+                        await bulk_insert_on_conflict_do_nothing(
+                            sess, QuestionTranslation, to_insert_qt, ["question_id", "language"]
+                        )
+                    if to_insert_ot:
+                        await bulk_insert_on_conflict_do_nothing(
+                            sess, OptionTranslation, to_insert_ot, ["option_id", "language"]
+                        )
+                    if to_insert_pt:
+                        await bulk_insert_on_conflict_do_nothing(
+                            sess, PassageTranslation, to_insert_pt, ["passage_id", "language"]
+                        )
 
                 # Commit batch for this language safely with retries
                 await sess.commit()
 
-            # 6. Finalize PipelineRun
+            # 6. Explanations and option analyses (English -> Hindi/Marathi). A failure here doesn't
+            # undo the question translations; the nightly job retries what's missing.
+            explanation_counts: Dict[str, int] = {}
+            try:
+                await self._update_run_status(sess, exam_id, "RUNNING", "TRANSLATING_EXPLANATIONS", 96.0)
+                from app.services.explanation_translation_service import translate_explanations
+                explanation_counts = await translate_explanations(
+                    sess, self.translator, question_ids=q_ids,
+                    target_languages=[iso for iso, _ in langs_to_process],
+                )
+            except Exception as expl_err:
+                await sess.rollback()
+                log.warning(f"Explanation translation for Exam #{exam_id} failed (retried nightly): {expl_err}")
+
+            # 7. Finalize PipelineRun
             await self._update_run_status(
                 sess, exam_id, "COMPLETED", "ALL_22_LANGUAGES_TRANSLATED", 100.0
             )
@@ -326,6 +363,8 @@ class QuestionTranslationService:
                 "questions_count": len(questions),
                 "translations_added": total_added,
                 "languages_processed": total_langs,
+                "explanations_added": explanation_counts.get("explanations_added", 0),
+                "analyses_added": explanation_counts.get("analyses_added", 0),
             }
 
         try:
@@ -357,6 +396,10 @@ class QuestionTranslationService:
         Scans all exams in the database, determines if any question, option,
         or passage is missing translations in any of the 22 languages, and backfills them.
         """
+        if not getattr(self.settings, "ENABLE_TRANSLATION_PIPELINE", False):
+            logger.info("🚫 Translation pipeline is disabled. Skipping reconcile_all_missing_translations.")
+            return {"status": "DISABLED", "message": "Translation pipeline is disabled.", "exams_checked": 0}
+
         logger.info("🌙 [MIDNIGHT RECONCILIATION] Starting automated check for missing translations across all exams...")
 
         async def _reconcile(sess: AsyncSession):
