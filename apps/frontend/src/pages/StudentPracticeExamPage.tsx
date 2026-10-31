@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ExamLanguageProvider, examText } from '../i18n/examText';
 import {
   SlidersHorizontal,
   ChevronDown,
@@ -19,8 +20,12 @@ import { QuestionSolutionData } from '../components/exam/QuestionSolutionMarkdow
 import { ConfidenceLevel, QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { fetchMasterSyllabus, verifySyllabusNode, listExams, fetchExamsByYear } from '../services/examService';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useFocusMode } from '../hooks/useFocusMode';
 import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
+import { recordPracticeAnswer, DailyLimitReachedError, fetchDailyUsage, DailyUsage } from '../services/freePlanService';
+import { FreePlanLimitModal } from '../components/common/FreePlanLimitModal';
+import { SUPPORTED_LANGUAGES, getSecondaryLanguage } from '../constants/languages';
 import { formatEnum, extractCanonicalExamName, cleanExamTitle, sortExamLabels, defaultExamLabel } from '../utils/formatEnum';
 import { fetchActiveExamTypes } from '../services/examTypeService';
 import { availableQuestionYears } from '../utils/examYears';
@@ -29,6 +34,7 @@ import {
   mergeRecommendations,
   recommendationCardToQuestion,
   useSimilarQuestions,
+  isSameSubject,
 } from '../services/similarQuestionService';
 import { parseTaxonomyParam, formatTaxonomyParam, parseYearParam } from '../utils/taxonomyParam';
 
@@ -63,44 +69,7 @@ export function StudentPracticeExamPage() {
   }, []);
 
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
-  const [isFocusMode, setIsFocusMode] = useState(false);
-
-  // Focus mode also takes the browser itself fullscreen (hides tabs/address bar).
-  // Leaving fullscreen via Esc or browser UI drops focus mode too.
-  const toggleFocusMode = useCallback(() => {
-    const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => Promise<void> };
-    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
-    const isFullscreen = !!(document.fullscreenElement || doc.webkitFullscreenElement);
-    if (!isFocusMode) {
-      setIsFocusMode(true);
-      if (!isFullscreen) {
-        const request = el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
-        Promise.resolve(request?.()).catch(() => undefined);
-      }
-    } else {
-      setIsFocusMode(false);
-      if (isFullscreen) {
-        const exit = document.exitFullscreen?.bind(document) ?? doc.webkitExitFullscreen?.bind(doc);
-        Promise.resolve(exit?.()).catch(() => undefined);
-      }
-    }
-  }, [isFocusMode]);
-
-  useEffect(() => {
-    const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => Promise<void> };
-    const onFullscreenChange = () => {
-      if (!document.fullscreenElement && !doc.webkitFullscreenElement) setIsFocusMode(false);
-    };
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', onFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
-      // Don't leave the browser stuck fullscreen after navigating away from practice.
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
-      else if (doc.webkitFullscreenElement) doc.webkitExitFullscreen?.().catch(() => undefined);
-    };
-  }, []);
+  const [isFocusMode, toggleFocusMode] = useFocusMode();
 
   // Master Syllabus Taxonomy & Available Exams state fetched directly from live APIs
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
@@ -350,16 +319,22 @@ export function StudentPracticeExamPage() {
   // Exactly 10 mins (600s). Not shown on screen, so it lives in a ref: ticking it as state
   // re-rendered the whole page (and re-wrote sessionStorage) every second, making scrolling stutter.
   const timeLeftRef = useRef(600);
-  const [language, setLanguage] = useState<string>(() => {
-    try {
-      const userRaw = localStorage.getItem('user');
-      if (userRaw) {
-        const u = JSON.parse(userRaw);
-        if (u.preferred_language) return u.preferred_language;
-      }
-    } catch (_) {}
-    return localStorage.getItem('preferred_language') || 'en';
-  });
+  // The session's language lives in ?lang= (en / hi / mr): English (primary) unless the student switched
+  // to their profile's secondary language in the header; kept by every filter change (they copy the URL) and by a reload
+  const urlLang = searchParams.get('lang');
+  // ?source=bookmarks | revision | mistakes | search: practise the student's bookmarked questions, the ones
+  // due for spaced revision today, their mistake notebook (Pro; ?view=frequent for 2+ misses), or the
+  // matches of a header search (?q=, opening at ?start=), instead of a filtered set
+  const practiceSource = searchParams.get('source');
+  const isRevisionSession = practiceSource === 'revision';
+  const isMistakeSession = practiceSource === 'mistakes';
+  const isSearchSession = practiceSource === 'search';
+  const isBookmarkSession = practiceSource === 'bookmarks' || isRevisionSession || isMistakeSession || isSearchSession;
+  const searchTerm = searchParams.get('q') || '';
+  const searchStart = searchParams.get('start') || '';
+  const mistakeView = searchParams.get('view') === 'frequent' ? 'frequent' : 'all';
+  const language = SUPPORTED_LANGUAGES.some((l) => l.code === urlLang) ? (urlLang as string) : 'en';
+  const secondaryLanguage = getSecondaryLanguage();
 
 
 
@@ -380,6 +355,28 @@ export function StudentPracticeExamPage() {
     Record<string | number, { optionId: number | string; optionLabel: string }>
   >({});
   const [revealedMap, setRevealedMap] = useState<Record<string, RevealAnswerResponse>>({});
+  // Free plan: practice answers count toward the daily question limit (signed-in students only)
+  const [dailyUsage, setDailyUsage] = useState<DailyUsage | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem('access_token')) fetchDailyUsage().then(setDailyUsage);
+  }, []);
+
+  /** Records an answer on the server; false when the free daily limit stops it (the modal is shown). */
+  const countPracticeAnswer = async (questionId: number | string, optionId?: number | string | null): Promise<boolean> => {
+    if (!localStorage.getItem('access_token')) return true;
+    try {
+      const usage = await recordPracticeAnswer(questionId, optionId);
+      if (usage) setDailyUsage(usage);
+      return true;
+    } catch (err) {
+      if (err instanceof DailyLimitReachedError) {
+        setShowLimitModal(true);
+        return false;
+      }
+      return true; // a network hiccup shouldn't block practice
+    }
+  };
   const [confidenceMap, setConfidenceMap] = useState<Record<string | number, ConfidenceLevel>>({});
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
@@ -501,31 +498,11 @@ export function StudentPracticeExamPage() {
     [],
   );
 
-  const handleLanguageChange = (newLang: string) => {
-    setLanguage(newLang);
-    localStorage.setItem('preferred_language', newLang);
-    try {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        fetch('/api/v1/auth/me', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ preferred_language: newLang }),
-        }).catch(() => {});
-      }
-    } catch (_) {}
-
-    // Priority translate active question if missing in newLang
-    if (activeQuestion) {
-      ensureQuestionTranslation(activeQuestion, newLang);
-    }
-    // Background prefetch next question if present
-    if (allQuestions[currentQIndex + 1]) {
-      ensureQuestionTranslation(allQuestions[currentQIndex + 1], newLang);
-    }
+  const handlePracticeLanguageChange = (nextLang: string) => {
+    const current = new URLSearchParams(searchParams);
+    if (nextLang === 'en') current.delete('lang');
+    else current.set('lang', nextLang);
+    navigate(`/practice-exam?${current.toString()}`, { replace: true });
   };
 
   // Modal & Popup States
@@ -808,7 +785,8 @@ export function StudentPracticeExamPage() {
   };
 
   // Records the user's answer for a recommended question and kicks off its solution fetch
-  const handleSelectRecommendationOption = (rec: QuestionOut, optionId: number | string) => {
+  const handleSelectRecommendationOption = async (rec: QuestionOut, optionId: number | string) => {
+    if (!(await countPracticeAnswer(rec.question_id, optionId))) return;
     setRecUserResponses((prev) => ({ ...prev, [rec.question_id]: optionId }));
     fetchRecommendationSolution(rec.question_id);
   };
@@ -822,7 +800,7 @@ export function StudentPracticeExamPage() {
       setIsSolutionLoading(true);
     }
     try {
-      const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
+      const solRes = await fetch(`/api/v1/questions/${targetId}/solution?language=${encodeURIComponent(language)}`);
       if (solRes.ok) {
         const solPayload: QuestionSolutionData = await solRes.json();
         setPracticeSolutions((prev) => ({
@@ -862,11 +840,18 @@ export function StudentPracticeExamPage() {
   };
 
   const activeRecExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]).map((e) => e.toLowerCase());
+  const activeSubject = activeQuestion?.subject || activeQuestion?.section_code;
   const displayRecs = activeRecExams.length > 0 
     ? mergeRecommendations(similarRecs, recommendedPool).filter((q) => {
         if (!q.exam_name) return true;
         const canonical = extractCanonicalExamName(q.exam_name).toLowerCase();
-        return activeRecExams.includes(canonical) || activeRecExams.includes(q.exam_name.toLowerCase());
+        const matchesExam = activeRecExams.includes(canonical) || activeRecExams.includes(q.exam_name.toLowerCase());
+        if (!matchesExam) return false;
+        if (activeSubject && !activeSubject.toLowerCase().startsWith('all') && activeSubject !== 'General Studies') {
+          const qSubj = q.subject || q.section_code;
+          return isSameSubject(qSubj, activeSubject);
+        }
+        return true;
       })
     : [];
 
@@ -875,7 +860,9 @@ export function StudentPracticeExamPage() {
   const [showMobileRecs, setShowMobileRecs] = useState(false);
   const [showMobileFilterPanel, setShowMobileFilterPanel] = useState(false);
 
-  const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
+  const SESSION_KEY = isBookmarkSession
+    ? `student_practice_session_${practiceSource}${isSearchSession ? `_${searchTerm}_${searchStart}` : isMistakeSession ? `_${mistakeView}` : ''}`
+    : `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
   const sessionKeyRef = useRef(SESSION_KEY);
   sessionKeyRef.current = SESSION_KEY;
 
@@ -1080,6 +1067,27 @@ export function StudentPracticeExamPage() {
       };
 
       try {
+        if (isBookmarkSession) {
+          const token = localStorage.getItem('access_token');
+          const bmParams = new URLSearchParams({ language, limit: '200' });
+          let sourceUrl = '/api/v1/users/me/bookmarks/practice';
+          if (isRevisionSession) {
+            sourceUrl = '/api/v1/users/me/revision/practice';
+            bmParams.set('limit', '50');
+          } else if (isMistakeSession) {
+            sourceUrl = '/api/v1/users/me/mistakes/practice';
+            bmParams.set('view', mistakeView);
+          } else if (isSearchSession) {
+            sourceUrl = '/api/v1/search/questions/practice';
+            bmParams.set('q', searchTerm);
+            bmParams.set('limit', '50');
+            if (searchStart) bmParams.set('start', searchStart);
+          }
+          const res = await guardedFetch(`${sourceUrl}?${bmParams.toString()}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (res.ok) mergeItems((await res.json()).items || []);
+        } else {
         const targetExam = gExam
           ? gExam.split(',')
               .map((e) => {
@@ -1157,6 +1165,7 @@ export function StudentPracticeExamPage() {
 
           const fallbackResults = await Promise.all(fallbackTiers.map(fetchQuestions));
           mergeItems(fallbackResults.find((items) => items.length > 0) || []);
+        }
         }
       } catch (err) {
         console.warn('Practice questions fetch warning:', err);
@@ -1249,7 +1258,7 @@ export function StudentPracticeExamPage() {
     }
 
     loadPracticeQuestions();
-  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, isBookmarkSession, practiceSource, searchTerm, searchStart, mistakeView]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -1276,6 +1285,24 @@ export function StudentPracticeExamPage() {
     isLoading,
     allQuestions,
   ]);
+
+  // The opening question (and the next) in the session's language, fetched if it isn't stored yet
+  useEffect(() => {
+    if (language === 'en' || !activeQuestion) return;
+    ensureQuestionTranslation(activeQuestion, language);
+    if (allQuestions[currentQIndex + 1]) ensureQuestionTranslation(allQuestions[currentQIndex + 1], language);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, activeQuestion?.question_id]);
+
+  // Switching language mid-session reloads an already revealed solution in the new language
+  const solutionLanguageRef = useRef(language);
+  useEffect(() => {
+    if (solutionLanguageRef.current === language) return;
+    solutionLanguageRef.current = language;
+    const qId = activeQuestion?.question_id;
+    if (qId && (revealedMap[qId] || revealedMap[String(qId)])) fetchPracticeQuestionSolution(qId, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -1365,6 +1392,7 @@ export function StudentPracticeExamPage() {
       ? { optionId: overrideOptId, optionLabel: overrideOptLbl || '' }
       : userResponses[targetId];
     if (!userResp) return;
+    if (!(revealedMap[targetId] || revealedMap[String(targetId)]) && !(await countPracticeAnswer(targetId, userResp.optionId))) return;
 
     const correctOpt = targetQuestion.options?.find((o) => o.is_correct);
 
@@ -1493,7 +1521,13 @@ export function StudentPracticeExamPage() {
       return clean.length === 1 ? clean : String.fromCharCode(65 + index);
     };
 
-    const responsesPayload = allQuestions.map((q, idx) => {
+    // Filter to only questions the student actually attempted/revealed in this practice session
+    const attemptedQuestions = allQuestions.filter(
+      (q) => userResponses[q.question_id] || rMap[q.question_id],
+    );
+    const questionsToScore = attemptedQuestions.length > 0 ? attemptedQuestions : allQuestions;
+
+    const responsesPayload = questionsToScore.map((q, idx) => {
       const userResp = userResponses[q.question_id];
       const rev = rMap[q.question_id];
       let isCorr = false;
@@ -1531,8 +1565,9 @@ export function StudentPracticeExamPage() {
       };
     });
 
-    const totalMarksPossible = numQuestions;
-    const unattemptedCount = Math.max(0, numQuestions - attemptedCount);
+    const totalQuestionsCount = attemptedCount > 0 ? attemptedCount : 0;
+    const totalMarksPossible = totalQuestionsCount;
+    const unattemptedCount = Math.max(0, totalQuestionsCount - attemptedCount);
     const accuracy = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
 
     const scorePayload = {
@@ -1542,7 +1577,7 @@ export function StudentPracticeExamPage() {
       incorrectCount,
       unattemptedCount,
       accuracy,
-      totalQuestions: numQuestions,
+      totalQuestions: totalQuestionsCount,
       subjectName: gSubject,
       topicName: gSubject,
       subtopicName: '',
@@ -1657,6 +1692,7 @@ export function StudentPracticeExamPage() {
   const isCurrentAnswered = !!currentResponse;
   const isCurrentMarked = activeQuestion ? !!markedForReview[activeQuestion.question_id] : false;
 
+
   if (isLoading) {
     return (
       <ExamLoaderOverlay
@@ -1692,18 +1728,38 @@ export function StudentPracticeExamPage() {
           }}
         >
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--deep-navy)', marginBottom: 8 }}>
-            No Questions Available
+            {isRevisionSession
+              ? 'Nothing due for revision today'
+              : isMistakeSession
+                ? 'No mistakes to practise'
+                : isSearchSession
+                  ? 'No questions match your search'
+                  : isBookmarkSession
+                    ? 'No bookmarked questions yet'
+                    : 'No Questions Available'}
           </h2>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
-            No questions available for{' '}
-            <strong>{formatEnum(gSubject || 'this selection')}</strong>.
+            {isRevisionSession ? (
+              <>Questions come back here when it's time to revise them, based on how you answered them in tests and practice.</>
+            ) : isMistakeSession ? (
+              <>Questions you answer wrong in tests and practice collect in your mistake notebook. Once you get one right, it leaves the list.</>
+            ) : isSearchSession ? (
+              <>Nothing matched <strong>"{searchTerm}"</strong>. Try fewer or different words.</>
+            ) : isBookmarkSession ? (
+              <>Bookmark questions while you practise or review a test, then practise them here.</>
+            ) : (
+              <>
+                No questions available for{' '}
+                <strong>{formatEnum(gSubject || 'this selection')}</strong>.
+              </>
+            )}
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <button
               onClick={() => {
                 const current = new URLSearchParams(searchParams);
-                current.delete('subject');
-                current.delete('topic');
+                // Leaving a bookmark / revision / mistakes / search session too, or it would reload the same empty set
+                ['subject', 'topic', 'source', 'q', 'start', 'view'].forEach((k) => current.delete(k));
                 navigate(`?${current.toString()}`);
               }}
               style={{
@@ -1742,6 +1798,7 @@ export function StudentPracticeExamPage() {
   }
 
   return (
+    <ExamLanguageProvider language={language}>
     <div
       style={{
         display: 'flex',
@@ -1753,6 +1810,23 @@ export function StudentPracticeExamPage() {
         backgroundColor: 'var(--bg-subtle)',
       }}
     >
+      <FreePlanLimitModal open={showLimitModal} onClose={() => setShowLimitModal(false)} limit={dailyUsage?.limit} />
+      {dailyUsage?.limited && (
+        <div
+          role="status"
+          style={{
+            padding: '6px 16px',
+            fontSize: 12.5,
+            fontWeight: 700,
+            textAlign: 'center',
+            backgroundColor: (dailyUsage.remaining ?? 0) > 0 ? '#FFFBEB' : '#FEF2F2',
+            color: (dailyUsage.remaining ?? 0) > 0 ? '#B45309' : '#B91C1C',
+            borderBottom: `1px solid ${(dailyUsage.remaining ?? 0) > 0 ? '#FDE68A' : '#FECACA'}`,
+          }}
+        >
+          {examText(language, 'freePlanLeft', { remaining: dailyUsage.remaining ?? 0, limit: dailyUsage.limit ?? 0 })}
+        </div>
+      )}
       {/* Top Header Bar */}
       <ExamHeader
         examTitle={cleanExamTitle(gExam)}
@@ -1765,17 +1839,59 @@ export function StudentPracticeExamPage() {
         subtopicName={''}
         parentBreadcrumb="Student Dashboard"
         onBack={() => setShowLeaveModal(true)}
-        onLanguageChange={handleLanguageChange}
         onSubmitClick={() => handleFinishPracticeExam()}
         focusMode={isFocusMode}
         onToggleFocusMode={toggleFocusMode}
-        onFilterClick={!isFocusMode ? () => setShowMobileFilterPanel(true) : undefined}
+        secondaryLanguage={secondaryLanguage}
+        onLanguageChange={handlePracticeLanguageChange}
+        onFilterClick={!isFocusMode && !isBookmarkSession ? () => setShowMobileFilterPanel(true) : undefined}
         onRecsClick={() => setShowMobileRecs(true)}
         recsCount={displayRecs.length}
       />
 
+      {/* Bookmark session: the filters don't apply, so a banner replaces them */}
+      {isBookmarkSession && !isFocusMode && (
+        <div style={{ marginTop: 68, padding: '0 clamp(10px, 2.5vw, 24px)' }}>
+          <div
+            data-testid="bookmark-session"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
+              padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-color)', fontSize: 13.5, color: 'var(--text-secondary)',
+            }}
+          >
+            {isRevisionSession ? (
+              <span>
+                Revising <strong>{totalQuestions}</strong> {totalQuestions === 1 ? 'question' : 'questions'} due today. Each answer schedules
+                its next revision: sooner if wrong, later if right.
+              </span>
+            ) : isMistakeSession ? (
+              <span>
+                Practising <strong>{totalQuestions}</strong> {mistakeView === 'frequent' ? 'frequently missed' : ''} {totalQuestions === 1 ? 'mistake' : 'mistakes'}.
+                Get one right and it leaves your notebook.
+              </span>
+            ) : isSearchSession ? (
+              <span>
+                <strong>{totalQuestions}</strong> {totalQuestions === 1 ? 'question matches' : 'questions match'} <strong>"{searchTerm}"</strong>
+              </span>
+            ) : (
+              <span>
+                Practising your <strong>{totalQuestions}</strong> bookmarked {totalQuestions === 1 ? 'question' : 'questions'}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate(isRevisionSession ? '/dashboard' : isMistakeSession ? '/mistakes' : isSearchSession ? '/dashboard' : '/bookmarks')}
+              style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontWeight: 700, cursor: 'pointer', fontSize: 13.5 }}
+            >
+              {isRevisionSession || isSearchSession ? 'Back to dashboard' : isMistakeSession ? 'Back to mistake notebook' : 'Back to bookmarks'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Premium Floating Exam Filter Window — Desktop only; mobile/tablet uses header icon + top sheet */}
-      {!isFocusMode && !isTabletOrBelow && (
+      {!isFocusMode && !isTabletOrBelow && !isBookmarkSession && (
         <div
           style={{
             marginTop: 60,
@@ -4184,5 +4300,6 @@ export function StudentPracticeExamPage() {
         </div>
       )}
     </div>
+    </ExamLanguageProvider>
   );
 }

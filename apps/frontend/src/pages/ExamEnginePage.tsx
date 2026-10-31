@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ExamLanguageProvider, examText } from '../i18n/examText';
 import { ReportPreparingLoader } from '../components/common/ReportPreparingLoader';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
@@ -13,6 +14,10 @@ import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { syncGuestSessionsOnAuth } from '../services/authService';
 import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, RefreshCw } from 'lucide-react';
+import { fetchDailyUsage, DailyUsage } from '../services/freePlanService';
+import { FreePlanLimitModal } from '../components/common/FreePlanLimitModal';
+import { useFocusMode } from '../hooks/useFocusMode';
+import { getSecondaryLanguage } from '../constants/languages';
 import {
   startExamAttempt,
   getExamAttemptStatus,
@@ -26,6 +31,7 @@ import {
   sendExamHeartbeat,
   submitExamAttempt,
   listExams,
+  getInProgressAttempt,
   ExamItem,
 } from '../services/examService';
 import { addBookmark, removeBookmark } from '../services/bookmarkService';
@@ -64,19 +70,19 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   // ─── Session State ───────────────────────────────────────────────────────────
   const [attemptId, setAttemptId] = useState<number | string | null>(paramAttemptId || null);
   const [attemptMode, setAttemptMode] = useState<AttemptMode>('EXAM');
+  // Free plan: questions left today; null = not loaded or unlimited (nothing is blocked client-side then)
+  const [dailyUsage, setDailyUsage] = useState<DailyUsage | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  // Questions answered at some point in this attempt; answering them again doesn't use another free question
+  const everAnsweredRef = useRef<Set<string>>(new Set());
   const [currentQIndex, setCurrentQIndex] = useState(0); // 0-indexed for UI
   const [totalQuestions, setTotalQuestions] = useState(100);
   const [timeLeft, setTimeLeft] = useState(7200);
-  const [language, setLanguage] = useState<string>(() => {
-    try {
-      const userRaw = localStorage.getItem('user');
-      if (userRaw) {
-        const u = JSON.parse(userRaw);
-        if (u.preferred_language) return u.preferred_language;
-      }
-    } catch (_) {}
-    return localStorage.getItem('preferred_language') || 'en';
-  });
+  // The attempt's language: a new attempt opens in English (primary); the header switches it to the
+  // profile's secondary language and back at any time
+  const [language, setLanguage] = useState<string>('en');
+  const secondaryLanguage = getSecondaryLanguage();
+  const [isFocusMode, toggleFocusMode] = useFocusMode();
   const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'marked' | 'unanswered'>('all');
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
@@ -209,6 +215,20 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     }
   };
 
+  useEffect(() => {
+    if (!attemptId) return;
+    fetchDailyUsage().then(setDailyUsage);
+  }, [attemptId]);
+
+  // Seed answered questions from the palette (resume) so re-answering them isn't treated as new
+  useEffect(() => {
+    palette.forEach((p: any) => {
+      if (String(p?.status || '').startsWith('ANSWERED') && p?.question_id != null) {
+        everAnsweredRef.current.add(String(p.question_id));
+      }
+    });
+  }, [palette]);
+
   // Flush pending batches asynchronously in the background
   const flushPendingBatches = async () => {
     if (!attemptId || pendingBatchQueueRef.current.size === 0 || isSyncingBatchRef.current) {
@@ -241,6 +261,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
         if (ack.response_summary) {
           setResponseSummary(ack.response_summary);
+        }
+        // The server dropped answers beyond the free plan's daily limit
+        if (ack.daily_limit_skipped > 0) {
+          setShowLimitModal(true);
+          fetchDailyUsage().then(setDailyUsage);
         }
       }
     } catch (err) {
@@ -301,6 +326,72 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     },
     [attemptId, language]
   );
+
+  // ─── Start (or resume) the attempt in a language ────────────────────────────
+  async function beginAttempt(chosenLang: string) {
+    const forceNew = searchParams.get('forceNew') === 'true';
+    const startRes = await startExamAttempt({ exam_id: examId!, mode: 'EXAM', language: chosenLang, force_new: forceNew });
+    // A resumed attempt keeps the language it started with
+    const attemptLang = startRes.language || chosenLang;
+    setLanguage(attemptLang);
+    if (forceNew) {
+      // The retake has started: drop the flag so a reload resumes it instead of abandoning it
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('forceNew');
+      setSearchParams(nextParams, { replace: true });
+    }
+    setAttemptId(startRes.attempt_id);
+    setAttemptMode(startRes.mode);
+    // A resumed attempt keeps its clock; a new one starts full
+    setTimeLeft(startRes.remaining_seconds ?? startRes.max_duration_seconds);
+    // start returns the question the student was on (1-based) when resuming
+    const startIdx = Math.max(0, (startRes.current_question_index || 1) - 1);
+    setCurrentQIndex(startIdx);
+    setTotalQuestions(startRes.total_questions);
+    setPalette(startRes.palette);
+    // start also resumes an IN_PROGRESS attempt (page reload / Resume link)
+    seedLeftUnanswered(startRes.palette, startRes.first_question.question.question_id);
+    {
+      const startRound = startRes.first_question.response_state.answer_round;
+      if (startRound) answerRoundByQRef.current.set(String(startRes.first_question.question.question_id), startRound);
+    }
+    setActiveQuestion(startRes.first_question.question);
+    setSelectedOptionId(startRes.first_question.response_state.selected_option_id as string | null);
+    setIsMarkedForReview(startRes.first_question.response_state.is_marked_for_review);
+    {
+      const startConf = startRes.first_question.response_state.confidence_level ?? null;
+      confidenceByQRef.current.set(String(startRes.first_question.question.question_id), startConf);
+      setConfidence(startConf);
+    }
+
+    // Seed the opening question (Q1, or the resumed one) into memory
+    setAllQuestions((prev) => {
+      const next = [...prev];
+      next[startIdx] = startRes.first_question.question;
+      return next;
+    });
+
+    // In complete PYQ exams, load questions in batches of 20 starting with the opening question's batch
+    const startBatch = Math.floor(startIdx / BATCH_SIZE);
+    loadQuestionBatch(startBatch, startRes.attempt_id, attemptLang);
+    if ((startBatch + 1) * BATCH_SIZE < startRes.total_questions) {
+      setTimeout(() => {
+        loadQuestionBatch(startBatch + 1, startRes.attempt_id, attemptLang);
+      }, 300);
+    }
+  }
+
+  const startNewAttempt = async () => {
+    setIsLoadingSession(true);
+    try {
+      await beginAttempt('en');
+    } catch (err) {
+      console.warn('Backend exam session start error, using fallback demo data:', err);
+      loadFallbackDemoData();
+    } finally {
+      setIsLoadingSession(false);
+    }
+  };
 
   // ─── 1. Session Initialization / Resume ─────────────────────────────────────
   // Guards against a second init for the same route (React StrictMode re-runs effects in dev),
@@ -372,6 +463,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         if (paramAttemptId) {
           // Resume existing session
           const sessionStatus = await getExamAttemptStatus(paramAttemptId);
+          const resumeLang = sessionStatus.language || 'en';
+          setLanguage(resumeLang);
           setAttemptId(sessionStatus.attempt_id);
           setAttemptMode(sessionStatus.mode);
           setTimeLeft(sessionStatus.remaining_seconds);
@@ -389,58 +482,19 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
           // In complete PYQ exams, load 20 questions in batches so initial start and transitions are fast
           const initialBatch = Math.floor(resumeIdx / BATCH_SIZE);
-          loadQuestionBatch(initialBatch, sessionStatus.attempt_id, language);
+          loadQuestionBatch(initialBatch, sessionStatus.attempt_id, resumeLang);
           if ((initialBatch + 1) * BATCH_SIZE < sessionStatus.total_questions) {
-            loadQuestionBatch(initialBatch + 1, sessionStatus.attempt_id, language);
+            loadQuestionBatch(initialBatch + 1, sessionStatus.attempt_id, resumeLang);
           }
         } else if (examId) {
-          // Start new attempt session
+          // Opening the exam resumes its in-progress attempt in that attempt's language;
+          // a new attempt (or a retake) starts in English
           const forceNew = searchParams.get('forceNew') === 'true';
-          const startRes = await startExamAttempt({ exam_id: examId, mode: 'EXAM', language, force_new: forceNew });
-          if (forceNew) {
-            // The retake has started: drop the flag so a reload resumes it instead of abandoning it
-            const nextParams = new URLSearchParams(searchParams);
-            nextParams.delete('forceNew');
-            setSearchParams(nextParams, { replace: true });
-          }
-          setAttemptId(startRes.attempt_id);
-          setAttemptMode(startRes.mode);
-          // A resumed attempt keeps its clock; a new one starts full
-          setTimeLeft(startRes.remaining_seconds ?? startRes.max_duration_seconds);
-          // start returns the question the student was on (1-based) when resuming
-          const startIdx = Math.max(0, (startRes.current_question_index || 1) - 1);
-          setCurrentQIndex(startIdx);
-          setTotalQuestions(startRes.total_questions);
-          setPalette(startRes.palette);
-          // start also resumes an IN_PROGRESS attempt (page reload / Resume link)
-          seedLeftUnanswered(startRes.palette, startRes.first_question.question.question_id);
-          {
-            const startRound = startRes.first_question.response_state.answer_round;
-            if (startRound) answerRoundByQRef.current.set(String(startRes.first_question.question.question_id), startRound);
-          }
-          setActiveQuestion(startRes.first_question.question);
-          setSelectedOptionId(startRes.first_question.response_state.selected_option_id as string | null);
-          setIsMarkedForReview(startRes.first_question.response_state.is_marked_for_review);
-          {
-            const startConf = startRes.first_question.response_state.confidence_level ?? null;
-            confidenceByQRef.current.set(String(startRes.first_question.question.question_id), startConf);
-            setConfidence(startConf);
-          }
-
-          // Seed the opening question (Q1, or the resumed one) into memory
-          setAllQuestions((prev) => {
-            const next = [...prev];
-            next[startIdx] = startRes.first_question.question;
-            return next;
-          });
-
-          // In complete PYQ exams, load questions in batches of 20 starting with the opening question's batch
-          const startBatch = Math.floor(startIdx / BATCH_SIZE);
-          loadQuestionBatch(startBatch, startRes.attempt_id, language);
-          if ((startBatch + 1) * BATCH_SIZE < startRes.total_questions) {
-            setTimeout(() => {
-              loadQuestionBatch(startBatch + 1, startRes.attempt_id, language);
-            }, 300);
+          const inProgress = forceNew ? null : await getInProgressAttempt(examId).catch(() => null);
+          if (inProgress?.attempt_id) {
+            await beginAttempt(inProgress.language || 'en');
+          } else {
+            await startNewAttempt();
           }
         } else {
           // Fallback demo questions if no examId/attemptId provided in route
@@ -701,6 +755,13 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     [],
   );
 
+  // Switching language mid-attempt: the current question (and the next) in the new language
+  useEffect(() => {
+    if (!activeQuestion) return;
+    ensureQuestionTranslation(activeQuestion, language);
+    if (allQuestions[currentQIndex + 1]) ensureQuestionTranslation(allQuestions[currentQIndex + 1], language);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
 
   // ─── Helper: Fetch Specific Question ───────────────────────────────────────
   const loadQuestion = async (attId: number | string, qNum: number) => {
@@ -799,54 +860,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     }
   };
 
-  const handleLanguageChange = (newLang: string) => {
-    setLanguage(newLang);
-    localStorage.setItem('preferred_language', newLang);
-    try {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        fetch('/api/v1/auth/me', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ preferred_language: newLang }),
-        }).catch(() => {});
-      }
-    } catch (_) {}
-
-    // Priority translate active question if missing in newLang
-    if (activeQuestion) {
-      ensureQuestionTranslation(activeQuestion, newLang);
-    }
-    // Background prefetch next question if present
-    if (allQuestions[currentQIndex + 1]) {
-      ensureQuestionTranslation(allQuestions[currentQIndex + 1], newLang);
-    }
-
-    // Refresh loaded question batches in background with new language
-    if (attemptId) {
-      loadedBatchesRef.current.forEach((batchIdx) => {
-        const offset = batchIdx * BATCH_SIZE;
-        getAllAttemptQuestionsBulk(attemptId, newLang, offset, BATCH_SIZE)
-          .then((bulkData) => {
-            if (bulkData.questions && bulkData.questions.length > 0) {
-              setAllQuestions((prev) => {
-                const nextQ = [...prev];
-                bulkData.questions.forEach((q: QuestionOut, i: number) => {
-                  nextQ[offset + i] = q;
-                });
-                return nextQ;
-              });
-            }
-          })
-          .catch((err) => console.warn(`Batch ${batchIdx} language refresh warning:`, err));
-      });
-    }
-  };
-
-
   // ─── Live Countdown & Heartbeat Sync ─────────────────────────────────────────
   useEffect(() => {
     const timer = setInterval(() => {
@@ -915,6 +928,16 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const handleSelectOption = (optionId: number | string, optionLabel: string) => {
     if (activeQuestion) {
       const qKey = String(activeQuestion.question_id);
+      const prevAnswer = selectedOptionId || lastSyncedSnapshotRef.current.get(qKey)?.selected_option_id;
+      const isNewAnswer = !prevAnswer && !everAnsweredRef.current.has(qKey);
+      if (isNewAnswer && dailyUsage?.limited) {
+        if ((dailyUsage.remaining ?? 0) <= 0) {
+          setShowLimitModal(true);
+          return;
+        }
+        setDailyUsage({ ...dailyUsage, remaining: (dailyUsage.remaining ?? 0) - 1, used: (dailyUsage.used ?? 0) + 1 });
+      }
+      everAnsweredRef.current.add(qKey);
       if (!answerRoundByQRef.current.has(qKey)) {
         answerRoundByQRef.current.set(qKey, leftUnansweredRef.current.has(qKey) ? 2 : 1);
       }
@@ -982,7 +1005,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     const qId = targetId || activeQuestion?.question_id;
     if (!qId) return;
     try {
-      const res = await fetch(`/api/v1/questions/${qId}/solution`);
+      const res = await fetch(`/api/v1/questions/${qId}/solution?language=${encodeURIComponent(language)}`);
       if (res.ok) {
         const data: QuestionSolutionData = await res.json();
         setSolutionDataMap((prev) => ({
@@ -1325,6 +1348,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   }
 
   return (
+    <ExamLanguageProvider language={language}>
     <div
       style={{
         minHeight: '100vh',
@@ -1349,9 +1373,34 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             navigate('/dashboard');
           }
         }}
-        onLanguageChange={handleLanguageChange}
         onSubmitClick={handleOpenSubmitModal}
+        focusMode={isFocusMode}
+        onToggleFocusMode={toggleFocusMode}
+        secondaryLanguage={secondaryLanguage}
+        onLanguageChange={setLanguage}
       />
+
+      {dailyUsage?.limited && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            top: isTabletOrBelow ? 108 : 68,
+            left: 16,
+            zIndex: 100,
+            padding: '5px 10px',
+            borderRadius: 'var(--radius)',
+            fontSize: 12,
+            fontWeight: 700,
+            backgroundColor: (dailyUsage.remaining ?? 0) > 0 ? '#FFFBEB' : '#FEF2F2',
+            color: (dailyUsage.remaining ?? 0) > 0 ? '#B45309' : '#B91C1C',
+            border: `1px solid ${(dailyUsage.remaining ?? 0) > 0 ? '#FDE68A' : '#FECACA'}`,
+          }}
+        >
+          {examText(language, 'freePlanLeft', { remaining: dailyUsage.remaining ?? 0, limit: dailyUsage.limit ?? 0 })}
+        </div>
+      )}
+      <FreePlanLimitModal open={showLimitModal} onClose={() => setShowLimitModal(false)} limit={dailyUsage?.limit} />
 
       {/* In-Page Show Report Pill Banner for Practice & Guest Exams */}
       {guestScoreData && (
@@ -1465,7 +1514,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             {isLoadingQuestion ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F4F6F8' }}>
                 <Loader2 size={24} className="animate-spin" color="var(--primary-red)" />
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>Loading question #{currentQIndex + 1}...</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>{examText(language, 'loadingQuestion', { n: currentQIndex + 1 })}</span>
               </div>
             ) : activeQuestion ? (
               <MemoExamQuestionCard
@@ -1810,6 +1859,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       {/* Fullscreen overlay while the test is submitted and the report starts */}
       {isSubmitting && <ReportPreparingLoader variant="overlay" />}
     </div>
+    </ExamLanguageProvider>
   );
 }
 

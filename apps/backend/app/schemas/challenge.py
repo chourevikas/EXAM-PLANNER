@@ -23,7 +23,8 @@ class CreateChallengeRequest(BaseModel):
     difficulty: Optional[DifficultyLevel] = None
     subject_name: Optional[str] = None  # legacy single subject; prefer subject_names
     subject_names: List[str] = []
-    exam_type_id: Optional[int] = None
+    exam_type_id: Optional[int] = None  # legacy single exam; prefer exam_type_ids
+    exam_type_ids: List[int] = []
     years: List[int] = []
     time_limit_minutes: int = 15
     visibility: ChallengeVisibility = ChallengeVisibility.INVITE_ONLY
@@ -53,6 +54,9 @@ class ChallengeSummary(BaseModel):
     # A user gets one attempt per challenge: has_attempted means it is already submitted.
     has_attempted: bool = False
     has_in_progress: bool = False
+    # How the current user relates to it: CREATED, INVITED, JOINED (took a public one from its link)
+    # or VIEWING (opened a public one, not taken yet)
+    relation: str = "CREATED"
 
 
 class ChallengeExamOption(BaseModel):
@@ -80,10 +84,21 @@ class ChallengePublicPreview(BaseModel):
     share_token: str
     expires_at: Optional[datetime] = None
     is_expired: bool = False
+    # Invite-only links work only for the people invited; the page says so up front
+    visibility: ChallengeVisibility = ChallengeVisibility.PUBLIC
 
 
 class InviteUserRequest(BaseModel):
     email: str
+
+
+class ChallengeInvitee(BaseModel):
+    user_id: int
+    name: str
+    email: str
+    invited_at: datetime
+    has_attempted: bool = False
+    score: Optional[float] = None
 
 
 class ChallengeQuestionOption(BaseModel):

@@ -2,7 +2,7 @@ import math
 import asyncio
 from typing import Optional, List, Dict, Any, Tuple, Union
 from fastapi import HTTPException
-from sqlalchemy import func, update
+from sqlalchemy import case, func, update
 from sqlmodel import select, or_, col
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.question_assets import serialize_question_asset
@@ -370,7 +370,7 @@ class QuestionService:
             exam_obj = exams_map.get(q.exam_id) if q.exam_id else None
             raw_exam_name = exam_obj.name if exam_obj else None
             # Badge by the paper's exam type code, so a renamed code shows up here too
-            clean_exam_badge = exam_badge_label(raw_exam_name, type_codes) or "UPSC"
+            clean_exam_badge = exam_badge_label(raw_exam_name, type_codes) or "UPSC CSE"
 
             results.append({
                 "question_id": str(q.id),
@@ -379,9 +379,9 @@ class QuestionService:
                 "text": text,
                 "translations": q_trans_str,
                 "options": opt_list,
-                "subject_name": subject.name if subject else None,
-                "topic_name": topic.name if topic else None,
-                "subtopic_name": subtopic.name if subtopic else None,
+                "subject_name": subject.name if subject else q.subject_raw,
+                "topic_name": topic.name if topic else q.topic_raw,
+                "subtopic_name": subtopic.name if subtopic else q.subtopic_raw,
                 "exam_name": clean_exam_badge,
                 "exam_full_name": raw_exam_name,
                 "source_year": q.source_year or (exam_obj.source_year if exam_obj else None),
@@ -761,15 +761,22 @@ class QuestionService:
                 )
                 self.session.add(new_expl)
 
-        # Update Metadata
-        if any([payload.blooms_level, payload.cognitive_skill, payload.primary_concept_tag]):
+        # Update Metadata and Question Type Tag
+        target_skill = payload.question_type_tag or payload.cognitive_skill
+        if target_skill:
+            kt = dict(q.knowledge_tags_raw) if (q.knowledge_tags_raw and isinstance(q.knowledge_tags_raw, dict)) else {}
+            kt["question_type"] = target_skill
+            q.knowledge_tags_raw = kt
+            self.session.add(q)
+
+        if any([payload.blooms_level, target_skill, payload.primary_concept_tag]):
             meta_stmt = select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
             qm = (await self.session.exec(meta_stmt)).first()
             if qm:
                 if payload.blooms_level:
                     qm.blooms_level = payload.blooms_level
-                if payload.cognitive_skill:
-                    qm.cognitive_skill = payload.cognitive_skill
+                if target_skill:
+                    qm.cognitive_skill = target_skill
                 if payload.primary_concept_tag:
                     qm.primary_concept_tag = payload.primary_concept_tag
                 self.session.add(qm)
@@ -777,7 +784,7 @@ class QuestionService:
                 new_qm = QuestionMetadata(
                     question_id=q.id,
                     blooms_level=payload.blooms_level or BloomsLevel.ANALYZE,
-                    cognitive_skill=payload.cognitive_skill or "Conceptual Reasoning",
+                    cognitive_skill=target_skill or "Conceptual Reasoning",
                     primary_concept_tag=payload.primary_concept_tag or "GENERAL",
                 )
                 self.session.add(new_qm)
@@ -1481,7 +1488,12 @@ class QuestionService:
             expl_res = await self.session.exec(expl_stmt)
             expl_obj = expl_res.first()
             if not expl_obj:
-                expl_stmt_all = select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
+                # Not in the requested language yet: English, else any
+                expl_stmt_all = (
+                    select(QuestionExplanation)
+                    .where(QuestionExplanation.question_id == q.id)
+                    .order_by(case((col(QuestionExplanation.language) == LanguageCode.ENGLISH, 0), else_=1), col(QuestionExplanation.id))
+                )
                 expl_obj = (await self.session.exec(expl_stmt_all)).first()
 
             if expl_obj:
@@ -1562,6 +1574,15 @@ class QuestionService:
         assets = (await self.session.exec(asset_stmt)).all()
         assets_list = [serialize_question_asset(a) for a in assets]
 
+        # Resolve question type tag from knowledge_tags_raw or cognitive_skill
+        raw_type_tag = None
+        if q.knowledge_tags_raw and isinstance(q.knowledge_tags_raw, dict):
+            raw_type_tag = q.knowledge_tags_raw.get("question_type")
+        if not raw_type_tag and qm and qm.cognitive_skill and qm.cognitive_skill != "Conceptual Reasoning":
+            raw_type_tag = qm.cognitive_skill
+        if not raw_type_tag and qm and qm.cognitive_skill:
+            raw_type_tag = qm.cognitive_skill
+
         return QuestionDetailResponse(
             question_id=str(q.id),
             exam_id=str(q.exam_id) if q.exam_id else None,
@@ -1574,6 +1595,7 @@ class QuestionService:
             section_code=q.section_code,
             question_number_in_paper=q.question_number_in_paper,
             question_type=q.question_type,
+            question_type_tag=raw_type_tag,
             difficulty=q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
             marks=q.marks,
             negative_marks=q.negative_marks,
@@ -1605,6 +1627,10 @@ class QuestionService:
         lang_db_enum: Any,
     ) -> None:
         """Background worker to translate large question batches without blocking the caller."""
+        from app.config.settings import get_settings
+        if not get_settings().ENABLE_TRANSLATION_PIPELINE:
+            return
+
         try:
             from app.db.models import QuestionTranslation, OptionTranslation, PassageTranslation
             from app.services.google_translation_service import GoogleTranslationService
@@ -1675,6 +1701,10 @@ class QuestionService:
     ) -> None:
         """Dynamically translates any missing question stems, options, and passages on-the-fly and persists to DB."""
         if target_enum == "ENGLISH":
+            return
+
+        from app.config.settings import get_settings
+        if not get_settings().ENABLE_TRANSLATION_PIPELINE:
             return
 
         try:
@@ -2110,7 +2140,12 @@ class QuestionService:
             explanation_detail = None
             if include_solutions:
                 expl_dict = expl_map.get(q.id, {})
-                expl_obj = expl_dict.get(target_lang) or (next(iter(expl_dict.values())) if expl_dict else None)
+                # The requested language, else English, else any
+                expl_obj = (
+                    expl_dict.get(target_lang)
+                    or expl_dict.get(LanguageCode.ENGLISH)
+                    or (next(iter(expl_dict.values())) if expl_dict else None)
+                )
                 if expl_obj:
                     expl_translations = {
                         (k.value if hasattr(k, "value") else str(k)): {
@@ -2196,6 +2231,15 @@ class QuestionService:
                         )
                     )
 
+            # Resolve question type tag from knowledge_tags_raw or cognitive_skill
+            raw_type_tag = None
+            if q.knowledge_tags_raw and isinstance(q.knowledge_tags_raw, dict):
+                raw_type_tag = q.knowledge_tags_raw.get("question_type")
+            if not raw_type_tag and qm and qm.cognitive_skill and qm.cognitive_skill != "Conceptual Reasoning":
+                raw_type_tag = qm.cognitive_skill
+            if not raw_type_tag and qm and qm.cognitive_skill:
+                raw_type_tag = qm.cognitive_skill
+
             results.append(
                 QuestionDetailResponse(
                     question_id=str(q.id),
@@ -2209,6 +2253,7 @@ class QuestionService:
                     section_code=q.section_code,
                     question_number_in_paper=q.question_number_in_paper,
                     question_type=q.question_type,
+                    question_type_tag=raw_type_tag,
                     difficulty=q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
                     marks=q.marks,
                     negative_marks=q.negative_marks,
@@ -2273,25 +2318,32 @@ class QuestionService:
         if not target_q or not target_q.knowledge_tags_ai:
             return []
 
-        # Find candidates within the same subtopic (or subject) that have AI tags
+        # Find candidates across published questions that have AI tags
         statement = select(Question).where(
             Question.id != question_id,
             Question.knowledge_tags_ai.is_not(None)
         )
-        if target_q.subtopic_id:
-            statement = statement.where(Question.subtopic_id == target_q.subtopic_id)
-        elif target_q.subject_raw:
-            statement = statement.where(Question.subject_raw == target_q.subject_raw)
-            
         candidates = (await self.session.exec(statement)).all()
         
         def _norm(tags):
-            return {str(t).strip().lower() for t in (tags.get("concepts", []) + tags.get("entities", [])) if t}
+            if not isinstance(tags, dict):
+                return set()
+            c = tags.get("concepts") or []
+            e = tags.get("entities") or []
+            return {str(t).strip().lower() for t in (c + e) if t}
 
         target_tags = target_q.knowledge_tags_ai
         target_all = _norm(target_tags)
         if not target_all:
             return []
+
+        # Original-cased labels, tagged by kind, for human-readable match reasons
+        labels = {}
+        if isinstance(target_tags, dict):
+            for kind, key in (("Entity", "entities"), ("Concept", "concepts")):
+                for t in target_tags.get(key, []) or []:
+                    if t:
+                        labels.setdefault(str(t).strip().lower(), (kind, str(t).strip()))
 
         scored_candidates = []
         for c in candidates:
@@ -2304,10 +2356,14 @@ class QuestionService:
             union = len(target_all.union(c_all))
             if union > 0:
                 score = round((intersection / union) * 100, 2)
-                if score > 0:
+                if score >= 15:  # meaningful overlaps; weak matches fall back to knowledge layer
+                    shared = sorted(target_all.intersection(c_all))
                     scored_candidates.append({
                         "question": c,
-                        "similarity_score": score
+                        "similarity_score": score,
+                        "match_reasons": [
+                            f"{labels.get(s, ('Tag', s))[0]}: {labels.get(s, ('Tag', s))[1]}" for s in shared[:2]
+                        ],
                     })
 
         scored_candidates.sort(key=lambda x: x["similarity_score"], reverse=True)
@@ -2339,7 +2395,12 @@ class QuestionService:
             results.append({
                 "question_id": q.id,
                 "tier": "related", 
+                "score": match["similarity_score"],
                 "similarity_score": match["similarity_score"],
+                "match_reasons": match["match_reasons"],
+                "subject_name": q.subject_raw,
+                "topic_name": q.topic_raw,
+                "subtopic_name": q.subtopic_raw,
                 "question": q_data
             })
 

@@ -284,6 +284,55 @@ def test_theme_tag_variations():
     assert t3["subtopic_raw"] == "Genetics"
     assert t3["difficulty_raw"] == "Moderate"
 
+    # Type / Question Type / Question Nature tags
+    t4 = extract_header_tags("[Subject: Art & Culture] [Microtheme: Regional Kingdom] [Nano Theme: Satavahana, Kushana & Gupta Kingdoms] [Difficulty: Moderate] [Type: Chronology]")
+    assert t4["subject_raw"] == "Art & Culture"
+    assert t4["topic_raw"] == "Regional Kingdom"
+    assert t4["subtopic_raw"] == "Satavahana, Kushana & Gupta Kingdoms"
+    assert t4["difficulty_raw"] == "Moderate"
+    assert t4["type_raw"] == "Chronology"
+
+    t5 = extract_header_tags("Q5. [Subject: Polity] [Topic: Judiciary] [Question Type: Assertion-Reason] [Difficulty: Hard]")
+    assert t5["type_raw"] == "Assertion-Reason"
+
+
+def test_question_type_tag_in_pipeline_and_json():
+    """Verify that [Type: ...] in question block flows into QuestionRecord and knowledge_tags_raw JSON."""
+    from app.pipeline.regex_question_parser import split_into_question_blocks, parse_question_block
+    from app.pipeline.knowledge_tags import knowledge_tags_from_record
+
+    raw_block = """<!-- PAGE_BREAK p=1 -->
+Q1. [Subject: Art & Culture] [Microtheme: Regional Kingdom] [Nano Theme:
+Satavahana, Kushana & Gupta Kingdoms] [Difficulty: Moderate] [Type: Chronology]
+Out of the following the oldest dynasty is
+(A) Mauryas
+(B) Nandas
+(C) Pallavas
+(D) Guptas
+Answer: (B) Nandas
+Solution:
+The Nandas represent the oldest dynasty among these listed options.
+◆ Reverse Logic Box — Why the other options are wrong
+Option (A): Why it seems tempting — Tempting because Mauryas are famous. What's actually true — Mauryas succeeded Nandas.
+Option (C): Why it seems tempting — Temples. What's actually true — Pallavas rose later.
+Option (D): Why it seems tempting — Golden age. What's actually true — Guptas ruled in 4th century.
+"""
+    blocks = split_into_question_blocks(raw_block)
+    assert len(blocks) == 1
+    rec = parse_question_block(block=blocks[0], pictures=[], tables=[])
+
+    assert rec.question_number == 1
+    assert rec.subject_raw == "Art & Culture"
+    assert rec.topic_raw == "Regional Kingdom"
+    assert rec.subtopic_raw == "Satavahana, Kushana & Gupta Kingdoms"
+    assert rec.type_raw == "Chronology"
+    assert rec.answer_label == "B"
+
+    # Verify JSON payload generated for questions.knowledge_tags_raw
+    json_payload = knowledge_tags_from_record(rec)
+    assert json_payload is not None
+    assert json_payload.get("question_type") == "Chronology"
+
 
 # Question-bank layout (MPSC Test 4): numbered stems with a source tag, "A." options,
 # "Answer B", "Solution.", arrow statements and chapter headings, no syllabus tags.
@@ -391,3 +440,48 @@ def test_prompt_after_numbered_statements_is_not_folded_into_last_item():
     # Markdown would otherwise read the prompt as a lazy continuation of item 2
     assert rec.stem.endswith("under Shahu\n\nSelect the correct answer from the codes given below:")
     assert "1. Raghunath Rao (Raghoba)\n2. Balaji" in rec.stem
+
+
+def test_out_of_order_headers_and_empty_solution_slice_no_index_error():
+    """Verify that inverted headers (e.g. Common Mistake before Solution) or empty solution does not raise IndexError."""
+    text = (
+        "Q1. [Subject: Polity]\n"
+        "Which article deals with financial emergency?\n"
+        "Common Mistake: Thinking it is Article 356.\n"
+        "(A) Article 352\n"
+        "(B) Article 356\n"
+        "(C) Article 360\n"
+        "(D) Article 365\n"
+        "Answer: (C)\n"
+        "Solution:\n"
+    )
+    blocks = split_into_question_blocks(text)
+    assert len(blocks) == 1
+    # Must not raise IndexError
+    rec = parse_question_block(blocks[0])
+    assert rec.question_number == 1
+    assert rec.answer_label == "C"
+
+
+
+def test_diamond_bulleted_reverse_logic_box_is_split_out_of_the_solution():
+    # Papers bullet the header with "◆"; it used to stay in the solution as broken, wrapped bullets
+    text = (
+        "Q1. Megasthenes visited the court of\n"
+        "(A) Ashoka\n(B) Harsha\n(C) Chandragupta Maurya\n(D) Vikramaditya\n"
+        "Answer: (C)\n"
+        "Solution: Megasthenes was the Greek ambassador of Seleucus to Chandragupta Maurya.\n"
+        "◆ Reverse Logic Box — Why the other options are wrong\n"
+        "Option (A): Why it seems tempting — Ashoka is the best-known Mauryan\n"
+        "emperor. What's actually true — Megasthenes came a generation\n"
+        "earlier, to Chandragupta.\n"
+        "Option (B): Why it seems tempting — Harsha also hosted a foreign visitor. "
+        "What's actually true — That was Xuanzang, centuries later.\n"
+    )
+    record = parse_question_block({"clean_text": text, "question_number": 1, "header_line": "Q1.", "page_numbers": [1]})
+
+    assert record.solution_text == "Megasthenes was the Greek ambassador of Seleucus to Chandragupta Maurya."
+    assert not any("Reverse Logic" in b or "Option (" in b for b in record.solution_bullets)
+    assert set(record.reverse_logic) == {"A", "B"}
+    assert record.reverse_logic["A"]["why_tempting"] == "Ashoka is the best-known Mauryan emperor."
+    assert record.reverse_logic["A"]["whats_actually_true"] == "Megasthenes came a generation earlier, to Chandragupta."

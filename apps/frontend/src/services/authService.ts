@@ -375,6 +375,12 @@ export interface UserProfileUpdate {
   target_year?: string;
   optional_subject?: string;
   weekly_hours?: string;
+  state?: string;
+  username?: string;
+  leaderboard_display?: 'USERNAME' | 'NAME';
+  weekly_email_enabled?: boolean;
+  weekly_email_day?: number;
+  weekly_email_hour?: number;
   // Replaces all subject ratings; {} clears them.
   subject_proficiency?: Record<string, number>;
 }
@@ -393,7 +399,9 @@ export async function updateUserProfile(updateData: UserProfileUpdate, customTok
   });
 
   if (!res.ok) {
-    throw new Error('Failed to update user profile');
+    // Surface the server's reason (e.g. "Target exam and target year can't be empty.")
+    const detail = await res.json().then((b) => b?.detail).catch(() => null);
+    throw new Error(typeof detail === 'string' ? detail : 'Failed to update user profile');
   }
 
   const data = await res.json();

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, RotateCcw, Flag, Grid } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { ConfidenceSelector } from './ConfidenceSelector';
 import type { ConfidenceLevel } from '../../types/exam';
+import { useExamText } from '../../i18n/examText';
 
 interface ExamFooterBarProps {
   isAnswered: boolean;
@@ -45,6 +46,7 @@ export function ExamFooterBar({
   onConfidenceChange,
 }: ExamFooterBarProps) {
   const { isMobile, isSmallScreen } = useBreakpoint();
+  const { t } = useExamText();
   // On narrow screens the confidence choice gets its own row so Prev/Next stay on screen
   const confidenceOwnRow = Boolean(onConfidenceChange) && isSmallScreen;
   const confidenceSelector = onConfidenceChange ? (
@@ -84,11 +86,11 @@ export function ExamFooterBar({
               alignItems: 'center',
               gap: 4,
             }}
-            title="Open Question Palette"
-            aria-label="Open Question Palette"
+            title={t('openPalette')}
+            aria-label={t('openPalette')}
           >
             <Grid size={14} />
-            <span>Review</span>
+            <span>{t('review')}</span>
           </button>
         )}
 
@@ -113,10 +115,10 @@ export function ExamFooterBar({
               gap: 4,
               transition: 'all 0.15s ease',
             }}
-            title="Clear Response"
+            title={t('clearResponse')}
           >
             <RotateCcw size={13} />
-            {!isMobile && <span>Clear</span>}
+            {!isMobile && <span>{t('clear')}</span>}
           </button>
         )}
 
@@ -140,14 +142,14 @@ export function ExamFooterBar({
               gap: 4,
               transition: 'all 0.15s ease',
             }}
-            title="Mark for Review"
+            title={t('markForReview')}
           >
             <Flag
               size={13}
               fill={isMarkedForReview ? '#F2B623' : 'none'}
               color={isMarkedForReview ? '#F2B623' : 'var(--text-muted)'}
             />
-            {!isMobile && <span>{isMarkedForReview ? 'Marked' : 'Mark'}</span>}
+            {!isMobile && <span>{isMarkedForReview ? t('marked') : t('mark')}</span>}
           </button>
         )}
       </div>
@@ -182,7 +184,7 @@ export function ExamFooterBar({
               whiteSpace: 'nowrap',
             }}
           >
-            <span>{isRevealed ? 'Solution ✓' : 'Submit & Show'}</span>
+            <span>{isRevealed ? t('solutionShown') : t('submitAndShow')}</span>
           </button>
         )}
 
@@ -209,7 +211,7 @@ export function ExamFooterBar({
           }}
         >
           <ChevronLeft size={15} />
-          {!isMobile && <span>Prev</span>}
+          {!isMobile && <span>{t('prev')}</span>}
         </button>
 
         {/* Save & Next Button (Primary Action) or Submit Test on Last Question */}
@@ -242,7 +244,7 @@ export function ExamFooterBar({
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            <span>Next</span>
+            <span>{t('next')}</span>
             <ChevronRight size={15} />
           </button>
         ) : (
@@ -274,7 +276,7 @@ export function ExamFooterBar({
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            <span>Finish</span>
+            <span>{t('finish')}</span>
             <ChevronRight size={15} />
           </button>
         )}

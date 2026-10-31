@@ -15,6 +15,9 @@ import {
   Sliders,
   Bell,
   Palette,
+  Medal,
+  Languages,
+  MessageSquareWarning,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { canAccessView } from '../../constants/adminAccess';
@@ -29,6 +32,8 @@ interface SidebarProps {
   permissions?: string[] | null;
   /** Number of questions with open student reports (badge on the Reported Questions item). */
   reportedCount?: number;
+  /** Open "Report a problem" feedback (badge on the Feedback item). */
+  feedbackCount?: number;
 }
 
 export function AdminSidebar({
@@ -39,6 +44,7 @@ export function AdminSidebar({
   onCloseMobile,
   permissions,
   reportedCount = 0,
+  feedbackCount = 0,
 }: SidebarProps) {
   const { isTabletOrBelow: isMobile } = useBreakpoint();
 
@@ -66,6 +72,8 @@ export function AdminSidebar({
     };
   }, [isMobile, mobileOpen]);
 
+  const badgeCount = (id: string) => (id === 'reported-questions' ? reportedCount : id === 'feedback' ? feedbackCount : 0);
+
   const coreNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
     { icon: Upload, label: 'Upload & Exam Pipeline', id: 'upload' },
@@ -73,6 +81,7 @@ export function AdminSidebar({
     { icon: ClipboardCheck, label: 'Question & Solution QA', id: 'review' },
     { icon: BookOpen, label: 'Question Bank Catalog', id: 'questions' },
     { icon: Flag, label: 'Reported Questions', id: 'reported-questions' },
+    { icon: MessageSquareWarning, label: 'Feedback', id: 'feedback' },
     // Mock Tests section removed from UI while keeping code intact
   ];
 
@@ -81,6 +90,8 @@ export function AdminSidebar({
     { icon: Award, label: 'Teacher Rewards', id: 'teacher-rewards' },
     { icon: Globe, label: 'Current Affairs', id: 'current-affairs' },
     { icon: Bell, label: 'Notifications', id: 'notifications' },
+    { icon: Medal, label: 'Milestones', id: 'milestones' },
+    { icon: Languages, label: 'Translations', id: 'translations' },
     { icon: MessageSquareQuote, label: 'Testimonial Approvals', id: 'testimonials' },
     { icon: BarChart2, label: 'Reports & Analytics', id: 'analytics' },
     { icon: Palette, label: 'Theme', id: 'theme' },
@@ -119,11 +130,20 @@ function prefetchAdminView(viewId: string) {
     case 'notifications':
       import('./views/NotificationsView');
       break;
+    case 'milestones':
+      import('./views/MilestonesView');
+      break;
+    case 'translations':
+      import('./views/TranslationsView');
+      break;
     case 'analytics':
       import('./views/AnalyticsView');
       break;
     case 'reported-questions':
       import('./views/ReportedQuestionsView');
+      break;
+    case 'feedback':
+      import('./views/FeedbackView');
       break;
     case 'testimonials':
       import('./views/TestimonialsView');
@@ -135,7 +155,8 @@ function prefetchAdminView(viewId: string) {
 }
 
   const renderNavItem = (item: { icon: any, label: string, id: string }) => {
-    const isActive = activeView === item.id;
+    // The syllabus page belongs to Exam Types
+    const isActive = activeView === item.id || (item.id === 'exam-types' && activeView === 'exam-syllabus');
     const Icon = item.icon;
 
     return (
@@ -185,9 +206,9 @@ function prefetchAdminView(viewId: string) {
       >
         <Icon size={17} color={isActive ? 'var(--primary-red)' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
         {(!collapsed || isMobile) && <span>{item.label}</span>}
-        {item.id === 'reported-questions' && reportedCount > 0 && (!collapsed || isMobile) && (
+        {badgeCount(item.id) > 0 && (!collapsed || isMobile) && (
           <span
-            aria-label={`${reportedCount} open reports`}
+            aria-label={`${badgeCount(item.id)} open reports`}
             style={{
               marginLeft: 'auto',
               minWidth: 20,
@@ -200,7 +221,7 @@ function prefetchAdminView(viewId: string) {
               textAlign: 'center',
             }}
           >
-            {reportedCount}
+            {badgeCount(item.id)}
           </span>
         )}
       </button>

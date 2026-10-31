@@ -192,8 +192,13 @@ class GoogleTranslationService:
         falls back smoothly to Gemini Vertex AI.
         Optimized with Domain 24 Translation Memory Cache (TTL: 30 days).
         """
-        if not texts:
-            return []
+        if getattr(self.settings, "TRANSLATION_ENGINE", "open_source") == "open_source":
+            logger.info("🚫 [GCP/VERTEX AI BLOCKED] TRANSLATION_ENGINE is set to 'open_source'. Google Cloud Translation and Vertex AI calls are completely blocked ($0.00 cost).")
+            return texts
+
+        if not getattr(self.settings, "ENABLE_TRANSLATION_PIPELINE", False):
+            logger.info("🚫 Translation pipeline is globally disabled. Skipping translation API/LLM calls.")
+            return texts
 
         target_iso, target_enum = normalize_language(target_language)
         source_iso, _ = normalize_language(source_language)
@@ -282,6 +287,10 @@ class GoogleTranslationService:
             results[original_idx] = final
 
             orig_text = miss_texts[idx_in_miss]
+            # Text that comes back unchanged is usually a failed translation (the translator returns
+            # the original then); don't remember it, so the next run tries again
+            if not final or final.strip() == (orig_text or "").strip():
+                continue
             h = hashlib.sha256(orig_text.strip().encode("utf-8")).hexdigest()[:16]
             ckey = f"{prefix}:trans:{target_iso}:{h}"
             try:

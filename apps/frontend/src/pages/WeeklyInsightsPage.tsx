@@ -319,7 +319,7 @@ export function WeeklyInsightsPage() {
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Questions & Accuracy</span>
               </div>
               <div style={metricValueStyle}>
-                {data.total_questions_solved} Qs • {data.avg_accuracy}%
+                {data.total_questions_solved} Qs{data.avg_accuracy != null ? ` • ${data.avg_accuracy}%` : ''}
               </div>
               <span style={METRIC_SUB_STYLE}>Average test accuracy</span>
             </div>
@@ -348,7 +348,7 @@ export function WeeklyInsightsPage() {
                   textOverflow: 'ellipsis',
                 }}
               >
-                {data.top_subject}
+                {data.top_subject ?? '—'}
               </div>
               <span style={METRIC_SUB_STYLE}>Dominant weekly subject</span>
             </div>

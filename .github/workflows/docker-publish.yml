@@ -106,6 +106,8 @@ jobs:
           file: ./apps/frontend/Dockerfile
           build-args: |
             VITE_SUPERADMIN_URL=${{ vars.SUPERADMIN_URL }}
+            VITE_SENTRY_DSN=${{ vars.SENTRY_FRONTEND_DSN }}
+            VITE_SENTRY_ENVIRONMENT=${{ vars.SENTRY_ENVIRONMENT }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

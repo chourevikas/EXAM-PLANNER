@@ -199,24 +199,25 @@ async def async_process_exam_pdf(
             pm = PipelineManagementService(session)
             await pm.on_pipeline_1_completed(exam_id)
 
-        # Trigger background question translation pipeline (English, Hindi, Marathi only)
-        try:
-            from app.tasks.celery_app import has_active_celery_workers
-            from app.tasks.translation_tasks import translate_exam_questions_task, async_translate_exam
-            from app.core.languages import ACTIVE_TRANSLATION_LANGUAGE_CODES
-            
-            target_langs = list(ACTIVE_TRANSLATION_LANGUAGE_CODES)
+        # Trigger background question translation pipeline (English, Hindi, Marathi only) if enabled
+        if settings.ENABLE_TRANSLATION_PIPELINE:
+            try:
+                from app.tasks.celery_app import has_active_celery_workers
+                from app.tasks.translation_tasks import translate_exam_questions_task, async_translate_exam
+                from app.core.languages import ACTIVE_TRANSLATION_LANGUAGE_CODES
+                
+                target_langs = list(ACTIVE_TRANSLATION_LANGUAGE_CODES)
 
-            if has_active_celery_workers():
-                translate_exam_questions_task.delay(str(exam_id), target_languages=target_langs)
-                log.info(f"🌐 Dispatched background translation task to Celery worker for Exam #{exam_id}.")
-            else:
-                asyncio.create_task(
-                    async_translate_exam(str(exam_id), target_languages=target_langs, execution_engine="BackgroundTasks")
-                )
-                log.info(f"🌐 Dispatched background translation task via asyncio for Exam #{exam_id}.")
-        except Exception as trans_err:
-            log.warning(f"Could not auto-trigger post-extraction translation for Exam #{exam_id}: {trans_err}")
+                if has_active_celery_workers():
+                    translate_exam_questions_task.delay(str(exam_id), target_languages=target_langs)
+                    log.info(f"🌐 Dispatched background translation task to Celery worker for Exam #{exam_id}.")
+                else:
+                    asyncio.create_task(
+                        async_translate_exam(str(exam_id), target_languages=target_langs, execution_engine="BackgroundTasks")
+                    )
+                    log.info(f"🌐 Dispatched background translation task via asyncio for Exam #{exam_id}.")
+            except Exception as trans_err:
+                log.warning(f"Could not auto-trigger post-extraction translation for Exam #{exam_id}: {trans_err}")
 
         # Knowledge Layer enrichment (concepts / entities / relationships) for similar-question retrieval
         from app.tasks.enrichment_tasks import dispatch_exam_enrichment

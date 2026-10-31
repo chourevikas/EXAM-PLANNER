@@ -34,7 +34,11 @@ from app.schemas.challenge import (
     ChallengeDuration,
     ChallengeOptions,
     ChallengeExamOption,
+    ChallengeInvitee,
 )
+from app.db.models.notification import UserNotification
+
+CHALLENGE_INVITE_NOTIFICATION = "CHALLENGE_INVITE"
 
 DURATION_DELTAS: Dict[ChallengeDuration, Optional[timedelta]] = {
     ChallengeDuration.ONE_DAY: timedelta(days=1),
@@ -63,7 +67,7 @@ class ChallengeService:
         subject_names: Optional[List[str]],
         difficulty,
         question_count: int,
-        exam_type: Optional[ExamType] = None,
+        exam_types: Optional[List[ExamType]] = None,
         years: Optional[List[int]] = None,
         legacy_subject: Optional[str] = None,
     ) -> List[Question]:
@@ -80,14 +84,15 @@ class ChallengeService:
                 query = query.where(func.lower(Subject.name).in_([n.strip().lower() for n in subject_names]))
             else:
                 query = query.where(Subject.name.ilike(f"%{legacy_subject.strip()}%"))
-        if exam_type or years:
+        if exam_types or years:
             query = query.join(Exam, Exam.id == Question.exam_id)
-        if exam_type:
+        if exam_types:
+            # A question from any of the chosen exams
             query = query.where(
-                or_(
-                    Exam.exam_type_id == exam_type.id,
-                    func.lower(Exam.name).contains(exam_type.name.lower()),
-                )
+                or_(*[
+                    or_(Exam.exam_type_id == et.id, func.lower(Exam.name).contains(et.name.lower()))
+                    for et in exam_types
+                ])
             )
         if years:
             query = query.where(func.coalesce(Question.source_year, Exam.source_year).in_(years))
@@ -157,6 +162,7 @@ class ChallengeService:
         attempt_count: int = 0,
         my_best: Optional[float] = None,
         my_statuses: Optional[set] = None,
+        relation: str = "CREATED",
     ) -> ChallengeSummary:
         my_statuses = my_statuses or set()
         return ChallengeSummary(
@@ -181,23 +187,27 @@ class ChallengeService:
             years=[int(y) for y in (c.years or [])],
             has_attempted=ChallengeAttemptStatus.SUBMITTED in my_statuses,
             has_in_progress=ChallengeAttemptStatus.IN_PROGRESS in my_statuses,
+            relation=relation,
         )
 
     async def create_challenge(
         self, creator: User, payload: CreateChallengeRequest
     ) -> ChallengeSummary:
-        exam_type: Optional[ExamType] = None
-        if payload.exam_type_id:
-            exam_type = await self.session.get(ExamType, payload.exam_type_id)
+        # One or more exams (exam_type_ids), or the legacy single exam_type_id; none means any exam
+        exam_type_ids = list(dict.fromkeys(payload.exam_type_ids or ([payload.exam_type_id] if payload.exam_type_id else [])))
+        exam_types: List[ExamType] = []
+        for type_id in exam_type_ids:
+            exam_type = await self.session.get(ExamType, type_id)
             if not exam_type or not exam_type.is_active:
                 raise HTTPException(status_code=400, detail="Selected exam is not available.")
+            exam_types.append(exam_type)
         years = sorted({int(y) for y in payload.years}, reverse=True)
 
         # Trim, drop blanks, and de-duplicate case-insensitively (first spelling wins).
         subject_names = list({n.strip().lower(): n.strip() for n in reversed(payload.subject_names) if n and n.strip()}.values())[::-1]
         legacy_subject = (payload.subject_name or "").strip() or None
         questions = await self._sample_questions(
-            subject_names, payload.difficulty, payload.question_count, exam_type, years, legacy_subject
+            subject_names, payload.difficulty, payload.question_count, exam_types, years, legacy_subject
         )
         if not questions:
             raise HTTPException(
@@ -216,8 +226,9 @@ class ChallengeService:
             difficulty=payload.difficulty,
             subject_name=(", ".join(subject_names) if subject_names else legacy_subject),
             subject_names=subject_names or None,
-            exam_type_id=exam_type.id if exam_type else None,
-            exam_name=exam_type.name if exam_type else None,
+            # The id only when there is exactly one exam; the name lists them all, for display
+            exam_type_id=exam_types[0].id if len(exam_types) == 1 else None,
+            exam_name=(", ".join(et.name for et in exam_types)[:200] or None),
             years=years or None,
             time_limit_minutes=payload.time_limit_minutes,
             visibility=payload.visibility,
@@ -286,6 +297,7 @@ class ChallengeService:
             share_token=challenge.share_token,
             expires_at=challenge.expires_at,
             is_expired=is_expired,
+            visibility=challenge.visibility,
         )
 
     async def list_my_challenges(self, user: User) -> List[ChallengeSummary]:
@@ -302,12 +314,25 @@ class ChallengeService:
         )
         invited = list(invited_res.all())
 
+        # Public challenges the user opened from a link and took (or started), so they can find them again
+        joined_res = await self.session.exec(
+            select(Challenge)
+            .join(ChallengeAttempt, ChallengeAttempt.challenge_id == Challenge.id)
+            .where(ChallengeAttempt.user_id == user.id)
+            .order_by(Challenge.created_at.desc())
+        )
+        joined = list(joined_res.all())
+
         seen_ids = set()
         combined: List[Challenge] = []
-        for c in created + invited:
-            if c.id not in seen_ids:
-                seen_ids.add(c.id)
-                combined.append(c)
+        relation: Dict[int, str] = {}
+        for label, group in (("CREATED", created), ("INVITED", invited), ("JOINED", joined)):
+            for c in group:
+                if c.id not in seen_ids:
+                    seen_ids.add(c.id)
+                    combined.append(c)
+                    relation[c.id] = label
+        combined.sort(key=lambda c: c.created_at, reverse=True)
 
         summaries: List[ChallengeSummary] = []
         c_ids = [c.id for c in combined if c.id is not None]
@@ -354,7 +379,7 @@ class ChallengeService:
             attempt_count, my_best = stats_map.get(c.id, (0, None))
             creator = user if c.creator_id == user.id else creators_map.get(c.creator_id)
             summaries.append(
-                self._to_summary(c, creator, attempt_count, my_best, my_status_map.get(c.id))
+                self._to_summary(c, creator, attempt_count, my_best, my_status_map.get(c.id), relation[c.id])
             )
         return summaries
 
@@ -386,17 +411,30 @@ class ChallengeService:
                 )
             ).all()
         )
-        return self._to_summary(challenge, creator, attempt_count or 0, my_best, my_statuses)
+        if challenge.creator_id == user.id:
+            relation = "CREATED"
+        elif (await self.session.exec(select(ChallengeInvite.id).where(
+            ChallengeInvite.challenge_id == challenge.id, ChallengeInvite.invited_user_id == user.id
+        ))).first():
+            relation = "INVITED"
+        else:
+            relation = "JOINED" if my_statuses else "VIEWING"
+        return self._to_summary(challenge, creator, attempt_count or 0, my_best, my_statuses, relation)
 
-    async def invite_user(self, challenge_id: int, inviter: User, email: str) -> None:
+    async def invite_user(self, challenge_id: int, inviter: User, email: str) -> ChallengeInvitee:
         challenge = await self._get_challenge_or_404(challenge_id)
         if challenge.creator_id != inviter.id:
             raise HTTPException(status_code=403, detail="Only the creator can invite users")
+        if _is_expired(challenge.expires_at):
+            raise HTTPException(status_code=400, detail="This challenge has closed, so no one new can join.")
 
-        res = await self.session.exec(select(User).where(User.email == email))
+        # Emails are stored in lower case; match whatever case was typed
+        res = await self.session.exec(select(User).where(func.lower(User.email) == email.strip().lower()))
         invited_user = res.first()
         if not invited_user:
-            raise HTTPException(status_code=404, detail="No user found with that email")
+            raise HTTPException(status_code=404, detail="No ExamPlanner student has that email. Ask them to sign up first.")
+        if invited_user.id == inviter.id:
+            raise HTTPException(status_code=400, detail="That's your own email.")
 
         existing = await self.session.exec(
             select(ChallengeInvite).where(
@@ -404,18 +442,56 @@ class ChallengeService:
                 ChallengeInvite.invited_user_id == invited_user.id,
             )
         )
-        if existing.first():
-            return
-
-        self.session.add(
-            ChallengeInvite(
+        invite = existing.first()
+        if invite is None:
+            invite = ChallengeInvite(
                 challenge_id=challenge_id,
                 invited_user_id=invited_user.id,
                 invited_by_id=inviter.id,
                 status=ChallengeInviteStatus.PENDING,
             )
+            self.session.add(invite)
+            # Tell them under the bell; inviting the same person again doesn't notify twice
+            self.session.add(UserNotification(
+                user_id=invited_user.id,
+                title=f"{inviter.full_name or 'A friend'} challenged you",
+                message=f"{challenge.title}: {challenge.question_count} questions in {challenge.time_limit_minutes} minutes.",
+                notification_type=CHALLENGE_INVITE_NOTIFICATION,
+                action_url=f"/challenges/{challenge.id}",
+            ))
+            await self.session.commit()
+            await self.session.refresh(invite)
+        return ChallengeInvitee(
+            user_id=invited_user.id, name=invited_user.full_name or invited_user.email,
+            email=invited_user.email, invited_at=invite.created_at,
         )
-        await self.session.commit()
+
+    async def list_invitees(self, challenge_id: int, user: User) -> List[ChallengeInvitee]:
+        """Who the creator has invited, newest first, and whether each has taken it yet."""
+        challenge = await self._get_challenge_or_404(challenge_id)
+        if challenge.creator_id != user.id:
+            raise HTTPException(status_code=403, detail="Only the creator can see who is invited")
+        rows = (await self.session.exec(
+            select(ChallengeInvite, User)
+            .join(User, User.id == ChallengeInvite.invited_user_id)
+            .where(ChallengeInvite.challenge_id == challenge_id)
+            .order_by(ChallengeInvite.created_at.desc())
+        )).all()
+        scores = {
+            uid: score for uid, score in (await self.session.exec(
+                select(ChallengeAttempt.user_id, ChallengeAttempt.total_score).where(
+                    ChallengeAttempt.challenge_id == challenge_id,
+                    ChallengeAttempt.status == ChallengeAttemptStatus.SUBMITTED,
+                )
+            )).all()
+        }
+        return [
+            ChallengeInvitee(
+                user_id=u.id, name=u.full_name or u.email, email=u.email, invited_at=inv.created_at,
+                has_attempted=u.id in scores, score=scores.get(u.id),
+            )
+            for inv, u in rows
+        ]
 
     async def _build_question_cards(
         self, questions: List[ChallengeQuestion], language: LanguageCode = LanguageCode.ENGLISH

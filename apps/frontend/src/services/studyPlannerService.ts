@@ -183,16 +183,6 @@ export async function fetchStudyActivitiesSummary(): Promise<StudySummaryRespons
   return await res.json();
 }
 
-export async function generateWeeklyStudyPlan(startDate?: string, overwriteExisting: boolean = false): Promise<any> {
-  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/generate-weekly-plan`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ start_date: startDate, overwrite_existing: overwriteExisting })
-  });
-  if (!res.ok) throw new Error('Failed to generate weekly study plan');
-  return await res.json();
-}
-
 export async function sendPendingTasksEmail(): Promise<any> {
   const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/send-pending-email`, {
     method: 'POST',
@@ -211,12 +201,14 @@ export interface WeeklyInsightsResponse {
   date_range_formatted: string;
   total_logged_hours: number;
   total_questions_solved: number;
-  avg_accuracy: number;
+  /** null when no questions were answered that week. */
+  avg_accuracy: number | null;
   completion_rate: number;
   completed_tasks: number;
   total_tasks: number;
   active_days_count: number;
-  top_subject: string;
+  /** null when nothing was studied or planned that week. */
+  top_subject: string | null;
   highlights: string[];
   focus_next_week: string[];
 }
@@ -268,4 +260,3 @@ export function invalidateWeeklyInsightsCache(startDate?: string): void {
     insightsCache.clear();
   }
 }
-

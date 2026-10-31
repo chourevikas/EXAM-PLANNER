@@ -4,6 +4,7 @@ import { ChevronDown, Lightbulb, X } from 'lucide-react';
 import { QuestionOut } from '../../types/exam';
 import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { getQuestionText, getOptionText } from './ExamQuestionCard';
+import { extractCanonicalExamName } from '../../utils/formatEnum';
 
 interface RecommendedQuestionCardProps {
   question: QuestionOut;
@@ -183,6 +184,8 @@ export function RecommendedQuestionCard({
                 {rec.subtopic_name}
               </span>
             )}
+            {/* Difficulty, time and exam always start a second row, so every card lines them up the same */}
+            <span aria-hidden style={{ flexBasis: '100%', height: 0 }} />
             {(() => {
               const d = (rec.difficulty || 'MEDIUM').toUpperCase();
               const bg = d === 'EASY' ? '#ECFDF5' : d === 'HARD' ? '#FEF2F2' : '#FFFBEB';
@@ -228,7 +231,7 @@ export function RecommendedQuestionCard({
                   color: '#7E22CE',
                 }}
               >
-                {(rec as any).exam_name || 'UPSC'}{' '}
+                {extractCanonicalExamName((rec as any).exam_name) || 'UPSC CSE'}{' '}
                 {(rec as any).source_year ? `• ${(rec as any).source_year}` : ''}
               </span>
             )}
@@ -277,6 +280,30 @@ export function RecommendedQuestionCard({
                 : `Practice Question ${idx + 1}`;
             })()}
           </div>
+          {Array.isArray((rec as any).match_reasons) && (rec as any).match_reasons.length > 0 && (
+            <div
+              data-testid="match-reason-tags"
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}
+            >
+              {((rec as any).match_reasons as string[]).slice(0, 2).map((reason) => (
+                <span
+                  key={reason}
+                  title={`Matched because: ${reason}`}
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    borderRadius: 10,
+                    backgroundColor: '#EEF2FF',
+                    color: '#4338CA',
+                    border: '1px solid #C7D2FE',
+                  }}
+                >
+                  🔑 {reason}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Inline Options Dropdown */}

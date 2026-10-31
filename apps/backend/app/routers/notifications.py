@@ -2,7 +2,8 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel, Field
 from sqlmodel import select, col, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -213,6 +214,44 @@ async def get_user_notifications(
     )
 
 
+class NotificationSettingsIn(BaseModel):
+    """Any subset of the reminder settings; omitted fields keep their value."""
+    notify_revision: Optional[bool] = None
+    notify_pending_tasks: Optional[bool] = None
+    notify_task_email: Optional[bool] = None
+    notify_weak_topic: Optional[bool] = None
+    notify_current_affairs: Optional[bool] = None
+    notify_full_paper: Optional[bool] = None
+    notify_full_paper_day: Optional[int] = Field(default=None, ge=0, le=6)
+    weekly_email_enabled: Optional[bool] = None
+    weekly_email_day: Optional[int] = Field(default=None, ge=0, le=6)
+    weekly_email_hour: Optional[int] = Field(default=None, ge=0, le=23)
+
+
+# Declared before /{notification_id} so "settings" isn't read as a notification id
+@router.get("/settings", summary="The student's reminder and email settings")
+async def get_notification_settings(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services import reminder_service
+    return await reminder_service.get_settings(session, current_user.id)
+
+
+@router.put("/settings", summary="Change reminder and email settings")
+async def update_notification_settings(
+    payload: NotificationSettingsIn,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    from app.db.models.user import UserRole
+    from app.services import reminder_service
+
+    if current_user.role != UserRole.STUDENT:
+        raise HTTPException(status_code=403, detail="Reminder settings are for students.")
+    return await reminder_service.update_settings(session, current_user.id, payload.model_dump(exclude_none=True))
+
+
 @router.get("/{notification_id}", summary="Get Single Published Notification Detail")
 async def get_published_notification_detail(
     notification_id: int,
@@ -346,3 +385,35 @@ async def mark_all_notifications_read(
 
     await session.commit()
     return {"message": "All notifications marked as read", "unread_count": 0}
+
+
+@router.get(
+    "/weekly-email/unsubscribe",
+    response_class=HTMLResponse,
+    summary="One-click unsubscribe from the weekly summary email (signed link in every email)",
+)
+async def unsubscribe_weekly_email(
+    token: str = Query(..., min_length=10),
+    session: AsyncSession = Depends(get_async_session),
+):
+    from html import escape
+    from app.db.models.user import StudentProfile
+    from app.services.weekly_email_service import user_id_from_unsubscribe_token
+
+    user_id = user_id_from_unsubscribe_token(token)
+    profile = (await session.exec(select(StudentProfile).where(StudentProfile.user_id == user_id))).first() if user_id else None
+    if not profile:
+        message, code = "This unsubscribe link isn't valid.", 400
+    else:
+        profile.weekly_email_enabled = False
+        session.add(profile)
+        await session.commit()
+        message, code = "You won't get the weekly summary email any more. You can turn it back on under Profile → Notifications.", 200
+    return HTMLResponse(
+        status_code=code,
+        content=(
+            "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+            "<title>ExamPlanner</title></head><body style='font-family:Arial,sans-serif;max-width:480px;margin:60px auto;padding:0 16px;color:#1e293b'>"
+            f"<h2>ExamPlanner</h2><p>{escape(message)}</p></body></html>"
+        ),
+    )

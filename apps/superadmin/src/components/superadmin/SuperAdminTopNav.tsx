@@ -241,6 +241,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar, onSig
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {[
+              { id: 'revenue' as SuperAdminTab, label: 'Revenue & Engagement' },
               { id: 'users' as SuperAdminTab, label: 'All Users & Roles' },
               { id: 'dashboard' as SuperAdminTab, label: 'Active Admins' },
               { id: 'activity' as SuperAdminTab, label: 'Activity Log' },

@@ -27,6 +27,7 @@ from app.db.models.user import (
 )
 from app.db.models.exam_type import ExamType
 from app.db.models.question_report import QuestionReport
+from app.db.models.feedback import UserFeedback
 from app.db.models.hierarchy import Exam, SyllabusVersion, Subject, Topic, Subtopic
 from app.db.models.passage import Passage, PassageTranslation
 from app.db.models.question import (
@@ -55,6 +56,7 @@ from app.db.models.analytics import (
     ExamQuestionReport,
     ExamAttemptReport,
     UserSkillProgressionReport,
+    PracticeAnswer,
 )
 from app.db.models.review import HumanReviewTask
 from app.db.models.subscription import (
@@ -85,7 +87,7 @@ from app.db.models.answer_key import (
     AnswerKeyBatch,
     AnswerKeyMapping,
 )
-from app.db.models.gamification import Badge, UserBadge, XPLog
+from app.db.models.gamification import Badge, UserBadge, XPLog, LeaderboardSnapshot
 from app.db.models.study_plan import StudyTask, StudyActivity
 from app.db.models.notification import Notification
 from app.db.models.roles import Permission, Role, RolePermission, RoleAssignmentLog
@@ -143,6 +145,7 @@ __all__ = [
     "ExamQuestionReport",
     "ExamAttemptReport",
     "UserSkillProgressionReport",
+    "PracticeAnswer",
     "HumanReviewTask",
     "BillingInterval",
     "SubscriptionStatus",
@@ -164,6 +167,7 @@ __all__ = [
     "Badge",
     "UserBadge",
     "XPLog",
+    "LeaderboardSnapshot",
     "StudyTask",
     "StudyActivity",
     "ExamStatus",
@@ -235,3 +239,25 @@ __all__.extend([
 from app.db.models.llm_usage import LlmUsageEvent
 
 __all__.extend(["LlmUsageEvent"])
+
+from app.db.models.planner import (
+    PlannerExam,
+    PlannerSubject,
+    PlannerTopic,
+    PlannerSubtopic,
+    UserSyllabusCoverage,
+    StudyPlan,
+    StudyPlanShare,
+    PlannerSettings,
+)
+
+__all__.extend([
+    "PlannerExam",
+    "PlannerSubject",
+    "PlannerTopic",
+    "PlannerSubtopic",
+    "UserSyllabusCoverage",
+    "StudyPlan",
+    "StudyPlanShare",
+    "PlannerSettings",
+])

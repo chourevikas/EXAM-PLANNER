@@ -58,6 +58,8 @@ export interface QuestionReviewSavePayload {
   negative_marks: number;
   expected_time_seconds: number;
   status: string;
+  question_type_tag?: string | null;
+  cognitive_skill?: string | null;
   subject_name: string | null;
   topic_name: string | null;
   subtopic_name: string | null;
@@ -268,6 +270,7 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
   const [topicName, setTopicName] = useState('');
   const [subtopicName, setSubtopicName] = useState('');
   const [difficulty, setDifficulty] = useState('MEDIUM');
+  const [questionTypeTag, setQuestionTypeTag] = useState('');
   const [marks, setMarks] = useState(2.0);
   const [negativeMarks, setNegativeMarks] = useState(0.66);
   const [expectedTime, setExpectedTime] = useState(60);
@@ -289,6 +292,12 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
     setTopicName(question.topic_name || '');
     setSubtopicName(question.subtopic_name || '');
     setDifficulty(question.difficulty || 'MEDIUM');
+    const initialType =
+      question.question_type_tag ||
+      question.cognitive_skill ||
+      (question as any).metadata?.cognitive_skill ||
+      '';
+    setQuestionTypeTag(initialType);
     setMarks(question.marks ?? 2.0);
     setNegativeMarks(question.negative_marks ?? 0.66);
     setExpectedTime(question.expected_time_seconds ?? 60);
@@ -364,6 +373,14 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
             {question.subtopic_name ? ` › ${question.subtopic_name}` : ''}
             {'  ·  '}
             <strong>{question.difficulty}</strong>
+            {(question.question_type_tag || question.cognitive_skill || (question as any).metadata?.cognitive_skill) && (
+              <>
+                {'  ·  '}
+                <span style={{ color: '#1D4ED8', fontWeight: 600 }}>
+                  {question.question_type_tag || question.cognitive_skill || (question as any).metadata?.cognitive_skill}
+                </span>
+              </>
+            )}
             {'  ·  '}
             {question.marks} marks
           </span>
@@ -443,6 +460,8 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
       negative_marks: negativeMarks,
       expected_time_seconds: expectedTime,
       status: publishAfterSave ? 'PUBLISHED' : question.status,
+      question_type_tag: questionTypeTag.trim() || null,
+      cognitive_skill: questionTypeTag.trim() || null,
       subject_name: finalSubject,
       topic_name: finalTopic,
       subtopic_name: finalSubtopic,
@@ -489,6 +508,16 @@ export function QuestionReviewCard({ question, isEditing, saving, onStartEdit, o
               <option value="MEDIUM">MEDIUM</option>
               <option value="HARD">HARD</option>
             </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Question Type</label>
+            <input
+              type="text"
+              value={questionTypeTag}
+              onChange={(e) => setQuestionTypeTag(e.target.value)}
+              placeholder="e.g. Static, Conceptual"
+              style={inputStyle}
+            />
           </div>
           <div>
             <label style={labelStyle}>Marks</label>

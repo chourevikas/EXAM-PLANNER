@@ -28,7 +28,8 @@ from app.db.models import (
     Subtopic,
     ExamType,
 )
-from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus, ExamStatus, ConfidenceLevel
+from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, QuestionSourceType, UserStatus, LanguageCode, QuestionStatus, ExamStatus, ConfidenceLevel, DifficultyLevel
+from app.core.languages import parse_language
 from app.schemas.exam_attempt import (
     StartExamRequest,
     StartExamResponse,
@@ -53,9 +54,11 @@ from app.schemas.exam_attempt import (
     BatchStatusResponse,
 )
 from app.services.exam_json_builder import ExamJsonBuilder
+from app.services.scoring import UPSC_MARKS, UPSC_NEGATIVE, awarded, question_marks
 from app.engine.matrices.time_tiered_scoring import TimeTieredScoringStrategy
 from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
 from app.engine.matrices.guessing_tendency import GuessingTendencyStrategy
+from app.pipeline.patterns import extract_option_analysis_from_text, clean_correct_option_text
 from app.engine.post_submission_pipeline import load_exam_solutions_data
 from app.storage.factory import get_storage_provider
 from app.config.logger import setup_logger
@@ -66,7 +69,7 @@ logger = setup_logger("ExamSessionService")
 BATCH_TRACKER: Dict[str, Dict[str, Any]] = {}
 
 _CANONICAL_EXAM_KEYWORDS = [
-    (("upsc", "civil services", "upse"), "UPSC CSE"),
+    (("upsc", "upsccse", "civil services", "upse"), "UPSC CSE"),
     (("mppsc",), "MPPSC"),
     (("bpsc",), "BPSC"),
     (("uppcs", "uppsc"), "UPPCS"),
@@ -93,12 +96,14 @@ def exam_type_code_label(raw: Optional[str], type_codes: Optional[Set[str]]) -> 
     token = match.group(1).lower()
     for candidate in (token, re.split(r"[-_]", token)[0]):
         if candidate in type_codes:
+            if candidate in ("upsccse", "upsc"):
+                return "UPSC CSE"
             return candidate.upper()
     return None
 
 
 def exam_badge_label(raw: Optional[str], type_codes: Optional[Set[str]]) -> Optional[str]:
-    """Short exam tag for a question card ("UPSC", "MPSC", ...) from its paper name, or None without one."""
+    """Short exam tag for a question card ("UPSC CSE", "MPSC", ...) from its paper name, or None without one."""
     if not raw:
         return None
     type_label = exam_type_code_label(raw, type_codes)
@@ -106,6 +111,8 @@ def exam_badge_label(raw: Optional[str], type_codes: Optional[Set[str]]) -> Opti
         return type_label
     for known in ["MPPSC", "BPSC", "UPPCS", "MPSC", "SSC", "UPSC"]:
         if known.lower() in raw.lower():
+            if known == "UPSC":
+                return "UPSC CSE"
             return known
     return raw.split()[0] if raw.split() else None
 
@@ -120,10 +127,16 @@ def canonical_exam_name(raw: Optional[str], type_codes: Optional[Set[str]] = Non
     """Mirror of the frontend's extractCanonicalExamName, which builds the exam chips on the PYQ page.
 
     With type_codes, a name led by an exam type code is labelled by that code, and the legacy labels
-    below ("UPSC CSE") collapse onto their type code ("UPSC") so old links and defaults still match.
+    below ("UPSC CSE") collapse onto their type code ("UPSC CSE") so old links and defaults still match.
     """
+    clean = str(raw or "").strip().lower()
+    if any(k in clean for k in ("upsc", "upsccse", "civil services", "upse")):
+        return "UPSC CSE"
     legacy = _legacy_exam_name(raw)
-    return exam_type_code_label(raw, type_codes) or exam_type_code_label(legacy, type_codes) or legacy
+    code = exam_type_code_label(raw, type_codes) or exam_type_code_label(legacy, type_codes)
+    if code and code.lower() in ("upsccse", "upsc"):
+        return "UPSC CSE"
+    return code or legacy
 
 
 def _legacy_exam_name(raw: Optional[str]) -> str:
@@ -162,7 +175,12 @@ def dynamic_exam_name(req: StartExamRequest) -> str:
     subject_part = f"{subject} – {focus}" if subject and focus else (subject or "All Subjects")
     exam_part = ", ".join(_csv_filter(req.dynamic_exams)) or "All Exams"
     years = sorted(_csv_filter(req.dynamic_years))
-    name = f"{subject_part} · {exam_part}" + (f" ({', '.join(years)})" if years else "")
+    levels = [v.title() for v in _csv_filter(getattr(req, "dynamic_difficulty", None))]
+    name = (
+        f"{subject_part} · {exam_part}"
+        + (f" ({', '.join(years)})" if years else "")
+        + (f" · {'/'.join(levels)}" if levels else "")
+    )
     return name if len(name) <= 200 else name[:199] + "…"
 
 
@@ -276,7 +294,7 @@ class ExamSessionService:
             else:
                 logger.info(f"User '{user_id}' already has IN_PROGRESS attempt '{existing_attempt.id}'. Resuming...")
                 status_res = await self.get_exam_status(existing_attempt.id, user_id)
-                q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index, language=req.language or "ENGLISH")
+                q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index)
 
                 return StartExamResponse(
                     attempt_id=str(existing_attempt.id),
@@ -292,6 +310,7 @@ class ExamSessionService:
                     questions_folder_url=None,
                     remaining_seconds=status_res.remaining_seconds,
                     current_question_index=status_res.current_question_index,
+                    language=existing_attempt.language or "en",
                 )
 
         # Save dynamic filters to report_metadata_json
@@ -303,6 +322,7 @@ class ExamSessionService:
                 "dynamic_subtopic": getattr(req, "dynamic_subtopic", None) or "all",
                 "dynamic_years": getattr(req, "dynamic_years", None) or "all",
                 "dynamic_exams": getattr(req, "dynamic_exams", None) or "all",
+                "dynamic_difficulty": getattr(req, "dynamic_difficulty", None) or "all",
             }
         elif is_dynamic:
             # Retake: replay the same question set and keep the original filters
@@ -347,6 +367,7 @@ class ExamSessionService:
             user_id=user_id,
             exam_id=exam.id,
             mode=req.mode,
+            language=req.language or "en",
             status=AttemptStatus.IN_PROGRESS,
             started_at=now_dt,
             max_duration_seconds=duration_sec,
@@ -412,7 +433,7 @@ class ExamSessionService:
         
         # We need to fetch the first question again correctly
         status_res = await self.get_exam_status(attempt.id, user_id)
-        q_nav = await self.get_question(attempt.id, user_id, 1, language=req.language or "ENGLISH")
+        q_nav = await self.get_question(attempt.id, user_id, 1)
 
         return StartExamResponse(
             attempt_id=str(attempt.id),
@@ -426,6 +447,7 @@ class ExamSessionService:
             palette=palette_items,
             questions_presigned_url=None,
             questions_folder_url=None,
+            language=attempt.language,
         )
 
     def _build_question_nav_response(
@@ -483,6 +505,8 @@ class ExamSessionService:
             passage_translations=q_item.get("passage_translations"),
             text_hindi=q_item.get("text_hindi") or q_item.get("question_text_hindi"),
             passage_text_hindi=q_item.get("passage_text_hindi"),
+            exam_name=q_item.get("exam_name"),
+            source_year=q_item.get("source_year"),
         )
 
         nav_meta = NavigationMeta(
@@ -523,6 +547,8 @@ class ExamSessionService:
         (where questions may belong to different source exams).
         """
         attempt = await self._get_attempt_safe(attempt_id, user_id)
+        # The language is fixed for the attempt; a different ?language= can't switch it mid-test
+        language = attempt.language or "en"
         exam = await self.session.get(Exam, attempt.exam_id)
         if not exam:
             raise HTTPException(status_code=404, detail="EXAM_NOT_FOUND: Associated exam not found.")
@@ -582,6 +608,7 @@ class ExamSessionService:
         Synchronizes all question and option IDs with the database BigInt IDs.
         """
         attempt = await self._get_attempt_safe(attempt_id, user_id)
+        language = attempt.language or "en"
         exam = await self.session.get(Exam, attempt.exam_id)
         if not exam:
             raise HTTPException(
@@ -694,6 +721,13 @@ class ExamSessionService:
             "questions": [],
         }
 
+    async def _answer_quota(self, user_id: int) -> Optional[int]:
+        """Answers the user may still give today under the free plan; None when unlimited."""
+        from app.services.free_plan import remaining_today
+
+        user = await self.session.get(User, user_id)
+        return await remaining_today(self.session, user) if user else None
+
     async def save_response(
         self, attempt_id: int | str, user_id: int, req: SaveResponseRequest
     ) -> SaveResponseResponse:
@@ -760,6 +794,15 @@ class ExamSessionService:
 
         prev_opt_id = resp.selected_option_id
 
+        # A question counts toward the free plan's daily limit the first time it's answered;
+        # changing or re-giving an answer later is free.
+        is_new_answer = req.selected_option_id is not None and resp.selected_option_id is None and resp.answered_at is None
+        if is_new_answer:
+            remaining = await self._answer_quota(user_id)
+            if remaining is not None and remaining <= 0:
+                from app.services.free_plan import daily_limit_error
+                raise daily_limit_error()
+
         # Update options and tracking
         if req.selected_option_id is not None:
             if resp.selected_option_id is None:
@@ -771,6 +814,9 @@ class ExamSessionService:
                 resp.option_switch_count += 1
         else:
             resp.selected_option_id = None
+
+        if is_new_answer and resp.selected_option_id is not None:
+            resp.answered_at = datetime.now(timezone.utc)
 
         resp.is_marked_for_review = req.is_marked_for_review
         resp.time_taken_seconds = max(0.0, req.time_spent_seconds)
@@ -958,6 +1004,10 @@ class ExamSessionService:
                         opt_label_map[(opt.question_id, opt.option_label.strip().upper())] = opt.id
 
             switch_logs_to_add: List[QuestionSwitchLog] = []
+            # Free plan: answers beyond today's limit are dropped (the exam screen blocks them first)
+            quota_loaded = False
+            quota: Optional[int] = None
+            limit_skipped = 0
 
             for idx, item in enumerate(req.responses):
                 q_id = None
@@ -989,6 +1039,16 @@ class ExamSessionService:
 
                 prev_opt_id = resp.selected_option_id
 
+                is_new_answer = item.selected_option_id is not None and resp.selected_option_id is None and resp.answered_at is None
+                if is_new_answer:
+                    if not quota_loaded:
+                        quota, quota_loaded = await self._answer_quota(user_id), True
+                    if quota is not None:
+                        if quota <= 0:
+                            limit_skipped += 1
+                            continue
+                        quota -= 1
+
                 if item.selected_option_id is not None:
                     if resp.selected_option_id is None:
                         resp.initial_option_id = opt_id
@@ -999,6 +1059,8 @@ class ExamSessionService:
                         resp.option_switch_count += 1
                 else:
                     resp.selected_option_id = None
+                if is_new_answer and resp.selected_option_id is not None:
+                    resp.answered_at = datetime.now(timezone.utc)
 
                 resp.is_marked_for_review = item.is_marked_for_review
                 resp.time_taken_seconds = max(resp.time_taken_seconds, float(item.time_spent_seconds or 0.0))
@@ -1109,6 +1171,7 @@ class ExamSessionService:
                 status="PROCESSED",
                 received_count=len(req.responses),
                 response_summary=summary,
+                daily_limit_skipped=limit_skipped,
             )
         except Exception as e:
             logger.error(f"[BATCH:INGEST_ERROR] Failed to persist batch '{batch_key}': {e}", exc_info=True)
@@ -1240,26 +1303,29 @@ class ExamSessionService:
                 raise HTTPException(status_code=404, detail="Correct option not configured for this question.")
 
             opt_ids = [o.id for o in db_opts]
+            # Explanations and option analysis in the attempt's language, else English, else any
+            attempt_lang = parse_language(attempt.language or "en")
+
+            def _lang_rank(lang) -> int:
+                return 0 if lang == attempt_lang else (1 if lang == LanguageCode.ENGLISH else 2)
+
             trans_by_opt = {}
             qr_by_opt = {}
             if opt_ids:
                 t_stmt = select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
                 t_res = (await self.session.exec(t_stmt)).all()
-                for t in t_res:
-                    existing = trans_by_opt.get(t.option_id)
-                    if not existing:
-                        trans_by_opt[t.option_id] = t
-                    elif t.language == LanguageCode.ENGLISH or (t.distractor_analysis and not existing.distractor_analysis):
-                        trans_by_opt[t.option_id] = t
+                # Per option: a row that has an analysis, in the best language available
+                for t in sorted(t_res, key=lambda t: (not t.distractor_analysis, _lang_rank(t.language))):
+                    trans_by_opt.setdefault(t.option_id, t)
 
                 qr_stmt = select(QuestionOptionReasoning).where(QuestionOptionReasoning.question_option_id.in_(opt_ids))
                 qr_res = (await self.session.exec(qr_stmt)).all()
                 qr_by_opt = {qr.question_option_id: qr for qr in qr_res}
 
-            expl_res = await self.session.exec(
+            expl_rows = (await self.session.exec(
                 select(QuestionExplanation).where(QuestionExplanation.question_id == q_model.id)
-            )
-            db_expl = expl_res.first()
+            )).all()
+            db_expl = min(expl_rows, key=lambda e: (_lang_rank(e.language), e.id or 0), default=None)
             detailed_sol = (
                 db_expl.detailed_solution
                 if (db_expl and db_expl.detailed_solution)
@@ -1284,6 +1350,17 @@ class ExamSessionService:
                 "key_takeaway": key_takeaways[0] if key_takeaways else (db_expl.common_mistake or ""),
             }
 
+            # Collect full reverse logic source across explanation and options if present
+            full_rl_source = (db_expl.reverse_logic or "").strip() if db_expl else ""
+            if not full_rl_source and detailed_sol and ("Reverse Logic" in detailed_sol or "Why the other options" in detailed_sol):
+                full_rl_source = detailed_sol
+            if not full_rl_source:
+                for o in db_opts:
+                    t = trans_by_opt.get(o.id)
+                    if t and t.distractor_analysis and ("Reverse Logic" in t.distractor_analysis or "Why the other options" in t.distractor_analysis or "Option (B)" in t.distractor_analysis or "रिवर्स लॉजिक" in t.distractor_analysis):
+                        full_rl_source = t.distractor_analysis
+                        break
+
             distractor_map = {}
             for o in db_opts:
                 t = trans_by_opt.get(o.id)
@@ -1300,6 +1377,12 @@ class ExamSessionService:
                         da = whats_t
                     elif why_t:
                         da = why_t
+
+                if not da and not o.is_correct and full_rl_source:
+                    da = extract_option_analysis_from_text(full_rl_source, o.option_label)
+
+                if o.is_correct and da:
+                    da = clean_correct_option_text(da)
 
                 c_score = o.closeness_score if o.closeness_score is not None else (1.0 if o.is_correct else 0.0)
                 opt_text = t.option_text if t else f"Option {o.option_label}"
@@ -1482,6 +1565,15 @@ class ExamSessionService:
         if years:
             q_stmt = q_stmt.where(func.coalesce(Question.source_year, Exam.source_year).in_(years))
 
+        levels = [DifficultyLevel(v.upper()) for v in _csv_filter(getattr(req, "dynamic_difficulty", None))]
+        if levels:
+            q_stmt = q_stmt.where(col(Question.difficulty).in_(levels))
+
+        paper_sets = [v.upper() for v in _csv_filter(getattr(req, "dynamic_sets", None))]
+        if paper_sets:
+            # A mixed bank's set is a placeholder (its questions come from many papers), so it never matches
+            q_stmt = q_stmt.where(func.upper(Exam.paper_set_code).in_(paper_sets), col(Exam.is_mixed_bank).is_not(True))
+
         type_codes = await load_exam_type_codes(self.session)
         exam_names = {canonical_exam_name(e, type_codes).upper() for e in _csv_filter(req.dynamic_exams)}
         if exam_names:
@@ -1544,6 +1636,7 @@ class ExamSessionService:
             palette=palette,
             questions_presigned_url=None,
             questions_folder_url=None,
+            language=attempt.language or "en",
         )
 
     async def submit_exam(
@@ -1620,6 +1713,8 @@ class ExamSessionService:
                     if opt.option_label and opt.id is not None and opt.question_id is not None:
                         submit_opt_label_map[(opt.question_id, opt.option_label.strip().upper())] = opt.id
 
+            submit_quota_loaded = False
+            submit_quota: Optional[int] = None
             for item in req.responses:
                 try:
                     q_id = int(item.question_id) if item.question_id and str(item.question_id).isdigit() else None
@@ -1641,6 +1736,17 @@ class ExamSessionService:
                         )
                         responses.append(resp)
                         resp_by_qid[q_id] = resp
+                    if opt_id and resp.selected_option_id is None and resp.answered_at is None:
+                        # A new answer at submit time still counts toward the free plan's daily limit
+                        if not submit_quota_loaded:
+                            submit_quota, submit_quota_loaded = await self._answer_quota(user_id), True
+                        if submit_quota is not None:
+                            if submit_quota <= 0:
+                                opt_id = None
+                            else:
+                                submit_quota -= 1
+                        if opt_id:
+                            resp.answered_at = datetime.now(timezone.utc)
                     if opt_id:
                         resp.selected_option_id = opt_id
                         resp.question_status = QuestionResponseStatus.ANSWERED_AND_MARKED if item.is_marked_for_review else QuestionResponseStatus.ANSWERED
@@ -1710,17 +1816,27 @@ class ExamSessionService:
         # Batch preload question numbers for all response questions to avoid N+1 DB queries in scoring loop
         all_scoring_q_ids = list({r.question_id for r in responses if r.question_id})
         q_paper_nums: Dict[int, int] = {}
+        # Each question's own marking scheme (set from the exam type at import), not UPSC for every paper
+        q_marks: Dict[int, Tuple[float, float]] = {}
         if all_scoring_q_ids:
             q_meta_res = await self.session.exec(
-                select(Question.id, Question.question_number_in_paper).where(col(Question.id).in_(all_scoring_q_ids))
+                select(Question.id, Question.question_number_in_paper, Question.marks, Question.negative_marks)
+                .where(col(Question.id).in_(all_scoring_q_ids))
             )
-            q_paper_nums = {q_id: q_num for q_id, q_num in q_meta_res.all() if q_num is not None}
+            for q_id, q_num, q_pos, q_neg in q_meta_res.all():
+                if q_num is not None:
+                    q_paper_nums[q_id] = q_num
+                q_marks[q_id] = question_marks(q_pos, q_neg)
 
         tot_correct = 0
         tot_incorrect = 0
         tot_unattempted = 0
         tot_raw_score = 0.0
-        max_possible = float(exam.total_marks or 200.0)
+        # The most this attempt's questions can score; the exam's stored total when they aren't known
+        max_possible = (
+            round(sum(q_marks.get(r.question_id, (UPSC_MARKS, 0.0))[0] for r in responses), 2)
+            if q_marks else float(exam.total_marks or 200.0)
+        )
 
         for r in responses:
             if r.selected_option_id is None:
@@ -1743,8 +1859,8 @@ class ExamSessionService:
                 r.is_correct = is_corr
                 r.closeness_score_awarded = c_score
 
-                # Standard UPSC Prelims Scoring: +2.00 marks for correct, -0.6667 (-2/3) marks for incorrect
-                r.final_score = 2.0 if is_corr else -0.6667
+                pos, neg = q_marks.get(r.question_id, (UPSC_MARKS, UPSC_NEGATIVE))
+                r.final_score = round(awarded(is_corr, True, pos, neg), 4)
 
                 if is_corr:
                     tot_correct += 1
@@ -1989,6 +2105,26 @@ class ExamSessionService:
                 entry["total_score"] = total_score
                 entry["max_possible_score"] = max_score
 
+        # How far along each in-progress attempt is, for "x% done" on catalog cards
+        in_progress_ids = [e["in_progress_attempt_id"] for e in summary.values() if "in_progress_attempt_id" in e]
+        if in_progress_ids:
+            progress_stmt = (
+                select(
+                    ExamQuestionResponse.attempt_id,
+                    func.count(ExamQuestionResponse.id),
+                    func.count(ExamQuestionResponse.selected_option_id),
+                )
+                .where(col(ExamQuestionResponse.attempt_id).in_(in_progress_ids))
+                .group_by(ExamQuestionResponse.attempt_id)
+            )
+            progress = {aid: (total, answered) for aid, total, answered in (await self.session.exec(progress_stmt)).all()}
+            for entry in summary.values():
+                aid = entry.get("in_progress_attempt_id")
+                if aid in progress:
+                    total, answered = progress[aid]
+                    entry["in_progress_answered"] = int(answered or 0)
+                    entry["in_progress_total"] = int(total or 0)
+
         await cache.set(cache_key, summary, ttl_seconds=60)
         return summary
 
@@ -2114,6 +2250,21 @@ class ExamSessionService:
                         if opt_str in ("A", "B", "C", "D", "E"):
                             guest_q_ids_needing_options.add(q_id_val)
 
+        # Marks for every question in the synced sessions (each paper's own scheme)
+        guest_q_ids: Set[int] = set()
+        for item in sessions_list:
+            for r_item in item.get("responses") or []:
+                try:
+                    guest_q_ids.add(int(r_item.get("question_id")))
+                except (ValueError, TypeError):
+                    continue
+        guest_marks: Dict[int, Tuple[float, float]] = {}
+        if guest_q_ids:
+            for q_id, q_pos, q_neg in (await self.session.exec(
+                select(Question.id, Question.marks, Question.negative_marks).where(col(Question.id).in_(list(guest_q_ids)))
+            )).all():
+                guest_marks[q_id] = question_marks(q_pos, q_neg)
+
         guest_opt_label_map: Dict[Tuple[int, str], int] = {}
         if guest_q_ids_needing_options:
             guest_opt_stmt = select(QuestionOption).where(
@@ -2207,7 +2358,7 @@ class ExamSessionService:
                         selected_option_id=opt_id_val,
                         question_status=QuestionResponseStatus.ANSWERED if opt_id_val else QuestionResponseStatus.UNVISITED,
                         is_correct=is_corr,
-                        final_score=2.0 if is_corr else (-0.66 if opt_id_val else 0.0),
+                        final_score=round(awarded(is_corr, bool(opt_id_val) or is_corr, *guest_marks.get(q_id_val, (UPSC_MARKS, UPSC_NEGATIVE))), 4),
                         time_taken_seconds=float(r_item.get("time_taken_seconds") or 60.0),
                         expected_time_seconds=float(r_item.get("expected_time_seconds") or 60.0),
                         is_switched=bool(r_item.get("is_switched", False)),
@@ -2235,6 +2386,64 @@ class ExamSessionService:
             "status": "success",
             "synced_count": synced_count,
             "latest_attempt_id": str(latest_attempt.id) if latest_attempt else None,
+        }
+
+    async def _dashboard_behaviour(self, user_id: int) -> Dict[str, Any]:
+        """Answering-behaviour summary across the user's answered questions in submitted tests (dashboard card).
+
+        In-progress attempts are left out: correctness is only final once a test is submitted.
+        first_try_correct_pct: correct without changing the answer.
+        near_miss_pct: wrong, and the chosen option was a near-correct distractor (closeness 0.65-0.99).
+        """
+        from sqlmodel import func, case, and_
+        from app.db.models.question import QuestionOption
+
+        answered = col(ExamQuestionResponse.selected_option_id).is_not(None)
+        stmt = (
+            select(
+                func.count(ExamQuestionResponse.id),
+                func.sum(case(
+                    (and_(col(ExamQuestionResponse.is_correct).is_(True), ExamQuestionResponse.option_switch_count == 0), 1),
+                    else_=0,
+                )),
+                func.sum(case(
+                    (and_(
+                        col(ExamQuestionResponse.is_correct).is_(False),
+                        col(QuestionOption.closeness_score) >= 0.65,
+                        col(QuestionOption.closeness_score) < 0.99,
+                    ), 1),
+                    else_=0,
+                )),
+                func.sum(case(
+                    (ExamQuestionResponse.visited_count > 1, ExamQuestionResponse.visited_count - 1),
+                    else_=0,
+                )),
+                func.sum(ExamQuestionResponse.option_switch_count),
+                func.avg(ExamQuestionResponse.time_taken_seconds),
+            )
+            .join(ExamAttempt, col(ExamQuestionResponse.attempt_id) == col(ExamAttempt.id))
+            .join(QuestionOption, col(ExamQuestionResponse.selected_option_id) == col(QuestionOption.id), isouter=True)
+            .where(
+                ExamAttempt.user_id == user_id,
+                col(ExamAttempt.status).in_([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED]),
+                answered,
+            )
+        )
+        row = (await self.session.exec(stmt)).first()
+        answered_count = int(row[0] or 0) if row else 0
+        if answered_count == 0:
+            return {"answered": 0}
+
+        def pct(n: Any) -> float:
+            return round(int(n or 0) * 100.0 / answered_count, 1)
+
+        return {
+            "answered": answered_count,
+            "first_try_correct_pct": pct(row[1]),
+            "near_miss_pct": pct(row[2]),
+            "revisits_per_10": round(int(row[3] or 0) * 10.0 / answered_count, 1),
+            "answer_changes_per_10": round(int(row[4] or 0) * 10.0 / answered_count, 1),
+            "avg_seconds_per_question": round(float(row[5] or 0), 1),
         }
 
     async def get_student_dashboard_stats(self, user_id: int) -> Dict[str, Any]:
@@ -2316,7 +2525,10 @@ class ExamSessionService:
                 "createdAt": a.created_at.isoformat() if a.created_at else datetime.now(timezone.utc).isoformat(),
             })
 
+        behaviour = await self._dashboard_behaviour(user_id)
+
         result = {
+            "behaviour": behaviour,
             "totalExams": total_exams,
             "totalQuestionsAttempted": total_questions_attempted,
             "totalCorrect": total_correct,

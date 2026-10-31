@@ -76,6 +76,7 @@ class QuestionUpdatePayload(BaseModel):
     hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None
     blooms_level: Optional[BloomsLevel] = None
     cognitive_skill: Optional[str] = None
+    question_type_tag: Optional[str] = None
     primary_concept_tag: Optional[str] = None
     status: Optional[QuestionStatus] = None
 
@@ -191,6 +192,7 @@ class QuestionDetailResponse(BaseModel):
     section_code: str = "DEFAULT"
     question_number_in_paper: int
     question_type: str = "SINGLE_CHOICE"
+    question_type_tag: Optional[str] = None
     difficulty: str = "MEDIUM"
     marks: float = 2.0
     negative_marks: float = 0.66

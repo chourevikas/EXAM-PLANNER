@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Menu, Users, History, UserCheck, MessageSquareQuote, KeyRound, ScrollText, X, Crown, Home } from 'lucide-react';
+import { Menu, Users, History, UserCheck, MessageSquareQuote, KeyRound, ScrollText, X, Crown, Home, TrendingUp } from 'lucide-react';
 import { SuperAdminTab } from './SuperAdminTabNav';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -50,6 +50,7 @@ export function SuperAdminSidebar({
 
   const navItems: { id: SuperAdminTab; label: string; icon: any; badge?: number }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'revenue', label: 'Revenue & Engagement', icon: TrendingUp },
     // { id: 'audit', label: 'Approval Audit Logs', icon: History },
     { id: 'users', label: 'All Users & Roles', icon: UserCheck },
     { id: 'roles-permissions', label: 'Roles & Permissions', icon: KeyRound },

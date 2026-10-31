@@ -186,6 +186,7 @@ class HumanReviewService:
 
         # Fetch Explanation
         from app.db.models.explanation import QuestionExplanation
+        from app.db.models.enums import LanguageCode
         from app.db.models.metadata import QuestionMetadata
         from app.db.models.hierarchy import Subject, Topic, Subtopic
         from app.db.models.hierarchy_link import QuestionHierarchyLink
@@ -196,7 +197,8 @@ class HumanReviewService:
         expl_list = expl_res.all()
         expl_detail = None
         if expl_list:
-            e0 = expl_list[0]
+            # The English explanation is the main one; other languages are listed under translations
+            e0 = next((e for e in expl_list if e.language == LanguageCode.ENGLISH), expl_list[0])
             expl_detail = {
                 "explanation_id": str(e0.id),
                 "language": e0.language.value if hasattr(e0.language, "value") else str(e0.language),
@@ -286,11 +288,18 @@ class HumanReviewService:
                     "is_primary": True,
                 })
 
+        raw_type_tag = None
+        if question.knowledge_tags_raw and isinstance(question.knowledge_tags_raw, dict):
+            raw_type_tag = question.knowledge_tags_raw.get("question_type")
+        if not raw_type_tag and qm and qm.cognitive_skill:
+            raw_type_tag = qm.cognitive_skill
+
         return {
             "question_id": str(question.id),
             "exam_id": str(question.exam_id),
             "section_code": question.section_code,
             "question_number": question.question_number_in_paper,
+            "question_type_tag": raw_type_tag,
             "status": question.status.value,
             "difficulty": question.difficulty.value if hasattr(question.difficulty, "value") else str(question.difficulty),
             "marks": question.marks,

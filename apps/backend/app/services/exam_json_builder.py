@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
+import re
 from sqlmodel import select, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -21,6 +22,7 @@ from app.db.models import (
 )
 from app.storage.factory import get_storage_provider
 from app.services.question_assets import serialize_question_asset
+from app.pipeline.patterns import extract_option_analysis_from_text, clean_correct_option_text
 from app.config.logger import setup_logger
 
 logger = setup_logger("ExamJsonBuilder")
@@ -91,8 +93,9 @@ class ExamJsonBuilder:
 
         # On-Demand Translation for Exam Attempt Questions
         from app.core.languages import normalize_language
+        from app.config.settings import get_settings
         target_iso, target_enum = normalize_language(target_language)
-        if target_enum != "ENGLISH":
+        if target_enum != "ENGLISH" and get_settings().ENABLE_TRANSLATION_PIPELINE:
             try:
                 from app.db.models import LanguageCode
                 from app.services.google_translation_service import GoogleTranslationService
@@ -300,7 +303,11 @@ class ExamJsonBuilder:
             for sb in sb_res.all():
                 subjects_map[sb.id] = sb
 
+        # 8. Exam badge ("MPSC", "UPSC", ...) per source paper; a subject-wise test mixes several papers
+        exam_badges = await self._exam_badges({q.exam_id for q in questions if q.exam_id})
+
         return {
+            "exam_badges": exam_badges,
             "trans_map": trans_map,
             "options_map": options_map,
             "opt_trans_map": opt_trans_map,
@@ -314,6 +321,20 @@ class ExamJsonBuilder:
             "subjects_map": subjects_map,
             "assets_map": assets_map,
         }
+
+    async def _exam_badges(self, exam_ids: set) -> Dict[int, str]:
+        """Short exam tag for each paper id, from its name, the same label the practice question cards show."""
+        if not exam_ids:
+            return {}
+        from app.services.exam_session_service import exam_badge_label, load_exam_type_codes
+        type_codes = await load_exam_type_codes(self.session)
+        rows = (await self.session.exec(select(Exam).where(col(Exam.id).in_(list(exam_ids))))).all()
+        badges: Dict[int, str] = {}
+        for e in rows:
+            label = exam_badge_label(e.name or e.code, type_codes)
+            if label:
+                badges[e.id] = label
+        return badges
 
     async def build_single_question_cards(
         self,
@@ -478,6 +499,11 @@ class ExamJsonBuilder:
         correct_option_label = "A"
         distractor_scores = {}
 
+        # Look for full reverse logic source
+        full_rl_source = (q_expl.reverse_logic or "").strip() if q_expl else ""
+        if not full_rl_source and q_expl and q_expl.detailed_solution and ("Reverse Logic" in q_expl.detailed_solution or "Why the other options" in q_expl.detailed_solution):
+            full_rl_source = q_expl.detailed_solution
+
         for opt in options:
             if preloaded is not None:
                 opt_trans_list = preloaded.get("opt_trans_map", {}).get(opt.id, [])
@@ -497,6 +523,8 @@ class ExamJsonBuilder:
                     opt_translations[iso_c] = ot.option_text
                 if ot.distractor_analysis:
                     opt_distractor_analyses[lang_str] = ot.distractor_analysis
+                    if not full_rl_source and ("Reverse Logic" in ot.distractor_analysis or "Why the other options" in ot.distractor_analysis or "Option (B)" in ot.distractor_analysis or "रिवर्स लॉजिक" in ot.distractor_analysis):
+                        full_rl_source = ot.distractor_analysis
 
             chosen_opt_trans = next(
                 (t for t in opt_trans_list if (t.language.value if hasattr(t.language, "value") else str(t.language)) in (target_enum, target_iso)), None
@@ -506,6 +534,18 @@ class ExamJsonBuilder:
 
             opt_text = chosen_opt_trans.option_text if chosen_opt_trans else f"Option {opt.option_label}"
             eng_analysis = chosen_opt_trans.distractor_analysis if chosen_opt_trans else None
+
+            if not eng_analysis and not opt.is_correct and full_rl_source:
+                eng_analysis = extract_option_analysis_from_text(full_rl_source, opt.option_label)
+
+            if opt.is_correct and eng_analysis:
+                eng_analysis = clean_correct_option_text(eng_analysis)
+
+            if opt.is_correct and opt_distractor_analyses:
+                for lk in list(opt_distractor_analyses.keys()):
+                    val = opt_distractor_analyses[lk]
+                    if val:
+                        opt_distractor_analyses[lk] = clean_correct_option_text(val)
 
             hi_opt_txt = opt_translations.get("HINDI") or opt_translations.get("hi")
             public_options.append({
@@ -552,7 +592,15 @@ class ExamJsonBuilder:
                 q_meta = meta_res.first()
 
             blooms_level = (q_meta.blooms_level.value if hasattr(q_meta.blooms_level, "value") else str(q_meta.blooms_level)) if (q_meta and q_meta.blooms_level) else "ANALYZE"
-            cognitive_skill = q_meta.cognitive_skill if q_meta and q_meta.cognitive_skill else "Conceptual Reasoning"
+            # Resolve authored question type tag
+            raw_type_tag = None
+            if q.knowledge_tags_raw and isinstance(q.knowledge_tags_raw, dict):
+                raw_type_tag = q.knowledge_tags_raw.get("question_type")
+            if not raw_type_tag and q_meta and q_meta.cognitive_skill:
+                if q_meta.cognitive_skill not in ("Extraction Stage Initialized", "Conceptual Reasoning"):
+                    raw_type_tag = q_meta.cognitive_skill
+
+            cognitive_skill = raw_type_tag or (q_meta.cognitive_skill if q_meta and q_meta.cognitive_skill else "Conceptual Reasoning")
             primary_concept_tag = q_meta.primary_concept_tag if q_meta and q_meta.primary_concept_tag else None
             irt_a = q_meta.irt_discrimination_a if (q_meta and q_meta.irt_discrimination_a is not None) else 1.50
             irt_b = q_meta.irt_difficulty_b if (q_meta and q_meta.irt_difficulty_b is not None) else 0.00
@@ -600,6 +648,14 @@ class ExamJsonBuilder:
         else:
             q_assets = []
 
+        if preloaded is not None:
+            exam_badge = preloaded.get("exam_badges", {}).get(q.exam_id)
+        else:
+            exam_badge = (await self._exam_badges({q.exam_id} if q.exam_id else set())).get(q.exam_id)
+
+        # Also fallback for q_card if sol_data wasn't included
+        raw_type_tag_q = (q.knowledge_tags_raw.get("question_type") if (q.knowledge_tags_raw and isinstance(q.knowledge_tags_raw, dict)) else None) or (raw_type_tag if include_solution_data else None)
+
         q_card = {
             "question_id": str(q.id),
             "question_number": q.question_number_in_paper,
@@ -612,6 +668,7 @@ class ExamJsonBuilder:
             "negative_marks": q.negative_marks,
             "expected_time_seconds": q.expected_time_seconds,
             "question_type": q.question_type,
+            "question_type_tag": raw_type_tag_q,
             "has_image": q.has_image,
             "assets": [serialize_question_asset(a) for a in q_assets if a.asset_path],
             "passage_text": passage_text,
@@ -620,6 +677,8 @@ class ExamJsonBuilder:
             "topic": top_name,
             "subtopic": sub_name,
             "options": public_options,
+            "exam_name": exam_badge,
+            "source_year": q.source_year,
         }
 
         sol_card = {} if not include_solution_data else {
@@ -630,6 +689,8 @@ class ExamJsonBuilder:
             "difficulty": q.difficulty.value if hasattr(q.difficulty, 'value') else str(q.difficulty),
             "blooms_level": blooms_level,
             "cognitive_skill": cognitive_skill,
+            "question_type_tag": raw_type_tag,
+            "question_type": raw_type_tag,
             "primary_concept_tag": primary_concept_tag,
             "irt_params": {
                 "a": irt_a,

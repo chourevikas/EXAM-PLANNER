@@ -1,7 +1,8 @@
 import React from 'react';
 import { Clock, ChevronRight, Focus, Minimize2, SlidersHorizontal, Lightbulb, Globe } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { SUPPORTED_LANGUAGES } from '../../constants/languages';
+import { getLanguageOption } from '../../constants/languages';
+import { useExamText } from '../../i18n/examText';
 
 interface ExamHeaderProps {
   examTitle: string;
@@ -15,13 +16,15 @@ interface ExamHeaderProps {
   subtopicName?: string;
   parentBreadcrumb?: string;
   onBack?: () => void;
-  onLanguageChange: (lang: string) => void;
   onSubmitClick?: () => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
   onFilterClick?: () => void;
   onRecsClick?: () => void;
   recsCount?: number;
+  /** The profile's secondary language; with onLanguageChange the badge switches English ⇄ it. */
+  secondaryLanguage?: string | null;
+  onLanguageChange?: (language: string) => void;
 }
 
 export function ExamHeader({
@@ -36,17 +39,19 @@ export function ExamHeader({
   subtopicName,
   parentBreadcrumb,
   onBack,
-  onLanguageChange,
   onSubmitClick,
   focusMode = false,
   onToggleFocusMode,
   onFilterClick,
   onRecsClick,
   recsCount,
+  secondaryLanguage,
+  onLanguageChange,
 }: ExamHeaderProps) {
   const isAuth = !!(localStorage.getItem('access_token') && localStorage.getItem('user'));
   const rootBreadcrumb = parentBreadcrumb || (isAuth ? 'Dashboard' : 'Home');
   const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const { t } = useExamText();
 
   // One height for every header control so the select, icon buttons and Submit line up
   // (the touch-target class would otherwise stretch only the buttons to 44px).
@@ -205,7 +210,7 @@ export function ExamHeader({
                   lineHeight: 1,
                 }}
               >
-                TIME REMAINING
+                {t('timeRemaining')}
               </span>
             )}
             <span
@@ -235,52 +240,84 @@ export function ExamHeader({
           minWidth: 0,
         }}
       >
-        {/* Language Selector Dropdown */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid rgba(255, 255, 255, 0.22)',
-            borderRadius: 'var(--radius)',
-            padding: '0 8px',
-            ...controlBox,
-            color: 'var(--bg-card)',
-            flexShrink: 0,
-            transition: 'border-color 0.2s ease',
-          }}
-          title="Select Exam Language"
-        >
-          {!isMobile && <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)', flexShrink: 0 }} />}
-          <select
-            value={language}
-            onChange={(e) => onLanguageChange(e.target.value)}
+        {/* The session's language: English (primary), switchable to the profile's secondary language */}
+        {secondaryLanguage && secondaryLanguage !== 'en' && onLanguageChange ? (
+          <div
+            data-testid="exam-language"
+            role="radiogroup"
+            aria-label="Question language"
             style={{
-              background: 'transparent',
-              border: 'none',
+              display: 'flex',
+              alignItems: 'stretch',
+              padding: 2,
+              gap: 2,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.22)',
+              borderRadius: 'var(--radius)',
+              ...controlBox,
+              flexShrink: 0,
+            }}
+          >
+            {['en', secondaryLanguage].map((code) => {
+              const option = getLanguageOption(code);
+              const active = language === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  data-testid={`exam-language-${code}`}
+                  onClick={() => !active && onLanguageChange(code)}
+                  title={`Show questions in ${option.name}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '0 8px',
+                    border: 'none',
+                    borderRadius: 'calc(var(--radius) - 1px)',
+                    backgroundColor: active ? 'var(--bg-card)' : 'transparent',
+                    color: active ? 'var(--deep-navy)' : 'rgba(255, 255, 255, 0.85)',
+                    fontSize: 'clamp(11px, 2vw, 12.5px)',
+                    fontWeight: 700,
+                    fontFamily: "'IBM Plex Sans', sans-serif",
+                    cursor: active ? 'default' : 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {code === 'en' && !isMobile && <Globe size={13} style={{ flexShrink: 0 }} />}
+                  {/* Phones only have room for a short label */}
+                  <span>{code === 'en' ? (isMobile ? 'EN' : option.name) : option.nativeName}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div
+            data-testid="exam-language"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.22)',
+              borderRadius: 'var(--radius)',
+              padding: '0 8px',
+              ...controlBox,
               color: 'var(--bg-card)',
+              flexShrink: 0,
               fontSize: 'clamp(11px, 2vw, 12.5px)',
               fontWeight: 600,
-              outline: 'none',
-              cursor: 'pointer',
               fontFamily: "'IBM Plex Sans', sans-serif",
-              maxWidth: isMobile ? 84 : 130,
             }}
-            aria-label="Select exam language"
+            title={onLanguageChange ? 'Set a secondary language in your Profile to switch languages here.' : 'Language for this session.'}
           >
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <option
-                key={lang.code}
-                value={lang.code}
-                style={{ background: 'var(--deep-navy)', color: '#FFFFFF' }}
-              >
-                {/* Phones only have room for the short native name */}
-                {isMobile ? lang.nativeName : `${lang.nativeName} (${lang.name})`}
-              </option>
-            ))}
-          </select>
-        </div>
+            {!isMobile && <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)', flexShrink: 0 }} />}
+            {/* Phones only have room for the short native name */}
+            <span>{isMobile ? getLanguageOption(language).nativeName : `${getLanguageOption(language).nativeName} (${getLanguageOption(language).name})`}</span>
+          </div>
+        )}
         {isTabletOrBelow && onFilterClick && (
           <button
             type="button"
@@ -361,10 +398,10 @@ export function ExamHeader({
               whiteSpace: 'nowrap',
               transition: 'all 0.15s ease',
             }}
-            title={focusMode ? 'Exit Full Screen' : 'Enter Full Screen'}
+            title={focusMode ? t('exitFullScreen') : t('enterFullScreen')}
           >
             {focusMode ? <Minimize2 size={13} /> : <Focus size={13} />}
-            {!isTabletOrBelow && <span>{focusMode ? 'Exit Focus' : 'Full Screen'}</span>}
+            {!isTabletOrBelow && <span>{focusMode ? t('exitFocus') : t('fullScreen')}</span>}
           </button>
         )}
         {showSubmitButton && onSubmitClick && (
@@ -397,7 +434,7 @@ export function ExamHeader({
                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
             }}
           >
-            {isSubmitting ? 'Submitting...' : isMobile ? 'Submit' : 'Submit Test'}
+            {isSubmitting ? t('submitting') : isMobile ? t('submit') : t('submitTest')}
           </button>
         )}
       </div>

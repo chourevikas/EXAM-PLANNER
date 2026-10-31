@@ -137,6 +137,8 @@ def knowledge_tags_from_record(record) -> Optional[dict]:
         "related_refs": list(getattr(record, "related_refs", []) or []),
         "issues": list(getattr(record, "knowledge_issues", []) or []),
     }
+    if getattr(record, "type_raw", None):
+        payload["question_type"] = record.type_raw
     # Question-bank hints for the AI tagger: the PDF's chapter heading and the question's source
     if getattr(record, "section_raw", None):
         payload["section"] = record.section_raw

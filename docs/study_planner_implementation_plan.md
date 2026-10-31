@@ -1,5 +1,7 @@
 # Comprehensive Adaptive Study Planner & Study Logger — Technical Specification & Documentation
 
+> **Superseded (23 Oct 2026):** the planner was rebuilt from the client's design. See Phase 8 of [PRD_IMPLEMENTATION_PLAN.md](PRD_IMPLEMENTATION_PLAN.md).
+
 ## 1. Executive Summary & Core User Experience
 
 The **Adaptive AI Study Planner & Study Logger** is a central module of the ExamPlanner platform. It transforms **diagnostic test analytics** into a structured **weekly and daily study schedule** with **4 activity category dropdowns**, automated plan generation, and **end-of-day pending task email notifications**.

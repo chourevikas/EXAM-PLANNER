@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, RotateCcw, CheckCircle2, XCircle, MinusCircle, PartyPopper, LogIn, UserPlus, X, Home, Award, Loader2 } from 'lucide-react';
+import { ArrowRight, RotateCcw, CheckCircle2, XCircle, MinusCircle, PartyPopper, LogIn, UserPlus, X, Home, Award, Loader2, LayoutDashboard } from 'lucide-react';
 import { AuthModal, AuthMode } from '../auth/AuthModal';
 
 interface GuestScoreModalProps {
@@ -80,9 +80,9 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
     }
   };
 
-  const handleGoHome = () => {
+  const handleGoDashboard = () => {
     onClose();
-    navigate('/');
+    navigate(isLoggedIn || !isGuest ? '/dashboard' : '/');
   };
 
   const activeAttemptId = scoreData?.attemptId || (typeof window !== 'undefined' ? sessionStorage.getItem('latest_synced_attempt_id') : null);
@@ -133,11 +133,11 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             overflowX: 'hidden',
           }}
         >
-          {/* Close & Go Home Button */}
+          {/* Close Modal Button (Keeps user on the exam screen) */}
           <button
             type="button"
-            onClick={handleGoHome}
-            aria-label="Close and go to homepage"
+            onClick={onClose}
+            aria-label="Close modal and stay on exam page"
             style={{
               position: 'absolute',
               top: 14,
@@ -504,7 +504,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
 
             <button
               type="button"
-              onClick={handleGoHome}
+              onClick={handleGoDashboard}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -520,8 +520,8 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                 marginTop: 2,
               }}
             >
-              <Home size={13} strokeWidth={2.2} />
-              <span>Back to Home</span>
+              <LayoutDashboard size={13} strokeWidth={2.2} />
+              <span>Back to Dashboard</span>
             </button>
           </div>
         </div>

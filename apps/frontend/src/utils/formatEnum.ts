@@ -169,7 +169,12 @@ function examTypeCodeLabel(raw?: string | null): string | null {
   if (!match) return null;
   const token = match[0].toLowerCase();
   for (const candidate of [token, token.split(/[-_]/)[0]]) {
-    if (examTypeCodes.has(candidate)) return candidate.toUpperCase();
+    if (examTypeCodes.has(candidate)) {
+      if (candidate === 'upsccse' || candidate === 'upsc') {
+        return 'UPSC CSE';
+      }
+      return candidate.toUpperCase();
+    }
   }
   return null;
 }
@@ -181,8 +186,21 @@ function examTypeCodeLabel(raw?: string | null): string | null {
  * Never returns raw PYQ codes, years, or set names.
  */
 export function extractCanonicalExamName(raw?: string | null): string {
+  if (!raw) return 'UPSC CSE';
+  const clean = String(raw).trim();
+  const lower = clean.toLowerCase();
+
+  // Known canonical exam matches - always collapse UPSC variations to 'UPSC CSE'
+  if (lower.includes('upsc') || lower.includes('upsccse') || lower.includes('civil services') || lower.includes('upse')) {
+    return 'UPSC CSE';
+  }
+
   const legacy = legacyCanonicalExamName(raw);
-  return examTypeCodeLabel(raw) || examTypeCodeLabel(legacy) || legacy;
+  const code = examTypeCodeLabel(raw) || examTypeCodeLabel(legacy);
+  if (code && (code.toLowerCase() === 'upsccse' || code.toLowerCase() === 'upsc')) {
+    return 'UPSC CSE';
+  }
+  return code || legacy;
 }
 
 /** The label of the default exam ('UPSC CSE' resolved through the exam type codes, e.g. 'UPSC'). */

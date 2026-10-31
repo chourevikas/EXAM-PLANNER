@@ -17,6 +17,7 @@ import {
   FileText,
   Sliders,
   Loader2,
+  BookOpenCheck,
 } from 'lucide-react';
 import { Spinner } from '../../../components/common/Spinner';
 import { ExamType, ExamTypeCreatePayload, ExamTypeUpdatePayload } from '../../../types/examType';
@@ -28,7 +29,8 @@ import {
 } from '../../../services/examTypeService';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
-export function ExamTypesManager() {
+/** onOpenSyllabus opens an exam type's study syllabus page (Prelims, Mains, optionals). */
+export function ExamTypesManager({ onOpenSyllabus }: { onOpenSyllabus?: (examType: ExamType) => void } = {}) {
   const { isMobile, isTabletOrBelow } = useBreakpoint();
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -124,9 +126,8 @@ export function ExamTypesManager() {
     setModalSubmitting(true);
     try {
       if (editingExamType) {
-        // The code is fixed after creation; send everything else.
-        const { type: _code, ...updatePayload } = formData;
-        await adminUpdateExamType(editingExamType.id, updatePayload);
+        // A changed code is renamed on the server, which also renames its papers' display names
+        await adminUpdateExamType(editingExamType.id, formData);
         showToast('success', `Exam type '${formData.name}' updated successfully!`);
       } else {
         await adminCreateExamType(formData);
@@ -520,6 +521,25 @@ export function ExamTypesManager() {
                   <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', gap: 8 }}>
                       <button
+                        onClick={() => onOpenSyllabus?.(item)}
+                        title="Study syllabus students plan from"
+                        style={{
+                          padding: '6px 10px',
+                          backgroundColor: 'var(--bg-card)',
+                          border: '1px solid #BFDBFE',
+                          color: '#1D4ED8',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <BookOpenCheck size={13} />
+                        Syllabus
+                      </button>
+                      <button
                         onClick={() => handleOpenEditModal(item)}
                         title="Edit Exam Type Blueprint"
                         style={{
@@ -632,8 +652,6 @@ export function ExamTypesManager() {
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value.toLowerCase().trim() })}
                     required
-                    readOnly={!!editingExamType}
-                    title={editingExamType ? 'The type code cannot be changed after creation.' : undefined}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -643,16 +661,11 @@ export function ExamTypesManager() {
                       outline: 'none',
                       fontFamily: 'monospace',
                       boxSizing: 'border-box',
-                      ...(editingExamType && {
-                        backgroundColor: 'var(--bg-secondary)',
-                        color: 'var(--text-muted)',
-                        cursor: 'not-allowed',
-                      }),
                     }}
                   />
-                  {editingExamType && (
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                      Code is fixed after creation.
+                  {editingExamType && formData.type !== editingExamType.type && (
+                    <div style={{ fontSize: 11, color: 'var(--status-warning)', marginTop: 4 }}>
+                      Renames its {editingExamType.exams_count ?? 0} paper(s) from {editingExamType.type.toUpperCase()} to {(formData.type || '').toUpperCase()}.
                     </div>
                   )}
                 </div>

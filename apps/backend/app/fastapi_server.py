@@ -15,6 +15,16 @@ logger = setup_logger("FastAPIServer")
 
 from app.routers.auth import router as auth_router
 from app.routers.users import router as users_router
+from app.routers.practice import router as practice_router
+from app.routers.leaderboard import router as leaderboard_router
+from app.routers.milestones import router as milestones_router
+from app.routers.translations import router as translations_router
+from app.routers.business_metrics import router as business_metrics_router
+from app.routers.exam_marking import router as exam_marking_router
+from app.routers.revision import router as revision_router
+from app.routers.mistakes import router as mistakes_router
+from app.routers.admin_planner import router as admin_planner_router
+from app.routers.planner import router as planner_router, public_router as public_planner_router
 from app.routers.admin import router as admin_router
 from app.routers.exams import router as exams_router
 from app.routers.questions import router as questions_router
@@ -29,6 +39,7 @@ from app.routers.syllabus import router as syllabus_router
 from app.routers.notifications import router as notifications_router
 from app.routers.testimonials import router as testimonials_router
 from app.routers.question_reports import router as question_reports_router
+from app.routers.feedback import router as feedback_router
 from app.routers.roles import router as roles_router
 from app.routers.teacher import teacher_router, admin_teacher_router
 from app.routers.current_affairs import router as current_affairs_router, public_router as public_current_affairs_router
@@ -78,6 +89,20 @@ async def lifespan(app: FastAPI):
     except Exception as err:
         logger.warning(f"Could not start daily midnight scheduler: {err}")
 
+    try:
+        from app.services.weekly_email_service import start_weekly_email_scheduler
+        start_weekly_email_scheduler()
+    except Exception as err:
+        logger.warning(f"Could not start weekly email scheduler: {err}")
+
+    # Catch up on subscriptions that ended while the server was down (it also runs nightly)
+    try:
+        import asyncio
+        from app.services.subscription_expiry_service import run_expiry_job
+        asyncio.create_task(run_expiry_job())
+    except Exception as err:
+        logger.warning(f"Could not run the subscription expiry check: {err}")
+
     logger.info("Application startup complete. Uvicorn server is ready to accept connections.")
     try:
         yield
@@ -85,6 +110,11 @@ async def lifespan(app: FastAPI):
         try:
             from app.services.daily_scheduler_service import stop_daily_midnight_scheduler
             stop_daily_midnight_scheduler()
+        except Exception:
+            pass
+        try:
+            from app.services.weekly_email_service import stop_weekly_email_scheduler
+            stop_weekly_email_scheduler()
         except Exception:
             pass
 
@@ -122,6 +152,30 @@ async def lifespan(app: FastAPI):
 
 
 _IS_PRODUCTION = settings.ENVIRONMENT.lower() in ("production", "prod")
+
+# Error tracking: unhandled exceptions (and the stack, request path, release) go to Sentry. Off without a DSN.
+if settings.SENTRY_DSN:
+    import logging
+    import sentry_sdk
+    from sentry_sdk.integrations.logging import LoggingIntegration, ignore_logger_for_sentry_logs
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+        # No emails, IPs, cookies or request bodies.
+        send_default_pii=False,
+        # Log lines go to Sentry Logs, linked to the request's trace. Every logger is covered (the integration
+        # hooks logging itself), so the setup_logger() loggers need no handler of their own.
+        enable_logs=settings.SENTRY_ENABLE_LOGS,
+        integrations=[
+            LoggingIntegration(
+                sentry_logs_level=getattr(logging, settings.SENTRY_LOGS_LEVEL.upper(), logging.INFO)
+            )
+        ],
+    )
+    # One line per request duplicates what the traces already show.
+    ignore_logger_for_sentry_logs("uvicorn.access")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -177,10 +231,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(
         f"Unhandled internal server error on {request.url.path}: {exc}", exc_info=True
     )
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "An internal server error occurred.", "error": str(exc)},
-    )
+    content = {"detail": "An internal server error occurred."}
+    if not _IS_PRODUCTION:
+        # The exception text can hold SQL, paths or data: show it only outside production.
+        content["error"] = str(exc)
+    return JSONResponse(status_code=500, content=content)
 
 
 # Mount uploads directory for static access
@@ -191,7 +246,16 @@ app.mount("/static/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
 # Register API Routers
 app.include_router(auth_router, prefix=settings.API_V1_STR)
+# Before users_router, whose /users/{user_id} would otherwise capture /users/username-available
+app.include_router(leaderboard_router, prefix=settings.API_V1_STR)
 app.include_router(users_router, prefix=settings.API_V1_STR)
+app.include_router(practice_router, prefix=settings.API_V1_STR)
+app.include_router(milestones_router, prefix=settings.API_V1_STR)
+app.include_router(translations_router, prefix=settings.API_V1_STR)
+app.include_router(business_metrics_router, prefix=settings.API_V1_STR)
+app.include_router(exam_marking_router, prefix=settings.API_V1_STR)
+app.include_router(revision_router, prefix=settings.API_V1_STR)
+app.include_router(mistakes_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(exams_router, prefix=settings.API_V1_STR)
 app.include_router(questions_router, prefix=settings.API_V1_STR)
@@ -200,12 +264,15 @@ app.include_router(review_router, prefix=settings.API_V1_STR)
 app.include_router(webhooks_router, prefix=settings.API_V1_STR)
 app.include_router(pipeline_router, prefix=settings.API_V1_STR)
 app.include_router(study_plan_router, prefix=settings.API_V1_STR)
+app.include_router(planner_router, prefix=settings.API_V1_STR)
+app.include_router(public_planner_router, prefix=settings.API_V1_STR)
 app.include_router(attempts_router, prefix=settings.API_V1_STR)
 app.include_router(search_router, prefix=settings.API_V1_STR)
 app.include_router(syllabus_router, prefix=settings.API_V1_STR)
 app.include_router(notifications_router, prefix=settings.API_V1_STR)
 app.include_router(testimonials_router, prefix=settings.API_V1_STR)
 app.include_router(question_reports_router, prefix=settings.API_V1_STR)
+app.include_router(feedback_router, prefix=settings.API_V1_STR)
 app.include_router(roles_router, prefix=settings.API_V1_STR)
 app.include_router(teacher_router, prefix=settings.API_V1_STR)
 app.include_router(admin_teacher_router, prefix=settings.API_V1_STR)
@@ -213,6 +280,7 @@ app.include_router(current_affairs_router, prefix=settings.API_V1_STR)
 app.include_router(public_current_affairs_router, prefix=settings.API_V1_STR)
 app.include_router(exam_types_router, prefix=settings.API_V1_STR)
 app.include_router(admin_notifications_router, prefix=settings.API_V1_STR)
+app.include_router(admin_planner_router, prefix=settings.API_V1_STR)
 app.include_router(challenges_router, prefix=settings.API_V1_STR)
 app.include_router(site_settings_router, prefix=settings.API_V1_STR)
 # Premium plan, discounts & manual grants
@@ -222,6 +290,21 @@ app.include_router(discounts_public_router, prefix=settings.API_V1_STR)
 app.include_router(admin_grants_router, prefix=settings.API_V1_STR)
 app.include_router(public_plans_router, prefix=settings.API_V1_STR)
 
+
+
+@app.get(f"{settings.API_V1_STR}/health")
+async def health():
+    """Uptime check: 200 when the API can reach the database, 503 otherwise."""
+    from sqlalchemy import text
+    from app.db.session import managed_async_session
+
+    try:
+        async with managed_async_session(max_retries=1) as session:
+            await session.exec(text("SELECT 1"))
+    except Exception as err:
+        logger.error(f"Health check: database unreachable: {err}")
+        return JSONResponse(status_code=503, content={"status": "error", "database": "unreachable"})
+    return {"status": "ok", "database": "ok"}
 
 
 @app.get("/")

@@ -3,6 +3,7 @@ import { ReportPreparingLoader } from '../components/common/ReportPreparingLoade
 import { useSearchParams } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { PsychometricReportView } from '../components/student/PsychometricReportView';
+import { SpeedNegativeTrends } from '../components/student/SpeedNegativeTrends';
 import { Ico } from '../components/common/Icons';
 import {
   getPsychometricReportJson,
@@ -310,6 +311,7 @@ export function AnalyticsPage() {
   const [evalProgress, setEvalProgress] = useState(25);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cumulativeLocked, setCumulativeLocked] = useState(false);
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
 
@@ -428,7 +430,10 @@ export function AnalyticsPage() {
         try {
           const cumRep = await getUserCumulativeAggregateReport();
           if (isCancelled) return;
-          if (cumRep) {
+          setCumulativeLocked(Boolean(cumRep?.analysis_locked));
+          if (cumRep?.analysis_locked) {
+            setReport(null);
+          } else if (cumRep) {
             setReport(cumRep);
           } else {
             setError('Failed to synthesize cumulative report.');
@@ -524,7 +529,8 @@ export function AnalyticsPage() {
           const alreadyHasAi = checkHasAi(loadedReport);
 
           // If AI phase is still generating in background (no AI results yet), poll with a strict bounded retry count
-          if (targetId !== 'CUMULATIVE_ALL' && !alreadyHasAi) {
+          // (free-plan reports have no AI summary to wait for)
+          if (targetId !== 'CUMULATIVE_ALL' && !alreadyHasAi && !loadedReport.analysis_locked) {
             let aiPollCount = 0;
             const maxAiPolls = 4; // Bounded: stops after max 4 checks, never loops infinitely
             const pollIntervalMs = 6000;
@@ -626,7 +632,8 @@ export function AnalyticsPage() {
               ? 'How you are doing overall, where you are improving, and what to study next.'
               : 'How you did in this exam and what to work on next.'}
           </p>
-          {!isLoading && !hasAi && (
+          {/* Free plan reports have no AI study plan, so don't promise one */}
+          {!isLoading && !hasAi && !cumulativeLocked && !(report as any)?.analysis_locked && (
             <div style={{ ...hasAiWrapperStyle, marginTop: 10 }}>
               <span style={aiBadgePendingStyle}>
                 <Loader2 size={14} className="animate-spin" color="#D97706" />
@@ -805,13 +812,35 @@ export function AnalyticsPage() {
             </div>
           )}
 
+          {/* Free plan: the all-tests analysis is part of Pro; single tests keep their score and answer review */}
+          {cumulativeLocked && !report && (!selectedAttemptId || selectedAttemptId === 'CUMULATIVE_ALL') && !isLoading && (
+            <div
+              style={{
+                padding: isMobile ? 16 : 24,
+                margin: '16px 0',
+                borderRadius: 'var(--radius)',
+                border: '1px solid #FDE68A',
+                backgroundColor: '#FFFBEB',
+              }}
+            >
+              <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 8px', color: '#B45309' }}>Your all-tests analysis is part of Pro</h2>
+              <p style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text-secondary)', margin: '0 0 14px' }}>
+                Pick a test from the list below to see its score, answers and explanations. Upgrade to Pro for analysis
+                across all your tests: subject and topic trends, strengths and weak areas, and a study plan.
+              </p>
+              <a href="/billing" style={{ display: 'inline-block', padding: '10px 18px', borderRadius: 'var(--radius)', backgroundColor: 'var(--primary-red)', color: '#fff', fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
+                Upgrade to Pro
+              </a>
+            </div>
+          )}
+
           {/* Live Saved Psychometric Report View */}
           {report ? (
             <PsychometricReportView
               report={report}
             />
           ) : (
-            !isLoading && !isEvaluating && (
+            !isLoading && !isEvaluating && !cumulativeLocked && (
               <div
                 style={{
                   ...noReportContainerStyle,
@@ -884,6 +913,7 @@ export function AnalyticsPage() {
               </div>
             )
           )}
+          {selectedAttemptId === 'CUMULATIVE_ALL' && !cumulativeLocked && attemptsHistory.length > 1 && <SpeedNegativeTrends />}
           {/* Completed Exam History Quick-Access Table/Cards (When in Cumulative Mode) */}
           {selectedAttemptId === 'CUMULATIVE_ALL' && attemptsHistory.length > 0 && (
             <section

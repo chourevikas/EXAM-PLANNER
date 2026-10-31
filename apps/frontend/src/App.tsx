@@ -20,6 +20,9 @@ const WeeklyInsightsPage = lazy(() =>
 const MonthlyReportPage = lazy(() =>
   import('./pages/MonthlyReportPage').then((m) => ({ default: m.MonthlyReportPage })),
 );
+const LeaderboardPage = lazy(() =>
+  import('./pages/LeaderboardPage').then((m) => ({ default: m.LeaderboardPage })),
+);
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
@@ -55,6 +58,9 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const BookmarksPage = lazy(() =>
   import('./pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })),
+);
+const MistakesPage = lazy(() =>
+  import('./pages/MistakesPage').then((m) => ({ default: m.MistakesPage })),
 );
 const CurrentAffairsPage = lazy(() =>
   import('./pages/CurrentAffairsPage').then((m) => ({ default: m.CurrentAffairsPage })),
@@ -216,10 +222,12 @@ export default function App() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/reports/weekly" element={<WeeklyInsightsPage />} />
             <Route path="/reports/monthly" element={<MonthlyReportPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/pyq" element={<PYQSelectionPage />} />
             <Route path="/mocks" element={<MockSelectionPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/bookmarks" element={<BookmarksPage />} />
+            <Route path="/mistakes" element={<MistakesPage />} />
             <Route path="/billing" element={<PricingPage />} />
           </Route>
           <Route

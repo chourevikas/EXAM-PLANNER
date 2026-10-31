@@ -41,6 +41,8 @@ export interface AdminQuestionPublicationData {
   hierarchy?: AdminQuestionHierarchyItem[];
   options: AdminQuestionOption[];
   assets?: QuestionAsset[];
+  question_type_tag?: string | null;
+  cognitive_skill?: string | null;
   explanation?: {
     detailed_solution?: string | null;
     reverse_logic?: string | null;
@@ -197,6 +199,13 @@ export function AdminQuestionPublicationCard({
   const rawDiff = question.difficulty || 'Moderate';
   const formattedDiff = rawDiff.charAt(0).toUpperCase() + rawDiff.slice(1).toLowerCase();
 
+  // Question type resolution
+  const qType =
+    question.question_type_tag ||
+    question.cognitive_skill ||
+    (question as any).metadata?.cognitive_skill ||
+    null;
+
   // Find correct option
   const correctOption = question.options.find((opt) => opt.is_correct);
   const incorrectOptions = question.options.filter((opt) => !opt.is_correct);
@@ -257,6 +266,12 @@ export function AdminQuestionPublicationCard({
         <span style={{ color: '#854D0E' }}>
           [Difficulty: {formattedDiff}]
         </span>
+
+        {qType && (
+          <span style={{ color: '#1D4ED8' }}>
+            [Type: {qType}]
+          </span>
+        )}
       </div>
 
       {/* 2. PASSAGE CONTEXT (If present) */}

@@ -161,6 +161,18 @@ class Settings(BaseSettings):
     )
     DISCORD_ALERT_WEBHOOK_URL: Optional[str] = Field(default=None)
 
+    # Error tracking (Sentry). Empty DSN = off.
+    SENTRY_DSN: Optional[str] = Field(default=None)
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(
+        default=0.0, description="Share of requests sent as performance traces (0 = errors only)"
+    )
+    SENTRY_ENABLE_LOGS: bool = Field(
+        default=False, description="Also send the app's log lines to Sentry Logs (billed by volume)"
+    )
+    SENTRY_LOGS_LEVEL: str = Field(
+        default="INFO", description="Lowest level sent to Sentry Logs: DEBUG, INFO, WARNING or ERROR"
+    )
+
     # LLM Settings & Provider Credentials
     LLM_PROVIDER: str = Field(default="vertexai")  # vertexai, openai, bedrock
     GCP_PROJECT_ID: Optional[str] = Field(default=None)
@@ -173,8 +185,20 @@ class Settings(BaseSettings):
         default=95.5,
         description="INR billed per USD of list price; 95.5 matches the Sept 2026 GCP invoice (taxes included)",
     )
+    LLM_DAILY_BUDGET_INR: float = Field(
+        default=0.0,
+        description="Daily LLM spend (IST day) after which report insights use the rule-based text; 0 = no limit",
+    )
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(
         default="gcp-service-account.json"
+    )
+    ENABLE_TRANSLATION_PIPELINE: bool = Field(
+        default=True,
+        description="Master switch for Translation pipeline and background translation workers. Defaults to True with open_source engine.",
+    )
+    TRANSLATION_ENGINE: str = Field(
+        default="open_source",
+        description="Translation engine to use: 'open_source' (local offline MarianMT models) or 'google' (Google Cloud Translation API).",
     )
     OPENAI_API_KEY: Optional[str] = Field(default=None)
     OPENAI_MODEL_NAME: str = Field(default="gpt-4.1")

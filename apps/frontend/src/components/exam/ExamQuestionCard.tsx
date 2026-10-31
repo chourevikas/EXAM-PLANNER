@@ -23,6 +23,7 @@ import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSo
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { ReportQuestionModal } from './ReportQuestionModal';
 import { getLanguageOption } from '../../constants/languages';
+import { useExamText, ExamTextKey } from '../../i18n/examText';
 
 interface ExamQuestionCardProps {
   question:
@@ -105,38 +106,65 @@ function cleanQuestionTextBody(rawText: string): string {
   return text.trim();
 }
 
+/** The question's own text in a non-English language ('' when it has none); no English fallback. */
+function findTranslatedQuestionText(q: any, cleanLang: string): string {
+  let raw = '';
+  const langOpt = getLanguageOption(cleanLang);
+  const enumName = langOpt?.enumName || cleanLang.toUpperCase();
+  const upper = cleanLang.toUpperCase();
+
+  if (cleanLang === 'hi' || cleanLang === 'hindi') {
+    if (q.textHindi) raw = q.textHindi;
+    else if (q.text_hindi) raw = q.text_hindi;
+    else if (q.question_text_hindi) raw = q.question_text_hindi;
+    else if (q.question_text_hi) raw = q.question_text_hi;
+  } else if (cleanLang === 'mr' || cleanLang === 'marathi') {
+    if (q.textMarathi) raw = q.textMarathi;
+    else if (q.text_marathi) raw = q.text_marathi;
+  }
+
+  if (!raw && q.translations) {
+    const t =
+      q.translations[enumName] ||
+      q.translations[cleanLang] ||
+      q.translations[upper] ||
+      q.translations[langOpt?.name?.toLowerCase()] ||
+      (cleanLang === 'hi' ? q.translations.HINDI : null) ||
+      (cleanLang === 'mr' ? q.translations.MARATHI : null);
+    if (typeof t === 'string') raw = t;
+    else if (t?.text) raw = t.text;
+    else if (t?.question_text) raw = t.question_text;
+  }
+  return raw;
+}
+
+/** The English text from the question's translations ('' when not included). */
+function englishTranslationText(q: any): string {
+  const eng = q?.translations?.ENGLISH || q?.translations?.en;
+  if (typeof eng === 'string') return eng;
+  return eng?.text || eng?.question_text || '';
+}
+
+/**
+ * True when a Hindi/Marathi session has to show this question in English: there is no text in the
+ * language, or the stored "translation" is just a copy of the English.
+ */
+export function isQuestionShownInEnglish(q: any, lang: string): boolean {
+  const cleanLang = (lang || 'en').trim().toLowerCase();
+  if (!q || cleanLang === 'en' || cleanLang === 'english') return false;
+  const translated = findTranslatedQuestionText(q, cleanLang).trim();
+  if (!translated) return true;
+  const english = englishTranslationText(q).trim();
+  return !!english && translated === english;
+}
+
 export function getQuestionText(q: any, lang: string): string {
   if (!q) return '';
   const cleanLang = (lang || 'en').trim().toLowerCase();
   let raw = '';
 
   if (cleanLang !== 'en' && cleanLang !== 'english') {
-    const langOpt = getLanguageOption(cleanLang);
-    const enumName = langOpt?.enumName || cleanLang.toUpperCase();
-    const upper = cleanLang.toUpperCase();
-
-    if (cleanLang === 'hi' || cleanLang === 'hindi') {
-      if (q.textHindi) raw = q.textHindi;
-      else if (q.text_hindi) raw = q.text_hindi;
-      else if (q.question_text_hindi) raw = q.question_text_hindi;
-      else if (q.question_text_hi) raw = q.question_text_hi;
-    } else if (cleanLang === 'mr' || cleanLang === 'marathi') {
-      if (q.textMarathi) raw = q.textMarathi;
-      else if (q.text_marathi) raw = q.text_marathi;
-    }
-
-    if (!raw && q.translations) {
-      const t =
-        q.translations[enumName] ||
-        q.translations[cleanLang] ||
-        q.translations[upper] ||
-        q.translations[langOpt?.name?.toLowerCase()] ||
-        (cleanLang === 'hi' ? q.translations.HINDI : null) ||
-        (cleanLang === 'mr' ? q.translations.MARATHI : null);
-      if (typeof t === 'string') raw = t;
-      else if (t?.text) raw = t.text;
-      else if (t?.question_text) raw = t.question_text;
-    }
+    raw = findTranslatedQuestionText(q, cleanLang);
   }
 
   if (!raw) {
@@ -312,6 +340,7 @@ export function ExamQuestionCard({
   confidence = null,
   onConfidenceChange,
 }: ExamQuestionCardProps) {
+  const { t } = useExamText();
   const [showDetailedSolution, setShowDetailedSolution] = useState<boolean>(false);
   const [showReport, setShowReport] = useState<boolean>(false);
 
@@ -323,17 +352,17 @@ export function ExamQuestionCard({
     }
   }, [questionIndex, revealResult]);
 
-  // Extract Question Tags & Metadata
+  // Extract Question Tags & Metadata. No default exam: a question without one shows no exam tag rather than a wrong one.
   const examName =
     (question as any).exam_name ||
     (question as any).examName ||
     (question as any).exam_type ||
-    'UPSC CSE';
+    '';
 
   const sourceYear =
     (question as any).source_year || (question as any).exam_year || (question as any).year || '';
 
-  const examYearDisplay = sourceYear ? `${examName} ${sourceYear}` : examName;
+  const examYearDisplay = [examName, sourceYear].filter(Boolean).join(' ');
 
   const subjectLabel = (question as any).subject_name || (question as any).subject || '';
 
@@ -378,6 +407,8 @@ export function ExamQuestionCard({
 
   const passageContent = getPassageText(question, language);
   const questionContent = getQuestionText(question, language);
+  // In a Hindi/Marathi session, a question with no translation yet is shown in English with a note
+  const shownInEnglish = !!questionContent.trim() && isQuestionShownInEnglish(question, language);
 
   const options = (question.options || []).map((opt: any, optIdx: number) => {
     const rawLabel = opt.option_label || opt.label;
@@ -584,8 +615,9 @@ export function ExamQuestionCard({
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  QUESTION {(question as any)?.question_number || questionIndex + 1}{' '}
-                  {totalQuestions ? `OF ${totalQuestions}` : ''}
+                  {totalQuestions
+                    ? t('questionNumberOf', { n: (question as any)?.question_number || questionIndex + 1, total: totalQuestions })
+                    : t('questionNumber', { n: (question as any)?.question_number || questionIndex + 1 })}
                 </span>
 
                 {/* Difficulty Badge */}
@@ -612,7 +644,7 @@ export function ExamQuestionCard({
                       backgroundColor: diffColors.text,
                     }}
                   />
-                  {difficultyLabel}
+                  {['EASY', 'MEDIUM', 'HARD'].includes(difficultyLabel) ? t(difficultyLabel as ExamTextKey) : difficultyLabel}
                 </span>
 
                 {/* Time & Tier Badge */}
@@ -729,8 +761,8 @@ export function ExamQuestionCard({
                   <button
                     type="button"
                     onClick={() => setShowReport(true)}
-                    title="Report a problem with this question"
-                    aria-label="Report a problem with this question"
+                    title={t('reportProblem')}
+                    aria-label={t('reportProblem')}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -760,7 +792,7 @@ export function ExamQuestionCard({
                   <button
                     type="button"
                     onClick={onToggleBookmark}
-                    title={isBookmarked ? 'Remove Bookmark' : 'Bookmark Question'}
+                    title={isBookmarked ? t('removeBookmark') : t('bookmarkQuestion')}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -799,6 +831,23 @@ export function ExamQuestionCard({
               flexDirection: 'column',
             }}
           >
+            {shownInEnglish && (
+              <div
+                role="note"
+                data-testid="not-in-language"
+                style={{
+                  marginBottom: 10,
+                  padding: '6px 10px',
+                  fontSize: 12.5,
+                  color: '#92400E',
+                  backgroundColor: '#FFFBEB',
+                  border: '1px solid #FDE68A',
+                  borderRadius: 'var(--radius)',
+                }}
+              >
+                {t('notInLanguage', { language: getLanguageOption(language).name })}
+              </div>
+            )}
             {/* Question Body */}
             <div
               style={{
@@ -952,7 +1001,218 @@ export function ExamQuestionCard({
               })}
             </div>
 
-            {/* Rich Solution Markdown Card (Practice / Revision Mode) */}
+            {/* Action Buttons & Navigation (only rendered when there's something to show) */}
+            {(onPrev || onNext || mode !== 'EXAM' || onConfidenceChange) && (
+              <div
+                style={{
+                  marginTop: isMobile ? 16 : 14,
+                  paddingTop: isMobile ? 14 : 12,
+                  borderTop: '1px solid #F1F5F9',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexShrink: 0,
+                }}
+              >
+                {/* Left: Prev Button */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: isMobile ? 8 : 12,
+                    order: isMobile ? 1 : undefined,
+                  }}
+                >
+                  {/* Previous Question Button */}
+                  {onPrev && (
+                    <button
+                      type="button"
+                      onClick={onPrev}
+                      disabled={questionIndex === 0}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 5,
+                        padding: isMobile ? '0 12px' : '7px 14px',
+                        ...(isMobile && { minHeight: 44, minWidth: 44, boxSizing: 'border-box' as const }),
+                        borderRadius: 3,
+                        border: '1px solid #CBD5E1',
+                        backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
+                        color: questionIndex === 0 ? '#94A3B8' : 'var(--deep-navy)',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease',
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      }}
+                    >
+                      <ChevronLeft size={15} />
+                      {!isMobile && <span>{t('prev')}</span>}
+                    </button>
+                  )}
+
+                </div>
+
+                {/* Middle: confidence, locked once the answer is revealed */}
+                {onConfidenceChange && (
+                  /* Phones: own centred row above the navigation */
+                  <div style={isMobile ? { width: '100%', display: 'flex', justifyContent: 'center' } : { display: 'contents' }}>
+                    <ConfidenceSelector
+                      value={confidence}
+                      onChange={onConfidenceChange}
+                      disabled={!selectedOptionId || Boolean(revealResult)}
+                      compact={isMobile}
+                    />
+                  </div>
+                )}
+
+                {/* Right: Single Action Button (fills the rest of the row on phones) */}
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    justifyContent: 'flex-end',
+                    ...(isMobile && { order: 2, flex: 1, minWidth: 0 }),
+                  }}
+                >
+                  {mode !== 'EXAM' && (
+                    <>
+                      {!revealResult ? (
+                        /* Single Button: Submit & Show Solution */
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!selectedOptionId) return;
+                            setShowDetailedSolution(true);
+                            if (onRevealAnswer) onRevealAnswer();
+                            if (onShowSolution) onShowSolution();
+                          }}
+                          disabled={!selectedOptionId || isRevealing}
+                          style={{
+                            padding: isMobile ? '0 12px' : '8px 18px',
+                            // Submit and the solution toggle share one width so the row stays put when it swaps
+                            ...(isMobile
+                              ? { minHeight: 44, flex: 1, justifyContent: 'center', boxSizing: 'border-box' as const, whiteSpace: 'nowrap' as const }
+                              : { minWidth: 212, justifyContent: 'center', boxSizing: 'border-box' as const }),
+                            borderRadius: 3,
+                            border: !selectedOptionId ? '1px solid #CBD5E1' : '1px solid var(--primary-red)',
+                            backgroundColor: !selectedOptionId ? '#E2E8F0' : 'var(--primary-red)',
+                            color: !selectedOptionId ? '#94A3B8' : '#FFFFFF',
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            cursor: !selectedOptionId ? 'not-allowed' : 'pointer',
+                            boxShadow: !selectedOptionId
+                              ? 'none'
+                              : '0 2px 8px rgba(var(--primary-red-rgb), 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            transition: 'all 0.15s ease',
+                            fontFamily: "'Plus Jakarta Sans', sans-serif",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (selectedOptionId) e.currentTarget.style.backgroundColor = '#172554';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (selectedOptionId) e.currentTarget.style.backgroundColor = 'var(--primary-red)';
+                          }}
+                        >
+                          {isRevealing ? (
+                            <>
+                              <Loader2 size={14} className="spin-loader" />
+                              <span>{t('loadingSolution')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 size={14} />
+                              <span>{t('submitAndShowSolution')}</span>
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        /* Toggle Solution Button */
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !showDetailedSolution;
+                            setShowDetailedSolution(next);
+                            if (next && onShowSolution) {
+                              onShowSolution();
+                            }
+                          }}
+                          style={{
+                            padding: isMobile ? '0 12px' : '8px 18px',
+                            // Submit and the solution toggle share one width so the row stays put when it swaps
+                            ...(isMobile
+                              ? { minHeight: 44, flex: 1, justifyContent: 'center', boxSizing: 'border-box' as const, whiteSpace: 'nowrap' as const }
+                              : { minWidth: 212, justifyContent: 'center', boxSizing: 'border-box' as const }),
+                            borderRadius: 3,
+                            border: showDetailedSolution
+                              ? '1px solid var(--primary-red)'
+                              : '1px solid #CBD5E1',
+                            backgroundColor: showDetailedSolution ? '#EFF6FF' : '#FFFFFF',
+                            color: showDetailedSolution ? 'var(--primary-red)' : 'var(--deep-navy)',
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            transition: 'all 0.15s ease',
+                            fontFamily: "'Plus Jakarta Sans', sans-serif",
+                          }}
+                        >
+                          <Lightbulb
+                            size={14}
+                            color={showDetailedSolution ? 'var(--primary-red)' : '#64748B'}
+                          />
+                          <span>{showDetailedSolution ? t('hideSolution') : t('showSolution')}</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {/* Next Question Button: always last, so it never moves when Submit becomes the solution toggle */}
+                  {onNext && (
+                    <button
+                      type="button"
+                      onClick={onNext}
+                      disabled={questionIndex >= totalQuestions - 1}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 5,
+                        padding: isMobile ? '0 14px' : '7px 14px',
+                        ...(isMobile && { minHeight: 44, boxSizing: 'border-box' as const }),
+                        borderRadius: 3,
+                        border: '1px solid #CBD5E1',
+                        backgroundColor:
+                          questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
+                        color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : 'var(--deep-navy)',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease',
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      }}
+                    >
+                      <span>{t('next')}</span>
+                      <ChevronRight size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Rich Solution Markdown Card (Practice / Revision Mode): below the actions, so revealing it
+                never pushes Next / Hide Solution down the page */}
             {mode !== 'EXAM' && (revealResult || solutionData) && showDetailedSolution && (
               <QuestionSolutionMarkdownCard
                 isLoading={isRevealing}
@@ -1032,209 +1292,6 @@ export function ExamQuestionCard({
                   }
                 }
               />
-            )}
-
-            {/* Action Buttons & Navigation (only rendered when there's something to show) */}
-            {(onPrev || onNext || mode !== 'EXAM' || onConfidenceChange) && (
-              <div
-                style={{
-                  marginTop: isMobile ? 16 : 14,
-                  paddingTop: isMobile ? 14 : 12,
-                  borderTop: '1px solid #F1F5F9',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: 10,
-                  flexShrink: 0,
-                }}
-              >
-                {/* Left: Prev | Next Buttons */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: isMobile ? 8 : 12,
-                    order: isMobile ? 1 : undefined,
-                  }}
-                >
-                  {/* Previous Question Button */}
-                  {onPrev && (
-                    <button
-                      type="button"
-                      onClick={onPrev}
-                      disabled={questionIndex === 0}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 5,
-                        padding: isMobile ? '0 12px' : '7px 14px',
-                        ...(isMobile && { minHeight: 44, minWidth: 44, boxSizing: 'border-box' as const }),
-                        borderRadius: 3,
-                        border: '1px solid #CBD5E1',
-                        backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
-                        color: questionIndex === 0 ? '#94A3B8' : 'var(--deep-navy)',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.15s ease',
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      }}
-                    >
-                      <ChevronLeft size={15} />
-                      {!isMobile && <span>Prev</span>}
-                    </button>
-                  )}
-
-                  {/* Next Question Button */}
-                  {onNext && (
-                    <button
-                      type="button"
-                      onClick={onNext}
-                      disabled={questionIndex >= totalQuestions - 1}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 5,
-                        padding: isMobile ? '0 14px' : '7px 14px',
-                        ...(isMobile && { minHeight: 44, boxSizing: 'border-box' as const }),
-                        borderRadius: 3,
-                        border: '1px solid #CBD5E1',
-                        backgroundColor:
-                          questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
-                        color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : 'var(--deep-navy)',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.15s ease',
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      }}
-                    >
-                      <span>Next</span>
-                      <ChevronRight size={15} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Middle: confidence, locked once the answer is revealed */}
-                {onConfidenceChange && (
-                  /* Phones: own centred row above the navigation */
-                  <div style={isMobile ? { width: '100%', display: 'flex', justifyContent: 'center' } : { display: 'contents' }}>
-                    <ConfidenceSelector
-                      value={confidence}
-                      onChange={onConfidenceChange}
-                      disabled={!selectedOptionId || Boolean(revealResult)}
-                      compact={isMobile}
-                    />
-                  </div>
-                )}
-
-                {/* Right: Single Action Button (fills the rest of the row on phones) */}
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 10,
-                    justifyContent: 'flex-end',
-                    ...(isMobile && { order: 2, flex: 1, minWidth: 0 }),
-                  }}
-                >
-                  {mode !== 'EXAM' && (
-                    <>
-                      {!revealResult ? (
-                        /* Single Button: Submit & Show Solution */
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!selectedOptionId) return;
-                            setShowDetailedSolution(true);
-                            if (onRevealAnswer) onRevealAnswer();
-                            if (onShowSolution) onShowSolution();
-                          }}
-                          disabled={!selectedOptionId || isRevealing}
-                          style={{
-                            padding: isMobile ? '0 12px' : '8px 20px',
-                            ...(isMobile && { minHeight: 44, flex: 1, justifyContent: 'center', boxSizing: 'border-box' as const, whiteSpace: 'nowrap' as const }),
-                            borderRadius: 3,
-                            border: !selectedOptionId ? '1px solid #CBD5E1' : '1px solid var(--primary-red)',
-                            backgroundColor: !selectedOptionId ? '#E2E8F0' : 'var(--primary-red)',
-                            color: !selectedOptionId ? '#94A3B8' : '#FFFFFF',
-                            fontSize: 12.5,
-                            fontWeight: 700,
-                            cursor: !selectedOptionId ? 'not-allowed' : 'pointer',
-                            boxShadow: !selectedOptionId
-                              ? 'none'
-                              : '0 2px 8px rgba(var(--primary-red-rgb), 0.25)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            transition: 'all 0.15s ease',
-                            fontFamily: "'Plus Jakarta Sans', sans-serif",
-                          }}
-                          onMouseEnter={(e) => {
-                            if (selectedOptionId) e.currentTarget.style.backgroundColor = '#172554';
-                          }}
-                          onMouseLeave={(e) => {
-                            if (selectedOptionId) e.currentTarget.style.backgroundColor = 'var(--primary-red)';
-                          }}
-                        >
-                          {isRevealing ? (
-                            <>
-                              <Loader2 size={14} className="spin-loader" />
-                              <span>Loading solution...</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 size={14} />
-                              <span>Submit & Show Solution</span>
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        /* Toggle Solution Button */
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = !showDetailedSolution;
-                            setShowDetailedSolution(next);
-                            if (next && onShowSolution) {
-                              onShowSolution();
-                            }
-                          }}
-                          style={{
-                            padding: isMobile ? '0 12px' : '8px 18px',
-                            ...(isMobile && { minHeight: 44, flex: 1, justifyContent: 'center', boxSizing: 'border-box' as const, whiteSpace: 'nowrap' as const }),
-                            borderRadius: 3,
-                            border: showDetailedSolution
-                              ? '1px solid var(--primary-red)'
-                              : '1px solid #CBD5E1',
-                            backgroundColor: showDetailedSolution ? '#EFF6FF' : '#FFFFFF',
-                            color: showDetailedSolution ? 'var(--primary-red)' : 'var(--deep-navy)',
-                            fontSize: 12.5,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            transition: 'all 0.15s ease',
-                            fontFamily: "'Plus Jakarta Sans', sans-serif",
-                          }}
-                        >
-                          <Lightbulb
-                            size={14}
-                            color={showDetailedSolution ? 'var(--primary-red)' : '#64748B'}
-                          />
-                          <span>{showDetailedSolution ? 'Hide Solution' : 'Show Solution'}</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
             )}
           </div>
         </div>

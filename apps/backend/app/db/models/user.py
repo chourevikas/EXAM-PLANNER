@@ -195,9 +195,25 @@ class StudentProfile(SQLModel, table=True):
     target_year: Optional[str] = Field(default=None, max_length=10)
     optional_subject: Optional[str] = Field(default=None, max_length=150)
     weekly_hours: Optional[str] = Field(default=None, max_length=10)
-    # Set when the student finishes the first-login onboarding; the primary target
-    # (exam / year / optional subject) is locked from then on.
+    # Set when the student finishes the first-login onboarding; the optional subject is locked from then on.
     onboarding_completed_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
+    # Leaderboards: state for the state ranking, a unique public handle, and which name to show
+    state: Optional[str] = Field(default=None, max_length=64)
+    username: Optional[str] = Field(default=None, max_length=20, unique=True, index=True)
+    leaderboard_display: str = Field(default="USERNAME", max_length=10)  # USERNAME | NAME
+    # Weekly summary email, scheduled by the student (day 0 = Monday, hour 0-23 in their timezone)
+    weekly_email_enabled: bool = Field(default=False)
+    weekly_email_day: int = Field(default=6)
+    weekly_email_hour: int = Field(default=18)
+    weekly_email_last_sent_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
+    # Reminder preferences (in-app bell unless noted); all on by default, set on the Notifications tab
+    notify_revision: bool = Field(default=True)  # 7 AM IST: questions due for revision
+    notify_pending_tasks: bool = Field(default=True)  # daily: study-plan tasks still open
+    notify_task_email: bool = Field(default=True)  # the daily pending-task email digest
+    notify_weak_topic: bool = Field(default=True)  # Monday: the weakest subtopic to practise
+    notify_current_affairs: bool = Field(default=True)  # evening: new current affairs published today
+    notify_full_paper: bool = Field(default=True)  # weekly: a full PYQ paper not yet attempted
+    notify_full_paper_day: int = Field(default=6)  # 0 = Monday ... 6 = Sunday
     # Self-rated proficiency per subject, 1 (weak) to 5 (strong): {"History": 2, ...}
     subject_proficiency: Optional[dict] = Field(default=None, sa_column=Column(PortableJSON))
     created_at: datetime = Field(

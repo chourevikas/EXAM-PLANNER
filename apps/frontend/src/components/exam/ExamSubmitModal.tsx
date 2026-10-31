@@ -1,5 +1,6 @@
 import React from 'react';
 import { Award, Loader2 } from 'lucide-react';
+import { useExamText } from '../../i18n/examText';
 
 interface ExamSubmitModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export function ExamSubmitModal({
   onConfirmSubmit,
   onConfirm,
 }: ExamSubmitModalProps) {
+  const { t } = useExamText();
   const isDark = false;
   const ans = answeredCount ?? summary?.answered_count ?? 0;
   const mrk = markedCount ?? summary?.marked_for_review_count ?? 0;
@@ -92,9 +94,9 @@ export function ExamSubmitModal({
           <Award size={30} />
         </div>
 
-        <h3 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px 0' }}>Submit Test Confirmation</h3>
+        <h3 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px 0' }}>{t('submitConfirmTitle')}</h3>
         <p style={{ fontSize: 14, color: isDark ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-          Are you sure you want to finish and submit your exam?
+          {t('submitConfirmBody')}
         </p>
 
         <div
@@ -111,17 +113,17 @@ export function ExamSubmitModal({
         >
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#3A8B53' }}>{ans}</div>
-            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>Answered</div>
+            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>{t('answered')}</div>
           </div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#F2B623' }}>{mrk}</div>
-            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>Review</div>
+            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>{t('forReview')}</div>
           </div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: isDark ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)' }}>
               {unatt}
             </div>
-            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>Left</div>
+            <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>{t('left')}</div>
           </div>
         </div>
 
@@ -160,7 +162,7 @@ export function ExamSubmitModal({
               opacity: isSubmitting ? 0.5 : 1,
             }}
           >
-            Resume Test
+            {t('resumeTest')}
           </button>
           <button
             onClick={handleConfirm}
@@ -185,10 +187,10 @@ export function ExamSubmitModal({
             {isSubmitting ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                <span>Submitting...</span>
+                <span>{t('submitting')}</span>
               </>
             ) : (
-              <span>Confirm Submit</span>
+              <span>{t('confirmSubmit')}</span>
             )}
           </button>
         </div>

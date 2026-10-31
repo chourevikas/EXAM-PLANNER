@@ -16,6 +16,7 @@ import {
   BookmarkCheck,
 } from 'lucide-react';
 import { formatEnum } from '../../utils/formatEnum';
+import { useExamText, ExamTextKey } from '../../i18n/examText';
 
 export interface DistractorItem {
   option_id?: number | string;
@@ -35,6 +36,7 @@ export interface QuestionSolutionData {
   difficulty?: string;
   blooms_level?: string;
   cognitive_skill?: string;
+  question_type_tag?: string;
   primary_concept_tag?: string;
   subject?: string;
   topic?: string;
@@ -84,22 +86,100 @@ interface QuestionSolutionMarkdownCardProps {
   }>;
 }
 
-function extractOptionAnalysisFromText(text: string, label: string): string | null {
-  if (!text) return null;
-  const cleanLabel = label.replace(/[\(\)\.\s]/g, '').toUpperCase();
-  const patterns = [
-    new RegExp(`(?:Option\\s*\\(?${cleanLabel}\\)?|\\(?${cleanLabel}\\)|\\*\\*Option\\s*\\(?${cleanLabel}\\)?\\*\\*)\\s*[:\\-\\—–]\\s*([^\\n]+(?:\\n(?!\\s*(?:Option\\s*\\(?[A-D]\\)?|\\(?[A-D]\\)|\\*\\*Option|Statement\\s*\\d|\\d+\\.))[^\\n]+)*)`, 'i'),
-    new RegExp(`(?:Option\\s*\\(?${cleanLabel}\\)?|\\(?${cleanLabel}\\))\\s+(is\\s+[^\\n]+(?:\\n(?!\\s*(?:Option\\s*\\(?[A-D]\\)?|\\(?[A-D]\\)))[^\\n]+)*)`, 'i'),
-    new RegExp(`(?:Statement|Pair)\\s*${cleanLabel === 'A' ? '1' : cleanLabel === 'B' ? '2' : cleanLabel === 'C' ? '3' : '4'}\\s*[:\\-\\—–]\\s*([^\\n]+(?:\\n(?!\\s*(?:Statement|Pair|Option|\\(?[A-D]\\)))[^\\n]+)*)`, 'i'),
-  ];
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-  for (const regex of patterns) {
-    const match = text.match(regex);
+function extractOptionAnalysisFromText(text: string, label: string): string | null {
+  if (!text || !label) return null;
+  try {
+    const cleanLabel = label.replace(/[\(\)\.\s]/g, '').toUpperCase();
+    const labelMap: Record<string, string> = {
+      A: '(?:A|ए|अ)',
+      B: '(?:B|बी|ब)',
+      C: '(?:C|सी|स)',
+      D: '(?:D|डी|द)',
+    };
+    const lblRe = labelMap[cleanLabel] || escapeRegExp(cleanLabel);
+    const allRe = '(?:[A-D]|ए|बी|सी|डी|अ|ब|स|द)';
+
+    // 1. Look for explicit Option (X) block, stopping before any next Option (Y) or end of string
+    const optRegex = new RegExp(
+      `(?:(?:^|\\n|\\s|\\.|—|–|-)(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?|\\(${lblRe}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*)([\\s\\S]*?)(?=(?:(?:^|\\n|\\s{2,}|\\.\\s+|—\\s*|–\\s*|;\\s*)(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${allRe}\\)?|\\(${allRe}\\)\\s*[:\\-\\—–]|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${allRe}\\)?\\*\\*))|$)`,
+      'i'
+    );
+    const match = text.match(optRegex);
     if (match && match[1] && match[1].trim().length > 10) {
-      return match[1].trim();
+      let val = match[1].trim();
+      val = val.replace(new RegExp(`^(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?|\\(?${lblRe}\\)|\\*\\*(?:Option|विकल्प|पर्याय)\\s*\\(?${lblRe}\\)?\\*\\*)\\s*[:\\-\\—–]?\\s*`, 'i'), '').trim();
+      return val;
     }
+
+    // 2. Statement or Pair 1/2/3/4
+    const numLabel = cleanLabel === 'A' ? '1' : cleanLabel === 'B' ? '2' : cleanLabel === 'C' ? '3' : '4';
+    const stmtRegex = new RegExp(
+      `(?:Statement|Pair)\\s*${numLabel}\\s*[:\\-\\—–]\\s*([\\s\\S]*?)(?=(?:(?:^|\\n|\\s{2,}|\\.\\s*)(?:Statement|Pair|Option|\\(?[A-D]\\))|$))`,
+      'i'
+    );
+    const stmtMatch = text.match(stmtRegex);
+    if (stmtMatch && stmtMatch[1] && stmtMatch[1].trim().length > 10) {
+      return stmtMatch[1].trim();
+    }
+
+    return null;
+  } catch (err) {
+    console.warn('extractOptionAnalysisFromText failed:', err);
+    return null;
   }
-  return null;
+}
+
+/**
+ * Cleans an option's individual analysis/summary text so it doesn't leak or duplicate
+ * other options' descriptions (e.g. Reverse Logic Box or subsequent Option B/C/D breakdowns).
+ */
+export function cleanOptionAnalysisText(text: string, isCorrect: boolean, currentLabel?: string): string {
+  if (!text) return '';
+  try {
+    let cleaned = text.trim();
+
+    // 1. For the correct option: cut off at Reverse Logic Box header or "Why the other options are wrong"
+    // so it does NOT duplicate the other options' reasoning. (Distractors keep their tempting/true text).
+    if (isCorrect) {
+      const rlMatch = cleaned.search(/(?:[◆■•·*#-]*\s*(?:Reverse\s+Logic(?:\s+Box)?|Why\s+(?:the\s+)?other\s+options\s+are\s+wrong|Why\s+other\s+options\s+are\s+incorrect|Incorrect\s+options?|Other\s+options?|Distractor\s+analysis|रिवर्स\s+लॉजिक|रिव्हर्स\s+लॉजिक)|\b(?:Option|विकल्प|पर्याय)\s*\(?(?:[B-D]|बी|सी|डी|ब|स|द)\)?\s*[:\-\—–])/i);
+      if (rlMatch !== -1) {
+        cleaned = cleaned.slice(0, rlMatch).trim();
+      }
+    }
+
+    // 2. Cut off before any subsequent/other option breakdowns (e.g. "Option (C):" when inside Option B)
+    const curr = (currentLabel || '').replace(/[\(\)\.\s]/g, '').toUpperCase();
+    const otherOptPattern = /(?:^|\n|\s{2,}|\.\s+|;\s*|—\s*|–\s*)(?:(?:Option|विकल्प|पर्याय)\s*\(?([A-D]|ए|बी|सी|डी|अ|ब|स|द)\)?|\(([A-D]|ए|बी|सी|डी|अ|ब|स|द)\))\s*[:\-\—–]/gi;
+    let match: RegExpExecArray | null;
+    while ((match = otherOptPattern.exec(cleaned)) !== null) {
+      const matchedLetter = (match[1] || match[2] || '').toUpperCase();
+      if (matchedLetter && matchedLetter !== curr) {
+        if (match.index > 10) {
+          cleaned = cleaned.slice(0, match.index).trim();
+          break;
+        }
+      }
+    }
+
+    // 3. Remove leading Option (X): or (X) prefix, or "Option (X) is correct." prefix
+    if (curr) {
+      const escapedCurr = escapeRegExp(curr);
+      cleaned = cleaned.replace(new RegExp(`^(?:\\*\\*)?(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${escapedCurr}\\)?|\\(?${escapedCurr}\\))(?:\\s+is\\s+correct\\.?)?(?:\\*\\*)?\\s*[:\\-\\—–]?\\s*`, 'i'), '').trim();
+      cleaned = cleaned.replace(/^(?:is\\s+correct\\.?|सही\\s+उत्तर\\s+है\\.?)(?:\\*\\*)?\\s*/i, '').trim();
+    }
+
+    // 4. Remove leading bullets, icons, dashes
+    cleaned = cleaned.replace(/^[\s✓✔✗✘×•·*\-–—:]+/, '').trim();
+
+    return cleaned;
+  } catch (err) {
+    console.warn('cleanOptionAnalysisText error:', err);
+    return text;
+  }
 }
 
 // A block that markdown must keep separate: heading, list item, table, quote, code fence or rule.
@@ -141,6 +221,7 @@ export function QuestionSolutionMarkdownCard({
   isLoading = false,
   options = [],
 }: QuestionSolutionMarkdownCardProps) {
+  const { t } = useExamText();
   if (isLoading) {
     return (
       <div
@@ -159,7 +240,7 @@ export function QuestionSolutionMarkdownCard({
         }}
       >
         <Loader2 size={18} className="animate-spin text-blue-600" />
-        <span style={{ fontSize: 14, fontWeight: 600 }}>Loading Comprehensive Solution & Distractor Analysis...</span>
+        <span style={{ fontSize: 14, fontWeight: 600 }}>{t('loadingFullSolution')}</span>
       </div>
     );
   }
@@ -168,11 +249,51 @@ export function QuestionSolutionMarkdownCard({
   const difficulty = solution.difficulty || 'MEDIUM';
 
   const explObj = typeof solution.explanation === 'object' && solution.explanation !== null ? solution.explanation : null;
-  const detailedMarkdown = reflowBrokenParagraphs(
+  const rawFullExplanation =
     explObj?.detailed_solution ||
     explObj?.detailed_text ||
     explObj?.text ||
-    (typeof solution.explanation === 'string' ? solution.explanation : 'Detailed explanation is available.'));
+    (typeof solution.explanation === 'string' ? solution.explanation : '');
+
+  // Extract reverseLogic source text: either explicit reverse_logic field, or the Reverse Logic Box inside rawFullExplanation
+  const explicitReverseLogic = (explObj?.reverse_logic || '').trim();
+  const rlBoxMatch = rawFullExplanation.match(/(?:[◆■•·*#-]*\s*(?:Reverse\s+Logic(?:\s+Box)?|Why\s+(?:the\s+)?other\s+options\s+are\s+wrong)[^\n]*)([\s\S]*)/i);
+  const embeddedReverseLogic = rlBoxMatch ? rlBoxMatch[1].trim() : '';
+
+  // Also inspect options or distractor_scores if they contain Reverse Logic Box
+  let optsReverseLogicSource = '';
+  const allOptCandidates = [
+    ...(options || []),
+    ...((Array.isArray(solution.distractor_scores) ? solution.distractor_scores : solution.distractor_scores ? Object.values(solution.distractor_scores) : []))
+  ];
+  for (const o of allOptCandidates) {
+    const da = (o as any)?.distractor_analysis || (o as any)?.analysis || '';
+    if (da && /(?:Reverse\s+Logic|Why\s+(?:the\s+)?other\s+options|Option\s*\(?[B-D]\)?\s*[:\-\—–]|रिवर्स\s+लॉजिक|रिव्हर्स\s+लॉजिक)/i.test(da)) {
+      optsReverseLogicSource = da;
+      break;
+    }
+  }
+
+  const fullReverseLogicSource = explicitReverseLogic || embeddedReverseLogic || optsReverseLogicSource;
+
+  // detailedMarkdown for Section 1 (Detailed Explanation & Reference):
+  // Strip out the Reverse Logic Box so Section 1 contains ONLY the core explanation/reference
+  let rawDetailed = rawFullExplanation;
+  const rlIdx = rawDetailed.search(/(?:[◆■•·*#-]*\s*(?:Reverse\s+Logic(?:\s+Box)?|Why\s+(?:the\s+)?other\s+options\s+are\s+wrong))/i);
+  if (rlIdx !== -1) {
+    rawDetailed = rawDetailed.slice(0, rlIdx).trim();
+  }
+
+  const detailedMarkdown = reflowBrokenParagraphs(rawDetailed);
+
+  // Determine whether the source actually had authored explanation in the PDF
+  const hasAuthoredExplanation = Boolean(
+    rawDetailed &&
+    rawDetailed.trim() &&
+    !/^Detailed explanation is available\.?$/i.test(rawDetailed.trim()) &&
+    !/evaluates core conceptual mastery/i.test(rawDetailed) &&
+    !new RegExp(`^(?:\\*\\*)?(?:(?:Option|विकल्प|पर्याय)\\s*\\(?${correctLabel}\\)?|\\(?${correctLabel}\\))(?:\\s+is\\s+correct\\.?)?(?:\\*\\*)?\\.?$`, 'i').test(rawDetailed.trim())
+  );
 
   // Extract all takeaways and points to remember safely
   const keyTakeaways: string[] = Array.isArray(explObj?.key_takeaways)
@@ -186,7 +307,7 @@ export function QuestionSolutionMarkdownCard({
   // Combined option-by-option reasoning, written by the admin as one block.
   // Falls back to the per-option distractor list below only when a question
   // hasn't been re-saved through the new Reverse Logic Box yet.
-  const reverseLogic = reflowBrokenParagraphs((explObj?.reverse_logic || '').trim());
+  const reverseLogic = reflowBrokenParagraphs(explicitReverseLogic);
 
   // Extract common traps
   const commonTraps: string[] = Array.isArray(explObj?.common_traps)
@@ -215,6 +336,18 @@ export function QuestionSolutionMarkdownCard({
     }));
   }
 
+  // Determine whether any distractor has genuine authored analysis from the source PDF
+  const hasRealDistractorAnalysis = rawDistractors.some((item) => {
+    const matchedOpt = (options || []).find((opt, oIdx) => {
+      const optId = String(opt.option_id ?? opt.id ?? '');
+      const oLbl = (opt.option_label || opt.label || String.fromCharCode(65 + oIdx)).replace(/[\(\)\.\s]/g, '').toUpperCase();
+      const itemLabel = (item.label || String.fromCharCode(65 + oIdx)).replace(/[\(\)\.\s]/g, '').toUpperCase();
+      return (item.option_id && optId && optId === String(item.option_id)) || oLbl === itemLabel;
+    });
+    const da = (item.distractor_analysis || (item as any).analysis || matchedOpt?.distractor_analysis || (matchedOpt as any)?.analysis || '').trim();
+    return !item.is_correct && !matchedOpt?.is_correct && da.length > 0 && !/^This option is incorrect/i.test(da);
+  }) || Boolean(fullReverseLogicSource && fullReverseLogicSource.trim().length > 10);
+
   // Enrich each distractor item with matching option data & extracted analysis
   const distractorsList: DistractorItem[] = rawDistractors.map((item, idx) => {
     const itemLabel = (item.label || String.fromCharCode(65 + idx)).replace(/[\(\)\.\s]/g, '').toUpperCase();
@@ -233,26 +366,44 @@ export function QuestionSolutionMarkdownCard({
 
     let analysis = item.distractor_analysis || (item as any).analysis || matchedOpt?.distractor_analysis || (matchedOpt as any)?.analysis || '';
 
-    // If analysis is still missing, try extracting from detailed markdown
-    if (!analysis && detailedMarkdown) {
-      const extracted = extractOptionAnalysisFromText(detailedMarkdown, itemLabel);
-      if (extracted) {
-        analysis = extracted;
+    // If analysis is still missing, try extracting from fullReverseLogicSource or rawFullExplanation
+    if (!analysis) {
+      if (fullReverseLogicSource) {
+        const extracted = extractOptionAnalysisFromText(fullReverseLogicSource, itemLabel);
+        if (extracted) analysis = extracted;
+      }
+      if (!analysis && rawFullExplanation) {
+        const extracted = extractOptionAnalysisFromText(rawFullExplanation, itemLabel);
+        if (extracted) analysis = extracted;
       }
     }
 
-    // Leading tick/cross marks, bullets and dashes duplicate the row's own icon and badge
-    analysis = String(analysis).replace(/^[\s✓✔✗✘×•·*\-–—:]+/, '').trim();
+    // Clean up analysis text so other options' descriptions don't leak into this option's summary
+    analysis = cleanOptionAnalysisText(analysis, isOptionCorrect, itemLabel);
 
-    // Fallback if still empty. The option text is already in the row header, so don't repeat it.
-    if (!analysis) {
-      if (isOptionCorrect) {
-        analysis = explObj?.core_concept
-          ? `This is the correct answer. ${explObj.core_concept}`
-          : 'This is the correct answer.';
-      } else {
+    // For the correct option, NEVER duplicate the Detailed Explanation & Reference text
+    // which is already displayed right above in the main explanation section.
+    const isDuplicateOfMain = isOptionCorrect && Boolean(
+      analysis && (
+        analysis.trim() === rawDetailed.trim() ||
+        analysis.trim() === detailedMarkdown.trim() ||
+        (rawDetailed.length > 25 && analysis.includes(rawDetailed.slice(0, 40))) ||
+        (analysis.length > 25 && rawDetailed.includes(analysis.slice(0, 40))) ||
+        /evaluates core conceptual mastery/i.test(analysis)
+      )
+    );
+
+    if (isOptionCorrect && (isDuplicateOfMain || !analysis)) {
+      // In Option-by-Option Analysis, the card header already clearly shows "Correct Key".
+      analysis = explObj?.core_concept && !rawDetailed.includes(explObj.core_concept)
+        ? `${t('thisIsCorrect')} ${explObj.core_concept}`
+        : (hasRealDistractorAnalysis ? t('thisIsCorrect') : '');
+    } else if (!analysis) {
+      if (hasRealDistractorAnalysis) {
         const trapHint = commonTraps.length > 0 ? ` Common trap: ${commonTraps[0]}` : '';
-        analysis = `This option is incorrect.${trapHint}`;
+        analysis = `${t('thisIsIncorrect')}${trapHint}`;
+      } else {
+        analysis = '';
       }
     }
 
@@ -263,8 +414,10 @@ export function QuestionSolutionMarkdownCard({
       is_correct: isOptionCorrect,
       distractor_analysis: analysis,
       classification: isOptionCorrect
-        ? 'Correct Key'
-        : item.classification || `Distractor (${item.closeness_score ?? 0})`,
+        ? t('correctKey')
+        : hasRealDistractorAnalysis
+        ? (item.classification && !item.classification.includes('Weak Alignment') && !item.classification.includes('(0)') ? item.classification : t('distractor'))
+        : '',
     };
   });
 
@@ -350,16 +503,16 @@ export function QuestionSolutionMarkdownCard({
                   color: isUserCorrect ? '#15803D' : isUserCorrect === false ? '#B91C1C' : 'var(--deep-navy)',
                 }}
               >
-                Option ({correctLabel}) is Correct
+                {t('optionIsCorrect', { label: correctLabel })}
               </span>
               {selectedOptionLabel && selectedOptionLabel !== correctLabel && (
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#DC2626' }}>
-                  (Your selection: Option {selectedOptionLabel})
+                  {t('yourSelection', { label: selectedOptionLabel })}
                 </span>
               )}
             </div>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              Comprehensive Solution & Distractor Evaluation
+              {t('solutionSubtitle')}
             </span>
           </div>
         </div>
@@ -381,7 +534,9 @@ export function QuestionSolutionMarkdownCard({
               }`,
             }}
           >
-            {formatEnum(difficulty)} Tier
+            {['EASY', 'MEDIUM', 'HARD'].includes(String(difficulty).toUpperCase())
+              ? t(`${String(difficulty).toUpperCase()}_TIER` as ExamTextKey)
+              : `${formatEnum(difficulty)} Tier`}
           </span>
           {solution.topic && (
             <span
@@ -400,6 +555,25 @@ export function QuestionSolutionMarkdownCard({
             >
               <Layers size={12} />
               {formatEnum(solution.topic)}
+            </span>
+          )}
+          {(solution.question_type_tag || (solution.cognitive_skill && !['conceptual reasoning', 'none', ''].includes(solution.cognitive_skill.toLowerCase()))) && (
+            <span
+              style={{
+                padding: '4px 10px',
+                borderRadius: 'var(--radius)',
+                fontSize: 11,
+                fontWeight: 600,
+                backgroundColor: '#EFF6FF',
+                color: '#1D4ED8',
+                border: '1px solid #BFDBFE',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <BrainCircuit size={12} />
+              {solution.question_type_tag || solution.cognitive_skill}
             </span>
           )}
         </div>
@@ -422,7 +596,7 @@ export function QuestionSolutionMarkdownCard({
             }}
           >
             <BookOpen size={16} style={{ color: 'var(--primary-red)' }} />
-            Detailed Explanation & Reference
+            {t('detailedExplanation')}
           </div>
           <div
             style={{
@@ -432,48 +606,39 @@ export function QuestionSolutionMarkdownCard({
               overflow: 'hidden',
             }}
           >
-            <div
-              className="prose prose-slate max-w-none text-slate-800"
-              style={{
-                fontSize: 14,
-                lineHeight: 1.7,
-                color: 'var(--deep-navy)',
-                padding: '16px 18px',
-              }}
-            >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {detailedMarkdown}
-              </ReactMarkdown>
-            </div>
-
-            {reverseLogic ? (
+            {hasAuthoredExplanation ? (
               <div
+                className="prose prose-slate max-w-none text-slate-800"
                 style={{
-                  borderTop: '1px solid #E2E8F0',
-                  padding: '4px 18px 16px',
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  color: 'var(--deep-navy)',
+                  padding: '16px 18px',
                 }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    padding: '10px 0 8px',
-                  }}
-                >
-                  <Target size={13} style={{ color: 'var(--primary-red)' }} />
-                  Option-by-Option Reasoning
-                </div>
-                <div className="prose prose-slate max-w-none text-slate-800" style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{reverseLogic}</ReactMarkdown>
-                </div>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {detailedMarkdown}
+                </ReactMarkdown>
               </div>
-            ) : distractorsList.length > 0 && (
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 13.5,
+                  color: 'var(--text-secondary)',
+                  padding: '16px 18px',
+                }}
+              >
+                <CheckCircle2 size={18} style={{ color: 'var(--status-success)', flexShrink: 0 }} />
+                <span>
+                  <strong>{t('optionIsCorrect', { label: correctLabel })}</strong> — {t('officialAnswerKeyConfirmed')}
+                </span>
+              </div>
+            )}
+
+            {distractorsList.length > 0 ? (
               <div
                 style={{
                   borderTop: '1px solid #E2E8F0',
@@ -494,7 +659,7 @@ export function QuestionSolutionMarkdownCard({
                   }}
                 >
                   <Target size={13} style={{ color: 'var(--primary-red)' }} />
-                  Option-by-Option Analysis
+                  {t('optionAnalysis')}
                 </div>
                 {distractorsList.map((item, idx) => {
                   const isOptionCorrect = item.is_correct || item.label === correctLabel;
@@ -514,7 +679,7 @@ export function QuestionSolutionMarkdownCard({
                           flexWrap: 'wrap',
                           alignItems: 'flex-start',
                           justifyContent: 'space-between',
-                          marginBottom: 6,
+                          marginBottom: item.distractor_analysis ? 6 : 0,
                           gap: '6px 10px',
                         }}
                       >
@@ -554,39 +719,62 @@ export function QuestionSolutionMarkdownCard({
                           </span>
                         </div>
 
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            lineHeight: 1.3,
-                            padding: '3px 8px',
-                            borderRadius: 'var(--radius)',
-                            backgroundColor: isOptionCorrect ? 'var(--status-success-bg)' : 'var(--bg-hover)',
-                            color: isOptionCorrect ? '#15803D' : 'var(--text-muted)',
-                            maxWidth: '100%',
-                            marginLeft: 30,
-                          }}
-                        >
-                          {isOptionCorrect
-                            ? 'Correct Key'
-                            : item.classification || `Distractor (${item.closeness_score ?? 0})`}
-                        </span>
+                        {item.classification ? (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              lineHeight: 1.3,
+                              padding: '3px 8px',
+                              borderRadius: 'var(--radius)',
+                              backgroundColor: isOptionCorrect ? 'var(--status-success-bg)' : 'var(--bg-hover)',
+                              color: isOptionCorrect ? '#15803D' : 'var(--text-muted)',
+                              maxWidth: '100%',
+                              marginLeft: 30,
+                            }}
+                          >
+                            {item.classification}
+                          </span>
+                        ) : null}
                       </div>
 
                       {item.distractor_analysis ? (
                         <p style={{ margin: '0 0 0 30px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, overflowWrap: 'anywhere' }}>
                           {item.distractor_analysis}
                         </p>
-                      ) : (
-                        <p style={{ margin: '0 0 0 30px', fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          {isOptionCorrect ? 'This is the correct answer.' : 'This option is incorrect.'}
-                        </p>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })}
               </div>
-            )}
+            ) : reverseLogic ? (
+              <div
+                style={{
+                  borderTop: '1px solid #E2E8F0',
+                  padding: '4px 18px 16px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    padding: '10px 0 8px',
+                  }}
+                >
+                  <Target size={13} style={{ color: 'var(--primary-red)' }} />
+                  {t('optionReasoning')}
+                </div>
+                <div className="prose prose-slate max-w-none text-slate-800" style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{reverseLogic}</ReactMarkdown>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -612,7 +800,7 @@ export function QuestionSolutionMarkdownCard({
               }}
             >
               <AlertTriangle size={17} style={{ color: '#F2B623' }} />
-              Common Exam Traps & Pitfalls
+              {t('commonTraps')}
             </div>
             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13.5, color: '#78350F', lineHeight: 1.6 }}>
               {commonTraps.map((trap, idx) => (
@@ -640,7 +828,7 @@ export function QuestionSolutionMarkdownCard({
       >
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
           <FileCheck2 size={14} />
-          Cognitive Skill: {solution.cognitive_skill || 'Analytical & Conceptual Reasoning'}
+          {t('cognitiveSkill')}: {solution.cognitive_skill || 'Analytical & Conceptual Reasoning'}
         </span>
       </div>
     </div>
