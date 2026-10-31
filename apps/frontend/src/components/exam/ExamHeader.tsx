@@ -22,6 +22,9 @@ interface ExamHeaderProps {
   onFilterClick?: () => void;
   onRecsClick?: () => void;
   recsCount?: number;
+  /** The profile's secondary language; with onLanguageChange the badge switches English ⇄ it. */
+  secondaryLanguage?: string | null;
+  onLanguageChange?: (language: string) => void;
 }
 
 export function ExamHeader({
@@ -42,6 +45,8 @@ export function ExamHeader({
   onFilterClick,
   onRecsClick,
   recsCount,
+  secondaryLanguage,
+  onLanguageChange,
 }: ExamHeaderProps) {
   const isAuth = !!(localStorage.getItem('access_token') && localStorage.getItem('user'));
   const rootBreadcrumb = parentBreadcrumb || (isAuth ? 'Dashboard' : 'Home');
@@ -235,30 +240,84 @@ export function ExamHeader({
           minWidth: 0,
         }}
       >
-        {/* The session's language: chosen before starting, fixed until it ends */}
-        <div
-          data-testid="exam-language"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid rgba(255, 255, 255, 0.22)',
-            borderRadius: 'var(--radius)',
-            padding: '0 8px',
-            ...controlBox,
-            color: 'var(--bg-card)',
-            flexShrink: 0,
-            fontSize: 'clamp(11px, 2vw, 12.5px)',
-            fontWeight: 600,
-            fontFamily: "'IBM Plex Sans', sans-serif",
-          }}
-          title="Language for this session. It was chosen before starting and can't be changed now."
-        >
-          {!isMobile && <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)', flexShrink: 0 }} />}
-          {/* Phones only have room for the short native name */}
-          <span>{isMobile ? getLanguageOption(language).nativeName : `${getLanguageOption(language).nativeName} (${getLanguageOption(language).name})`}</span>
-        </div>
+        {/* The session's language: English (primary), switchable to the profile's secondary language */}
+        {secondaryLanguage && secondaryLanguage !== 'en' && onLanguageChange ? (
+          <div
+            data-testid="exam-language"
+            role="radiogroup"
+            aria-label="Question language"
+            style={{
+              display: 'flex',
+              alignItems: 'stretch',
+              padding: 2,
+              gap: 2,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.22)',
+              borderRadius: 'var(--radius)',
+              ...controlBox,
+              flexShrink: 0,
+            }}
+          >
+            {['en', secondaryLanguage].map((code) => {
+              const option = getLanguageOption(code);
+              const active = language === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  data-testid={`exam-language-${code}`}
+                  onClick={() => !active && onLanguageChange(code)}
+                  title={`Show questions in ${option.name}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '0 8px',
+                    border: 'none',
+                    borderRadius: 'calc(var(--radius) - 1px)',
+                    backgroundColor: active ? 'var(--bg-card)' : 'transparent',
+                    color: active ? 'var(--deep-navy)' : 'rgba(255, 255, 255, 0.85)',
+                    fontSize: 'clamp(11px, 2vw, 12.5px)',
+                    fontWeight: 700,
+                    fontFamily: "'IBM Plex Sans', sans-serif",
+                    cursor: active ? 'default' : 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {code === 'en' && !isMobile && <Globe size={13} style={{ flexShrink: 0 }} />}
+                  {/* Phones only have room for a short label */}
+                  <span>{code === 'en' ? (isMobile ? 'EN' : option.name) : option.nativeName}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div
+            data-testid="exam-language"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.22)',
+              borderRadius: 'var(--radius)',
+              padding: '0 8px',
+              ...controlBox,
+              color: 'var(--bg-card)',
+              flexShrink: 0,
+              fontSize: 'clamp(11px, 2vw, 12.5px)',
+              fontWeight: 600,
+              fontFamily: "'IBM Plex Sans', sans-serif",
+            }}
+            title={onLanguageChange ? 'Set a secondary language in your Profile to switch languages here.' : 'Language for this session.'}
+          >
+            {!isMobile && <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)', flexShrink: 0 }} />}
+            {/* Phones only have room for the short native name */}
+            <span>{isMobile ? getLanguageOption(language).nativeName : `${getLanguageOption(language).nativeName} (${getLanguageOption(language).name})`}</span>
+          </div>
+        )}
         {isTabletOrBelow && onFilterClick && (
           <button
             type="button"

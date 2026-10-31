@@ -16,7 +16,8 @@ import { syncGuestSessionsOnAuth } from '../services/authService';
 import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, RefreshCw } from 'lucide-react';
 import { fetchDailyUsage, DailyUsage } from '../services/freePlanService';
 import { FreePlanLimitModal } from '../components/common/FreePlanLimitModal';
-import { ExamLanguagePicker } from '../components/common/ExamLanguagePicker';
+import { useFocusMode } from '../hooks/useFocusMode';
+import { getSecondaryLanguage } from '../constants/languages';
 import {
   startExamAttempt,
   getExamAttemptStatus,
@@ -77,10 +78,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const [currentQIndex, setCurrentQIndex] = useState(0); // 0-indexed for UI
   const [totalQuestions, setTotalQuestions] = useState(100);
   const [timeLeft, setTimeLeft] = useState(7200);
-  // The attempt's language: chosen before a new attempt starts (English by default), fixed until it ends
+  // The attempt's language: a new attempt opens in English (primary); the header switches it to the
+  // profile's secondary language and back at any time
   const [language, setLanguage] = useState<string>('en');
-  const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
-  const [isStartingAttempt, setIsStartingAttempt] = useState(false);
+  const secondaryLanguage = getSecondaryLanguage();
+  const [isFocusMode, toggleFocusMode] = useFocusMode();
   const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'marked' | 'unanswered'>('all');
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
@@ -379,18 +381,14 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     }
   }
 
-  const handleLanguagePicked = async (chosenLang: string) => {
-    setIsStartingAttempt(true);
+  const startNewAttempt = async () => {
     setIsLoadingSession(true);
     try {
-      await beginAttempt(chosenLang);
-      setLanguagePickerOpen(false);
+      await beginAttempt('en');
     } catch (err) {
       console.warn('Backend exam session start error, using fallback demo data:', err);
-      setLanguagePickerOpen(false);
       loadFallbackDemoData();
     } finally {
-      setIsStartingAttempt(false);
       setIsLoadingSession(false);
     }
   };
@@ -490,13 +488,13 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           }
         } else if (examId) {
           // Opening the exam resumes its in-progress attempt in that attempt's language;
-          // a new attempt (or a retake) asks for the language first
+          // a new attempt (or a retake) starts in English
           const forceNew = searchParams.get('forceNew') === 'true';
           const inProgress = forceNew ? null : await getInProgressAttempt(examId).catch(() => null);
           if (inProgress?.attempt_id) {
             await beginAttempt(inProgress.language || 'en');
           } else {
-            setLanguagePickerOpen(true);
+            await startNewAttempt();
           }
         } else {
           // Fallback demo questions if no examId/attemptId provided in route
@@ -757,6 +755,13 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     [],
   );
 
+  // Switching language mid-attempt: the current question (and the next) in the new language
+  useEffect(() => {
+    if (!activeQuestion) return;
+    ensureQuestionTranslation(activeQuestion, language);
+    if (allQuestions[currentQIndex + 1]) ensureQuestionTranslation(allQuestions[currentQIndex + 1], language);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
 
   // ─── Helper: Fetch Specific Question ───────────────────────────────────────
   const loadQuestion = async (attId: number | string, qNum: number) => {
@@ -1369,6 +1374,10 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           }
         }}
         onSubmitClick={handleOpenSubmitModal}
+        focusMode={isFocusMode}
+        onToggleFocusMode={toggleFocusMode}
+        secondaryLanguage={secondaryLanguage}
+        onLanguageChange={setLanguage}
       />
 
       {dailyUsage?.limited && (
@@ -1392,12 +1401,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         </div>
       )}
       <FreePlanLimitModal open={showLimitModal} onClose={() => setShowLimitModal(false)} limit={dailyUsage?.limit} />
-      <ExamLanguagePicker
-        open={languagePickerOpen}
-        busy={isStartingAttempt}
-        onStart={handleLanguagePicked}
-        onCancel={() => (window.history.length > 1 ? navigate(-1) : navigate('/dashboard'))}
-      />
 
       {/* In-Page Show Report Pill Banner for Practice & Guest Exams */}
       {guestScoreData && (

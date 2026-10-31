@@ -572,6 +572,9 @@ def parse_question_block(
             # Clean trailing punctuation and markdown
             why_tempting = re.sub(r"^[-–—:]\s*", "", why_tempting).strip()
             whats_true = re.sub(r"^[-–—:]\s*", "", whats_true).strip()
+            # Rejoin sentences the PDF wrapped across lines
+            why_tempting = re.sub(r"\s*\n\s*", " ", why_tempting)
+            whats_true = re.sub(r"\s*\n\s*", " ", whats_true)
 
             reverse_logic[opt_letter] = {
                 "why_tempting": why_tempting,

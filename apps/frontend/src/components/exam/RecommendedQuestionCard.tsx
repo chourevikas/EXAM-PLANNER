@@ -184,6 +184,8 @@ export function RecommendedQuestionCard({
                 {rec.subtopic_name}
               </span>
             )}
+            {/* Difficulty, time and exam always start a second row, so every card lines them up the same */}
+            <span aria-hidden style={{ flexBasis: '100%', height: 0 }} />
             {(() => {
               const d = (rec.difficulty || 'MEDIUM').toUpperCase();
               const bg = d === 'EASY' ? '#ECFDF5' : d === 'HARD' ? '#FEF2F2' : '#FFFBEB';

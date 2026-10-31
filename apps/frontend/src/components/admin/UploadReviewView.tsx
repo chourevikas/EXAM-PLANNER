@@ -357,7 +357,9 @@ function TableRowItem({
               <Loader2 size={11} className="animate-spin text-amber-600" />
               In Extraction
             </button>
-          ) : isPipelineComplete ? (
+          ) : isPipelineComplete || s1Completed ? (
+            // Once the questions are extracted they can be reviewed, even while answer-key mapping or
+            // explanations still show as running (a partial key otherwise left the row with no action)
             <button
               onClick={() => {
                 if (onNavigate) {
@@ -609,7 +611,7 @@ function MobilePipelineCard({
             <Loader2 size={12} className="animate-spin text-amber-600" />
             In Extraction
           </button>
-        ) : isPipelineComplete ? (
+        ) : isPipelineComplete || s1Completed ? (
           <button
             type="button"
             onClick={() => {

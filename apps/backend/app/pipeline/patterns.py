@@ -105,14 +105,15 @@ SOLUTION_NOTE_PATTERN = re.compile(r"(?i)^(?:answer[- ]key\s+)?note\s*:")
 # Common Mistake header and content
 # ■ Common Mistake: ... or Common Mistake: ...
 COMMON_MISTAKE_HEADER_PATTERN = re.compile(
-    r"(?i)^[#\s]*[■▪●\*–—\-]?\s*Common\s+Mistake\s*:\s*(.*)$",
+    r"(?i)^[#\s]*[■▪●◆◇♦❖•►▶➤\*–—\-]?\s*Common\s+Mistake\s*:\s*(.*)$",
     re.MULTILINE,
 )
 
 # Reverse Logic Box Header
 # ■ Reverse Logic Box — Why the other options are wrong or Reverse Logic Box Why the other options are wrong
+# (papers use various bullets before it: ■ ◆ ● • ►)
 REVERSE_LOGIC_HEADER_PATTERN = re.compile(
-    r"(?i)^[#\s]*[■▪●\*–—\-]?\s*Reverse\s+Logic\s+Box(?:\s*[-–—:]?\s*Why\s+the\s+other\s+options\s+are\s+wrong)?.*$",
+    r"(?i)^[#\s]*[■▪●◆◇♦❖•►▶➤\*–—\-]?\s*Reverse\s+Logic\s+Box(?:\s*[-–—:]?\s*Why\s+the\s+other\s+options\s+are\s+wrong)?.*$",
     re.MULTILINE,
 )
 
