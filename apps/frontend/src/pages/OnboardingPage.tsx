@@ -263,7 +263,7 @@ export function OnboardingPage() {
             {step === 1 && (
               <div>
                 <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 0, marginBottom: 16 }}>
-                  Questions and explanations will be shown in this language whenever a translation is available.
+                  Tests and practice open in English; pick another language to switch questions and explanations to it from the exam header. You can change this later in your Profile.
                 </p>
                 <div role="radiogroup" aria-label="Preferred language" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                   {SUPPORTED_LANGUAGES.map((lang) => {

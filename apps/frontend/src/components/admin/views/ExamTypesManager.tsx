@@ -126,9 +126,8 @@ export function ExamTypesManager({ onOpenSyllabus }: { onOpenSyllabus?: (examTyp
     setModalSubmitting(true);
     try {
       if (editingExamType) {
-        // The code is fixed after creation; send everything else.
-        const { type: _code, ...updatePayload } = formData;
-        await adminUpdateExamType(editingExamType.id, updatePayload);
+        // A changed code is renamed on the server, which also renames its papers' display names
+        await adminUpdateExamType(editingExamType.id, formData);
         showToast('success', `Exam type '${formData.name}' updated successfully!`);
       } else {
         await adminCreateExamType(formData);
@@ -653,8 +652,6 @@ export function ExamTypesManager({ onOpenSyllabus }: { onOpenSyllabus?: (examTyp
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value.toLowerCase().trim() })}
                     required
-                    readOnly={!!editingExamType}
-                    title={editingExamType ? 'The type code cannot be changed after creation.' : undefined}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -664,16 +661,11 @@ export function ExamTypesManager({ onOpenSyllabus }: { onOpenSyllabus?: (examTyp
                       outline: 'none',
                       fontFamily: 'monospace',
                       boxSizing: 'border-box',
-                      ...(editingExamType && {
-                        backgroundColor: 'var(--bg-secondary)',
-                        color: 'var(--text-muted)',
-                        cursor: 'not-allowed',
-                      }),
                     }}
                   />
-                  {editingExamType && (
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                      Code is fixed after creation.
+                  {editingExamType && formData.type !== editingExamType.type && (
+                    <div style={{ fontSize: 11, color: 'var(--status-warning)', marginTop: 4 }}>
+                      Renames its {editingExamType.exams_count ?? 0} paper(s) from {editingExamType.type.toUpperCase()} to {(formData.type || '').toUpperCase()}.
                     </div>
                   )}
                 </div>

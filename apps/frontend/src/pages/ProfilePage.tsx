@@ -95,8 +95,8 @@ export function ProfilePage() {
   const [phone, setPhone] = useState(user.phone || '');
   const [bio, setBio] = useState(user.bio || 'Determined UPSC CSE 2026 aspirant focused on Prelims General Studies & Answer Writing.');
 
-  // Question display language — drives which language questions/solutions are shown
-  // in across mock tests and practice sessions (same field the in-exam switcher uses).
+  // Secondary question language ('en' = none). English is always primary: tests and practice open in it
+  // and the exam header switches to this language and back.
   const [activeLanguage, setActiveLanguage] = useState<string>(
     () => localStorage.getItem('preferred_language') || user.preferred_language || 'en'
   );
@@ -689,9 +689,37 @@ export function ProfilePage() {
 
               <div>
                 <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
-                  Preferred Question Language
+                  Primary Language
+                </label>
+                <input
+                  type="text"
+                  value="English"
+                  disabled
+                  data-testid="primary-language"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius)',
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-disabled, rgba(0,0,0,0.05))',
+                    color: 'var(--text-muted)',
+                    fontSize: 14,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    cursor: 'not-allowed'
+                  }}
+                />
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+                  Every mock test and practice session opens in English.
+                </p>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                  Secondary Language
                 </label>
                 <select
+                  data-testid="secondary-language"
                   value={activeLanguage}
                   disabled={switchingLanguage}
                   onChange={(e) => handleLanguageChange(e.target.value)}
@@ -709,14 +737,15 @@ export function ProfilePage() {
                     opacity: switchingLanguage ? 0.7 : 1,
                   }}
                 >
-                  {SUPPORTED_LANGUAGES.map((lang) => (
+                  <option value="en">None (English only)</option>
+                  {SUPPORTED_LANGUAGES.filter((lang) => lang.code !== 'en').map((lang) => (
                     <option key={lang.code} value={lang.code}>
                       {lang.name} ({lang.nativeName})
                     </option>
                   ))}
                 </select>
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
-                  Controls which language questions and solutions are shown in across mock tests and practice sessions.
+                  Switch questions and solutions to this language from the exam header during a test or practice session.
                 </p>
               </div>
 

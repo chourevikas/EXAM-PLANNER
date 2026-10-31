@@ -1001,7 +1001,218 @@ export function ExamQuestionCard({
               })}
             </div>
 
-            {/* Rich Solution Markdown Card (Practice / Revision Mode) */}
+            {/* Action Buttons & Navigation (only rendered when there's something to show) */}
+            {(onPrev || onNext || mode !== 'EXAM' || onConfidenceChange) && (
+              <div
+                style={{
+                  marginTop: isMobile ? 16 : 14,
+                  paddingTop: isMobile ? 14 : 12,
+                  borderTop: '1px solid #F1F5F9',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexShrink: 0,
+                }}
+              >
+                {/* Left: Prev Button */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: isMobile ? 8 : 12,
+                    order: isMobile ? 1 : undefined,
+                  }}
+                >
+                  {/* Previous Question Button */}
+                  {onPrev && (
+                    <button
+                      type="button"
+                      onClick={onPrev}
+                      disabled={questionIndex === 0}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 5,
+                        padding: isMobile ? '0 12px' : '7px 14px',
+                        ...(isMobile && { minHeight: 44, minWidth: 44, boxSizing: 'border-box' as const }),
+                        borderRadius: 3,
+                        border: '1px solid #CBD5E1',
+                        backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
+                        color: questionIndex === 0 ? '#94A3B8' : 'var(--deep-navy)',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease',
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      }}
+                    >
+                      <ChevronLeft size={15} />
+                      {!isMobile && <span>{t('prev')}</span>}
+                    </button>
+                  )}
+
+                </div>
+
+                {/* Middle: confidence, locked once the answer is revealed */}
+                {onConfidenceChange && (
+                  /* Phones: own centred row above the navigation */
+                  <div style={isMobile ? { width: '100%', display: 'flex', justifyContent: 'center' } : { display: 'contents' }}>
+                    <ConfidenceSelector
+                      value={confidence}
+                      onChange={onConfidenceChange}
+                      disabled={!selectedOptionId || Boolean(revealResult)}
+                      compact={isMobile}
+                    />
+                  </div>
+                )}
+
+                {/* Right: Single Action Button (fills the rest of the row on phones) */}
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    justifyContent: 'flex-end',
+                    ...(isMobile && { order: 2, flex: 1, minWidth: 0 }),
+                  }}
+                >
+                  {mode !== 'EXAM' && (
+                    <>
+                      {!revealResult ? (
+                        /* Single Button: Submit & Show Solution */
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!selectedOptionId) return;
+                            setShowDetailedSolution(true);
+                            if (onRevealAnswer) onRevealAnswer();
+                            if (onShowSolution) onShowSolution();
+                          }}
+                          disabled={!selectedOptionId || isRevealing}
+                          style={{
+                            padding: isMobile ? '0 12px' : '8px 18px',
+                            // Submit and the solution toggle share one width so the row stays put when it swaps
+                            ...(isMobile
+                              ? { minHeight: 44, flex: 1, justifyContent: 'center', boxSizing: 'border-box' as const, whiteSpace: 'nowrap' as const }
+                              : { minWidth: 212, justifyContent: 'center', boxSizing: 'border-box' as const }),
+                            borderRadius: 3,
+                            border: !selectedOptionId ? '1px solid #CBD5E1' : '1px solid var(--primary-red)',
+                            backgroundColor: !selectedOptionId ? '#E2E8F0' : 'var(--primary-red)',
+                            color: !selectedOptionId ? '#94A3B8' : '#FFFFFF',
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            cursor: !selectedOptionId ? 'not-allowed' : 'pointer',
+                            boxShadow: !selectedOptionId
+                              ? 'none'
+                              : '0 2px 8px rgba(var(--primary-red-rgb), 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            transition: 'all 0.15s ease',
+                            fontFamily: "'Plus Jakarta Sans', sans-serif",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (selectedOptionId) e.currentTarget.style.backgroundColor = '#172554';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (selectedOptionId) e.currentTarget.style.backgroundColor = 'var(--primary-red)';
+                          }}
+                        >
+                          {isRevealing ? (
+                            <>
+                              <Loader2 size={14} className="spin-loader" />
+                              <span>{t('loadingSolution')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 size={14} />
+                              <span>{t('submitAndShowSolution')}</span>
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        /* Toggle Solution Button */
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !showDetailedSolution;
+                            setShowDetailedSolution(next);
+                            if (next && onShowSolution) {
+                              onShowSolution();
+                            }
+                          }}
+                          style={{
+                            padding: isMobile ? '0 12px' : '8px 18px',
+                            // Submit and the solution toggle share one width so the row stays put when it swaps
+                            ...(isMobile
+                              ? { minHeight: 44, flex: 1, justifyContent: 'center', boxSizing: 'border-box' as const, whiteSpace: 'nowrap' as const }
+                              : { minWidth: 212, justifyContent: 'center', boxSizing: 'border-box' as const }),
+                            borderRadius: 3,
+                            border: showDetailedSolution
+                              ? '1px solid var(--primary-red)'
+                              : '1px solid #CBD5E1',
+                            backgroundColor: showDetailedSolution ? '#EFF6FF' : '#FFFFFF',
+                            color: showDetailedSolution ? 'var(--primary-red)' : 'var(--deep-navy)',
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            transition: 'all 0.15s ease',
+                            fontFamily: "'Plus Jakarta Sans', sans-serif",
+                          }}
+                        >
+                          <Lightbulb
+                            size={14}
+                            color={showDetailedSolution ? 'var(--primary-red)' : '#64748B'}
+                          />
+                          <span>{showDetailedSolution ? t('hideSolution') : t('showSolution')}</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {/* Next Question Button: always last, so it never moves when Submit becomes the solution toggle */}
+                  {onNext && (
+                    <button
+                      type="button"
+                      onClick={onNext}
+                      disabled={questionIndex >= totalQuestions - 1}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 5,
+                        padding: isMobile ? '0 14px' : '7px 14px',
+                        ...(isMobile && { minHeight: 44, boxSizing: 'border-box' as const }),
+                        borderRadius: 3,
+                        border: '1px solid #CBD5E1',
+                        backgroundColor:
+                          questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
+                        color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : 'var(--deep-navy)',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease',
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      }}
+                    >
+                      <span>{t('next')}</span>
+                      <ChevronRight size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Rich Solution Markdown Card (Practice / Revision Mode): below the actions, so revealing it
+                never pushes Next / Hide Solution down the page */}
             {mode !== 'EXAM' && (revealResult || solutionData) && showDetailedSolution && (
               <QuestionSolutionMarkdownCard
                 isLoading={isRevealing}
@@ -1081,209 +1292,6 @@ export function ExamQuestionCard({
                   }
                 }
               />
-            )}
-
-            {/* Action Buttons & Navigation (only rendered when there's something to show) */}
-            {(onPrev || onNext || mode !== 'EXAM' || onConfidenceChange) && (
-              <div
-                style={{
-                  marginTop: isMobile ? 16 : 14,
-                  paddingTop: isMobile ? 14 : 12,
-                  borderTop: '1px solid #F1F5F9',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: 10,
-                  flexShrink: 0,
-                }}
-              >
-                {/* Left: Prev | Next Buttons */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: isMobile ? 8 : 12,
-                    order: isMobile ? 1 : undefined,
-                  }}
-                >
-                  {/* Previous Question Button */}
-                  {onPrev && (
-                    <button
-                      type="button"
-                      onClick={onPrev}
-                      disabled={questionIndex === 0}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 5,
-                        padding: isMobile ? '0 12px' : '7px 14px',
-                        ...(isMobile && { minHeight: 44, minWidth: 44, boxSizing: 'border-box' as const }),
-                        borderRadius: 3,
-                        border: '1px solid #CBD5E1',
-                        backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
-                        color: questionIndex === 0 ? '#94A3B8' : 'var(--deep-navy)',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.15s ease',
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      }}
-                    >
-                      <ChevronLeft size={15} />
-                      {!isMobile && <span>{t('prev')}</span>}
-                    </button>
-                  )}
-
-                  {/* Next Question Button */}
-                  {onNext && (
-                    <button
-                      type="button"
-                      onClick={onNext}
-                      disabled={questionIndex >= totalQuestions - 1}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 5,
-                        padding: isMobile ? '0 14px' : '7px 14px',
-                        ...(isMobile && { minHeight: 44, boxSizing: 'border-box' as const }),
-                        borderRadius: 3,
-                        border: '1px solid #CBD5E1',
-                        backgroundColor:
-                          questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
-                        color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : 'var(--deep-navy)',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.15s ease',
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      }}
-                    >
-                      <span>{t('next')}</span>
-                      <ChevronRight size={15} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Middle: confidence, locked once the answer is revealed */}
-                {onConfidenceChange && (
-                  /* Phones: own centred row above the navigation */
-                  <div style={isMobile ? { width: '100%', display: 'flex', justifyContent: 'center' } : { display: 'contents' }}>
-                    <ConfidenceSelector
-                      value={confidence}
-                      onChange={onConfidenceChange}
-                      disabled={!selectedOptionId || Boolean(revealResult)}
-                      compact={isMobile}
-                    />
-                  </div>
-                )}
-
-                {/* Right: Single Action Button (fills the rest of the row on phones) */}
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 10,
-                    justifyContent: 'flex-end',
-                    ...(isMobile && { order: 2, flex: 1, minWidth: 0 }),
-                  }}
-                >
-                  {mode !== 'EXAM' && (
-                    <>
-                      {!revealResult ? (
-                        /* Single Button: Submit & Show Solution */
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!selectedOptionId) return;
-                            setShowDetailedSolution(true);
-                            if (onRevealAnswer) onRevealAnswer();
-                            if (onShowSolution) onShowSolution();
-                          }}
-                          disabled={!selectedOptionId || isRevealing}
-                          style={{
-                            padding: isMobile ? '0 12px' : '8px 20px',
-                            ...(isMobile && { minHeight: 44, flex: 1, justifyContent: 'center', boxSizing: 'border-box' as const, whiteSpace: 'nowrap' as const }),
-                            borderRadius: 3,
-                            border: !selectedOptionId ? '1px solid #CBD5E1' : '1px solid var(--primary-red)',
-                            backgroundColor: !selectedOptionId ? '#E2E8F0' : 'var(--primary-red)',
-                            color: !selectedOptionId ? '#94A3B8' : '#FFFFFF',
-                            fontSize: 12.5,
-                            fontWeight: 700,
-                            cursor: !selectedOptionId ? 'not-allowed' : 'pointer',
-                            boxShadow: !selectedOptionId
-                              ? 'none'
-                              : '0 2px 8px rgba(var(--primary-red-rgb), 0.25)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            transition: 'all 0.15s ease',
-                            fontFamily: "'Plus Jakarta Sans', sans-serif",
-                          }}
-                          onMouseEnter={(e) => {
-                            if (selectedOptionId) e.currentTarget.style.backgroundColor = '#172554';
-                          }}
-                          onMouseLeave={(e) => {
-                            if (selectedOptionId) e.currentTarget.style.backgroundColor = 'var(--primary-red)';
-                          }}
-                        >
-                          {isRevealing ? (
-                            <>
-                              <Loader2 size={14} className="spin-loader" />
-                              <span>{t('loadingSolution')}</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 size={14} />
-                              <span>{t('submitAndShowSolution')}</span>
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        /* Toggle Solution Button */
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = !showDetailedSolution;
-                            setShowDetailedSolution(next);
-                            if (next && onShowSolution) {
-                              onShowSolution();
-                            }
-                          }}
-                          style={{
-                            padding: isMobile ? '0 12px' : '8px 18px',
-                            ...(isMobile && { minHeight: 44, flex: 1, justifyContent: 'center', boxSizing: 'border-box' as const, whiteSpace: 'nowrap' as const }),
-                            borderRadius: 3,
-                            border: showDetailedSolution
-                              ? '1px solid var(--primary-red)'
-                              : '1px solid #CBD5E1',
-                            backgroundColor: showDetailedSolution ? '#EFF6FF' : '#FFFFFF',
-                            color: showDetailedSolution ? 'var(--primary-red)' : 'var(--deep-navy)',
-                            fontSize: 12.5,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            transition: 'all 0.15s ease',
-                            fontFamily: "'Plus Jakarta Sans', sans-serif",
-                          }}
-                        >
-                          <Lightbulb
-                            size={14}
-                            color={showDetailedSolution ? 'var(--primary-red)' : '#64748B'}
-                          />
-                          <span>{showDetailedSolution ? t('hideSolution') : t('showSolution')}</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
             )}
           </div>
         </div>

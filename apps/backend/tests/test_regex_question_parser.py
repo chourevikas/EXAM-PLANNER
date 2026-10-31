@@ -462,3 +462,26 @@ def test_out_of_order_headers_and_empty_solution_slice_no_index_error():
     assert rec.question_number == 1
     assert rec.answer_label == "C"
 
+
+
+def test_diamond_bulleted_reverse_logic_box_is_split_out_of_the_solution():
+    # Papers bullet the header with "◆"; it used to stay in the solution as broken, wrapped bullets
+    text = (
+        "Q1. Megasthenes visited the court of\n"
+        "(A) Ashoka\n(B) Harsha\n(C) Chandragupta Maurya\n(D) Vikramaditya\n"
+        "Answer: (C)\n"
+        "Solution: Megasthenes was the Greek ambassador of Seleucus to Chandragupta Maurya.\n"
+        "◆ Reverse Logic Box — Why the other options are wrong\n"
+        "Option (A): Why it seems tempting — Ashoka is the best-known Mauryan\n"
+        "emperor. What's actually true — Megasthenes came a generation\n"
+        "earlier, to Chandragupta.\n"
+        "Option (B): Why it seems tempting — Harsha also hosted a foreign visitor. "
+        "What's actually true — That was Xuanzang, centuries later.\n"
+    )
+    record = parse_question_block({"clean_text": text, "question_number": 1, "header_line": "Q1.", "page_numbers": [1]})
+
+    assert record.solution_text == "Megasthenes was the Greek ambassador of Seleucus to Chandragupta Maurya."
+    assert not any("Reverse Logic" in b or "Option (" in b for b in record.solution_bullets)
+    assert set(record.reverse_logic) == {"A", "B"}
+    assert record.reverse_logic["A"]["why_tempting"] == "Ashoka is the best-known Mauryan emperor."
+    assert record.reverse_logic["A"]["whats_actually_true"] == "Megasthenes came a generation earlier, to Chandragupta."

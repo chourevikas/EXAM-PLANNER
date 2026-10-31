@@ -20,12 +20,12 @@ import { QuestionSolutionData } from '../components/exam/QuestionSolutionMarkdow
 import { ConfidenceLevel, QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { fetchMasterSyllabus, verifySyllabusNode, listExams, fetchExamsByYear } from '../services/examService';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useFocusMode } from '../hooks/useFocusMode';
 import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { recordPracticeAnswer, DailyLimitReachedError, fetchDailyUsage, DailyUsage } from '../services/freePlanService';
 import { FreePlanLimitModal } from '../components/common/FreePlanLimitModal';
-import { ExamLanguagePicker } from '../components/common/ExamLanguagePicker';
-import { SUPPORTED_LANGUAGES } from '../constants/languages';
+import { SUPPORTED_LANGUAGES, getSecondaryLanguage } from '../constants/languages';
 import { formatEnum, extractCanonicalExamName, cleanExamTitle, sortExamLabels, defaultExamLabel } from '../utils/formatEnum';
 import { fetchActiveExamTypes } from '../services/examTypeService';
 import { availableQuestionYears } from '../utils/examYears';
@@ -69,44 +69,7 @@ export function StudentPracticeExamPage() {
   }, []);
 
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
-  const [isFocusMode, setIsFocusMode] = useState(false);
-
-  // Focus mode also takes the browser itself fullscreen (hides tabs/address bar).
-  // Leaving fullscreen via Esc or browser UI drops focus mode too.
-  const toggleFocusMode = useCallback(() => {
-    const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => Promise<void> };
-    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
-    const isFullscreen = !!(document.fullscreenElement || doc.webkitFullscreenElement);
-    if (!isFocusMode) {
-      setIsFocusMode(true);
-      if (!isFullscreen) {
-        const request = el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
-        Promise.resolve(request?.()).catch(() => undefined);
-      }
-    } else {
-      setIsFocusMode(false);
-      if (isFullscreen) {
-        const exit = document.exitFullscreen?.bind(document) ?? doc.webkitExitFullscreen?.bind(doc);
-        Promise.resolve(exit?.()).catch(() => undefined);
-      }
-    }
-  }, [isFocusMode]);
-
-  useEffect(() => {
-    const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => Promise<void> };
-    const onFullscreenChange = () => {
-      if (!document.fullscreenElement && !doc.webkitFullscreenElement) setIsFocusMode(false);
-    };
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', onFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
-      // Don't leave the browser stuck fullscreen after navigating away from practice.
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
-      else if (doc.webkitFullscreenElement) doc.webkitExitFullscreen?.().catch(() => undefined);
-    };
-  }, []);
+  const [isFocusMode, toggleFocusMode] = useFocusMode();
 
   // Master Syllabus Taxonomy & Available Exams state fetched directly from live APIs
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
@@ -356,8 +319,8 @@ export function StudentPracticeExamPage() {
   // Exactly 10 mins (600s). Not shown on screen, so it lives in a ref: ticking it as state
   // re-rendered the whole page (and re-wrote sessionStorage) every second, making scrolling stutter.
   const timeLeftRef = useRef(600);
-  // The session's language lives in ?lang= (en / hi / mr): chosen in the picker before practice starts,
-  // kept by every filter change (they copy the URL) and by a reload, so it stays fixed for the session
+  // The session's language lives in ?lang= (en / hi / mr): English (primary) unless the student switched
+  // to their profile's secondary language in the header; kept by every filter change (they copy the URL) and by a reload
   const urlLang = searchParams.get('lang');
   // ?source=bookmarks | revision | mistakes | search: practise the student's bookmarked questions, the ones
   // due for spaced revision today, their mistake notebook (Pro; ?view=frequent for 2+ misses), or the
@@ -370,8 +333,8 @@ export function StudentPracticeExamPage() {
   const searchTerm = searchParams.get('q') || '';
   const searchStart = searchParams.get('start') || '';
   const mistakeView = searchParams.get('view') === 'frequent' ? 'frequent' : 'all';
-  const hasSessionLanguage = SUPPORTED_LANGUAGES.some((l) => l.code === urlLang);
-  const language = hasSessionLanguage ? (urlLang as string) : 'en';
+  const language = SUPPORTED_LANGUAGES.some((l) => l.code === urlLang) ? (urlLang as string) : 'en';
+  const secondaryLanguage = getSecondaryLanguage();
 
 
 
@@ -535,9 +498,10 @@ export function StudentPracticeExamPage() {
     [],
   );
 
-  const handlePracticeLanguagePicked = (chosenLang: string) => {
+  const handlePracticeLanguageChange = (nextLang: string) => {
     const current = new URLSearchParams(searchParams);
-    current.set('lang', chosenLang);
+    if (nextLang === 'en') current.delete('lang');
+    else current.set('lang', nextLang);
     navigate(`/practice-exam?${current.toString()}`, { replace: true });
   };
 
@@ -947,8 +911,6 @@ export function StudentPracticeExamPage() {
 
   // Load Real Practice Questions from Database using Live Syllabus APIs
   useEffect(() => {
-    // Questions and their solutions load once the session's language is chosen
-    if (!hasSessionLanguage) return;
     async function loadPracticeQuestions() {
       if (isInitialLoadRef.current) {
         setIsLoading(true);
@@ -1296,7 +1258,7 @@ export function StudentPracticeExamPage() {
     }
 
     loadPracticeQuestions();
-  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, hasSessionLanguage, isBookmarkSession, practiceSource, searchTerm, searchStart, mistakeView]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, isBookmarkSession, practiceSource, searchTerm, searchStart, mistakeView]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -1331,6 +1293,16 @@ export function StudentPracticeExamPage() {
     if (allQuestions[currentQIndex + 1]) ensureQuestionTranslation(allQuestions[currentQIndex + 1], language);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language, activeQuestion?.question_id]);
+
+  // Switching language mid-session reloads an already revealed solution in the new language
+  const solutionLanguageRef = useRef(language);
+  useEffect(() => {
+    if (solutionLanguageRef.current === language) return;
+    solutionLanguageRef.current = language;
+    const qId = activeQuestion?.question_id;
+    if (qId && (revealedMap[qId] || revealedMap[String(qId)])) fetchPracticeQuestionSolution(qId, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -1720,19 +1692,6 @@ export function StudentPracticeExamPage() {
   const isCurrentAnswered = !!currentResponse;
   const isCurrentMarked = activeQuestion ? !!markedForReview[activeQuestion.question_id] : false;
 
-  // Nothing loads until the student picks the session's language
-  if (!hasSessionLanguage) {
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-subtle)' }}>
-        <ExamLanguagePicker
-          open
-          kind="practice"
-          onStart={handlePracticeLanguagePicked}
-          onCancel={() => (window.history.length > 1 ? navigate(-1) : navigate('/dashboard'))}
-        />
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -1883,6 +1842,8 @@ export function StudentPracticeExamPage() {
         onSubmitClick={() => handleFinishPracticeExam()}
         focusMode={isFocusMode}
         onToggleFocusMode={toggleFocusMode}
+        secondaryLanguage={secondaryLanguage}
+        onLanguageChange={handlePracticeLanguageChange}
         onFilterClick={!isFocusMode && !isBookmarkSession ? () => setShowMobileFilterPanel(true) : undefined}
         onRecsClick={() => setShowMobileRecs(true)}
         recsCount={displayRecs.length}
