@@ -459,7 +459,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int, report_only
             for qm in meta_res.all():
                 meta_map[qm.question_id] = qm
 
-            subtopic_ids = [q.subtopic_id for q in q_rows if q.subtopic_id]
+            subtopic_ids = [q.subtopic_id for q in q_map.values() if q.subtopic_id]
             if subtopic_ids:
                 sub_res = await session.exec(select(Subtopic).where(col(Subtopic.id).in_(subtopic_ids)))
                 sub_rows = sub_res.all()
