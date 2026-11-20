@@ -499,6 +499,23 @@ class ExamJsonBuilder:
         correct_option_label = "A"
         distractor_scores = {}
 
+        # Explanations (needed here for the reverse-logic source, reused in step 7).
+        # Skipped entirely when include_solution_data=False.
+        expl_list = []
+        if include_solution_data:
+            if preloaded is not None:
+                expl_list = preloaded.get("expl_map", {}).get(q.id, [])
+            else:
+                expl_res = await self.session.exec(
+                    select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
+                )
+                expl_list = expl_res.all()
+
+        # English explanation, else any language (same rule as routers/exams.py)
+        q_expl = next(
+            (e for e in expl_list if (e.language.value if hasattr(e.language, "value") else str(e.language)) == "ENGLISH"), None
+        ) or (expl_list[0] if expl_list else None)
+
         # Look for full reverse logic source
         full_rl_source = (q_expl.reverse_logic or "").strip() if q_expl else ""
         if not full_rl_source and q_expl and q_expl.detailed_solution and ("Reverse Logic" in q_expl.detailed_solution or "Why the other options" in q_expl.detailed_solution):
@@ -606,26 +623,16 @@ class ExamJsonBuilder:
             irt_b = q_meta.irt_difficulty_b if (q_meta and q_meta.irt_difficulty_b is not None) else 0.00
             irt_c = q_meta.irt_pseudo_guessing_c if (q_meta and q_meta.irt_pseudo_guessing_c is not None) else 0.25
 
-            if preloaded is not None:
-                expl_list = preloaded.get("expl_map", {}).get(q.id, [])
-            else:
-                expl_res = await self.session.exec(
-                    select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
-                )
-                expl_list = expl_res.all()
-
-            for q_expl in expl_list:
-                lang_str = q_expl.language.value if hasattr(q_expl.language, "value") else str(q_expl.language)
+            for expl in expl_list:
+                lang_str = expl.language.value if hasattr(expl.language, "value") else str(expl.language)
                 explanation_translations[lang_str] = {
-                    "core_concept": q_expl.core_concept,
-                    "detailed_solution": q_expl.detailed_solution,
-                    "common_traps": q_expl.common_traps_json or [],
-                    "key_takeaways": q_expl.key_takeaways_json or [],
+                    "core_concept": expl.core_concept,
+                    "detailed_solution": expl.detailed_solution,
+                    "common_traps": expl.common_traps_json or [],
+                    "key_takeaways": expl.key_takeaways_json or [],
                 }
 
-            eng_expl = next(
-                (e for e in expl_list if (e.language.value if hasattr(e.language, "value") else str(e.language)) == "ENGLISH"), None
-            ) or (expl_list[0] if expl_list else None)
+            eng_expl = q_expl
 
             default_expl_dict = {
                 "core_concept": eng_expl.core_concept if eng_expl else "Core concept analysis",
