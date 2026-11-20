@@ -157,29 +157,54 @@ export function RecommendedQuestionCard({
               marginBottom: 6,
             }}
           >
-            <span
-              style={{
-                fontSize: 9.5,
-                fontWeight: 700,
-                padding: '2px 6px',
-                borderRadius: 3,
-                backgroundColor: 'var(--bg-hover)',
-                color: 'var(--text-secondary)',
-                textTransform: 'uppercase',
-              }}
-            >
-              {rec.topic_name || rec.subject || rec.section_code || 'General Studies'}
-            </span>
-            {rec.subtopic_name && (
+            {/* Subject badge (styled in indigo, matching ExamQuestionCard) */}
+            {(rec.subject || (rec as any).subject_name) && (
+              <span
+                style={{
+                  fontSize: 9.5,
+                  fontWeight: 700,
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  backgroundColor: '#EEF2FF',
+                  color: '#4338CA',
+                  border: '1px solid #C7D2FE',
+                  textTransform: 'uppercase',
+                }}
+                title="Subject"
+              >
+                {rec.subject || (rec as any).subject_name}
+              </span>
+            )}
+            {/* Topic badge */}
+            {Boolean(rec.topic_name && rec.topic_name !== (rec.subject || (rec as any).subject_name)) && (
               <span
                 style={{
                   fontSize: 9.5,
                   fontWeight: 600,
                   padding: '2px 6px',
                   borderRadius: 3,
-                  backgroundColor: '#EEF2FF',
-                  color: '#4338CA',
+                  backgroundColor: 'var(--bg-subtle)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid #CBD5E1',
                 }}
+                title="Topic"
+              >
+                {rec.topic_name}
+              </span>
+            )}
+            {/* Subtopic badge */}
+            {rec.subtopic_name && (
+              <span
+                style={{
+                  fontSize: 9.5,
+                  fontWeight: 500,
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--text-muted)',
+                  border: '1px dashed #CBD5E1',
+                }}
+                title="Subtopic"
               >
                 {rec.subtopic_name}
               </span>
@@ -224,14 +249,16 @@ export function RecommendedQuestionCard({
               <span
                 style={{
                   fontSize: 9.5,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   padding: '2px 6px',
                   borderRadius: 3,
-                  backgroundColor: '#F3E8FF',
-                  color: '#7E22CE',
+                  backgroundColor: '#F0F9FF',
+                  color: '#0284C7',
+                  border: '1px solid #BAE6FD',
                 }}
+                title="Exam and Year"
               >
-                {extractCanonicalExamName((rec as any).exam_name) || 'UPSC CSE'}{' '}
+                🏛️ {extractCanonicalExamName((rec as any).exam_name) || 'UPSC CSE'}{' '}
                 {(rec as any).source_year ? `• ${(rec as any).source_year}` : ''}
               </span>
             )}

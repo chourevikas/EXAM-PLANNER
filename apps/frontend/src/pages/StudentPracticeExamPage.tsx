@@ -840,15 +840,20 @@ export function StudentPracticeExamPage() {
   };
 
   const activeRecExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]).map((e) => e.toLowerCase());
-  const activeSubject = activeQuestion?.subject || activeQuestion?.section_code;
+  const activeSubject = activeQuestion?.subject || (activeQuestion as any)?.subject_name || activeQuestion?.section_code;
   const displayRecs = activeRecExams.length > 0 
     ? mergeRecommendations(similarRecs, recommendedPool).filter((q) => {
+        // Never suggest a question that is already in this session (including the one on screen):
+        // the pool is prefetched before the session's questions load, so it can contain them
+        if (sessionQuestionIds.has(String(q.question_id))) return false;
         if (!q.exam_name) return true;
         const canonical = extractCanonicalExamName(q.exam_name).toLowerCase();
         const matchesExam = activeRecExams.includes(canonical) || activeRecExams.includes(q.exam_name.toLowerCase());
         if (!matchesExam) return false;
+        // Direct similarity recommendations from backend are already strictly subject-aligned
+        if ((q as any).similarity_score) return true;
         if (activeSubject && !activeSubject.toLowerCase().startsWith('all') && activeSubject !== 'General Studies') {
-          const qSubj = q.subject || q.section_code;
+          const qSubj = q.subject || (q as any).subject_name || q.section_code;
           return isSameSubject(qSubj, activeSubject);
         }
         return true;

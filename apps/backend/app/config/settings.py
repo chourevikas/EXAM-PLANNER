@@ -121,6 +121,27 @@ class Settings(BaseSettings):
     KNOWLEDGE_LLM_TIMEOUT_SECONDS: int = Field(default=90)
     KNOWLEDGE_LLM_MAX_RETRIES: int = Field(default=3)
     KNOWLEDGE_LLM_RATE_LIMIT_RPS: float = Field(default=1.0)
+    # ── 4-Channel Hybrid Similarity Search & Embeddings ──────────────────────
+    GEMINI_API_KEY: Optional[str] = Field(default=None)
+    GEMINI_EMBEDDING_MODEL: str = Field(default="models/gemini-embedding-001")
+    GEMINI_EMBEDDING_DIM: int = Field(default=3072)
+
+    JINA_API_KEY: Optional[str] = Field(default=None)
+    JINA_RERANKER_MODEL: str = Field(default="jina-reranker-v3.5")
+
+    # Hybrid similarity: weighted RRF over 5 retrieval channels (a weight of 0 turns a channel off)
+    SIMILARITY_WEIGHT_QUESTION_DENSE: float = Field(default=0.30)       # question vector  vs question vectors
+    SIMILARITY_WEIGHT_QUESTION_BM25: float = Field(default=0.25)        # question text    vs question texts
+    SIMILARITY_WEIGHT_EXPLANATION_DENSE: float = Field(default=0.25)    # solution vector  vs solution vectors
+    SIMILARITY_WEIGHT_ANSWER_BM25: float = Field(default=0.10)          # correct answer   vs correct answers
+    SIMILARITY_WEIGHT_ANSWER_IN_QUESTION_BM25: float = Field(default=0.10)  # correct answer vs question texts
+    SIMILARITY_BM25_K1: float = Field(default=1.2)
+    SIMILARITY_BM25_B: float = Field(default=0.75)
+    SIMILARITY_RRF_K: int = Field(default=60)
+    SIMILARITY_CHANNEL_LIMIT: int = Field(default=50)
+    SIMILARITY_RERANK_TOP_N: int = Field(default=200)
+    SIMILARITY_FINAL_LIMIT: int = Field(default=20)
+
 
     # Async Database Configuration (Supports SQLite and PostgreSQL: postgresql+asyncpg://...)
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///exam_platform.db")

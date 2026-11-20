@@ -44,6 +44,7 @@ import { ExamMarkingSchemeControl } from '../ExamMarkingSchemeControl';
 import { MissingQuestionsView } from './MissingQuestionsView';
 import { AddMissingQuestionModal } from '../modals/AddMissingQuestionModal';
 import { QuestionReviewCard, QuestionReviewSavePayload } from '../QuestionReviewCard';
+import { QuestionSimilarExplorer } from '../QuestionSimilarExplorer';
 import { cleanExamTitle } from '../../../utils/formatEnum';
 import type { QuestionAsset } from '../../common/QuestionAssetImages';
 
@@ -2337,6 +2338,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 onCancelEdit={() => setIsEditingQuestion(false)}
                 onSave={(payload, publishAfterSave) => handleSaveQuestionEdit(activeQuestion, payload, publishAfterSave)}
               />
+
+              {/* 4-Channel Hybrid AI Similar Questions Explorer */}
+              <QuestionSimilarExplorer questionId={activeQuestion.question_id || activeQuestion.id} />
 
               {/* Bottom Pagination Controller */}
               <div

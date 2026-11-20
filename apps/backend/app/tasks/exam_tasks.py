@@ -223,6 +223,10 @@ async def async_process_exam_pdf(
         from app.tasks.enrichment_tasks import dispatch_exam_enrichment
         dispatch_exam_enrichment(exam_id, log)
 
+        # 4-Channel Hybrid Vectorization (Question dense/lexical + Answer dense/lexical)
+        from app.tasks.vector_tasks import dispatch_exam_vectorization
+        dispatch_exam_vectorization(exam_id, log)
+
         log.info("=" * 70)
         log.info(
             f"✅ [EXTRACTION PIPELINE COMPLETE] Engine: {execution_engine} | Paper: '{exam_title}' | Task ID: '{t_id}'"

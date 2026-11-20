@@ -39,6 +39,7 @@ import {
 } from '../../services/adminService';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { AdminQuestionPublicationCard } from './AdminQuestionPublicationCard';
+import { QuestionSimilarExplorer } from './QuestionSimilarExplorer';
 
 interface QuestionOptionItem {
   option_id?: string;
@@ -1474,6 +1475,9 @@ export function QuestionBankManager({ onNavigate }: QuestionBankManagerProps) {
                       questionNumber={selectedQuestion.question_number_in_paper}
                       style={{ border: 'none', padding: 0, boxShadow: 'none' }}
                     />
+
+                    {/* 4-Channel Hybrid AI Similar Questions Explorer */}
+                    <QuestionSimilarExplorer questionId={selectedQuestion.id} />
 
                     {/* Bottom Navigation Toolbar */}
                     <div

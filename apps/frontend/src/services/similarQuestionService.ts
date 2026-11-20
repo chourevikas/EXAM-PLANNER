@@ -55,6 +55,7 @@ export function recommendationCardToQuestion(
     options: optionsList,
     section_code: item.subject_name || fallback.subject || 'Recommended',
     subject: item.subject_name || fallback.subject || 'General Studies',
+    subject_name: item.subject_name || fallback.subject || 'General Studies',
     topic_name: item.topic_name || item.subject_name || fallback.subject || '',
     subtopic_name: item.subtopic_name,
     difficulty: item.difficulty || 'MEDIUM',
@@ -142,27 +143,25 @@ export function mergeRecommendations<T extends QuestionOut>(similar: T[], pool: 
   return [...similar, ...pool.filter((q) => !seen.has(String(q.question_id)))];
 }
 
-export const CANONICAL_SUBJECT_GROUPS: string[][] = [
-  ['polity', 'indian polity', 'indian polity and governance', 'governance'],
-  ['history', 'modern history', 'medieval history', 'ancient history', 'indian history', 'indian history and culture'],
-  ['art and culture', 'arts and culture', 'indian culture'],
-  ['geography', 'human and economic geography'],
-  ['economy', 'economics', 'indian economy'],
-  ['environment', 'environment and ecology', 'ecology and environment'],
-  ['science and technology', 'science and tech', 'general science'],
-  ['social security in india', 'insurance and social security principles', 'labour laws and industrial relations'],
-];
+/**
+ * Subject name for matching: lower-case, "&" -> "and", spaces around "/", single spaces, trimmed.
+ * Must stay identical to `normalize_subject` in the backend (app/core/subjects.py).
+ */
+export function normalizeSubject(name?: string | null): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/\//g, ' / ')
+    .replace(/ +/g, ' ')
+    .trim();
+}
 
+/**
+ * Exact subject match only: "History", "Modern History" and "History & Culture" are different
+ * subjects. There is no synonym list and no substring matching.
+ */
 export function isSameSubject(s1?: string | null, s2?: string | null): boolean {
-  if (!s1 || !s2) return false;
-  const n1 = s1.toLowerCase().replace(/[–—]/g, '-').replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
-  const n2 = s2.toLowerCase().replace(/[–—]/g, '-').replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
-  if (n1 === n2) return true;
-  for (const group of CANONICAL_SUBJECT_GROUPS) {
-    if (group.some((g) => n1 === g || g.includes(n1) || n1.includes(g)) &&
-        group.some((g) => n2 === g || g.includes(n2) || n2.includes(g))) {
-      return true;
-    }
-  }
-  return false;
+  const n1 = normalizeSubject(s1);
+  return n1 !== '' && n1 === normalizeSubject(s2);
 }

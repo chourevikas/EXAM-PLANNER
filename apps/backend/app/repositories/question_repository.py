@@ -1,7 +1,9 @@
 from typing import Optional, List, Tuple, Union
 from sqlmodel import select, func, or_, and_, not_, col
+from sqlalchemy.orm import aliased
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.subjects import normalize_subject, subject_norm_column
 from app.db.models import (
     Question,
     QuestionStatus,
@@ -157,13 +159,37 @@ class QuestionRepository:
                 if c_full and "," in c_full and c_full not in s_list and c_full not in ("all subjects", "all"):
                     s_list.append(c_full)
             if s_list:
+                # Exact subject only (case, spacing and "&"/"and" ignored): "History" never matches
+                # "Modern History" or "History & Culture" (see app/core/subjects.py).
+                # Only the question's MAIN subject counts: the subject of its own subtopic (what its card shows,
+                # and what an admin's correction updates), else its PDF subject tag. Secondary hierarchy links (extra concepts tagged by the old AI pipeline, e.g. an
+                # International Relations question also linked to History) are ignored, as in similar questions.
+                main_subtopic, main_topic, main_subject = aliased(Subtopic), aliased(Topic), aliased(Subject)
+                hierarchy_name = (
+                    select(main_subject.name)
+                    .select_from(main_subtopic)
+                    .join(main_topic, main_topic.id == main_subtopic.topic_id)
+                    .join(main_subject, main_subject.id == main_topic.subject_id)
+                    .where(main_subtopic.id == Question.subtopic_id)
+                    .correlate(Question)
+                    .scalar_subquery()
+                )
+                hierarchy_code = (
+                    select(main_subject.code)
+                    .select_from(main_subtopic)
+                    .join(main_topic, main_topic.id == main_subtopic.topic_id)
+                    .join(main_subject, main_subject.id == main_topic.subject_id)
+                    .where(main_subtopic.id == Question.subtopic_id)
+                    .correlate(Question)
+                    .scalar_subquery()
+                )
+                raw_subject = func.nullif(func.trim(Question.subject_raw), "")
+                main_subject_name = func.coalesce(hierarchy_name, raw_subject)
                 s_clauses = [
                     or_(
-                        func.lower(Subject.name) == clean_s,
-                        func.lower(Subject.name).contains(clean_s),
-                        func.lower(Subject.code) == clean_s,
-                        func.lower(Question.section_code) == clean_s,
-                        func.lower(Question.section_code).contains(clean_s),
+                        subject_norm_column(main_subject_name) == normalize_subject(clean_s),
+                        func.lower(hierarchy_code) == clean_s,
+                        subject_norm_column(Question.section_code) == normalize_subject(clean_s),
                     )
                     for clean_s in s_list
                 ]

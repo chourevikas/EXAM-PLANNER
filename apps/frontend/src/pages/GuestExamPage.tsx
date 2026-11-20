@@ -1380,6 +1380,8 @@ export function GuestExamPage() {
   const activeSubject = activeQuestion?.subject || activeQuestion?.section_code;
   const displayRecs = activeRecExams.length > 0 
     ? mergeRecommendations(similarRecs, recommendedPool).filter((q) => {
+        // Never suggest a question that is already in this session (including the one on screen)
+        if (sessionQuestionIds.has(String(q.question_id))) return false;
         if (!q.exam_name) return true;
         const canonical = extractCanonicalExamName(q.exam_name).toLowerCase();
         const matchesExam = activeRecExams.includes(canonical) || activeRecExams.includes(q.exam_name.toLowerCase());

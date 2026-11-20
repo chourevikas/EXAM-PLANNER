@@ -28,7 +28,7 @@ router = APIRouter(prefix="/questions", tags=["Questions & Formatted Outputs"])
 @router.get("", response_model=QuestionPaginatedResponse, summary="Get Questions with Multi-Filtering & Pagination")
 async def list_questions(
     subject_id: Optional[int] = Query(default=None, description="Filter by Subject ID"),
-    subject_name: Optional[str] = Query(default=None, description="Filter by Subject Name (substring match)"),
+    subject_name: Optional[str] = Query(default=None, description="Filter by exact Subject Name (case, spacing and '&'/'and' ignored)"),
     subject_code: Optional[str] = Query(default=None, description="Filter by Subject Code"),
     topic_id: Optional[int] = Query(default=None, description="Filter by Topic ID"),
     topic_name: Optional[str] = Query(default=None, description="Filter by Topic Name (substring match)"),
@@ -270,7 +270,7 @@ async def create_question(
 
 @router.get("/recommended", summary="Lightweight Recommended Questions (no passages/metadata/hierarchy-detail/solutions)")
 async def list_recommended_questions(
-    subject_name: Optional[str] = Query(default=None, description="Filter by Subject Name (substring match)"),
+    subject_name: Optional[str] = Query(default=None, description="Filter by exact Subject Name (case, spacing and '&'/'and' ignored)"),
     topic_name: Optional[str] = Query(default=None, description="Filter by Topic Name (substring match)"),
     subtopic_name: Optional[str] = Query(default=None, description="Filter by Subtopic Name (substring match)"),
     exam_name: Optional[str] = Query(default=None, description="Filter by Exam Name e.g. upsc (substring match)"),
@@ -332,16 +332,7 @@ async def list_recommended_questions(
     return JSONResponse(content=res)
 
 
-CANONICAL_SUBJECT_MAP = {
-    "polity": ["polity", "indian polity", "indian polity and governance", "governance"],
-    "history": ["history", "modern history", "medieval history", "ancient history", "indian history", "indian history and culture"],
-    "art_culture": ["art and culture", "arts and culture", "indian culture"],
-    "geography": ["geography", "human and economic geography"],
-    "economy": ["economy", "economics", "indian economy"],
-    "environment": ["environment", "environment and ecology", "ecology and environment"],
-    "science": ["science and technology", "science and tech", "general science", "physics", "chemistry", "biology", "computer science"],
-    "social_security": ["social security in india", "insurance and social security principles", "labour laws and industrial relations"],
-}
+from app.core.subjects import same_subject  # noqa: E402
 
 
 def _norm_tax_str(s: Optional[str]) -> str:
@@ -353,15 +344,8 @@ def _norm_tax_str(s: Optional[str]) -> str:
 
 
 def _subject_matches(s1: Optional[str], s2: Optional[str]) -> bool:
-    n1, n2 = _norm_tax_str(s1), _norm_tax_str(s2)
-    if not n1 or not n2:
-        return False
-    if n1 == n2:
-        return True
-    for group in CANONICAL_SUBJECT_MAP.values():
-        if any(n1 == g or g in n1 for g in group) and any(n2 == g or g in n2 for g in group):
-            return True
-    return False
+    """Exactly the same subject name (ignoring case, spacing and "&" vs "and")."""
+    return same_subject(s1, s2)
 
 
 def _taxonomy_matches(t1: Optional[str], t2: Optional[str]) -> bool:
@@ -462,7 +446,8 @@ async def get_similar_questions(
         t_st = t_st or target_q.subtopic_raw
 
         if not t_sub:
-            return candidates[:limit]
+            # Without a subject there is no way to keep suggestions inside it, so suggest nothing
+            return []
 
         # 1. Subject match is strictly required
         same_subj = []
@@ -494,6 +479,24 @@ async def get_similar_questions(
 
         # 4. Fallback to same subject
         return same_subj[:limit]
+
+    # ── 1. 4-Channel Hybrid Similarity (Dense + Lexical + Weighted RRF + Reranker) ──
+    try:
+        from app.services.vector.similarity_retrieval_service import HybridSimilarityService
+        lang_code = parse_language(language)
+        vec_service = HybridSimilarityService(session)
+        vec_results = await vec_service.find_similar_questions(
+            qid_int, limit=limit, include_question=include_question, target_lang=lang_code,
+            other_years_only=other_years_only,
+        )
+        if vec_results:
+            # Already restricted to other years when asked; this only adds each result's source_year
+            results = await _from_other_years(vec_results)
+            return JSONResponse(content={"question_id": qid_int, "results": jsonable_encoder(results)})
+    except Exception as vec_err:
+        logger.warning(f"Hybrid similarity search failed for Q#{qid_int}: {vec_err}. Falling back...")
+        # A failed statement aborts the transaction; the fallbacks below need a usable session
+        await session.rollback()
 
     if target_q.knowledge_tags_ai:
         # Use AI Jaccard Similarity; if it finds nothing, fall through to the deterministic layer

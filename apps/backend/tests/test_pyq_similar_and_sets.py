@@ -45,7 +45,9 @@ async def _seed(session: AsyncSession):
     bank = await _add(session, Exam(code="BANK", name="Mixed bank", source_year=2000, is_mixed_bank=True, is_active=True))
 
     def q(exam, n, **kw):
-        return Question(exam_id=exam.id, question_number_in_paper=n, status=QuestionStatus.PUBLISHED, **kw)
+        # Similar questions are only suggested within the same subject, so every seeded question has one
+        return Question(exam_id=exam.id, question_number_in_paper=n, status=QuestionStatus.PUBLISHED,
+                        subject_raw="Polity", **kw)
     target = await _add(session, q(a2022, 1, knowledge_tags_ai=["polity"]))
     same_paper = await _add(session, q(a2022, 2))
     same_year_other_set = await _add(session, q(b2022, 1))
@@ -79,7 +81,10 @@ async def test_same_theme_in_other_years_only(client, monkeypatch):
     candidates = [s["same_paper"], s["same_year"], s["other_year"], s["bank_2022"], s["bank_2015"]]
 
     async def fake_similar(self, qid, limit=5):
-        return [{"question_id": str(c), "similarity_score": 90 - i} for i, c in enumerate(candidates)][:limit]
+        return [
+            {"question_id": str(c), "similarity_score": 90 - i, "subject_name": "Polity"}
+            for i, c in enumerate(candidates)
+        ][:limit]
 
     monkeypatch.setattr("app.services.question_service.QuestionService.get_similar_questions", fake_similar)
     url = f"/api/v1/questions/{s['target']}/similar"
@@ -106,8 +111,8 @@ async def test_similar_questions_taxonomy_filtering(client, monkeypatch):
     s = _state
     # Monkeypatch get_similar_questions to return questions with different taxonomies
     candidates = [
-        {"question_id": str(s["other_year"]), "similarity_score": 95, "subject_name": "Indian Polity & Governance", "topic_name": "Parliament", "subtopic_name": "Money Bill"},
-        {"question_id": str(s["bank_2022"]), "similarity_score": 90, "subject_name": "Indian Polity", "topic_name": "Parliament", "subtopic_name": "Budget"},
+        {"question_id": str(s["other_year"]), "similarity_score": 95, "subject_name": "Indian Polity and Governance", "topic_name": "Parliament", "subtopic_name": "Money Bill"},
+        {"question_id": str(s["bank_2022"]), "similarity_score": 90, "subject_name": "Polity", "topic_name": "Parliament", "subtopic_name": "Money Bill"},
         {"question_id": str(s["bank_2015"]), "similarity_score": 85, "subject_name": "Modern History", "topic_name": "Revolts", "subtopic_name": "1857"},
     ]
 
@@ -116,12 +121,13 @@ async def test_similar_questions_taxonomy_filtering(client, monkeypatch):
 
     monkeypatch.setattr("app.services.question_service.QuestionService.get_similar_questions", fake_similar)
 
-    # Let's mock target question's subject as "Polity", topic as "Parliament", subtopic as "Money Bill"
+    # Target subject "Indian Polity & Governance": only that exact subject name counts ("&" = "and"),
+    # so "Polity" (another subject name) and "Modern History" are both excluded
     from app.db.models.question import Question
 
     async with AsyncSession(test_engine) as session:
         t_q = await session.get(Question, s["target"])
-        t_q.subject_raw = "Polity"
+        t_q.subject_raw = "Indian Polity & Governance"
         t_q.topic_raw = "Parliament"
         t_q.subtopic_raw = "Money Bill"
         session.add(t_q)
@@ -130,9 +136,9 @@ async def test_similar_questions_taxonomy_filtering(client, monkeypatch):
     url = f"/api/v1/questions/{s['target']}/similar"
     res = (await client.get(url, params={"limit": 5})).json()["results"]
 
-    # History question must NOT be included; subtopic match must be kept
+    # Only the exact-subject question is kept
     assert len(res) == 1
     assert int(res[0]["question_id"]) == s["other_year"]
-    assert res[0]["subject_name"] == "Indian Polity & Governance"
+    assert res[0]["subject_name"] == "Indian Polity and Governance"
     assert res[0]["subtopic_name"] == "Money Bill"
 

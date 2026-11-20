@@ -47,6 +47,7 @@ dependencies = [
     "transformers>=4.40.0",
     "sentencepiece>=0.2.0",
     "sacremoses>=0.1.1",
+    "pgvector>=0.5.1",
 ]
 
 [dependency-groups]
