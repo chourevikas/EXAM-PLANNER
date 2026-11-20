@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **exam-planner** (13582 symbols, 27038 relationships, 929 execution flows).
+This project is indexed by GitNexus as **EXAM-PLANNER** (17186 symbols, 34862 relationships, 1068 execution flows).
 
 > Index stale? Run `node .gitnexus/run.cjs analyze --index-only` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? Bootstrap with `npx`, `bunx`, or `pnpm dlx` — e.g. `bunx gitnexus@latest analyze` (npm 11 npx crash; #1939).
 
@@ -25,10 +25,10 @@ This project is indexed by GitNexus as **exam-planner** (13582 symbols, 27038 re
 
 | Resource | Use for |
 | --- | --- |
-| `gitnexus://repo/exam-planner/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/exam-planner/clusters` | All functional areas |
-| `gitnexus://repo/exam-planner/processes` | All execution flows |
-| `gitnexus://repo/exam-planner/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/EXAM-PLANNER/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/EXAM-PLANNER/clusters` | All functional areas |
+| `gitnexus://repo/EXAM-PLANNER/processes` | All execution flows |
+| `gitnexus://repo/EXAM-PLANNER/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 

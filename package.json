@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "clean:ports": "powershell -ExecutionPolicy Bypass -File ./scripts/kill-ports.ps1",
+    "kill:ports": "powershell -ExecutionPolicy Bypass -File ./scripts/kill-ports.ps1",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

@@ -95,6 +95,6 @@ async def main():
             except Exception as e:
                 print(f"  [{i}/{len(STATEMENTS)}] SKIP/ERROR: {str(e)[:120]}")
         await session.commit()
-        print("✅ Migration complete.")
+        print("[OK] Migration complete.")
 
 asyncio.run(main())
